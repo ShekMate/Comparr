@@ -1,0 +1,13 @@
+{
+  "LANG": "it",
+  "LOGIN_NAME": "Nome",
+  "LOGIN_ROOM_CODE": "Codice",
+  "LOGIN_SUBMIT": "Entra",
+  "RATE_SECTION_LOADING": "Caricamento dei film...",
+  "RATE_SECTION_EXHAUSTED_CARDS": "Questo è tutto, gente ✌️",
+  "MATCHES_SECTION_TITLE": "Corrispondenze",
+  "MATCHES_SECTION_NO_MATCHES": "Nessuna corrispondenza",
+  "MATCHES_SECTION_CARD_LIKERS": "$USERS vogliono guardare $MOVIE",
+  "LIST_CONJUNCTION": "e",
+  "ACCESS_PASSWORD_LABEL": "Qual è... la tua password?"
+}

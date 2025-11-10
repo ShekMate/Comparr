@@ -1,0 +1,13 @@
+{
+  "LANG": "zh-CN",
+  "LOGIN_NAME": "名称",
+  "LOGIN_ROOM_CODE": "房间代码",
+  "LOGIN_SUBMIT": "进入",
+  "RATE_SECTION_LOADING": "正在加载电影…",
+  "RATE_SECTION_EXHAUSTED_CARDS": "就到这里吧 ✌️",
+  "MATCHES_SECTION_TITLE": "匹配",
+  "MATCHES_SECTION_NO_MATCHES": "暂无匹配",
+  "MATCHES_SECTION_CARD_LIKERS": "$USERS 想看 $MOVIE",
+  "LIST_CONJUNCTION": "和",
+  "ACCESS_PASSWORD_LABEL": "你的密码是……？"
+}

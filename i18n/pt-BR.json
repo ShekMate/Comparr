@@ -1,0 +1,13 @@
+{
+  "LANG": "pt-BR",
+  "LOGIN_NAME": "Nome",
+  "LOGIN_ROOM_CODE": "Código",
+  "LOGIN_SUBMIT": "Entrar",
+  "RATE_SECTION_LOADING": "Carregando filmes...",
+  "RATE_SECTION_EXHAUSTED_CARDS": "É isso, pessoal ✌️",
+  "MATCHES_SECTION_TITLE": "Correspondências",
+  "MATCHES_SECTION_NO_MATCHES": "Sem correspondências",
+  "MATCHES_SECTION_CARD_LIKERS": "$USERS querem assistir a $MOVIE",
+  "LIST_CONJUNCTION": "e",
+  "ACCESS_PASSWORD_LABEL": "Qual... é a sua senha?"
+}

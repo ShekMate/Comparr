@@ -1,0 +1,13 @@
+{
+  "LANG": "ko",
+  "LOGIN_NAME": "이름",
+  "LOGIN_ROOM_CODE": "코드",
+  "LOGIN_SUBMIT": "입장",
+  "RATE_SECTION_LOADING": "영화를 불러오는 중...",
+  "RATE_SECTION_EXHAUSTED_CARDS": "여기까지입니다 ✌️",
+  "MATCHES_SECTION_TITLE": "매치",
+  "MATCHES_SECTION_NO_MATCHES": "매치가 없습니다",
+  "MATCHES_SECTION_CARD_LIKERS": "$USERS(이)가 $MOVIE를 보고 싶어합니다",
+  "LIST_CONJUNCTION": "그리고",
+  "ACCESS_PASSWORD_LABEL": "비밀번호가... 무엇인가요?"
+}

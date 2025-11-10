@@ -1,0 +1,48 @@
+# ===== Comparr .dockerignore =====
+
+# --- Git / CI ---
+.git/
+.gitignore
+.github/
+.gitlab/
+.vscode/
+.idea/
+
+# --- Documentation / Metadata ---
+docs/
+README.md
+LICENSE
+CHANGELOG*
+.editorconfig
+*.md
+
+# --- Environment & Secrets ---
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+
+# --- Local Development Artifacts ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+coverage/
+dist/
+build/
+.tmp/
+.cache/
+*.log
+
+# --- OS / Editor Junk ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Docker Context Self-Exclusion ---
+context.tar
+Dockerfile~
+docker-compose.override.yml

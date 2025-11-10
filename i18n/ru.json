@@ -1,0 +1,13 @@
+{
+  "LANG": "ru",
+  "LOGIN_NAME": "Имя",
+  "LOGIN_ROOM_CODE": "Код",
+  "LOGIN_SUBMIT": "Войти",
+  "RATE_SECTION_LOADING": "Загрузка фильмов...",
+  "RATE_SECTION_EXHAUSTED_CARDS": "На этом всё ✌️",
+  "MATCHES_SECTION_TITLE": "Совпадения",
+  "MATCHES_SECTION_NO_MATCHES": "Совпадений нет",
+  "MATCHES_SECTION_CARD_LIKERS": "$USERS хотят посмотреть $MOVIE",
+  "LIST_CONJUNCTION": "и",
+  "ACCESS_PASSWORD_LABEL": "Какой... у вас пароль?"
+}

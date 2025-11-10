@@ -1,0 +1,37 @@
+{
+  "name": "moviematch",
+  "version": "1.10.0",
+  "description": "",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "deno run --allow-net --allow-read --allow-env --unstable src/index.ts",
+    "test": "run-p lint:*",
+    "lint:deno": "deno lint --unstable src",
+    "lint:css": "stylelint '**/*.css'",
+    "lint:style": "prettier --ignore-path .gitignore  '**/*.{ts,js,css,json}' --check",
+    "format": "prettier --ignore-path .gitignore  '**/*.{ts,js,css,json}' -w",
+    "publish-docker": "docker buildx build --platform linux/amd64,linux/arm64 -t lukechannings/moviematch:$npm_package_version -t lukechannings/moviematch:latest --push .",
+    "start-docker": "docker run -it --env-file .env -p 8000:8000 lukechannings/moviematch",
+    "postversion": "git push && git push --tags && npm run publish-docker"
+  },
+  "keywords": [],
+  "author": "Luke Channings",
+  "license": "LICENSE",
+  "prettier": {
+    "semi": false,
+    "arrowParens": "avoid",
+    "singleQuote": true
+  },
+  "stylelint": {
+    "extends": "stylelint-config-standard",
+    "ignoreFiles": [
+      "public/index.html"
+    ]
+  },
+  "devDependencies": {
+    "npm-run-all": "^4.1.5",
+    "prettier": "^2.2.1",
+    "stylelint": "^13.8.0",
+    "stylelint-config-standard": "^20.0.0"
+  }
+}

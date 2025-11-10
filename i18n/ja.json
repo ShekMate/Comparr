@@ -1,0 +1,13 @@
+{
+  "LANG": "ja",
+  "LOGIN_NAME": "名前",
+  "LOGIN_ROOM_CODE": "コード",
+  "LOGIN_SUBMIT": "入力",
+  "RATE_SECTION_LOADING": "映画を読み込み中...",
+  "RATE_SECTION_EXHAUSTED_CARDS": "以上です ✌️",
+  "MATCHES_SECTION_TITLE": "マッチ",
+  "MATCHES_SECTION_NO_MATCHES": "マッチはありません",
+  "MATCHES_SECTION_CARD_LIKERS": "$USERS は $MOVIE を見たいと思っています",
+  "LIST_CONJUNCTION": "と",
+  "ACCESS_PASSWORD_LABEL": "あなたのパスワードは…？"
+}
