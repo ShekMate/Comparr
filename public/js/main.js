@@ -1907,6 +1907,21 @@ const main = async () => {
     })
     
     console.log('Where to Watch:', filterState.showPlexOnly ? 'My Plex Only' : 'All Movies')
+    
+    // Immediately clear any buffered movies fetched with the previous filter state
+    // so the swipe stack doesn't continue to show non-Plex results.
+    window.__resetMovies = true
+
+    // If the user is already logged in, request a fresh batch right away so the
+    // swipe deck reflects the Plex-only preference without waiting for the
+    // Apply button.
+    if (
+      document.body.classList.contains('is-logged-in') &&
+      typeof triggerNewBatch === 'function' &&
+      typeof cardStackEventTarget !== 'undefined'
+    ) {
+      triggerNewBatch()
+    }
   }
 
   plexOnlyToggle?.addEventListener('change', handlePlexToggle)
