@@ -13,6 +13,14 @@ let api;
 // --- Normalize any legacy poster paths to our canonical local proxy
 function normalizePoster(u) {
   if (!u) return '';
+  // Strip known local prefixes so we can inspect the core path
+  let core = u;
+  if (core.startsWith('/tmdb-poster/')) core = core.slice('/tmdb-poster'.length);
+  if (core.startsWith('/poster/'))      core = core.slice('/poster'.length);
+
+  // Detect raw Plex thumb IDs like "/74101/thumb/1760426051" and avoid proxying them as TMDb posters
+  if (/^\/\d+\/thumb\/\d+/.test(core)) return '';
+  
   if (u.startsWith('/cached-poster/') || u.startsWith('/tmdb-poster/')) return u;   // already good
   if (u.startsWith('/poster/')) return '/tmdb-poster/' + u.slice('/poster/'.length); // legacy -> canonical
   if (u.startsWith('http://') || u.startsWith('https://')) return u;                // full CDN URL
