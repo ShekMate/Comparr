@@ -1399,48 +1399,76 @@ async function handleMovieRequest(tmdbId, movieTitle, buttonElement) {
 // Watch List Auto-Refresh System
 let watchListRefreshInterval = null;
 
+/**
+ * Process a list of items with a concurrency limit to avoid blocking the main thread.
+ * @template T,R
+ * @param {T[]} items
+ * @param {number} limit
+ * @param {(item: T, index: number) => Promise<R>} handler
+ * @returns {Promise<R[]>}
+ */
+async function processWithConcurrency(items, limit, handler) {
+  const results = new Array(items.length);
+  let index = 0;
+
+  const workerCount = Math.min(limit, items.length);
+  if (workerCount === 0) return results;
+
+  async function runNext() {
+    while (index < items.length) {
+      const currentIndex = index++;
+      results[currentIndex] = await handler(items[currentIndex], currentIndex);
+    }
+  }
+
+  await Promise.all(Array.from({ length: workerCount }, runNext));
+  return results;
+}
+
 async function refreshWatchListStatus() {
   console.log('🔧 Refreshing Watch list (Plex + Streaming)...');
-  
-  const watchCards = document.querySelectorAll('.watch-card');
-  let plexUpdatedCount = 0;
-  let streamingUpdatedCount = 0;
-  
-  for (const card of watchCards) {
+
+  const watchCards = Array.from(document.querySelectorAll('.watch-card'));
+  const results = await processWithConcurrency(watchCards, 6, async (card) => {
     const addBtn = card.querySelector('.add-to-plex-btn');
     const tmdbId = parseInt(card.dataset.tmdbId);
-    
-    if (!tmdbId) continue;
-    
+
+    if (!tmdbId) {
+      return { plexUpdated: 0, streamingUpdated: 0 };
+    }
+
+    let plexUpdated = 0;
+    let streamingUpdated = 0;
+
     try {
       // 1. Check Plex status (if button exists)
       if (addBtn) {
         const plexResponse = await fetch(`/api/check-movie-status?tmdbId=${tmdbId}`);
         if (plexResponse.ok) {
           const plexData = await plexResponse.json();
-          
+
           if (plexData.inPlex) {
             const actionsContainer = card.querySelector('.watch-card-actions');
             const btnToReplace = actionsContainer.querySelector('.add-to-plex-btn');
-            
+
             if (btnToReplace) {
               btnToReplace.outerHTML = `
                 <div class="plex-status">
                   <i class="fas fa-check-circle"></i> ${window.PLEX_LIBRARY_NAME}
                 </div>
               `;
-              plexUpdatedCount++;
+              plexUpdated++;
             }
           }
         }
       }
-      
+
       // 2. Check if "ADD TO PLEX" button should show "Requested" instead
       if (addBtn && !addBtn.classList.contains('requested')) {
         const requestResponse = await fetch(`/api/check-request-status?tmdbId=${tmdbId}`);
         if (requestResponse.ok) {
           const requestData = await requestResponse.json();
-          
+
           // If movie is pending/processing in Jellyseerr/Overseerr, update button
           if (requestData.pending || requestData.processing) {
             addBtn.innerHTML = '<i class="fas fa-check"></i> Requested';
@@ -1449,12 +1477,12 @@ async function refreshWatchListStatus() {
           }
         }
       }
-      
+
       // 3. Refresh streaming data (for ALL movies, even if in Plex)
       const streamingResponse = await fetch(`/api/refresh-streaming/${tmdbId}`);
       if (streamingResponse.ok) {
         const streamingData = await streamingResponse.json();
-        
+
         // **NEW: Also update the persisted data**
         await fetch(`/api/update-persisted-movie/${tmdbId}`, {
           method: 'POST',
@@ -1464,7 +1492,7 @@ async function refreshWatchListStatus() {
             streamingLink: streamingData.streamingLink
           })
         });
-        
+
         // Update SUBSCRIPTION and FREE dropdown menus (current Watch-card markup)
         const dropdowns = card.querySelectorAll('.service-dropdown');
         const subMenu = dropdowns[0]?.querySelector('.service-dropdown-menu');
@@ -1475,7 +1503,7 @@ async function refreshWatchListStatus() {
           const services = (streamingData.streamingServices?.subscription || [])
             .filter(s => s.name !== window.PLEX_LIBRARY_NAME);
           subMenu.innerHTML = renderServiceItems(services, streamingData.streamingLink);
-          streamingUpdatedCount++;
+          streamingUpdated++;
         }
 
         // FREE
@@ -1484,12 +1512,20 @@ async function refreshWatchListStatus() {
           freeMenu.innerHTML = renderServiceItems(services, streamingData.streamingLink);
         }
       }
-      
+
     } catch (err) {
       console.error(`❌Failed to refresh TMDb ID ${tmdbId}:`, err);
     }
-  }
-  
+
+    return { plexUpdated, streamingUpdated };
+  });
+
+  const { plexUpdatedCount, streamingUpdatedCount } = results.reduce((acc, result = {}) => {
+    acc.plexUpdatedCount += result.plexUpdated || 0;
+    acc.streamingUpdatedCount += result.streamingUpdated || 0;
+    return acc;
+  }, { plexUpdatedCount: 0, streamingUpdatedCount: 0 });
+
   // Show notification with results
   const messages = [];
   if (plexUpdatedCount > 0) {
@@ -1498,14 +1534,14 @@ async function refreshWatchListStatus() {
   if (streamingUpdatedCount > 0) {
     messages.push(`${streamingUpdatedCount} streaming updated`);
   }
-  
+
   if (messages.length > 0) {
     console.log(`✅ ${messages.join(', ')}`);
     showNotification(messages.join(' • '));
   } else {
     showNotification('Everything up to date!');
   }
-  
+
   // Reset expand/collapse button state after refresh
   if (typeof resetExpandCollapseButton === 'function') {
     resetExpandCollapseButton();
@@ -1601,53 +1637,56 @@ async function checkDailyRefresh() {
   
   console.log(`🗂️ Daily auto-refresh: Plex=${needsPlex}, JustWatch=${needsJustWatch}`);
   
-  const watchCards = document.querySelectorAll('.watch-card');
-  let plexUpdatedCount = 0;
-  let streamingUpdatedCount = 0;
-  
-  for (const card of watchCards) {
+  const watchCards = Array.from(document.querySelectorAll('.watch-card'));
+
+  const results = await processWithConcurrency(watchCards, 6, async (card) => {
     const addBtn = card.querySelector('.add-to-plex-btn');
     const tmdbId = parseInt(card.dataset.tmdbId);
-    
-    if (!tmdbId) continue;
-    
+
+    if (!tmdbId) {
+      return { plexUpdated: 0, streamingUpdated: 0 };
+    }
+
+    let plexUpdated = 0;
+    let streamingUpdated = 0;
+
     try {
       // 1. Check Plex status (if needed)
       if (needsPlex && addBtn) {
         const plexResponse = await fetch(`/api/check-movie-status?tmdbId=${tmdbId}`);
         if (plexResponse.ok) {
           const plexData = await plexResponse.json();
-          
+
           if (plexData.inPlex) {
             const actionsContainer = card.querySelector('.watch-card-actions');
             const btnToReplace = actionsContainer.querySelector('.add-to-plex-btn');
-            
+
             if (btnToReplace) {
               btnToReplace.outerHTML = `
                 <div class="plex-status">
                   <i class="fas fa-check-circle"></i> ${window.PLEX_LIBRARY_NAME}
                 </div>
               `;
-              plexUpdatedCount++;
+              plexUpdated++;
             }
           }
         }
       }
-      
+
       // 2. Refresh streaming data (if needed)
       if (needsJustWatch) {
         const streamingResponse = await fetch(`/api/refresh-streaming/${tmdbId}`);
         if (streamingResponse.ok) {
           const streamingData = await streamingResponse.json();
-          
+
           // Update subscription services
           const subContainer = card.querySelector('.streaming-subscription .service-list');
           if (subContainer) {
             const services = streamingData.streamingServices.subscription || [];
             subContainer.innerHTML = renderServiceItems(services, streamingData.streamingLink);
-            streamingUpdatedCount++;
+            streamingUpdated++;
           }
-          
+
           // Update free services
           const freeContainer = card.querySelector('.streaming-free .service-list');
           if (freeContainer) {
@@ -1656,12 +1695,20 @@ async function checkDailyRefresh() {
           }
         }
       }
-      
+
     } catch (err) {
       console.error(`❌Failed to refresh TMDb ID ${tmdbId}:`, err);
     }
-  }
-  
+
+    return { plexUpdated, streamingUpdated };
+  });
+
+  const { plexUpdatedCount, streamingUpdatedCount } = results.reduce((acc, result = {}) => {
+    acc.plexUpdatedCount += result.plexUpdated || 0;
+    acc.streamingUpdatedCount += result.streamingUpdated || 0;
+    return acc;
+  }, { plexUpdatedCount: 0, streamingUpdatedCount: 0 });
+
   // Update timestamps
   if (needsPlex) {
     localStorage.setItem(LAST_PLEX_REFRESH_KEY, Date.now().toString());
