@@ -78,7 +78,7 @@ interface DiscoverQueue {
   currentPage: number
   buffer: any[]
   exhausted: boolean
-  prefetchPromise?: Promise<unknown>
+  prefetchPromise?: Promise<void>
 }
 
 type DiscoverFilters = {
@@ -564,7 +564,7 @@ class Session {
     return { key, queue }
   }
 
-  private async loadDiscoverPage(queue: DiscoverQueue, filters?: DiscoverFilters) {
+  private async loadDiscoverPage(queue: DiscoverQueue, filters?: DiscoverFilters): Promise<void> {
     if (queue.exhausted) return
 
     const page = queue.currentPage
@@ -600,7 +600,7 @@ class Session {
     }
   }
 
-  private prefetchDiscoverPage(queue: DiscoverQueue, filters?: DiscoverFilters) {
+  private prefetchDiscoverPage(queue: DiscoverQueue, filters?: DiscoverFilters): void {
     if (queue.exhausted || queue.prefetchPromise) return
     queue.prefetchPromise = this.loadDiscoverPage(queue, filters)
       .catch(err => {
