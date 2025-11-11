@@ -74,6 +74,49 @@ interface MediaItem {
   tmdbId?: number | null
 }
 
+interface DiscoverQueue {
+  currentPage: number
+  buffer: any[]
+  exhausted: boolean
+  prefetchPromise?: Promise<void>
+}
+
+type DiscoverFilters = {
+  yearMin?: number
+  yearMax?: number
+  genres?: string[]
+  tmdbRating?: number
+  languages?: string[]
+  countries?: string[]
+  runtimeMin?: number
+  runtimeMax?: number
+  voteCount?: number
+  sortBy?: string
+  rtRating?: number
+}
+
+function sortFilterValue(value: any): any {
+  if (Array.isArray(value)) {
+    return value.map(sortFilterValue)
+  }
+  if (value && typeof value === 'object') {
+    const sorted: Record<string, any> = {}
+    for (const key of Object.keys(value).sort()) {
+      const nested = value[key]
+      if (nested !== undefined) {
+        sorted[key] = sortFilterValue(nested)
+      }
+    }
+    return sorted
+  }
+  return value
+}
+
+function stableFiltersKey(filters?: DiscoverFilters): string {
+  if (!filters) return 'default'
+  return JSON.stringify(sortFilterValue(filters))
+}
+
 interface WebSocketLoginMessage {
   type: 'login'
   payload: { name: string; roomCode: string; accessPassword: string }
@@ -290,6 +333,11 @@ class Session {
   // Matches keyed by movie (object identity). We'll keep guid->movie lookup to unify objects.
   likedMovies: Map<MediaItem, User[]> = new Map()
 
+  private discoverQueues: Map<string, DiscoverQueue> = new Map()
+  private tmdbFormatCache: Map<number, any> = new Map()
+  private tmdbFormatInFlight: Map<number, Promise<any>> = new Map()
+  private enrichmentCache: Map<string, Promise<any | undefined>> = new Map()
+
   constructor(roomCode: string) {
     this.roomCode = roomCode
 
@@ -336,6 +384,73 @@ class Session {
     }
   
     return removedCount
+  }
+
+  private resolveDiscoverQueue(filters?: DiscoverFilters) {
+    const key = stableFiltersKey(filters)
+    let queue = this.discoverQueues.get(key)
+    if (!queue) {
+      const startPage = Math.max(1, Math.floor(Math.random() * 5) + 1)
+      queue = { currentPage: startPage, buffer: [], exhausted: false }
+      this.discoverQueues.set(key, queue)
+    }
+    return { key, queue }
+  }
+
+  private async loadDiscoverPage(queue: DiscoverQueue, filters?: DiscoverFilters) {
+    if (queue.exhausted) return
+
+    const page = queue.currentPage
+    queue.currentPage += 1
+
+    const discovered = await discoverMovies({
+      page,
+      yearMin: filters?.yearMin,
+      yearMax: filters?.yearMax,
+      genres: filters?.genres,
+      tmdbRating: filters?.tmdbRating,
+      languages: filters?.languages,
+      countries: filters?.countries,
+      runtimeMin: filters?.runtimeMin,
+      runtimeMax: filters?.runtimeMax,
+      voteCount: filters?.voteCount,
+      sortBy: filters?.sortBy
+    })
+
+    const results = discovered.results ?? []
+    if (!results.length) {
+      queue.exhausted = true
+      return
+    }
+
+    const shuffled = results.slice().sort(() => Math.random() - 0.5)
+    queue.buffer.push(...shuffled)
+  }
+
+  private async ensureDiscoverBuffer(queue: DiscoverQueue, filters?: DiscoverFilters) {
+    while (queue.buffer.length === 0 && !queue.exhausted) {
+      if (queue.prefetchPromise) {
+        await queue.prefetchPromise
+      } else {
+        queue.prefetchPromise = this.loadDiscoverPage(queue, filters)
+        try {
+          await queue.prefetchPromise
+        } finally {
+          queue.prefetchPromise = undefined
+        }
+      }
+    }
+  }
+
+  private prefetchDiscoverPage(queue: DiscoverQueue, filters?: DiscoverFilters) {
+    if (queue.exhausted || queue.prefetchPromise) return
+    queue.prefetchPromise = this.loadDiscoverPage(queue, filters)
+      .catch(err => {
+        log.error('Prefetch discover page failed:', err)
+      })
+      .finally(() => {
+        queue.prefetchPromise = undefined
+      })
   }
 
   movieForGuid(guid: string): MediaItem | undefined {
@@ -621,12 +736,7 @@ class Session {
         } | undefined;
 
         try {
-          extra = await enrich({
-            title: plexMovie.title,
-            year: typeof plexMovie.year === 'number' ? plexMovie.year : Number(plexMovie.year) || null,
-            plexGuid: plexMovie.guid,
-            imdbId: plexMovie.imdbId,
-          });
+          extra = await this.getEnrichmentData(plexMovie);
         } catch (e) {
           log.warning(`Enrichment failed for ${plexMovie.title}: ${e}`);
         }
@@ -931,9 +1041,9 @@ class Session {
   }
 }
 
-  private async getTMDbMovie(index: number, filters?: { 
-    yearMin?: number; 
-    yearMax?: number; 
+  private async getTMDbMovie(index: number, filters?: {
+    yearMin?: number;
+    yearMax?: number;
     genres?: string[];
     tmdbRating?: number;
     languages?: string[];
@@ -946,18 +1056,15 @@ class Session {
     sortBy?: string;
     rtRating?: number;
   }): Promise<any> {
-    
+
     // If person filters are applied, use a more targeted approach
     const hasPersonFilters = (filters?.directors?.length || 0) + (filters?.actors?.length || 0) > 0;
-    
+
     if (hasPersonFilters) {
       return this.getPersonMovie(index, filters);
     }
-    
-    // Original discovery approach for non-person filters
-    const randomPage = Math.floor(Math.random() * 100) + 1;
-    const discovered = await discoverMovies({ 
-      page: randomPage,
+
+    const discoverFilters: DiscoverFilters = {
       yearMin: filters?.yearMin,
       yearMax: filters?.yearMax,
       genres: filters?.genres,
@@ -967,15 +1074,27 @@ class Session {
       runtimeMin: filters?.runtimeMin,
       runtimeMax: filters?.runtimeMax,
       voteCount: filters?.voteCount,
-      sortBy: filters?.sortBy
-    });
-	
-    const tmdbMovie = discovered.results?.[index % 20];
-    
+      sortBy: filters?.sortBy,
+      rtRating: filters?.rtRating
+    }
+
+    const { queue } = this.resolveDiscoverQueue(discoverFilters)
+    await this.ensureDiscoverBuffer(queue, discoverFilters)
+
+    if (!queue.buffer.length) {
+      throw new Error("No TMDb movie found");
+    }
+
+    const tmdbMovie = queue.buffer.shift();
+
     if (!tmdbMovie) {
       throw new Error("No TMDb movie found");
     }
-    
+
+    if (queue.buffer.length < 5) {
+      this.prefetchDiscoverPage(queue, discoverFilters)
+    }
+
     return this.formatTMDbMovie(tmdbMovie);
   }
 
@@ -1003,43 +1122,106 @@ class Session {
   }
 
   private async formatTMDbMovie(tmdbMovie: any): Promise<any> {
-    // Get IMDb ID from TMDb for more reliable enrichment
-    let imdbId = null;
-    try {
-      const detailsResponse = await fetch(`https://api.themoviedb.org/3/movie/${tmdbMovie.id}?api_key=${Deno.env.get('TMDB_API_KEY')}&append_to_response=external_ids`);
-      if (detailsResponse.ok) {
-        const details = await detailsResponse.json();
-        imdbId = details.external_ids?.imdb_id;
-        console.log(`DEBUG: Got IMDb ID ${imdbId} for TMDb movie ${tmdbMovie.title}`);
-      }
-    } catch (e) {
-      console.log(`DEBUG: Failed to get IMDb ID for ${tmdbMovie.title}: ${e}`);
+    const tmdbId = tmdbMovie.id
+    if (tmdbId && this.tmdbFormatCache.has(tmdbId)) {
+      return this.tmdbFormatCache.get(tmdbId)
     }
-    
-    // Convert TMDb format to Plex-like format
-    const thumbUrl = tmdbMovie.poster_path ? `/tmdb-poster${tmdbMovie.poster_path}` : '';
-    console.log('DEBUG getTMDbMovie thumb:', thumbUrl);
-	
-	return {
-      title: tmdbMovie.title,
-      year: new Date(tmdbMovie.release_date || '').getFullYear() || null,
-      summary: tmdbMovie.overview,
-      guid: `tmdb://${tmdbMovie.id}`,
-      key: `/tmdb/${tmdbMovie.id}`,
-      thumb: tmdbMovie.poster_path ? `/tmdb-poster${tmdbMovie.poster_path}` : '',
-      type: 'movie',
-      rating: '',
-      Director: [{ tag: undefined }],
-      imdbId: imdbId,
-      poster_path: tmdbMovie.poster_path,
-      tmdbPosterPath: tmdbMovie.poster_path,
-	  genre_ids: tmdbMovie.genre_ids || [],
-      vote_count: tmdbMovie.vote_count || 0,
-      original_language: tmdbMovie.original_language || null,
-      production_countries: tmdbMovie.production_countries || [],
-      tmdbId: tmdbMovie.id
-    };
-  }  
+    if (tmdbId && this.tmdbFormatInFlight.has(tmdbId)) {
+      return await this.tmdbFormatInFlight.get(tmdbId)!
+    }
+
+    const task = (async () => {
+      // Get IMDb ID from TMDb for more reliable enrichment
+      let imdbId = null;
+      try {
+        const detailsResponse = await fetch(`https://api.themoviedb.org/3/movie/${tmdbId}?api_key=${Deno.env.get('TMDB_API_KEY')}&append_to_response=external_ids`);
+        if (detailsResponse.ok) {
+          const details = await detailsResponse.json();
+          imdbId = details.external_ids?.imdb_id;
+          console.log(`DEBUG: Got IMDb ID ${imdbId} for TMDb movie ${tmdbMovie.title}`);
+        }
+      } catch (e) {
+        console.log(`DEBUG: Failed to get IMDb ID for ${tmdbMovie.title}: ${e}`);
+      }
+
+      // Convert TMDb format to Plex-like format
+      const thumbUrl = tmdbMovie.poster_path ? `/tmdb-poster${tmdbMovie.poster_path}` : '';
+      console.log('DEBUG getTMDbMovie thumb:', thumbUrl);
+
+      const formatted = {
+        title: tmdbMovie.title,
+        year: new Date(tmdbMovie.release_date || '').getFullYear() || null,
+        summary: tmdbMovie.overview,
+        guid: `tmdb://${tmdbMovie.id}`,
+        key: `/tmdb/${tmdbMovie.id}`,
+        thumb: tmdbMovie.poster_path ? `/tmdb-poster${tmdbMovie.poster_path}` : '',
+        type: 'movie',
+        rating: '',
+        Director: [{ tag: undefined }],
+        imdbId: imdbId,
+        poster_path: tmdbMovie.poster_path,
+        tmdbPosterPath: tmdbMovie.poster_path,
+        genre_ids: tmdbMovie.genre_ids || [],
+        vote_count: tmdbMovie.vote_count || 0,
+        original_language: tmdbMovie.original_language || null,
+        production_countries: tmdbMovie.production_countries || [],
+        tmdbId: tmdbMovie.id
+      }
+
+      if (tmdbId) {
+        this.tmdbFormatCache.set(tmdbId, formatted)
+      }
+
+      return formatted
+    })()
+
+    if (tmdbId) {
+      this.tmdbFormatInFlight.set(tmdbId, task)
+    }
+
+    try {
+      const formatted = await task
+      if (tmdbId) {
+        this.tmdbFormatCache.set(tmdbId, formatted)
+        this.tmdbFormatInFlight.delete(tmdbId)
+      }
+      return formatted
+    } catch (err) {
+      if (tmdbId) {
+        this.tmdbFormatInFlight.delete(tmdbId)
+      }
+      throw err
+    }
+  }
+
+  private async getEnrichmentData(plexMovie: any) {
+    const cacheKey = plexMovie.guid || plexMovie.key || (plexMovie.tmdbId ? `tmdb://${plexMovie.tmdbId}` : null)
+
+    if (!cacheKey) {
+      return enrich({
+        title: plexMovie.title,
+        year: typeof plexMovie.year === 'number' ? plexMovie.year : Number(plexMovie.year) || null,
+        plexGuid: plexMovie.guid,
+        imdbId: plexMovie.imdbId,
+      })
+    }
+
+    let task = this.enrichmentCache.get(cacheKey)
+    if (!task) {
+      task = enrich({
+        title: plexMovie.title,
+        year: typeof plexMovie.year === 'number' ? plexMovie.year : Number(plexMovie.year) || null,
+        plexGuid: plexMovie.guid,
+        imdbId: plexMovie.imdbId,
+      })
+        .catch(err => {
+          this.enrichmentCache.delete(cacheKey)
+          throw err
+        })
+      this.enrichmentCache.set(cacheKey, task)
+    }
+    return task
+  }
   
   handleMatch(movie: MediaItem, users: User[]) {
     for (const ws of this.users.values()) {
