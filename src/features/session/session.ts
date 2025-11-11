@@ -74,6 +74,214 @@ interface MediaItem {
   tmdbId?: number | null
 }
 
+interface DiscoverQueue {
+  currentPage: number
+  buffer: any[]
+  exhausted: boolean
+  prefetchPromise?: Promise<void>
+}
+
+type DiscoverFilters = {
+  yearMin?: number
+  yearMax?: number
+  genres?: string[]
+  tmdbRating?: number
+  languages?: string[]
+  countries?: string[]
+  runtimeMin?: number
+  runtimeMax?: number
+  voteCount?: number
+  sortBy?: string
+  rtRating?: number
+}
+
+function sortFilterValue(value: any): any {
+  if (Array.isArray(value)) {
+    return value.map(sortFilterValue)
+  }
+  if (value && typeof value === 'object') {
+    const sorted: Record<string, any> = {}
+    for (const key of Object.keys(value).sort()) {
+      const nested = value[key]
+      if (nested !== undefined) {
+        sorted[key] = sortFilterValue(nested)
+      }
+    }
+    return sorted
+  }
+  return value
+}
+
+function stableFiltersKey(filters?: DiscoverFilters): string {
+  if (!filters) return 'default'
+  return JSON.stringify(sortFilterValue(filters))
+}
+
+const DISCOVER_CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
+const DEFAULT_FILTERS_KEY = stableFiltersKey(undefined)
+const DEFAULT_DISCOVER_PREFETCH_PAGES = Number(Deno.env.get('DISCOVER_CACHE_DEFAULT_PAGES') ?? '10')
+const FILTERED_DISCOVER_PREFETCH_PAGES = Number(Deno.env.get('DISCOVER_CACHE_FILTERED_PAGES') ?? '2')
+
+interface DiscoverCacheEntry {
+  pages: Map<number, any[]>
+  lastFetchedPage: number
+  lastRefreshed: number
+  exhausted: boolean
+  refreshPromise?: Promise<void>
+}
+
+const discoverCache: Map<string, DiscoverCacheEntry> = new Map()
+
+function getOrCreateCacheEntry(key: string): DiscoverCacheEntry {
+  let entry = discoverCache.get(key)
+  if (!entry) {
+    entry = {
+      pages: new Map(),
+      lastFetchedPage: 0,
+      lastRefreshed: 0,
+      exhausted: false
+    }
+    discoverCache.set(key, entry)
+  }
+  return entry
+}
+
+function desiredPrefetchPages(key: string) {
+  return key === DEFAULT_FILTERS_KEY
+    ? DEFAULT_DISCOVER_PREFETCH_PAGES
+    : FILTERED_DISCOVER_PREFETCH_PAGES
+}
+
+async function fetchDiscoverPage(
+  filters: DiscoverFilters | undefined,
+  page: number
+): Promise<any[]> {
+  const discovered = await discoverMovies({
+    page,
+    yearMin: filters?.yearMin,
+    yearMax: filters?.yearMax,
+    genres: filters?.genres,
+    tmdbRating: filters?.tmdbRating,
+    languages: filters?.languages,
+    countries: filters?.countries,
+    runtimeMin: filters?.runtimeMin,
+    runtimeMax: filters?.runtimeMax,
+    voteCount: filters?.voteCount,
+    sortBy: filters?.sortBy,
+    rtRating: filters?.rtRating
+  })
+
+  return discovered.results ?? []
+}
+
+async function warmDiscoverCache(
+  key: string,
+  filters: DiscoverFilters | undefined,
+  pagesToFetch: number,
+  { reset }: { reset: boolean }
+) {
+  const entry = getOrCreateCacheEntry(key)
+  if (entry.refreshPromise) {
+    return entry.refreshPromise
+  }
+
+  entry.refreshPromise = (async () => {
+    if (reset) {
+      entry.pages.clear()
+      entry.lastFetchedPage = 0
+      entry.exhausted = false
+    }
+
+    let page = reset ? 1 : entry.lastFetchedPage + 1
+    let remaining = pagesToFetch
+
+    while (remaining > 0 && !entry.exhausted) {
+      const results = await fetchDiscoverPage(filters, page)
+      if (!results.length) {
+        entry.pages.set(page, [])
+        entry.exhausted = true
+        break
+      }
+
+      entry.pages.set(page, results)
+      entry.lastFetchedPage = Math.max(entry.lastFetchedPage, page)
+      page += 1
+      remaining -= 1
+    }
+
+    entry.lastRefreshed = Date.now()
+  })()
+    .catch(err => {
+      log.error('Failed to warm discover cache:', err)
+    })
+    .finally(() => {
+      entry.refreshPromise = undefined
+    })
+
+  return entry.refreshPromise
+}
+
+async function ensureCachedDiscoverPage(
+  filters: DiscoverFilters | undefined,
+  page: number
+): Promise<{ results: any[]; exhausted: boolean }> {
+  const key = stableFiltersKey(filters)
+  const entry = getOrCreateCacheEntry(key)
+  const targetPrefetch = Math.max(desiredPrefetchPages(key), page)
+  const stale = Date.now() - entry.lastRefreshed > DISCOVER_CACHE_TTL_MS
+
+  if ((stale || entry.pages.size === 0) && !entry.refreshPromise) {
+    await warmDiscoverCache(key, filters, targetPrefetch, { reset: true })
+  } else if (entry.refreshPromise) {
+    await entry.refreshPromise
+  }
+
+  if (!entry.pages.has(page) && !entry.exhausted) {
+    const missingPages = Math.max(0, page - entry.lastFetchedPage)
+    if (missingPages > 0) {
+      await warmDiscoverCache(key, filters, missingPages, { reset: false })
+    }
+
+    if (!entry.pages.has(page) && !entry.exhausted) {
+      const results = await fetchDiscoverPage(filters, page)
+      if (!results.length) {
+        entry.exhausted = true
+      }
+      entry.pages.set(page, results)
+      entry.lastFetchedPage = Math.max(entry.lastFetchedPage, page)
+      entry.lastRefreshed = Date.now()
+    }
+  }
+
+  const results = entry.pages.get(page) ?? []
+  const exhausted = entry.exhausted && page >= entry.lastFetchedPage
+
+  return { results: results.slice(), exhausted }
+}
+
+async function prewarmDefaultDiscoverCache() {
+  const key = DEFAULT_FILTERS_KEY
+  try {
+    await warmDiscoverCache(key, undefined, desiredPrefetchPages(key), { reset: true })
+  } catch (err) {
+    log.error('Initial discover cache warm failed:', err)
+  }
+}
+
+prewarmDefaultDiscoverCache()
+
+const defaultWarmInterval = setInterval(() => {
+  warmDiscoverCache(DEFAULT_FILTERS_KEY, undefined, desiredPrefetchPages(DEFAULT_FILTERS_KEY), { reset: true })
+    .catch(err => {
+      log.error('Scheduled discover cache warm failed:', err)
+    })
+}, DISCOVER_CACHE_TTL_MS)
+
+const denoWithUnref = Deno as typeof Deno & { unrefTimer?: (id: number) => void }
+if (typeof denoWithUnref.unrefTimer === 'function') {
+  denoWithUnref.unrefTimer(defaultWarmInterval)
+}
+
 interface WebSocketLoginMessage {
   type: 'login'
   payload: { name: string; roomCode: string; accessPassword: string }
@@ -289,6 +497,12 @@ class Session {
 
   // Matches keyed by movie (object identity). We'll keep guid->movie lookup to unify objects.
   likedMovies: Map<MediaItem, User[]> = new Map()
+  matches: { movie: MediaItem; users: string[] }[] = []
+
+  private discoverQueues: Map<string, DiscoverQueue> = new Map()
+  private tmdbFormatCache: Map<number, any> = new Map()
+  private tmdbFormatInFlight: Map<number, Promise<any>> = new Map()
+  private enrichmentCache: Map<string, Promise<any | undefined>> = new Map()
 
   constructor(roomCode: string) {
     this.roomCode = roomCode
@@ -336,6 +550,66 @@ class Session {
     }
   
     return removedCount
+  }
+
+  private resolveDiscoverQueue(filters?: DiscoverFilters) {
+    const key = stableFiltersKey(filters)
+    let queue = this.discoverQueues.get(key)
+    if (!queue) {
+      const startPage = key === DEFAULT_FILTERS_KEY
+        ? 1
+        : Math.max(1, Math.floor(Math.random() * 5) + 1)
+      queue = { currentPage: startPage, buffer: [], exhausted: false }
+      this.discoverQueues.set(key, queue)
+    }
+    return { key, queue }
+  }
+
+  private async loadDiscoverPage(queue: DiscoverQueue, filters?: DiscoverFilters): Promise<void> {
+    if (queue.exhausted) return
+
+    const page = queue.currentPage
+    queue.currentPage += 1
+
+    const { results, exhausted } = await ensureCachedDiscoverPage(filters, page)
+
+    if (!results.length) {
+      queue.exhausted = true
+      return
+    }
+
+    const shuffled = results.slice().sort(() => Math.random() - 0.5)
+    queue.buffer.push(...shuffled)
+
+    if (exhausted) {
+      queue.exhausted = true
+    }
+  }
+
+  private async ensureDiscoverBuffer(queue: DiscoverQueue, filters?: DiscoverFilters) {
+    while (queue.buffer.length === 0 && !queue.exhausted) {
+      if (queue.prefetchPromise) {
+        await queue.prefetchPromise
+      } else {
+        queue.prefetchPromise = this.loadDiscoverPage(queue, filters)
+        try {
+          await queue.prefetchPromise
+        } finally {
+          queue.prefetchPromise = undefined
+        }
+      }
+    }
+  }
+
+  private prefetchDiscoverPage(queue: DiscoverQueue, filters?: DiscoverFilters): void {
+    if (queue.exhausted || queue.prefetchPromise) return
+    queue.prefetchPromise = this.loadDiscoverPage(queue, filters)
+      .catch(err => {
+        log.error('Prefetch discover page failed:', err)
+      })
+      .finally(() => {
+        queue.prefetchPromise = undefined
+      })
   }
 
   movieForGuid(guid: string): MediaItem | undefined {
@@ -621,12 +895,7 @@ class Session {
         } | undefined;
 
         try {
-          extra = await enrich({
-            title: plexMovie.title,
-            year: typeof plexMovie.year === 'number' ? plexMovie.year : Number(plexMovie.year) || null,
-            plexGuid: plexMovie.guid,
-            imdbId: plexMovie.imdbId,
-          });
+          extra = await this.getEnrichmentData(plexMovie);
         } catch (e) {
           log.warning(`Enrichment failed for ${plexMovie.title}: ${e}`);
         }
@@ -931,9 +1200,9 @@ class Session {
   }
 }
 
-  private async getTMDbMovie(index: number, filters?: { 
-    yearMin?: number; 
-    yearMax?: number; 
+  private async getTMDbMovie(index: number, filters?: {
+    yearMin?: number;
+    yearMax?: number;
     genres?: string[];
     tmdbRating?: number;
     languages?: string[];
@@ -946,18 +1215,15 @@ class Session {
     sortBy?: string;
     rtRating?: number;
   }): Promise<any> {
-    
+
     // If person filters are applied, use a more targeted approach
     const hasPersonFilters = (filters?.directors?.length || 0) + (filters?.actors?.length || 0) > 0;
-    
+
     if (hasPersonFilters) {
       return this.getPersonMovie(index, filters);
     }
-    
-    // Original discovery approach for non-person filters
-    const randomPage = Math.floor(Math.random() * 100) + 1;
-    const discovered = await discoverMovies({ 
-      page: randomPage,
+
+    const discoverFilters: DiscoverFilters = {
       yearMin: filters?.yearMin,
       yearMax: filters?.yearMax,
       genres: filters?.genres,
@@ -967,15 +1233,27 @@ class Session {
       runtimeMin: filters?.runtimeMin,
       runtimeMax: filters?.runtimeMax,
       voteCount: filters?.voteCount,
-      sortBy: filters?.sortBy
-    });
-	
-    const tmdbMovie = discovered.results?.[index % 20];
-    
+      sortBy: filters?.sortBy,
+      rtRating: filters?.rtRating
+    }
+
+    const { queue } = this.resolveDiscoverQueue(discoverFilters)
+    await this.ensureDiscoverBuffer(queue, discoverFilters)
+
+    if (!queue.buffer.length) {
+      throw new Error("No TMDb movie found");
+    }
+
+    const tmdbMovie = queue.buffer.shift();
+
     if (!tmdbMovie) {
       throw new Error("No TMDb movie found");
     }
-    
+
+    if (queue.buffer.length < 5) {
+      this.prefetchDiscoverPage(queue, discoverFilters)
+    }
+
     return this.formatTMDbMovie(tmdbMovie);
   }
 
@@ -1003,43 +1281,106 @@ class Session {
   }
 
   private async formatTMDbMovie(tmdbMovie: any): Promise<any> {
-    // Get IMDb ID from TMDb for more reliable enrichment
-    let imdbId = null;
-    try {
-      const detailsResponse = await fetch(`https://api.themoviedb.org/3/movie/${tmdbMovie.id}?api_key=${Deno.env.get('TMDB_API_KEY')}&append_to_response=external_ids`);
-      if (detailsResponse.ok) {
-        const details = await detailsResponse.json();
-        imdbId = details.external_ids?.imdb_id;
-        console.log(`DEBUG: Got IMDb ID ${imdbId} for TMDb movie ${tmdbMovie.title}`);
-      }
-    } catch (e) {
-      console.log(`DEBUG: Failed to get IMDb ID for ${tmdbMovie.title}: ${e}`);
+    const tmdbId = tmdbMovie.id
+    if (tmdbId && this.tmdbFormatCache.has(tmdbId)) {
+      return this.tmdbFormatCache.get(tmdbId)
     }
-    
-    // Convert TMDb format to Plex-like format
-    const thumbUrl = tmdbMovie.poster_path ? `/tmdb-poster${tmdbMovie.poster_path}` : '';
-    console.log('DEBUG getTMDbMovie thumb:', thumbUrl);
-	
-	return {
-      title: tmdbMovie.title,
-      year: new Date(tmdbMovie.release_date || '').getFullYear() || null,
-      summary: tmdbMovie.overview,
-      guid: `tmdb://${tmdbMovie.id}`,
-      key: `/tmdb/${tmdbMovie.id}`,
-      thumb: tmdbMovie.poster_path ? `/tmdb-poster${tmdbMovie.poster_path}` : '',
-      type: 'movie',
-      rating: '',
-      Director: [{ tag: undefined }],
-      imdbId: imdbId,
-      poster_path: tmdbMovie.poster_path,
-      tmdbPosterPath: tmdbMovie.poster_path,
-	  genre_ids: tmdbMovie.genre_ids || [],
-      vote_count: tmdbMovie.vote_count || 0,
-      original_language: tmdbMovie.original_language || null,
-      production_countries: tmdbMovie.production_countries || [],
-      tmdbId: tmdbMovie.id
-    };
-  }  
+    if (tmdbId && this.tmdbFormatInFlight.has(tmdbId)) {
+      return await this.tmdbFormatInFlight.get(tmdbId)!
+    }
+
+    const task = (async () => {
+      // Get IMDb ID from TMDb for more reliable enrichment
+      let imdbId = null;
+      try {
+        const detailsResponse = await fetch(`https://api.themoviedb.org/3/movie/${tmdbId}?api_key=${Deno.env.get('TMDB_API_KEY')}&append_to_response=external_ids`);
+        if (detailsResponse.ok) {
+          const details = await detailsResponse.json();
+          imdbId = details.external_ids?.imdb_id;
+          console.log(`DEBUG: Got IMDb ID ${imdbId} for TMDb movie ${tmdbMovie.title}`);
+        }
+      } catch (e) {
+        console.log(`DEBUG: Failed to get IMDb ID for ${tmdbMovie.title}: ${e}`);
+      }
+
+      // Convert TMDb format to Plex-like format
+      const thumbUrl = tmdbMovie.poster_path ? `/tmdb-poster${tmdbMovie.poster_path}` : '';
+      console.log('DEBUG getTMDbMovie thumb:', thumbUrl);
+
+      const formatted = {
+        title: tmdbMovie.title,
+        year: new Date(tmdbMovie.release_date || '').getFullYear() || null,
+        summary: tmdbMovie.overview,
+        guid: `tmdb://${tmdbMovie.id}`,
+        key: `/tmdb/${tmdbMovie.id}`,
+        thumb: tmdbMovie.poster_path ? `/tmdb-poster${tmdbMovie.poster_path}` : '',
+        type: 'movie',
+        rating: '',
+        Director: [{ tag: undefined }],
+        imdbId: imdbId,
+        poster_path: tmdbMovie.poster_path,
+        tmdbPosterPath: tmdbMovie.poster_path,
+        genre_ids: tmdbMovie.genre_ids || [],
+        vote_count: tmdbMovie.vote_count || 0,
+        original_language: tmdbMovie.original_language || null,
+        production_countries: tmdbMovie.production_countries || [],
+        tmdbId: tmdbMovie.id
+      }
+
+      if (tmdbId) {
+        this.tmdbFormatCache.set(tmdbId, formatted)
+      }
+
+      return formatted
+    })()
+
+    if (tmdbId) {
+      this.tmdbFormatInFlight.set(tmdbId, task)
+    }
+
+    try {
+      const formatted = await task
+      if (tmdbId) {
+        this.tmdbFormatCache.set(tmdbId, formatted)
+        this.tmdbFormatInFlight.delete(tmdbId)
+      }
+      return formatted
+    } catch (err) {
+      if (tmdbId) {
+        this.tmdbFormatInFlight.delete(tmdbId)
+      }
+      throw err
+    }
+  }
+
+  private async getEnrichmentData(plexMovie: any) {
+    const cacheKey = plexMovie.guid || plexMovie.key || (plexMovie.tmdbId ? `tmdb://${plexMovie.tmdbId}` : null)
+
+    if (!cacheKey) {
+      return enrich({
+        title: plexMovie.title,
+        year: typeof plexMovie.year === 'number' ? plexMovie.year : Number(plexMovie.year) || null,
+        plexGuid: plexMovie.guid,
+        imdbId: plexMovie.imdbId,
+      })
+    }
+
+    let task = this.enrichmentCache.get(cacheKey)
+    if (!task) {
+      task = enrich({
+        title: plexMovie.title,
+        year: typeof plexMovie.year === 'number' ? plexMovie.year : Number(plexMovie.year) || null,
+        plexGuid: plexMovie.guid,
+        imdbId: plexMovie.imdbId,
+      })
+        .catch(err => {
+          this.enrichmentCache.delete(cacheKey)
+          throw err
+        })
+      this.enrichmentCache.set(cacheKey, task)
+    }
+    return task
+  }
   
   handleMatch(movie: MediaItem, users: User[]) {
     for (const ws of this.users.values()) {
