@@ -117,6 +117,171 @@ function stableFiltersKey(filters?: DiscoverFilters): string {
   return JSON.stringify(sortFilterValue(filters))
 }
 
+const DISCOVER_CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
+const DEFAULT_FILTERS_KEY = stableFiltersKey(undefined)
+const DEFAULT_DISCOVER_PREFETCH_PAGES = Number(Deno.env.get('DISCOVER_CACHE_DEFAULT_PAGES') ?? '10')
+const FILTERED_DISCOVER_PREFETCH_PAGES = Number(Deno.env.get('DISCOVER_CACHE_FILTERED_PAGES') ?? '2')
+
+interface DiscoverCacheEntry {
+  pages: Map<number, any[]>
+  lastFetchedPage: number
+  lastRefreshed: number
+  exhausted: boolean
+  refreshPromise?: Promise<void>
+}
+
+const discoverCache: Map<string, DiscoverCacheEntry> = new Map()
+
+function getOrCreateCacheEntry(key: string): DiscoverCacheEntry {
+  let entry = discoverCache.get(key)
+  if (!entry) {
+    entry = {
+      pages: new Map(),
+      lastFetchedPage: 0,
+      lastRefreshed: 0,
+      exhausted: false
+    }
+    discoverCache.set(key, entry)
+  }
+  return entry
+}
+
+function desiredPrefetchPages(key: string) {
+  return key === DEFAULT_FILTERS_KEY
+    ? DEFAULT_DISCOVER_PREFETCH_PAGES
+    : FILTERED_DISCOVER_PREFETCH_PAGES
+}
+
+async function fetchDiscoverPage(
+  filters: DiscoverFilters | undefined,
+  page: number
+): Promise<any[]> {
+  const discovered = await discoverMovies({
+    page,
+    yearMin: filters?.yearMin,
+    yearMax: filters?.yearMax,
+    genres: filters?.genres,
+    tmdbRating: filters?.tmdbRating,
+    languages: filters?.languages,
+    countries: filters?.countries,
+    runtimeMin: filters?.runtimeMin,
+    runtimeMax: filters?.runtimeMax,
+    voteCount: filters?.voteCount,
+    sortBy: filters?.sortBy,
+    rtRating: filters?.rtRating
+  })
+
+  return discovered.results ?? []
+}
+
+async function warmDiscoverCache(
+  key: string,
+  filters: DiscoverFilters | undefined,
+  pagesToFetch: number,
+  { reset }: { reset: boolean }
+) {
+  const entry = getOrCreateCacheEntry(key)
+  if (entry.refreshPromise) {
+    return entry.refreshPromise
+  }
+
+  entry.refreshPromise = (async () => {
+    if (reset) {
+      entry.pages.clear()
+      entry.lastFetchedPage = 0
+      entry.exhausted = false
+    }
+
+    let page = reset ? 1 : entry.lastFetchedPage + 1
+    let remaining = pagesToFetch
+
+    while (remaining > 0 && !entry.exhausted) {
+      const results = await fetchDiscoverPage(filters, page)
+      if (!results.length) {
+        entry.pages.set(page, [])
+        entry.exhausted = true
+        break
+      }
+
+      entry.pages.set(page, results)
+      entry.lastFetchedPage = Math.max(entry.lastFetchedPage, page)
+      page += 1
+      remaining -= 1
+    }
+
+    entry.lastRefreshed = Date.now()
+  })()
+    .catch(err => {
+      log.error('Failed to warm discover cache:', err)
+    })
+    .finally(() => {
+      entry.refreshPromise = undefined
+    })
+
+  return entry.refreshPromise
+}
+
+async function ensureCachedDiscoverPage(
+  filters: DiscoverFilters | undefined,
+  page: number
+): Promise<{ results: any[]; exhausted: boolean }> {
+  const key = stableFiltersKey(filters)
+  const entry = getOrCreateCacheEntry(key)
+  const targetPrefetch = Math.max(desiredPrefetchPages(key), page)
+  const stale = Date.now() - entry.lastRefreshed > DISCOVER_CACHE_TTL_MS
+
+  if ((stale || entry.pages.size === 0) && !entry.refreshPromise) {
+    await warmDiscoverCache(key, filters, targetPrefetch, { reset: true })
+  } else if (entry.refreshPromise) {
+    await entry.refreshPromise
+  }
+
+  if (!entry.pages.has(page) && !entry.exhausted) {
+    const missingPages = Math.max(0, page - entry.lastFetchedPage)
+    if (missingPages > 0) {
+      await warmDiscoverCache(key, filters, missingPages, { reset: false })
+    }
+
+    if (!entry.pages.has(page) && !entry.exhausted) {
+      const results = await fetchDiscoverPage(filters, page)
+      if (!results.length) {
+        entry.exhausted = true
+      }
+      entry.pages.set(page, results)
+      entry.lastFetchedPage = Math.max(entry.lastFetchedPage, page)
+      entry.lastRefreshed = Date.now()
+    }
+  }
+
+  const results = entry.pages.get(page) ?? []
+  const exhausted = entry.exhausted && page >= entry.lastFetchedPage
+
+  return { results: results.slice(), exhausted }
+}
+
+async function prewarmDefaultDiscoverCache() {
+  const key = DEFAULT_FILTERS_KEY
+  try {
+    await warmDiscoverCache(key, undefined, desiredPrefetchPages(key), { reset: true })
+  } catch (err) {
+    log.error('Initial discover cache warm failed:', err)
+  }
+}
+
+prewarmDefaultDiscoverCache()
+
+const defaultWarmInterval = setInterval(() => {
+  warmDiscoverCache(DEFAULT_FILTERS_KEY, undefined, desiredPrefetchPages(DEFAULT_FILTERS_KEY), { reset: true })
+    .catch(err => {
+      log.error('Scheduled discover cache warm failed:', err)
+    })
+}, DISCOVER_CACHE_TTL_MS)
+
+const denoWithUnref = Deno as typeof Deno & { unrefTimer?: (id: number) => void }
+if (typeof denoWithUnref.unrefTimer === 'function') {
+  denoWithUnref.unrefTimer(defaultWarmInterval)
+}
+
 interface WebSocketLoginMessage {
   type: 'login'
   payload: { name: string; roomCode: string; accessPassword: string }
@@ -390,34 +555,23 @@ class Session {
     const key = stableFiltersKey(filters)
     let queue = this.discoverQueues.get(key)
     if (!queue) {
-      const startPage = Math.max(1, Math.floor(Math.random() * 5) + 1)
+      const startPage = key === DEFAULT_FILTERS_KEY
+        ? 1
+        : Math.max(1, Math.floor(Math.random() * 5) + 1)
       queue = { currentPage: startPage, buffer: [], exhausted: false }
       this.discoverQueues.set(key, queue)
     }
     return { key, queue }
   }
 
-  private async loadDiscoverPage(queue: DiscoverQueue, filters?: DiscoverFilters) {
+  private async loadDiscoverPage(queue: DiscoverQueue, filters?: DiscoverFilters): Promise<void> {
     if (queue.exhausted) return
 
     const page = queue.currentPage
     queue.currentPage += 1
 
-    const discovered = await discoverMovies({
-      page,
-      yearMin: filters?.yearMin,
-      yearMax: filters?.yearMax,
-      genres: filters?.genres,
-      tmdbRating: filters?.tmdbRating,
-      languages: filters?.languages,
-      countries: filters?.countries,
-      runtimeMin: filters?.runtimeMin,
-      runtimeMax: filters?.runtimeMax,
-      voteCount: filters?.voteCount,
-      sortBy: filters?.sortBy
-    })
+    const { results, exhausted } = await ensureCachedDiscoverPage(filters, page)
 
-    const results = discovered.results ?? []
     if (!results.length) {
       queue.exhausted = true
       return
@@ -425,6 +579,10 @@ class Session {
 
     const shuffled = results.slice().sort(() => Math.random() - 0.5)
     queue.buffer.push(...shuffled)
+
+    if (exhausted) {
+      queue.exhausted = true
+    }
   }
 
   private async ensureDiscoverBuffer(queue: DiscoverQueue, filters?: DiscoverFilters) {
@@ -442,7 +600,7 @@ class Session {
     }
   }
 
-  private prefetchDiscoverPage(queue: DiscoverQueue, filters?: DiscoverFilters) {
+  private prefetchDiscoverPage(queue: DiscoverQueue, filters?: DiscoverFilters): void {
     if (queue.exhausted || queue.prefetchPromise) return
     queue.prefetchPromise = this.loadDiscoverPage(queue, filters)
       .catch(err => {
