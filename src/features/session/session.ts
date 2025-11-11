@@ -497,6 +497,12 @@ class Session {
 
   // Matches keyed by movie (object identity). We'll keep guid->movie lookup to unify objects.
   likedMovies: Map<MediaItem, User[]> = new Map()
+  matches: { movie: MediaItem; users: string[] }[] = []
+
+  private discoverQueues: Map<string, DiscoverQueue> = new Map()
+  private tmdbFormatCache: Map<number, any> = new Map()
+  private tmdbFormatInFlight: Map<number, Promise<any>> = new Map()
+  private enrichmentCache: Map<string, Promise<any | undefined>> = new Map()
 
   private discoverQueues: Map<string, DiscoverQueue> = new Map()
   private tmdbFormatCache: Map<number, any> = new Map()
