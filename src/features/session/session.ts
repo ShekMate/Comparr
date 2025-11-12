@@ -132,6 +132,9 @@ interface DiscoverCacheEntry {
 
 const discoverCache: Map<string, DiscoverCacheEntry> = new Map()
 
+const DEFAULT_DISCOVER_VOTE_COUNT = 250
+const NEW_RELEASE_WINDOW_MS = 90 * 24 * 60 * 60 * 1000
+
 function getOrCreateCacheEntry(key: string): DiscoverCacheEntry {
   let entry = discoverCache.get(key)
   if (!entry) {
@@ -171,7 +174,34 @@ async function fetchDiscoverPage(
     rtRating: filters?.rtRating
   })
 
-  return discovered.results ?? []
+  const results = discovered.results ?? []
+
+  const requestedVoteCount = filters?.voteCount
+  const effectiveVoteCount = typeof requestedVoteCount === 'number' && !Number.isNaN(requestedVoteCount)
+    ? requestedVoteCount
+    : DEFAULT_DISCOVER_VOTE_COUNT
+
+  if (!effectiveVoteCount || effectiveVoteCount <= 0) {
+    return results
+  }
+
+  const newReleaseCutoff = Date.now() - NEW_RELEASE_WINDOW_MS
+
+  return results.filter(movie => {
+    const releaseDate = movie?.release_date || movie?.first_air_date
+    if (releaseDate) {
+      const releaseTime = Date.parse(releaseDate)
+      if (!Number.isNaN(releaseTime) && releaseTime >= newReleaseCutoff) {
+        return true
+      }
+    }
+
+    const voteCount = typeof movie?.vote_count === 'number'
+      ? movie.vote_count
+      : Number(movie?.vote_count ?? 0)
+
+    return voteCount >= effectiveVoteCount
+  })
 }
 
 async function warmDiscoverCache(
