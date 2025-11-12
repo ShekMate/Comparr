@@ -2536,12 +2536,28 @@ const main = async () => {
       cardStackEl?.style.setProperty('--empty-text', `var(--i18n-exhausted-cards)`)
     }
   })
-    
-  // Pre-check request service status before rendering cards
-  console.log('🗂️ Pre-checking request service status...');
-  await checkRequestServiceStatus();
+
+  let movieBuffer = []
+  let isLoadingBatch = false
+  let ensureMovieBufferPromise = null
+  const BUFFER_MIN_SIZE = 8
+  const BATCH_SIZE = 20
+
+  window.ensureMovieBufferPromise = ensureMovieBufferPromise
+  window.isLoadingBatch = isLoadingBatch
+
+  // Prime request-service status and the initial swipe buffer in parallel
+  console.log('🧊 Priming request status and initial movie batch...');
+  const requestServiceStatusPromise = checkRequestServiceStatus()
+  const initialBufferWarmPromise = ensureMovieBuffer()
+
+  await requestServiceStatusPromise
   console.log('📦 Request service status cached');
-  
+
+  initialBufferWarmPromise?.catch(err => {
+    console.warn('⚠️ Initial movie buffer warm failed:', err)
+  })
+
   if (rated && rated.length > 0) {
     for (const item of rated) {
       if (item.movie) {
@@ -2549,12 +2565,6 @@ const main = async () => {
       }
     }
   }
-  
-  let movieBuffer = []
-  let isLoadingBatch = false
-  let ensureMovieBufferPromise = null
-  const BUFFER_MIN_SIZE = 8
-  const BATCH_SIZE = 20
 
   
 async function ensureMovieBuffer() {
@@ -2572,7 +2582,9 @@ async function ensureMovieBuffer() {
       if (e.message === 'Buffer promise timeout') {
         console.warn('⚠️ Buffer promise timed out, resetting')
         ensureMovieBufferPromise = null
+        window.ensureMovieBufferPromise = ensureMovieBufferPromise
         isLoadingBatch = false
+        window.isLoadingBatch = isLoadingBatch
         // Retry the buffer load
         return ensureMovieBuffer()
       }
@@ -2586,6 +2598,7 @@ async function ensureMovieBuffer() {
     console.log('🧹 Clearing buffer due to filter change')
     movieBuffer = []
     isLoadingBatch = false
+    window.isLoadingBatch = isLoadingBatch
     window.__resetMovies = false
   }
 
@@ -2594,6 +2607,7 @@ async function ensureMovieBuffer() {
   }
 
   isLoadingBatch = true
+  window.isLoadingBatch = isLoadingBatch
 
   //FIX: Create and store the promise immediately
   ensureMovieBufferPromise = (async () => {
@@ -2658,7 +2672,7 @@ async function ensureMovieBuffer() {
       // Check if we filtered out everything and have no buffer
       if (unseenMovies.length === 0 && movieBuffer.length === 0) {
         console.warn('⚠️ All movies in batch were already rated and buffer is empty')
-        
+
         const cardStack = document.querySelector('.js-card-stack')
         const hasVisibleMovies = cardStack && cardStack.children.length > 0
         
@@ -2672,12 +2686,14 @@ async function ensureMovieBuffer() {
           
           showNoMoviesNotification()
         }
-        
+
         isLoadingBatch = false
+        window.isLoadingBatch = isLoadingBatch
         ensureMovieBufferPromise = null
+        window.ensureMovieBufferPromise = ensureMovieBufferPromise
         return;
       }
-      
+
       movieBuffer.push(...unseenMovies)
       unseenMovies.forEach(movie => movieByGuid.set(movie.guid, movie))
   
@@ -2695,12 +2711,15 @@ async function ensureMovieBuffer() {
     } finally {
       isLoadingBatch = false
       ensureMovieBufferPromise = null
+      window.isLoadingBatch = isLoadingBatch
+      window.ensureMovieBufferPromise = ensureMovieBufferPromise
     }
   })()
+  window.ensureMovieBufferPromise = ensureMovieBufferPromise
 
   // FIX: Return the promise so callers can await it
   return ensureMovieBufferPromise
-} 
+}
 
   function getNextMovie() {
     return movieBuffer.shift()

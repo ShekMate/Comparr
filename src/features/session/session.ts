@@ -8,7 +8,7 @@ import { discoverMovies } from '../catalog/discover.ts'
 import { isMovieInRadarr } from '../../api/radarr.ts'
 import { MOVIE_BATCH_SIZE, ACCESS_PASSWORD } from '../../core/config.ts'
 import { validateTMDbPoster, getBestPosterPath, isMovieValid } from '../media/poster-validation.ts'
-import { getBestPosterUrl } from '../../services/cache/poster-cache.ts';
+import { getBestPosterUrl, prefetchPoster } from '../../services/cache/poster-cache.ts'
 
 // Genre ID to name mapping (TMDb genre IDs)
 const GENRE_MAP: Record<number, string> = {
@@ -802,84 +802,127 @@ class Session {
     const maxAttempts = attemptBatchSize;
     let attempts = 0;
 
-    // Special handling for person filters - get all movies upfront
-    const hasPersonFilters = (filters?.directors?.length || 0) + (filters?.actors?.length || 0) > 0;
+    let hasPersonFilters = (filters?.directors?.length || 0) + (filters?.actors?.length || 0) > 0;
     let personMovies: any[] = [];
-    
+    let person: { id: number; name: string } | undefined;
+
     if (hasPersonFilters && !showMyPlexOnly) {
-      const person = filters?.directors?.[0] || filters?.actors?.[0];
-      log.info(`Ã°Å¸Å½Â­ Getting all movies for ${person.name}`);
-      
-      try {
-        const response = await fetch(
-          `https://api.themoviedb.org/3/person/${person.id}/movie_credits?api_key=${Deno.env.get('TMDB_API_KEY')}`
-        );
-        
-        if (response.ok) {
-          const data = await response.json();
-          const movies = filters?.directors?.[0] ? 
-            data.crew?.filter((m: any) => m.job === 'Director') : 
-            data.cast;
-          
-          // Shuffle the movies for variety
-          personMovies = movies?.sort(() => Math.random() - 0.5) || [];
-          log.info(`Ã°Å¸Å½Â¬ Found ${personMovies.length} movies for ${person.name}`);
+      person = filters?.directors?.[0] || filters?.actors?.[0];
+      if (person) {
+        log.info(`🎭 Getting all movies for ${person.name}`);
+
+        try {
+          const response = await fetch(
+            `https://api.themoviedb.org/3/person/${person.id}/movie_credits?api_key=${Deno.env.get('TMDB_API_KEY')}`
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            const movies = filters?.directors?.[0]
+              ? data.crew?.filter((m: any) => m.job === 'Director')
+              : data.cast;
+
+            personMovies = movies?.sort(() => Math.random() - 0.5) || [];
+            log.info(`🎬 Found ${personMovies.length} movies for ${person.name}`);
+          }
+        } catch (e) {
+          log.error(`Failed to get movies for ${person?.name ?? 'unknown person'}:`, e);
+          hasPersonFilters = false;
         }
-      } catch (e) {
-        log.error(`Failed to get movies for ${person.name}:`, e);
+      } else {
+        hasPersonFilters = false;
       }
     }
 
-    while (validMovies.length < Number(MOVIE_BATCH_SIZE) && attempts < maxAttempts) {
-      try {
-        attempts++;
-        log.debug(`Movie attempt ${attempts}/${maxAttempts} - Fetching`);
-        
-        let plexMovie;
-        
-        if (showMyPlexOnly) {
-          // Use filtered random selection to avoid repeatedly showing the same movies
-          plexMovie = await getFilteredRandomMovie({
-            yearMin: filters?.yearMin,
-            yearMax: filters?.yearMax,
-            genres: filters?.genres
-          });
-        } else if (hasPersonFilters && personMovies.length > 0) {
-          // Use person's movies directly
-          const movieIndex = (attempts - 1) % personMovies.length;
-          const tmdbMovie = personMovies[movieIndex];
-          log.info(`Ã°Å¸Å½Â¬ Using ${person.name} movie ${movieIndex + 1}/${personMovies.length}: ${tmdbMovie.title}`);
-          plexMovie = await this.formatTMDbMovie(tmdbMovie);
-        } else {
-          // Regular discovery
-          plexMovie = await this.getTMDbMovie(attempts - 1, {
-              yearMin: filters?.yearMin,
-              yearMax: filters?.yearMax,
-              genres: filters?.genres,
-              tmdbRating: filters?.tmdbRating,
-              languages: filters?.languages,
-              countries: filters?.countries,
-              runtimeMin: filters?.runtimeMin,
-              runtimeMax: filters?.runtimeMax,
-              voteCount: filters?.voteCount,
-              sortBy: filters?.sortBy
-            });
-        }
-        
-        log.debug(`Movie attempt ${attempts} - Got: ${plexMovie.title}`);
+    type PendingCandidate = { promise: Promise<any>, attemptNumber: number };
+    let pendingCandidate: PendingCandidate | null = null;
 
-        // FIX: Check if ANY user in the session has already rated this movie
-        // This prevents wasting time enriching movies that will be filtered anyway
+    const fetchCandidate = async (attemptNumber: number): Promise<any> => {
+      if (showMyPlexOnly) {
+        return await getFilteredRandomMovie({
+          yearMin: filters?.yearMin,
+          yearMax: filters?.yearMax,
+          genres: filters?.genres
+        });
+      }
+
+      if (hasPersonFilters && personMovies.length > 0 && person) {
+        const movieIndex = (attemptNumber - 1) % personMovies.length;
+        const tmdbMovie = personMovies[movieIndex];
+        log.info(`🎬 Using ${person.name} movie ${movieIndex + 1}/${personMovies.length}: ${tmdbMovie.title}`);
+        return await this.formatTMDbMovie(tmdbMovie);
+      }
+
+      return await this.getTMDbMovie(attemptNumber - 1, {
+        yearMin: filters?.yearMin,
+        yearMax: filters?.yearMax,
+        genres: filters?.genres,
+        tmdbRating: filters?.tmdbRating,
+        languages: filters?.languages,
+        countries: filters?.countries,
+        runtimeMin: filters?.runtimeMin,
+        runtimeMax: filters?.runtimeMax,
+        voteCount: filters?.voteCount,
+        sortBy: filters?.sortBy
+      });
+    };
+
+    const queueNextCandidate = () => {
+      if (attempts >= maxAttempts) {
+        pendingCandidate = null;
+        return;
+      }
+
+      const attemptNumber = attempts + 1;
+      pendingCandidate = {
+        promise: fetchCandidate(attemptNumber),
+        attemptNumber
+      };
+      attempts = attemptNumber;
+    };
+
+    queueNextCandidate();
+
+    while (validMovies.length < Number(MOVIE_BATCH_SIZE) && pendingCandidate) {
+      const { promise, attemptNumber } = pendingCandidate;
+      let plexMovie: any | null = null;
+
+      try {
+        plexMovie = await promise;
+      } catch (err) {
+        if (err instanceof NoMoreMoviesError) {
+          log.info('No more movies available');
+          pendingCandidate = null;
+          break;
+        }
+
+        log.error(`Error fetching movie attempt ${attemptNumber}:`, err);
+        if (hasPersonFilters && personMovies.length > 0) {
+          log.warning('Person movie fetch failed, falling back to discovery');
+          hasPersonFilters = false;
+        }
+        queueNextCandidate();
+        continue;
+      }
+
+      queueNextCandidate();
+
+      if (!plexMovie) {
+        continue;
+      }
+
+      log.debug(`Movie attempt ${attemptNumber} - Got: ${plexMovie.title}`);
+
+      try {
         const isAlreadyRated = Array.from(this.users.keys()).some(
           user => user.responses.some(r => r.guid === plexMovie.guid)
         );
-        
+
         if (isAlreadyRated) {
-          log.debug(`â­ï¸  Skipping ${plexMovie.title} - already rated by a user in this session`);
+          log.debug(`⭐️  Skipping ${plexMovie.title} - already rated by a user in this session`);
           continue;
         }
 
-        // Enrich (OMDb/TMDb)
         let extra: {
           plot: string | null
           imdbId: string | null
@@ -905,19 +948,16 @@ class Session {
           log.warning(`Enrichment failed for ${plexMovie.title}: ${e}`);
         }
 
-        // Get the best available poster path and validate it
         const posterPath = await getBestPosterPath(plexMovie, extra);
-        
-        // Skip this movie if it doesn't meet our criteria
+
         if (!isMovieValid(plexMovie, posterPath)) {
-          log.debug(`Ã¢ÂÂ­Ã¯Â¸Â  Skipping ${plexMovie.title} - invalid movie or no poster`);
+          log.debug(`🚫 Skipping ${plexMovie.title} - invalid movie or no poster`);
           continue;
         }
 
-        // Build rating string with logos
         const parts: string[] = [];
         const basePath = Deno.env.get('ROOT_PATH') || '';
-        
+
         if (extra?.rating_imdb != null) {
           parts.push(`<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> ${extra.rating_imdb}`);
         }
@@ -931,108 +971,97 @@ class Session {
 
         const summaryStr = (extra?.plot && String(extra.plot)) || (plexMovie.summary && String(plexMovie.summary)) || '';
 
-        // NEW: Apply RT rating filter if specified
         if (filters?.rtRating && filters.rtRating > 0) {
           if (!extra?.rating_rt || extra.rating_rt < filters.rtRating) {
-            log.debug(`â›”ï¸ Skipping ${plexMovie.title} - RT rating ${extra?.rating_rt || 'N/A'} below minimum ${filters.rtRating}`);
+            log.debug(`⛔️ Skipping ${plexMovie.title} - RT rating ${extra?.rating_rt || 'N/A'} below minimum ${filters.rtRating}`);
             continue;
           }
         }
 
-        // Apply year range filter
         if (filters?.yearMin || filters?.yearMax) {
           const movieYear = typeof plexMovie.year === 'number' ? plexMovie.year : Number(plexMovie.year);
           if (filters.yearMin && movieYear < filters.yearMin) {
-            log.debug(`â›”ï¸ Skipping ${plexMovie.title} - year ${movieYear} below minimum ${filters.yearMin}`);
+            log.debug(`⛔️ Skipping ${plexMovie.title} - year ${movieYear} below minimum ${filters.yearMin}`);
             continue;
           }
           if (filters.yearMax && movieYear > filters.yearMax) {
-            log.debug(`â›”ï¸ Skipping ${plexMovie.title} - year ${movieYear} above maximum ${filters.yearMax}`);
+            log.debug(`⛔️ Skipping ${plexMovie.title} - year ${movieYear} above maximum ${filters.yearMax}`);
             continue;
           }
         }
 
-        // Apply genre filter
         if (filters?.genres && filters.genres.length > 0 && extra?.genres) {
           const filterGenreNames = genreIdsToNames(filters.genres).map(g => g.toLowerCase());
           const movieGenres = extra.genres.map(g => g.toLowerCase());
-          const hasMatchingGenre = filterGenreNames.some(filterGenre => 
+          const hasMatchingGenre = filterGenreNames.some(filterGenre =>
             movieGenres.includes(filterGenre)
           );
           if (!hasMatchingGenre) {
-            log.debug(`â›”ï¸ Skipping ${plexMovie.title} - no matching genres`);
+            log.debug(`⛔️ Skipping ${plexMovie.title} - no matching genres`);
             continue;
           }
         }
 
-        // Apply TMDb rating filter
         if (filters?.tmdbRating && filters.tmdbRating > 0) {
           if (!extra?.rating_tmdb || extra.rating_tmdb < filters.tmdbRating) {
-            log.debug(`â›”ï¸ Skipping ${plexMovie.title} - TMDb rating ${extra?.rating_tmdb || 'N/A'} below minimum ${filters.tmdbRating}`);
+            log.debug(`⛔️ Skipping ${plexMovie.title} - TMDb rating ${extra?.rating_tmdb || 'N/A'} below minimum ${filters.tmdbRating}`);
             continue;
           }
         }
 
-        // Apply runtime filter
         if (filters?.runtimeMin || filters?.runtimeMax) {
           const runtime = extra?.runtime || plexMovie.runtime;
           if (runtime) {
             if (filters.runtimeMin && runtime < filters.runtimeMin) {
-              log.debug(`â›”ï¸ Skipping ${plexMovie.title} - runtime ${runtime}min below minimum ${filters.runtimeMin}min`);
+              log.debug(`⛔️ Skipping ${plexMovie.title} - runtime ${runtime}min below minimum ${filters.runtimeMin}min`);
               continue;
             }
             if (filters.runtimeMax && runtime > filters.runtimeMax) {
-              log.debug(`â›”ï¸ Skipping ${plexMovie.title} - runtime ${runtime}min above maximum ${filters.runtimeMax}min`);
+              log.debug(`⛔️ Skipping ${plexMovie.title} - runtime ${runtime}min above maximum ${filters.runtimeMax}min`);
               continue;
             }
           }
         }
 
-        // Apply vote count filter
         if (filters?.voteCount && filters.voteCount > 0) {
           const voteCount = extra?.voteCount || 0;
           if (voteCount < filters.voteCount) {
-            log.debug(`â›”ï¸ Skipping ${plexMovie.title} - vote count ${voteCount} below minimum ${filters.voteCount}`);
+            log.debug(`⛔️ Skipping ${plexMovie.title} - vote count ${voteCount} below minimum ${filters.voteCount}`);
             continue;
           }
         }
 
-        // Apply content rating filter
         if (filters?.contentRatings && filters.contentRatings.length > 0) {
           const movieRating = extra?.contentRating || plexMovie.contentRating;
           if (movieRating && !filters.contentRatings.includes(movieRating)) {
-            log.debug(`â›”ï¸ Skipping ${plexMovie.title} - content rating ${movieRating} not in filter`);
+            log.debug(`⛔️ Skipping ${plexMovie.title} - content rating ${movieRating} not in filter`);
             continue;
           }
         }
 
-        // Apply language filter
         if (filters?.languages && filters.languages.length > 0) {
           const movieLanguage = plexMovie.original_language;
           if (movieLanguage && !filters.languages.includes(movieLanguage)) {
-            log.debug(`â›”ï¸ Skipping ${plexMovie.title} - language ${movieLanguage} not in filter`);
+            log.debug(`⛔️ Skipping ${plexMovie.title} - language ${movieLanguage} not in filter`);
             continue;
           }
         }
 
-        // Apply country filter
         if (filters?.countries && filters.countries.length > 0) {
           const movieCountries = plexMovie.production_countries || [];
-          const hasMatchingCountry = filters.countries.some(filterCountry => 
+          const hasMatchingCountry = filters.countries.some(filterCountry =>
             movieCountries.includes(filterCountry)
           );
           if (!hasMatchingCountry && movieCountries.length > 0) {
-            log.debug(`â›”ï¸ Skipping ${plexMovie.title} - no matching countries`);
+            log.debug(`⛔️ Skipping ${plexMovie.title} - no matching countries`);
             continue;
           }
         }
 
-        // Check if movie exists in Radarr/Plex library
         let streamingServices = extra?.streamingServices || { subscription: [], free: [] };
-        
-        // For movies from Plex (plex:// guid), they're already in Plex by definition
+
         if (plexMovie.guid?.startsWith('plex://')) {
-          log.debug(`âœ… Movie ${plexMovie.title} is from Plex library (plex:// guid) - adding AllVids badge`);
+          log.debug(`✅ Movie ${plexMovie.title} is from Plex library (plex:// guid) - adding AllVids badge`);
           streamingServices = {
             subscription: [
               ...streamingServices.subscription,
@@ -1040,13 +1069,10 @@ class Session {
             ],
             free: streamingServices.free
           };
-        } 
-        // For TMDb movies, check if they're in Radarr
-        else if (plexMovie.guid?.startsWith('tmdb://')) {
+        } else if (plexMovie.guid?.startsWith('tmdb://')) {
           const tmdbId = parseInt(plexMovie.guid.replace('tmdb://', ''));
           if (isMovieInRadarr(tmdbId)) {
-            log.debug(`âœ… Movie ${plexMovie.title} found in Radarr - adding AllVids badge`);
-            // Add Plex library to subscription services
+            log.debug(`✅ Movie ${plexMovie.title} found in Radarr - adding AllVids badge`);
             streamingServices = {
               subscription: [
                 ...streamingServices.subscription,
@@ -1056,6 +1082,8 @@ class Session {
             };
           }
         }
+
+        prefetchPoster(posterPath!, 'tmdb');
 
         const movie: MediaItem = {
           title: plexMovie.title,
@@ -1082,20 +1110,20 @@ class Session {
         };
 
         validMovies.push(movie);
-        log.debug(`Ã¢Å“â€¦ Added valid movie: ${movie.title} (${validMovies.length}/${MOVIE_BATCH_SIZE})`);
+        log.debug(`✅ Added valid movie: ${movie.title} (${validMovies.length}/${MOVIE_BATCH_SIZE})`);
 
       } catch (err) {
         if (err instanceof NoMoreMoviesError) {
           log.info('No more movies available');
+          pendingCandidate = null;
           break;
         }
-        log.error(`Error processing movie attempt ${attempts}:`, err);
+        log.error(`Error processing movie attempt ${attemptNumber}:`, err);
         log.error(`Error details:`, err.message);
-        
-        // If person movies are failing, fall back to discovery for remaining slots
+
         if (hasPersonFilters && personMovies.length > 0) {
-          log.warning(`Person movie failed, falling back to discovery for remaining movies`);
-          hasPersonFilters = false; // Switch to discovery mode
+          log.warning('Person movie failed, falling back to discovery for remaining movies');
+          hasPersonFilters = false;
         }
         continue;
       }
@@ -1168,14 +1196,21 @@ class Session {
 		  m.tmdbPosterPath || m.posterPath || m.poster_path || m.tmdbPoster || undefined;
 
 		// Map each movie’s art/thumb to a safe URL
-		const norm = (m: any, u?: string) => {
-		  const core = stripPrefix(u);
-		  if (!core || isPlexThumbCore(core)) {
-			const fallback = pickTmdbPoster(m);
-			return fallback ? getBestPosterUrl(fallback, 'tmdb') : undefined;
-		  }
-		  return getBestPosterUrl(u!, 'tmdb');
-		};
+                const norm = (m: any, u?: string) => {
+                  const core = stripPrefix(u);
+                  if (!core || isPlexThumbCore(core)) {
+                        const fallback = pickTmdbPoster(m);
+                        if (fallback) {
+                          prefetchPoster(fallback, 'tmdb');
+                          return getBestPosterUrl(fallback, 'tmdb');
+                        }
+                        return undefined;
+                  }
+                  if (u) {
+                    prefetchPoster(u, 'tmdb');
+                  }
+                  return getBestPosterUrl(u!, 'tmdb');
+                };
 
 		// Build the sanitized batch
 		const normalizedBatch = filteredBatch.map((m: any) => ({
