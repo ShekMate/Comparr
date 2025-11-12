@@ -6,6 +6,7 @@ import { WebSocket } from '../../infra/ws/websocketServer.ts'
 import { enrich } from '../catalog/enrich.ts'
 import { discoverMovies } from '../catalog/discover.ts'
 import { isMovieInRadarr } from '../../api/radarr.ts'
+import { isMovieInPlex, waitForPlexCacheReady } from '../../integrations/plex/cache.ts'
 import { MOVIE_BATCH_SIZE, ACCESS_PASSWORD } from '../../core/config.ts'
 import { validateTMDbPoster, getBestPosterPath, isMovieValid } from '../media/poster-validation.ts'
 import { getBestPosterUrl, prefetchPoster } from '../../services/cache/poster-cache.ts'
@@ -109,6 +110,30 @@ function extractTmdbIdFromGuid(guid?: string | null): number | null {
   if (plexMatch) {
     const id = parseInt(plexMatch[1], 10)
     return Number.isFinite(id) ? id : null
+  }
+
+  return null
+}
+
+function extractImdbIdFromGuid(guid?: string | null): string | null {
+  if (!guid) return null
+
+  const imdbMatch = guid.match(/imdb:\/\/(tt\d+)/i)
+  if (imdbMatch) {
+    return imdbMatch[1]
+  }
+
+  return null
+}
+
+function parseYear(year: string | number | null | undefined): number | null {
+  if (typeof year === 'number') {
+    return Number.isFinite(year) ? year : null
+  }
+
+  if (typeof year === 'string' && year.trim().length > 0) {
+    const parsed = parseInt(year, 10)
+    return Number.isFinite(parsed) ? parsed : null
   }
 
   return null
@@ -545,6 +570,82 @@ function addMoviesToIndex(movies: MediaItem[]) {
   for (const m of movies) {
     persistedState.movieIndex[m.guid] = m
   }
+}
+
+function normalizeStreamingServices(movie: MediaItem): {
+  subscription: any[]
+  free: any[]
+  changed: boolean
+} {
+  const existing: any = (movie as any).streamingServices
+  let changed = false
+
+  if (existing && !Array.isArray(existing)) {
+    const subscription = Array.isArray(existing.subscription)
+      ? existing.subscription.map((service: any) => ({ ...service }))
+      : []
+    const free = Array.isArray(existing.free)
+      ? existing.free.map((service: any) => ({ ...service }))
+      : []
+
+    if (!Array.isArray(existing.subscription) || !Array.isArray(existing.free)) {
+      changed = true
+    }
+
+    return { subscription, free, changed }
+  }
+
+  if (Array.isArray(existing)) {
+    const subscription = existing.map((service: any) =>
+      typeof service === 'string'
+        ? { id: 0, name: service, logo_path: null, type: 'subscription' }
+        : { ...service }
+    )
+    changed = true
+    return { subscription, free: [], changed }
+  }
+
+  changed = true
+  return { subscription: [], free: [], changed }
+}
+
+function extractTmdbIdFromMovie(movie: MediaItem): number | null {
+  if (typeof movie.tmdbId === 'number' && Number.isFinite(movie.tmdbId)) {
+    return movie.tmdbId
+  }
+
+  const fromGuid = extractTmdbIdFromGuid(movie.guid)
+  if (fromGuid != null) return fromGuid
+
+  const streamingLink = (movie as any).streamingLink
+  if (typeof streamingLink === 'string') {
+    const match = streamingLink.match(/themoviedb\.org\/movie\/(\d+)/)
+    if (match) {
+      const id = parseInt(match[1], 10)
+      if (Number.isFinite(id)) return id
+    }
+  }
+
+  return null
+}
+
+function extractImdbIdFromMovie(movie: MediaItem): string | null {
+  if (movie && typeof (movie as any).imdbId === 'string' && (movie as any).imdbId.length > 0) {
+    return (movie as any).imdbId
+  }
+
+  const fromGuid = extractImdbIdFromGuid(movie.guid)
+  if (fromGuid) return fromGuid
+
+  const guidArray = (movie as any)?.Guid
+  if (Array.isArray(guidArray)) {
+    const imdbGuid = guidArray.find((entry: any) => typeof entry?.id === 'string' && /imdb:\/\//.test(entry.id))
+    if (imdbGuid?.id) {
+      return extractImdbIdFromGuid(imdbGuid.id)
+    }
+  }
+
+  return null
 }
 
 // -------------------------
@@ -1626,6 +1727,87 @@ class Session {
 // -------------------------
 const activeSessions: Map<string, Session> = new Map()
 
+let plexHydrationPromise: Promise<void> | null = null
+
+async function hydratePersistedMoviesWithPlexAvailability(): Promise<number> {
+  const updatedGuids: string[] = []
+
+  for (const [guid, movie] of Object.entries(persistedState.movieIndex)) {
+    if (!movie || typeof movie !== 'object') continue
+
+    const normalized = normalizeStreamingServices(movie as MediaItem)
+    let changed = normalized.changed
+
+    const tmdbId = extractTmdbIdFromMovie(movie as MediaItem)
+    const imdbId = extractImdbIdFromMovie(movie as MediaItem)
+    const year = parseYear((movie as MediaItem).year as any)
+
+    const inPlex = isMovieInPlex({
+      tmdbId: tmdbId ?? undefined,
+      imdbId: imdbId ?? undefined,
+      title: (movie as MediaItem).title,
+      year: year ?? undefined,
+    })
+
+    if (inPlex) {
+      const alreadyTagged = normalized.subscription.some(service => service?.name === PLEX_LIBRARY_NAME)
+      if (!alreadyTagged) {
+        normalized.subscription.unshift({
+          id: 0,
+          name: PLEX_LIBRARY_NAME,
+          logo_path: '/assets/logos/allvids.svg',
+          type: 'subscription',
+        })
+        changed = true
+      }
+    }
+
+    if (tmdbId != null && (movie as MediaItem).tmdbId !== tmdbId) {
+      (movie as MediaItem).tmdbId = tmdbId
+      changed = true
+    }
+
+    if (changed) {
+      (movie as MediaItem).streamingServices = {
+        subscription: normalized.subscription,
+        free: normalized.free,
+      }
+
+      if (imdbId && !(movie as any).imdbId) {
+        (movie as any).imdbId = imdbId
+      }
+
+      updatedGuids.push(guid)
+    }
+  }
+
+  if (updatedGuids.length > 0) {
+    await saveState(persistedState).catch(err =>
+      log.warning(`Failed to persist Plex availability backfill: ${err}`)
+    )
+  }
+
+  return updatedGuids.length
+}
+
+export function ensurePlexHydrationReady(): Promise<void> {
+  if (!plexHydrationPromise) {
+    plexHydrationPromise = (async () => {
+      const start = Date.now()
+      await waitForPlexCacheReady()
+      const updated = await hydratePersistedMoviesWithPlexAvailability()
+      const duration = Date.now() - start
+      log.info(`Watch list hydration ready (updated ${updated} persisted movie(s) in ${duration}ms)`)
+    })().catch(err => {
+      plexHydrationPromise = null
+      log.error(`Failed to hydrate persisted movies with Plex availability: ${err?.message || err}`)
+      throw err
+    })
+  }
+
+  return plexHydrationPromise
+}
+
 export const getSession = (roomCode: string, ws: WebSocket): Session => {
   if (activeSessions.has(roomCode)) return activeSessions.get(roomCode)!
   const session = new Session(roomCode)
@@ -1641,122 +1823,138 @@ export const getSession = (roomCode: string, ws: WebSocket): Session => {
 // -------------------------
 export const handleLogin = (ws: WebSocket): Promise<User> => {
   return new Promise(resolve => {
-    const handler = (msg: string) => {
-      const data: WebSocketMessage = JSON.parse(msg)
+    const handler = async (msg: string) => {
+      try {
+        const data: WebSocketMessage = JSON.parse(msg)
 
-      if (data.type === 'login') {
-        log.info(`Got a login attempt from ${data.payload.name}`)
-        
-        // Check access password
-        if (!ACCESS_PASSWORD || data.payload.accessPassword !== ACCESS_PASSWORD) {
-          log.warning(`Invalid access password from ${data.payload.name}`)
-          const response: WebSocketLoginResponseMessage = {
-            type: 'loginResponse',
-            payload: { success: false },
+        if (data.type === 'login') {
+          log.info(`Got a login attempt from ${data.payload.name}`)
+
+          // Check access password
+          if (!ACCESS_PASSWORD || data.payload.accessPassword !== ACCESS_PASSWORD) {
+            log.warning(`Invalid access password from ${data.payload.name}`)
+            const response: WebSocketLoginResponseMessage = {
+              type: 'loginResponse',
+              payload: { success: false },
+            }
+            ws.send(JSON.stringify(response))
+            return
           }
-          ws.send(JSON.stringify(response))
-          return
-        }
-        
-        log.info(`Valid login from ${data.payload.name}`)
-        const session = getSession(data.payload.roomCode, ws)
 
-        const existingUser = [...session.users.keys()].find(
-          ({ name }) => name === data.payload.name
-        )
+          log.info(`Valid login from ${data.payload.name}`)
+          const session = getSession(data.payload.roomCode, ws)
 
-        if (
-          existingUser &&
-          session.users.get(existingUser) &&
-          !session.users.get(existingUser)?.isClosed
-        ) {
-          log.info(`${existingUser.name} is already logged in. Try another name!`)
-          const response: WebSocketLoginResponseMessage = {
-            type: 'loginResponse',
-            payload: { success: false },
+          const existingUser = [...session.users.keys()].find(
+            ({ name }) => name === data.payload.name
+          )
+
+          if (
+            existingUser &&
+            session.users.get(existingUser) &&
+            !session.users.get(existingUser)?.isClosed
+          ) {
+            log.info(`${existingUser.name} is already logged in. Try another name!`)
+            const response: WebSocketLoginResponseMessage = {
+              type: 'loginResponse',
+              payload: { success: false },
+            }
+            ws.send(JSON.stringify(response))
+            return
           }
-          ws.send(JSON.stringify(response))
-          return
-        }
 
-        const user: User = existingUser ?? { name: data.payload.name, responses: [] }
+          try {
+            await ensurePlexHydrationReady()
+          } catch (err) {
+            log.error(`Delaying login for ${data.payload.name}: Plex cache not ready (${err?.message || err})`)
+            const response: WebSocketLoginResponseMessage = {
+              type: 'loginResponse',
+              payload: { success: false },
+            }
+            ws.send(JSON.stringify(response))
+            return
+          }
 
-        log.debug(`${existingUser ? 'Existing user' : 'New user'} ${user.name} logged in`)
+          const user: User = existingUser ?? { name: data.payload.name, responses: [] }
 
-        ws.removeListener('message', handler)
-        session.add(user, ws)
+          log.debug(`${existingUser ? 'Existing user' : 'New user'} ${user.name} logged in`)
 
-        // Persist (make sure this user is in the room set)
-        upsertRoomUser(session.roomCode, user)
-        saveState(persistedState).catch(err =>
-          log.warning(`Failed to save state on login: ${err}`)
-        )
+          ws.removeListener('message', handler)
+          session.add(user, ws)
 
-        // Create rated items for the user
-        const ratedItems: RatedPayloadItem[] = user.responses.map(response => {
-          const movie = session.movieForGuid(response.guid);
-          
-          if (!movie) return null;
-          
-          return {
-            guid: response.guid,
-            wantsToWatch: response.wantsToWatch,
-            movie: movie
-          };
-        }).filter((item): item is RatedPayloadItem => item !== null);
+          // Persist (make sure this user is in the room set)
+          upsertRoomUser(session.roomCode, user)
+          saveState(persistedState).catch(err =>
+            log.warning(`Failed to save state on login: ${err}`)
+          )
 
-        // FIX: Create Set for efficient filtering
-        const ratedGuidSet = new Set(user.responses.map(_ => _.guid));
-        const ratedTmdbIdSet = new Set<number>();
-        let backfilledTmdb = false;
-        for (const responseItem of user.responses) {
-          const tmdbId = responseItem.tmdbId
-            ?? extractTmdbIdFromGuid(responseItem.guid)
-            ?? session.movieForGuid(responseItem.guid)?.tmdbId
-            ?? null;
-          if (tmdbId != null) {
-            ratedTmdbIdSet.add(tmdbId);
-            if (responseItem.tmdbId == null) {
-              responseItem.tmdbId = tmdbId;
-              backfilledTmdb = true;
+          // Create rated items for the user
+          const ratedItems: RatedPayloadItem[] = user.responses.map(response => {
+            const movie = session.movieForGuid(response.guid);
+
+            if (!movie) return null;
+
+            return {
+              guid: response.guid,
+              wantsToWatch: response.wantsToWatch,
+              movie: movie
+            };
+          }).filter((item): item is RatedPayloadItem => item !== null);
+
+          // FIX: Create Set for efficient filtering
+          const ratedGuidSet = new Set(user.responses.map(_ => _.guid));
+          const ratedTmdbIdSet = new Set<number>();
+          let backfilledTmdb = false;
+          for (const responseItem of user.responses) {
+            const tmdbId = responseItem.tmdbId
+              ?? extractTmdbIdFromGuid(responseItem.guid)
+              ?? session.movieForGuid(responseItem.guid)?.tmdbId
+              ?? null;
+            if (tmdbId != null) {
+              ratedTmdbIdSet.add(tmdbId);
+              if (responseItem.tmdbId == null) {
+                responseItem.tmdbId = tmdbId;
+                backfilledTmdb = true;
+              }
             }
           }
+
+          if (backfilledTmdb) {
+            upsertRoomUser(session.roomCode, user);
+            saveState(persistedState).catch(err =>
+              log.warning(`Failed to save state while backfilling login TMDb IDs: ${err}`)
+            );
+          }
+
+          // Re-send any unseen movies (from this session) and existing matches
+          const response: WebSocketLoginResponseMessage = {
+            type: 'loginResponse',
+            payload: {
+              success: true,
+              matches: session.getExistingMatches(user),
+              movies: session.movieList.filter(movie => {
+                if (ratedGuidSet.has(movie.guid)) {
+                  return false;
+                }
+
+                const movieTmdbId = movie.tmdbId ?? extractTmdbIdFromGuid(movie.guid);
+                if (movieTmdbId && ratedTmdbIdSet.has(movieTmdbId)) {
+                  return false;
+                }
+
+                return true;
+              }),
+              rated: ratedItems
+            },
+          }
+                log.info(`DEBUG: Login response sending ${response.payload.movies.length} movies from session.movieList (total session movies: ${session.movieList.length})`)
+                log.info(`DEBUG: Sending ${ratedItems.length} rated items to ${user.name}`)
+
+          ws.send(JSON.stringify(response))
+
+          return resolve(user)
         }
-
-        if (backfilledTmdb) {
-          upsertRoomUser(session.roomCode, user);
-          saveState(persistedState).catch(err =>
-            log.warning(`Failed to save state while backfilling login TMDb IDs: ${err}`)
-          );
-        }
-
-        // Re-send any unseen movies (from this session) and existing matches
-        const response: WebSocketLoginResponseMessage = {
-          type: 'loginResponse',
-          payload: {
-            success: true,
-            matches: session.getExistingMatches(user),
-            movies: session.movieList.filter(movie => {
-              if (ratedGuidSet.has(movie.guid)) {
-                return false;
-              }
-
-              const movieTmdbId = movie.tmdbId ?? extractTmdbIdFromGuid(movie.guid);
-              if (movieTmdbId && ratedTmdbIdSet.has(movieTmdbId)) {
-                return false;
-              }
-
-              return true;
-            }),
-            rated: ratedItems
-          },
-        }
-		log.info(`DEBUG: Login response sending ${response.payload.movies.length} movies from session.movieList (total session movies: ${session.movieList.length})`)
-		log.info(`DEBUG: Sending ${ratedItems.length} rated items to ${user.name}`)
-
-        ws.send(JSON.stringify(response))
-
-        return resolve(user)
+      } catch (err) {
+        log.error(`Failed to process login message: ${err?.message || err}`)
       }
     }
     ws.addListener('message', handler)

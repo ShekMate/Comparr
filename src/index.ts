@@ -4,7 +4,7 @@ import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
 import { getServerId, proxyPoster } from './api/plex.ts'
 import { PLEX_URL, PORT, LINK_TYPE, RADARR_URL, RADARR_API_KEY, JELLYSEERR_URL, JELLYSEERR_API_KEY, OVERSEERR_URL, OVERSEERR_API_KEY } from './core/config.ts'
 import { getLinkTypeForRequest } from './core/i18n.ts'
-import { handleLogin } from './features/session/session.ts'
+import { handleLogin, ensurePlexHydrationReady } from './features/session/session.ts'
 import { serveFile } from './infra/http/staticFileServer.ts'
 import { WebSocketServer } from './infra/ws/websocketServer.ts'
 import { initializeRadarrCache, isMovieInRadarr, refreshRadarrCache } from './api/radarr.ts'
@@ -199,9 +199,13 @@ initializeRadarrCache().catch(err =>
 )
 
 // Initialize Plex availability cache
-import { initPlexCache } from './integrations/plex/cache.ts'
-initPlexCache().catch(err => 
+import { initPlexCache, isMovieInPlex, waitForPlexCacheReady } from './integrations/plex/cache.ts'
+const plexCacheReady = initPlexCache()
+plexCacheReady.catch(err =>
   log.error(`Failed to initialize Plex cache: ${err}`)
+)
+ensurePlexHydrationReady().catch(err =>
+  log.error(`Failed to hydrate persisted watch list: ${err?.message || err}`)
 )
 
 // Initialize poster cache
@@ -336,6 +340,28 @@ for await (const req of server) {
           await req.respond({
             status: 400,
             body: JSON.stringify({ success: false, message: 'Invalid TMDb ID' }),
+            headers: new Headers({ 'content-type': 'application/json' }),
+          })
+          continue
+        }
+
+        try {
+          await waitForPlexCacheReady()
+        } catch (err) {
+          log.warning(`Plex cache not ready when handling request-movie: ${err?.message || err}`)
+        }
+
+        const inRadarr = isMovieInRadarr(tmdbId)
+        const inPlex = isMovieInPlex({ tmdbId })
+        if (inRadarr || inPlex) {
+          await req.respond({
+            status: 200,
+            body: JSON.stringify({
+              success: false,
+              message: inRadarr
+                ? 'This title is already in your Radarr library.'
+                : 'This title is already available in Plex.',
+            }),
             headers: new Headers({ 'content-type': 'application/json' }),
           })
           continue
