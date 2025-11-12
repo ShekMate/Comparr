@@ -99,14 +99,15 @@ type DiscoverFilters = {
 function extractTmdbIdFromGuid(guid?: string | null): number | null {
   if (!guid) return null
 
-  if (guid.startsWith('tmdb://')) {
-    const id = parseInt(guid.replace('tmdb://', ''))
+  const tmdbMatch = guid.match(/tmdb:\/\/(?:[^/]+\/)?(\d+)/i)
+  if (tmdbMatch) {
+    const id = parseInt(tmdbMatch[1], 10)
     return Number.isFinite(id) ? id : null
   }
 
-  const plexMatch = guid.match(/com\.plexapp\.agents\.themoviedb:\/\/(\d+)/i)
+  const plexMatch = guid.match(/com\.plexapp\.agents\.themoviedb:\/\/(?:[^/]+\/)?(\d+)/i)
   if (plexMatch) {
-    const id = parseInt(plexMatch[1])
+    const id = parseInt(plexMatch[1], 10)
     return Number.isFinite(id) ? id : null
   }
 
@@ -698,7 +699,7 @@ class Session {
 
   private tmdbIdForGuid(guid: string): number | null {
     const parsed = extractTmdbIdFromGuid(guid)
-    if (parsed) return parsed
+    if (parsed != null) return parsed
 
     const movie = this.movieForGuid(guid)
     return movie?.tmdbId ?? null
