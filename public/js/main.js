@@ -75,6 +75,10 @@ const filterDisplayNames = {
   'SE': 'Sweden', 'NO': 'Norway', 'DK': 'Denmark'
 };
 
+const DEFAULT_YEAR_MIN = 2000;
+const DEFAULT_VOTE_COUNT = 250;
+const DEFAULT_LANGUAGES = ['en'];
+
 // Update dropdown button text based on selected items
 function updateDropdownButtonText(buttonId, selectedItems, placeholderText, mapFunction = null) {
   const button = document.getElementById(buttonId);
@@ -1894,17 +1898,17 @@ const main = async () => {
   
   // Filter state - consolidated into one declaration
   const filterState = {
-    yearRange: { min: 1895, max: new Date().getFullYear() },
+    yearRange: { min: DEFAULT_YEAR_MIN, max: new Date().getFullYear() },
     genres: [],
     contentRatings: [],
     //streamingServices: [],
     showPlexOnly: false,
-    languages: [],
+    languages: [...DEFAULT_LANGUAGES],
     countries: [],
     // imdbRating: 0.0, //COMMENTED OUT
     tmdbRating: 0.0,
     runtimeRange: { min: 0, max: 300 },
-    voteCount: 0,
+    voteCount: DEFAULT_VOTE_COUNT,
     sortBy: 'popularity.desc',
     // rtRating: 0 //COMMENTED OUT
   }
@@ -1914,13 +1918,53 @@ const main = async () => {
   const currentYear = new Date().getFullYear()
   const yearMinInput = document.getElementById('year-min')
   const yearMaxInput = document.getElementById('year-max')
-  
+
+  function syncFilterUIWithState() {
+    if (yearMinInput) yearMinInput.value = filterState.yearRange.min.toString()
+    if (yearMaxInput) yearMaxInput.value = filterState.yearRange.max.toString()
+
+    document
+      .querySelectorAll('.genre-checkbox input[type="checkbox"]')
+      .forEach(checkbox => {
+        checkbox.checked = filterState.genres.includes(checkbox.value)
+      })
+    updateGenreButton(filterState.genres)
+
+    document
+      .querySelectorAll('.language-checkbox input[type="checkbox"]')
+      .forEach(checkbox => {
+        checkbox.checked = filterState.languages.includes(checkbox.value)
+      })
+    updateLanguageButton(filterState.languages)
+
+    document
+      .querySelectorAll('.country-checkbox input[type="checkbox"]')
+      .forEach(checkbox => {
+        checkbox.checked = filterState.countries.includes(checkbox.value)
+      })
+    updateCountryButton(filterState.countries)
+
+    document
+      .querySelectorAll('.rating-checkbox input[type="checkbox"]')
+      .forEach(checkbox => {
+        checkbox.checked = filterState.contentRatings.includes(checkbox.value)
+      })
+    updateContentRatingButton(filterState.contentRatings)
+
+    const voteCountSliderEl = document.getElementById('vote-count')
+    const voteCountValueEl = document.getElementById('vote-count-value')
+    if (voteCountSliderEl) voteCountSliderEl.value = String(filterState.voteCount)
+    if (voteCountValueEl) voteCountValueEl.textContent = filterState.voteCount.toLocaleString()
+  }
+
   if (yearMinInput && yearMaxInput) {
     yearMinInput.value = filterState.yearRange.min
     yearMinInput.max = currentYear
     yearMaxInput.value = currentYear
     yearMaxInput.max = currentYear + 2
   }
+
+  syncFilterUIWithState()
   
   /* COMMENTED OUT - Streaming services handlers (replaced with Where to Watch toggle)
   streamingCheckboxes.forEach(checkbox => {
@@ -2226,6 +2270,7 @@ const main = async () => {
   }
 
   setupAllDropdowns();
+  syncFilterUIWithState();
   
   // =========================================================
   // Filter Sort Direction Button
@@ -2399,24 +2444,21 @@ const main = async () => {
     e.stopPropagation()
     
     // Reset filterState to defaults
-    filterState.yearRange = { min: 1895, max: currentYear }
+    filterState.yearRange = { min: DEFAULT_YEAR_MIN, max: currentYear }
     filterState.genres = []
     filterState.contentRatings = []
     //filterState.streamingServices = []
-    filterState.languages = []
+    filterState.languages = [...DEFAULT_LANGUAGES]
     filterState.countries = []
     //filterState.imdbRating = 0.0
     filterState.tmdbRating = 0.0
     filterState.runtimeRange = { min: 0, max: 300 }
-    filterState.voteCount = 0
+    filterState.voteCount = DEFAULT_VOTE_COUNT
     filterState.sortBy = 'popularity.desc'
     //filterState.rtRating = 0
-    
-    // Reset UI elements
-    // Year inputs
-    if (yearMinInput) yearMinInput.value = '1895'
-    if (yearMaxInput) yearMaxInput.value = currentYear.toString()
-    
+
+    syncFilterUIWithState()
+
     // Streaming checkboxes
     //streamingCheckboxes.forEach(checkbox => {
       //checkbox.checked = false
@@ -2437,44 +2479,15 @@ const main = async () => {
       })
     }
     
-    // Rating checkboxes
-    const ratingCheckboxes = document.querySelectorAll('.rating-checkbox input[type="checkbox"]')
-    ratingCheckboxes.forEach(checkbox => {
-      checkbox.checked = false
-    })
-    
-    // Genre checkboxes
-    const genreCheckboxes = document.querySelectorAll('.genre-checkbox input[type="checkbox"]')
-    genreCheckboxes.forEach(checkbox => {
-      checkbox.checked = false
-    })
-    
-    // Language checkboxes
-    const languageCheckboxes = document.querySelectorAll('.language-checkbox input[type="checkbox"]')
-    languageCheckboxes.forEach(checkbox => {
-      checkbox.checked = false
-    })
-    
-    // Country checkboxes
-    const countryCheckboxes = document.querySelectorAll('.country-checkbox input[type="checkbox"]')
-    countryCheckboxes.forEach(checkbox => {
-      checkbox.checked = false
-    })
-    
     // Sliders
     if (tmdbRatingSlider) {
       tmdbRatingSlider.value = '0'
       tmdbRatingValue.textContent = '0.0'
     }
-    
+
     if (runtimeMinInput) runtimeMinInput.value = '0'
     if (runtimeMaxInput) runtimeMaxInput.value = '300'
-    
-    if (voteCountSlider) {
-      voteCountSlider.value = '0'
-      voteCountValue.textContent = '0'
-    }
-    
+
     // Reset sort radio buttons
     const resetSortRadios = document.querySelectorAll('input[name="sort"]')
     resetSortRadios.forEach(radio => {
@@ -2494,7 +2507,7 @@ const main = async () => {
     }
     
     // Reset dropdown button texts
-    updateGenreButton([]);
+    updateGenreButton(filterState.genres);
     
     // Reset sort radio buttons
     const sortRadios = document.querySelectorAll('input[name="sort"]')
@@ -2515,10 +2528,10 @@ const main = async () => {
     }
     
     // Reset dropdown button texts
-    updateGenreButton([]);
-    updateLanguageButton([]);
-    updateCountryButton([]);
-    updateContentRatingButton([]);
+    updateGenreButton(filterState.genres);
+    updateLanguageButton(filterState.languages);
+    updateCountryButton(filterState.countries);
+    updateContentRatingButton(filterState.contentRatings);
     
     console.log('Filters reset to default')
   }

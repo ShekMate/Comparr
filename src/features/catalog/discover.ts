@@ -1,6 +1,9 @@
 import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
 
 const TMDB = Deno.env.get("TMDB_API_KEY");
+const DEFAULT_DISCOVER_REGION = 'US';
+const DEFAULT_DISCOVER_LANGUAGES = ['en'];
+const DEFAULT_DISCOVER_YEAR_MIN = 2000;
 
 // Type definitions
 interface DiscoverFilters {
@@ -58,20 +61,24 @@ export async function discoverMovies(filters: DiscoverFilters): Promise<TMDbDisc
     sort_by: filters.sortBy || 'popularity.desc',
     include_adult: 'false',
     page: String(filters.page || 1),
-    watch_region: 'US'  // Required for streaming providers
+    watch_region: DEFAULT_DISCOVER_REGION,  // Required for streaming providers
+    region: DEFAULT_DISCOVER_REGION
   });
-  
-  if (filters.yearMin) params.set('primary_release_date.gte', `${filters.yearMin}-01-01`);
+
+  const yearMin = filters.yearMin ?? DEFAULT_DISCOVER_YEAR_MIN;
+  params.set('primary_release_date.gte', `${yearMin}-01-01`);
   if (filters.yearMax) params.set('primary_release_date.lte', `${filters.yearMax}-12-31`);
   if (filters.genres?.length) params.set('with_genres', filters.genres.join('|'));
   if (filters.tmdbRating) params.set('vote_average.gte', filters.tmdbRating.toString());
-  if (filters.languages?.length) params.set('with_original_language', filters.languages.join('|'));
+  if (Array.isArray(filters.languages) && filters.languages.length) {
+    params.set('with_original_language', filters.languages.join('|'));
+  } else if (filters.languages === undefined) {
+    params.set('with_original_language', DEFAULT_DISCOVER_LANGUAGES.join('|'));
+  }
   if (filters.countries?.length) params.set('with_origin_country', filters.countries.join('|'));
-  
+
   if (filters.runtimeMin && filters.runtimeMin > 0) params.set('with_runtime.gte', filters.runtimeMin.toString());
   if (filters.runtimeMax && filters.runtimeMax > 0) params.set('with_runtime.lte', filters.runtimeMax.toString());
-  
-  if (filters.voteCount) params.set('vote_count.gte', filters.voteCount.toString());
   
   // NEW: Map streaming services to TMDb provider IDs
   if (filters.streamingServices?.length) {
