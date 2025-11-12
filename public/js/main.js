@@ -3078,7 +3078,7 @@ function applyWatchListFilters(filters) {
     let tmdbRating = 0;
     if (ratingEl) {
       const innerHTML = ratingEl.innerHTML;
-      const tmdbMatch = innerHTML.match(/tmdb_logo\.svg[^>]*>\s*([\d.]+)/i);
+      const tmdbMatch = innerHTML.match(/tmdb\.svg[^>]*>\s*([\d.]+)/i);
       tmdbRating = tmdbMatch ? parseFloat(tmdbMatch[1]) : 0;
     }
     
