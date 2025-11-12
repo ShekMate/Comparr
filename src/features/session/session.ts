@@ -95,6 +95,23 @@ type DiscoverFilters = {
   rtRating?: number
 }
 
+function extractTmdbIdFromGuid(guid?: string | null): number | null {
+  if (!guid) return null
+
+  if (guid.startsWith('tmdb://')) {
+    const id = parseInt(guid.replace('tmdb://', ''))
+    return Number.isFinite(id) ? id : null
+  }
+
+  const plexMatch = guid.match(/com\.plexapp\.agents\.themoviedb:\/\/(\d+)/i)
+  if (plexMatch) {
+    const id = parseInt(plexMatch[1])
+    return Number.isFinite(id) ? id : null
+  }
+
+  return null
+}
+
 function sortFilterValue(value: any): any {
   if (Array.isArray(value)) {
     return value.map(sortFilterValue)
@@ -655,6 +672,14 @@ class Session {
     )
   }
 
+  private tmdbIdForGuid(guid: string): number | null {
+    const parsed = extractTmdbIdFromGuid(guid)
+    if (parsed) return parsed
+
+    const movie = this.movieForGuid(guid)
+    return movie?.tmdbId ?? null
+  }
+
   private rebuildLikedFromPersisted() {
     this.likedMovies.clear()
 
@@ -829,6 +854,52 @@ class Session {
     );
 
     const validMovies: MediaItem[] = [];
+    const roomUsers = Array.from(this.users.keys());
+    const roomUserCount = roomUsers.length;
+
+    const ratedGuidCounts = new Map<string, number>();
+    const ratedTmdbCounts = new Map<number, number>();
+
+    for (const user of roomUsers) {
+      for (const response of user.responses) {
+        ratedGuidCounts.set(
+          response.guid,
+          (ratedGuidCounts.get(response.guid) ?? 0) + 1,
+        );
+        const tmdbId = this.tmdbIdForGuid(response.guid);
+        if (tmdbId != null) {
+          ratedTmdbCounts.set(
+            tmdbId,
+            (ratedTmdbCounts.get(tmdbId) ?? 0) + 1,
+          );
+        }
+      }
+    }
+
+    const seenGuids = new Set<string>();
+    const seenTmdbIds = new Set<number>();
+
+    for (const movie of this.movieList) {
+      seenGuids.add(movie.guid);
+      if (movie.tmdbId != null) {
+        seenTmdbIds.add(movie.tmdbId);
+      }
+    }
+
+    const isFullyRatedInRoom = (guid: string, tmdbId: number | null | undefined) => {
+      if (roomUserCount === 0) return false;
+
+      if ((ratedGuidCounts.get(guid) ?? 0) >= roomUserCount) {
+        return true;
+      }
+
+      if (tmdbId != null && (ratedTmdbCounts.get(tmdbId) ?? 0) >= roomUserCount) {
+        return true;
+      }
+
+      return false;
+    };
+
     const maxAttempts = attemptBatchSize;
     let attempts = 0;
 
@@ -944,12 +1015,18 @@ class Session {
       log.debug(`Movie attempt ${attemptNumber} - Got: ${plexMovie.title}`);
 
       try {
-        const isAlreadyRated = Array.from(this.users.keys()).some(
-          user => user.responses.some(r => r.guid === plexMovie.guid)
-        );
+        if (seenGuids.has(plexMovie.guid)) {
+          log.debug(`⭐️  Skipping ${plexMovie.title} - already in this room's history`);
+          continue;
+        }
 
-        if (isAlreadyRated) {
-          log.debug(`⭐️  Skipping ${plexMovie.title} - already rated by a user in this session`);
+        const tmdbIdFromGuid = extractTmdbIdFromGuid(plexMovie.guid);
+        if (isFullyRatedInRoom(plexMovie.guid, tmdbIdFromGuid)) {
+          log.debug(`⭐️  Skipping ${plexMovie.title} - everyone in this room already responded`);
+          continue;
+        }
+        if (tmdbIdFromGuid != null && seenTmdbIds.has(tmdbIdFromGuid)) {
+          log.debug(`⭐️  Skipping ${plexMovie.title} - TMDb ID ${tmdbIdFromGuid} already in this room's history`);
           continue;
         }
 
@@ -976,6 +1053,16 @@ class Session {
           extra = await this.getEnrichmentData(plexMovie);
         } catch (e) {
           log.warning(`Enrichment failed for ${plexMovie.title}: ${e}`);
+        }
+
+        const candidateTmdbId = extra?.tmdbId ?? tmdbIdFromGuid;
+        if (candidateTmdbId != null && candidateTmdbId !== tmdbIdFromGuid && seenTmdbIds.has(candidateTmdbId)) {
+          log.debug(`⭐️  Skipping ${plexMovie.title} - TMDb ID ${candidateTmdbId} already in this room's history`);
+          continue;
+        }
+        if (isFullyRatedInRoom(plexMovie.guid, candidateTmdbId ?? null)) {
+          log.debug(`⭐️  Skipping ${plexMovie.title} - everyone in this room already responded`);
+          continue;
         }
 
         const posterPath = await getBestPosterPath(plexMovie, extra);
@@ -1140,6 +1227,10 @@ class Session {
         };
 
         validMovies.push(movie);
+        seenGuids.add(movie.guid);
+        if (movie.tmdbId != null) {
+          seenTmdbIds.add(movie.tmdbId);
+        }
         log.debug(`✅ Added valid movie: ${movie.title} (${validMovies.length}/${MOVIE_BATCH_SIZE})`);
 
       } catch (err) {
@@ -1179,24 +1270,25 @@ class Session {
         // Build Set of rated TMDb IDs from the stored movie data
         const ratedTmdbIds = new Set<number>();
         for (const response of user.responses) {
-          const ratedMovie = this.movieForGuid(response.guid);
-          if (ratedMovie?.tmdbId) {
-            ratedTmdbIds.add(ratedMovie.tmdbId);
+          const tmdbId = this.tmdbIdForGuid(response.guid);
+          if (tmdbId != null) {
+            ratedTmdbIds.add(tmdbId);
           }
         }
-        
+
         const filteredBatch = validMovies.filter(movie => {
           // Check exact GUID match
           if (ratedGuidSet.has(movie.guid)) {
             return false;
           }
-          
+
           // Check if movie's TMDb ID has been rated (handles Plex GUID vs TMDb GUID mismatch)
-          if (movie.tmdbId && ratedTmdbIds.has(movie.tmdbId)) {
-            log.debug(`Filtering ${movie.title} - TMDb ID ${movie.tmdbId} already rated`);
+          const candidateTmdbId = movie.tmdbId ?? extractTmdbIdFromGuid(movie.guid);
+          if (candidateTmdbId && ratedTmdbIds.has(candidateTmdbId)) {
+            log.debug(`Filtering ${movie.title} - TMDb ID ${candidateTmdbId} already rated`);
             return false;
           }
-          
+
           return true;
         });
         
@@ -1567,16 +1659,32 @@ export const handleLogin = (ws: WebSocket): Promise<User> => {
 
         // FIX: Create Set for efficient filtering
         const ratedGuidSet = new Set(user.responses.map(_ => _.guid));
-        
+        const ratedTmdbIdSet = new Set<number>();
+        for (const responseItem of user.responses) {
+          const tmdbId = extractTmdbIdFromGuid(responseItem.guid) ?? session.movieForGuid(responseItem.guid)?.tmdbId ?? null;
+          if (tmdbId != null) {
+            ratedTmdbIdSet.add(tmdbId);
+          }
+        }
+
         // Re-send any unseen movies (from this session) and existing matches
         const response: WebSocketLoginResponseMessage = {
           type: 'loginResponse',
           payload: {
             success: true,
             matches: session.getExistingMatches(user),
-            movies: session.movieList.filter(
-              movie => !ratedGuidSet.has(movie.guid)
-            ),
+            movies: session.movieList.filter(movie => {
+              if (ratedGuidSet.has(movie.guid)) {
+                return false;
+              }
+
+              const movieTmdbId = movie.tmdbId ?? extractTmdbIdFromGuid(movie.guid);
+              if (movieTmdbId && ratedTmdbIdSet.has(movieTmdbId)) {
+                return false;
+              }
+
+              return true;
+            }),
             rated: ratedItems
           },
         }
