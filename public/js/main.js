@@ -1856,12 +1856,40 @@ const main = async () => {
   // Track movies this user has already rated (to prevent showing them again)
   const ratedGuids = new Set(rated.map(r => r.guid));
   console.log(`⚠️ User has already rated ${ratedGuids.size} movies`);
-  
+
+  const getNormalizedTmdbId = (movie) => {
+    if (!movie) return null;
+
+    const directId = movie.tmdbId ?? movie.tmdb_id ?? movie.tmdbID ?? movie.tmdbid;
+    if (directId) {
+      return String(directId);
+    }
+
+    if (typeof movie.guid === 'string') {
+      const guidMatch =
+        movie.guid.match(/tmdb:\/\/(\d+)/i) ||
+        movie.guid.match(/themoviedb:\/\/(\d+)/i);
+      if (guidMatch) return guidMatch[1];
+    }
+
+    if (typeof movie.streamingLink === 'string') {
+      const linkMatch = movie.streamingLink.match(/themoviedb\.org\/movie\/(\d+)/i);
+      if (linkMatch) return linkMatch[1];
+    }
+
+    if (movie.ids?.tmdb) {
+      return String(movie.ids.tmdb);
+    }
+
+    return null;
+  };
+
   // ALSO track rated TMDb IDs for cross-format matching (Plex GUID vs TMDb GUID)
   const ratedTmdbIds = new Set();
   for (const r of rated) {
-    if (r.movie?.tmdbId) {
-      ratedTmdbIds.add(r.movie.tmdbId);
+    const normalized = getNormalizedTmdbId(r.movie);
+    if (normalized) {
+      ratedTmdbIds.add(normalized);
     }
   }
   console.log(`🎬 Tracking ${ratedTmdbIds.size} unique TMDb IDs from rated movies`);
@@ -2551,6 +2579,8 @@ const main = async () => {
   })
 
   let movieBuffer = []
+  let pendingGuids = new Set()
+  let pendingTmdbIds = new Set()
   let isLoadingBatch = false
   let ensureMovieBufferPromise = null
   const BUFFER_MIN_SIZE = 8
@@ -2610,6 +2640,8 @@ async function ensureMovieBuffer() {
   if (window.__resetMovies) {
     console.log('🧹 Clearing buffer due to filter change')
     movieBuffer = []
+    pendingGuids = new Set()
+    pendingTmdbIds = new Set()
     isLoadingBatch = false
     window.isLoadingBatch = isLoadingBatch
     window.__resetMovies = false
@@ -2665,22 +2697,50 @@ async function ensureMovieBuffer() {
       console.log(`📦 Received ${newBatch.length} movies from server`)
       
       // IMPORTANT: Filter out movies user has already rated (check both GUID and TMDb ID)
+      const batchGuids = new Set()
+      const batchTmdbIds = new Set()
+
       const unseenMovies = newBatch.filter(movie => {
-        // Check exact GUID match
+        const normalizedTmdbId = getNormalizedTmdbId(movie)
+
+        // Check exact GUID match (already rated)
         if (ratedGuids.has(movie.guid)) {
-          console.log(`Filtering ${movie.title} - exact GUID match`);
-          return false;
+          console.log(`Filtering ${movie.title} - exact GUID match`)
+          return false
         }
-        
+
         // Check TMDb ID match (handles Plex GUID vs TMDb GUID mismatch)
-        if (movie.tmdbId && ratedTmdbIds.has(movie.tmdbId)) {
-          console.log(`Filtering ${movie.title} - TMDb ID ${movie.tmdbId} already rated`);
-          return false;
+        if (normalizedTmdbId && ratedTmdbIds.has(normalizedTmdbId)) {
+          console.log(`Filtering ${movie.title} - TMDb ID ${normalizedTmdbId} already rated`)
+          return false
         }
-        
-        return true;
-      });
-      console.log(`🧠 Filtered to ${unseenMovies.length} unseen movies (${newBatch.length - unseenMovies.length} already rated)`);
+
+        // Avoid duplicating movies already queued or on deck
+        if (pendingGuids.has(movie.guid)) {
+          console.log(`Skipping ${movie.title} - GUID already pending in swipe stack`)
+          return false
+        }
+
+        if (normalizedTmdbId && pendingTmdbIds.has(normalizedTmdbId)) {
+          console.log(`Skipping ${movie.title} - TMDb ID ${normalizedTmdbId} already pending`)
+          return false
+        }
+
+        // De-duplicate within this batch itself
+        if (batchGuids.has(movie.guid)) {
+          console.log(`Skipping ${movie.title} - duplicate GUID within batch`)
+          return false
+        }
+        if (normalizedTmdbId && batchTmdbIds.has(normalizedTmdbId)) {
+          console.log(`Skipping ${movie.title} - duplicate TMDb ID within batch`)
+          return false
+        }
+
+        batchGuids.add(movie.guid)
+        if (normalizedTmdbId) batchTmdbIds.add(normalizedTmdbId)
+        return true
+      })
+      console.log(`🧠 Filtered to ${unseenMovies.length} unseen movies (${newBatch.length - unseenMovies.length} removed as rated/duplicates)`);
       
       // Check if we filtered out everything and have no buffer
       if (unseenMovies.length === 0 && movieBuffer.length === 0) {
@@ -2708,7 +2768,12 @@ async function ensureMovieBuffer() {
       }
 
       movieBuffer.push(...unseenMovies)
-      unseenMovies.forEach(movie => movieByGuid.set(movie.guid, movie))
+      unseenMovies.forEach(movie => {
+        pendingGuids.add(movie.guid)
+        const normalizedTmdbId = getNormalizedTmdbId(movie)
+        if (normalizedTmdbId) pendingTmdbIds.add(normalizedTmdbId)
+        movieByGuid.set(movie.guid, movie)
+      })
   
     } catch (error) {
       console.error('❌Error loading movie batch:', error)
@@ -2799,14 +2864,24 @@ async function ensureMovieBuffer() {
     
       // IMPORTANT: Add this movie to the rated set so we don't show it again
       ratedGuids.add(guid);
-      
+      pendingGuids.delete(guid);
+
       const m = movieByGuid.get(guid)
       if (m) {
         // Also add the TMDb ID to prevent showing the same movie with a different GUID
-        if (m.tmdbId) {
-          ratedTmdbIds.add(m.tmdbId);
+        const normalized = getNormalizedTmdbId(m)
+        if (normalized) {
+          ratedTmdbIds.add(normalized)
+          pendingTmdbIds.delete(normalized)
         }
         appendRatedRow({ basePath, likesList, dislikesList, seenList }, m, wantsToWatch)
+      } else {
+        // Best effort cleanup when we don't have the movie handy (should be rare)
+        const fallbackTmdbId = getNormalizedTmdbId({ guid })
+        if (fallbackTmdbId) {
+          ratedTmdbIds.add(fallbackTmdbId)
+          pendingTmdbIds.delete(fallbackTmdbId)
+        }
       }
     
       api.respond({ guid, wantsToWatch })
