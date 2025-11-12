@@ -20,6 +20,8 @@ interface PosterCacheMetadata {
 
 let cacheMetadata: PosterCacheMetadata = { entries: {}, totalSize: 0 }
 
+const pendingPrefetches = new Map<string, Promise<void>>()
+
 /**
  * Initialize poster cache directory and load metadata
  */
@@ -168,16 +170,59 @@ export async function cachePoster(
 export function getCachedPosterPath(posterPath: string, source: 'plex' | 'tmdb'): string | null {
   const cacheKey = getCacheKey(posterPath, source)
   const entry = cacheMetadata.entries[cacheKey]
-  
+
   if (!entry) {
     return null
   }
-  
+
   // Update last accessed time
   entry.lastAccessed = Date.now()
   saveMetadata() // Fire and forget
-  
+
   return `/cached-poster/${entry.filename}`
+}
+
+function normalizePosterPath(posterPath: string): string {
+  let tmdbPath = posterPath
+  if (tmdbPath.startsWith('/tmdb-poster/')) {
+    tmdbPath = tmdbPath.slice('/tmdb-poster'.length)
+  } else if (tmdbPath.startsWith('/poster/')) {
+    tmdbPath = tmdbPath.slice('/poster'.length)
+  }
+
+  if (!tmdbPath.startsWith('/')) tmdbPath = `/${tmdbPath}`
+  return tmdbPath
+}
+
+export function prefetchPoster(posterPath: string, source: 'plex' | 'tmdb'): void {
+  if (!posterPath || posterPath.startsWith('/cached-poster/')) return
+  if (source !== 'tmdb') return
+
+  const normalizedPath = normalizePosterPath(posterPath)
+
+  if (getCachedPosterPath(normalizedPath, source)) {
+    return
+  }
+
+  const cacheKey = `${source}:${normalizedPath}`
+  if (pendingPrefetches.has(cacheKey)) {
+    return
+  }
+
+  const url = `https://image.tmdb.org/t/p/w500${normalizedPath}`
+
+  const task = cachePoster(normalizedPath, source, url)
+    .then(() => {
+      log.debug(`✅ Prefetched poster ${normalizedPath}`)
+    })
+    .catch(err => {
+      log.debug(`⚠️ Poster prefetch failed for ${normalizedPath}: ${err}`)
+    })
+    .finally(() => {
+      pendingPrefetches.delete(cacheKey)
+    })
+
+  pendingPrefetches.set(cacheKey, task.then(() => undefined))
 }
 
 /**
@@ -210,14 +255,7 @@ export function getBestPosterUrl(posterPath: string, source: 'plex' | 'tmdb'): s
   if (posterPath.startsWith('/cached-poster/')) return posterPath;
 
   // Normalize to a pure TMDB path by stripping known local prefixes
-  let tmdbPath = posterPath;
-  if (tmdbPath.startsWith('/tmdb-poster/')) {
-    tmdbPath = tmdbPath.slice('/tmdb-poster'.length); // keep the leading slash of the remainder
-  } else if (tmdbPath.startsWith('/poster/')) {
-    tmdbPath = tmdbPath.slice('/poster'.length);      // legacy -> normalize
-  }
-
-  if (!tmdbPath.startsWith('/')) tmdbPath = `/${tmdbPath}`;
+  const tmdbPath = normalizePosterPath(posterPath);
 
   // Try cached file first
   const cachedPath = getCachedPosterPath(tmdbPath, source);
