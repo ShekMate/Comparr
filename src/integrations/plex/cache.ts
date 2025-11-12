@@ -26,6 +26,9 @@ const cache: PlexAvailabilityCache = {
 
 const CACHE_REFRESH_INTERVAL = 60 * 60 * 1000 // 1 hour
 
+let refreshTimerStarted = false
+let initialBuildPromise: Promise<void> | null = null
+
 /**
  * Normalize title for comparison
  */
@@ -129,9 +132,24 @@ export async function buildPlexCache(): Promise<void> {
  * Initialize and start auto-refresh
  */
 export async function initPlexCache(): Promise<void> {
-  await buildPlexCache()
-  
-  // Set up periodic refresh
+  if (!initialBuildPromise) {
+    initialBuildPromise = (async () => {
+      await buildPlexCache()
+      ensureRefreshTimer()
+    })().catch(err => {
+      initialBuildPromise = null
+      throw err
+    })
+  }
+
+  await initialBuildPromise
+}
+
+function ensureRefreshTimer() {
+  if (refreshTimerStarted) return
+
+  refreshTimerStarted = true
+
   setInterval(async () => {
     try {
       await buildPlexCache()
@@ -139,8 +157,12 @@ export async function initPlexCache(): Promise<void> {
       log.error(`Background Plex cache refresh failed: ${err}`)
     }
   }, CACHE_REFRESH_INTERVAL)
-  
+
   log.info('⏰ Plex cache auto-refresh scheduled for every hour')
+}
+
+export function waitForPlexCacheReady(): Promise<void> {
+  return initPlexCache()
 }
 
 /**
