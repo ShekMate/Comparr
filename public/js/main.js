@@ -3009,7 +3009,10 @@ watchSortDropdown?.addEventListener('change', () => {
 });
 
 // Handle direction button click - toggle between asc/desc
-watchSortDirectionBtn?.addEventListener('click', () => {
+watchSortDirectionBtn?.addEventListener('click', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+
   const currentDirection = watchSortDirectionBtn.dataset.direction === 'asc' ? 'asc' : 'desc';
   const newDirection = currentDirection === 'desc' ? 'asc' : 'desc';
   watchSortDirectionBtn.dataset.direction = newDirection;
