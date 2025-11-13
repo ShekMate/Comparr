@@ -1854,7 +1854,16 @@ const main = async () => {
   document.body.classList.add('is-logged-in')
   
   // Track movies this user has already rated (to prevent showing them again)
-  const ratedGuids = new Set(rated.map(r => r.guid));
+  const normalizeGuid = (value) => {
+    if (value == null) return '';
+    return String(value).trim();
+  };
+
+  const ratedGuids = new Set(
+    rated
+      .map(r => normalizeGuid(r.movie?.guid ?? r.guid))
+      .filter(Boolean)
+  );
   console.log(`⚠️ User has already rated ${ratedGuids.size} movies`);
 
   const getNormalizedTmdbId = (movie) => {
@@ -1862,7 +1871,7 @@ const main = async () => {
 
     const directId = movie.tmdbId ?? movie.tmdb_id ?? movie.tmdbID ?? movie.tmdbid;
     if (directId) {
-      return String(directId);
+      return String(directId).trim();
     }
 
     if (typeof movie.guid === 'string') {
@@ -1878,7 +1887,7 @@ const main = async () => {
     }
 
     if (movie.ids?.tmdb) {
-      return String(movie.ids.tmdb);
+      return String(movie.ids.tmdb).trim();
     }
 
     return null;
@@ -1887,10 +1896,11 @@ const main = async () => {
   // ALSO track rated TMDb IDs for cross-format matching (Plex GUID vs TMDb GUID)
   const ratedTmdbIds = new Set();
   for (const r of rated) {
+    const normalizedGuid = normalizeGuid(r.movie?.guid ?? r.guid);
+    if (normalizedGuid) ratedGuids.add(normalizedGuid);
+
     const normalized = getNormalizedTmdbId(r.movie);
-    if (normalized) {
-      ratedTmdbIds.add(normalized);
-    }
+    if (normalized) ratedTmdbIds.add(normalized);
   }
   console.log(`🎬 Tracking ${ratedTmdbIds.size} unique TMDb IDs from rated movies`);
   
@@ -2657,124 +2667,113 @@ async function ensureMovieBuffer() {
   //FIX: Create and store the promise immediately
   ensureMovieBufferPromise = (async () => {
     try {
-      console.log('🗂️ Requesting new batch with filters:', filterState)
-      const newBatch = await api.requestNextBatchWithFilters({
-        ...filterState,
-        runtimeMin: filterState.runtimeRange.min || undefined,
-        runtimeMax: filterState.runtimeRange.max || undefined,
-        voteCount: filterState.voteCount,
-        sortBy: filterState.sortBy,
-        rtRating: filterState.rtRating,
-        batchSize: BATCH_SIZE
-      })
-      
-      // Check if this is an empty batch
-      if (Array.isArray(newBatch) && newBatch.length === 0) {
-        console.warn('⚠️ No more movies available')
+      const MAX_BATCH_ATTEMPTS = 4
+      let attempts = 0
+      let addedMovies = 0
+      const bufferWasEmpty = movieBuffer.length === 0
 
-        // Only show error if buffer is truly empty AND no movies are displayed
-        const cardStack = document.querySelector('.js-card-stack')
-        const hasVisibleMovies = cardStack && cardStack.children.length > 0
+      while (attempts < MAX_BATCH_ATTEMPTS && movieBuffer.length < BUFFER_MIN_SIZE) {
+        attempts += 1
+        console.log(`🗂️ Requesting new batch (attempt ${attempts}) with filters:`, filterState)
+        const newBatch = await api.requestNextBatchWithFilters({
+          ...filterState,
+          runtimeMin: filterState.runtimeRange.min || undefined,
+          runtimeMax: filterState.runtimeRange.max || undefined,
+          voteCount: filterState.voteCount,
+          sortBy: filterState.sortBy,
+          rtRating: filterState.rtRating,
+          batchSize: BATCH_SIZE
+        })
 
-        if (!hasVisibleMovies && movieBuffer.length === 0) {
-          if (cardStack) {
-            cardStack.style.setProperty(
-              '--empty-text', 
-              '"No more movies found. Try adjusting your filters!"'
-            )
+        if (!Array.isArray(newBatch) || newBatch.length === 0) {
+          console.warn('⚠️ No more movies available from service')
+          break
+        }
+
+        console.log(`📦 Received ${newBatch.length} movies from server`)
+
+        const batchGuids = new Set()
+        const batchTmdbIds = new Set()
+
+        const unseenMovies = newBatch.filter(movie => {
+          const normalizedGuid = normalizeGuid(movie.guid)
+          const normalizedTmdbId = getNormalizedTmdbId(movie)
+
+          if (normalizedGuid && ratedGuids.has(normalizedGuid)) {
+            console.log(`Filtering ${movie.title} - exact GUID match`)
+            return false
           }
-  
-          // Show notification to user only if truly no movies available
-          showNoMoviesNotification()
-        } else {
-          console.log('🧩 Empty batch received but movies still showing, continuing...')
+
+          if (normalizedTmdbId && ratedTmdbIds.has(normalizedTmdbId)) {
+            console.log(`Filtering ${movie.title} - TMDb ID ${normalizedTmdbId} already rated`)
+            return false
+          }
+
+          if (normalizedGuid && pendingGuids.has(normalizedGuid)) {
+            console.log(`Skipping ${movie.title} - GUID already pending in swipe stack`)
+            return false
+          }
+
+          if (normalizedTmdbId && pendingTmdbIds.has(normalizedTmdbId)) {
+            console.log(`Skipping ${movie.title} - TMDb ID ${normalizedTmdbId} already pending`)
+            return false
+          }
+
+          if (normalizedGuid && batchGuids.has(normalizedGuid)) {
+            console.log(`Skipping ${movie.title} - duplicate GUID within batch`)
+            return false
+          }
+          if (normalizedTmdbId && batchTmdbIds.has(normalizedTmdbId)) {
+            console.log(`Skipping ${movie.title} - duplicate TMDb ID within batch`)
+            return false
+          }
+
+          if (normalizedGuid) batchGuids.add(normalizedGuid)
+          if (normalizedTmdbId) batchTmdbIds.add(normalizedTmdbId)
+          return true
+        })
+
+        console.log(`🧠 Filtered to ${unseenMovies.length} unseen movies (${newBatch.length - unseenMovies.length} removed as rated/duplicates)`)
+
+        if (unseenMovies.length === 0) {
+          console.log('🔁 Batch yielded no new unseen movies, requesting another batch')
+          continue
         }
 
-        isLoadingBatch = false
-        return;
+        addedMovies += unseenMovies.length
+        movieBuffer.push(...unseenMovies)
+
+        unseenMovies.forEach(movie => {
+          const normalizedGuid = normalizeGuid(movie.guid)
+          if (normalizedGuid) pendingGuids.add(normalizedGuid)
+          const normalizedTmdbId = getNormalizedTmdbId(movie)
+          if (normalizedTmdbId) pendingTmdbIds.add(normalizedTmdbId)
+          const guidKey = normalizedGuid || movie.guid
+          if (guidKey) movieByGuid.set(guidKey, movie)
+        })
       }
-  
-      console.log(`📦 Received ${newBatch.length} movies from server`)
-      
-      // IMPORTANT: Filter out movies user has already rated (check both GUID and TMDb ID)
-      const batchGuids = new Set()
-      const batchTmdbIds = new Set()
 
-      const unseenMovies = newBatch.filter(movie => {
-        const normalizedTmdbId = getNormalizedTmdbId(movie)
-
-        // Check exact GUID match (already rated)
-        if (ratedGuids.has(movie.guid)) {
-          console.log(`Filtering ${movie.title} - exact GUID match`)
-          return false
-        }
-
-        // Check TMDb ID match (handles Plex GUID vs TMDb GUID mismatch)
-        if (normalizedTmdbId && ratedTmdbIds.has(normalizedTmdbId)) {
-          console.log(`Filtering ${movie.title} - TMDb ID ${normalizedTmdbId} already rated`)
-          return false
-        }
-
-        // Avoid duplicating movies already queued or on deck
-        if (pendingGuids.has(movie.guid)) {
-          console.log(`Skipping ${movie.title} - GUID already pending in swipe stack`)
-          return false
-        }
-
-        if (normalizedTmdbId && pendingTmdbIds.has(normalizedTmdbId)) {
-          console.log(`Skipping ${movie.title} - TMDb ID ${normalizedTmdbId} already pending`)
-          return false
-        }
-
-        // De-duplicate within this batch itself
-        if (batchGuids.has(movie.guid)) {
-          console.log(`Skipping ${movie.title} - duplicate GUID within batch`)
-          return false
-        }
-        if (normalizedTmdbId && batchTmdbIds.has(normalizedTmdbId)) {
-          console.log(`Skipping ${movie.title} - duplicate TMDb ID within batch`)
-          return false
-        }
-
-        batchGuids.add(movie.guid)
-        if (normalizedTmdbId) batchTmdbIds.add(normalizedTmdbId)
-        return true
-      })
-      console.log(`🧠 Filtered to ${unseenMovies.length} unseen movies (${newBatch.length - unseenMovies.length} removed as rated/duplicates)`);
-      
-      // Check if we filtered out everything and have no buffer
-      if (unseenMovies.length === 0 && movieBuffer.length === 0) {
-        console.warn('⚠️ All movies in batch were already rated and buffer is empty')
+      if (bufferWasEmpty && addedMovies === 0 && movieBuffer.length === 0) {
+        console.warn('⚠️ No unseen movies available after multiple attempts')
 
         const cardStack = document.querySelector('.js-card-stack')
         const hasVisibleMovies = cardStack && cardStack.children.length > 0
-        
+
         if (!hasVisibleMovies) {
           if (cardStack) {
             cardStack.style.setProperty(
-              '--empty-text', 
-              '"No more unseen movies. Try adjusting your filters!"'
+              '--empty-text',
+              '"No more movies found. Try adjusting your filters!"'
             )
           }
-          
+
           showNoMoviesNotification()
         }
 
         isLoadingBatch = false
-        window.isLoadingBatch = isLoadingBatch
-        ensureMovieBufferPromise = null
-        window.ensureMovieBufferPromise = ensureMovieBufferPromise
-        return;
+        return
       }
 
-      movieBuffer.push(...unseenMovies)
-      unseenMovies.forEach(movie => {
-        pendingGuids.add(movie.guid)
-        const normalizedTmdbId = getNormalizedTmdbId(movie)
-        if (normalizedTmdbId) pendingTmdbIds.add(normalizedTmdbId)
-        movieByGuid.set(movie.guid, movie)
-      })
-  
     } catch (error) {
       console.error('❌Error loading movie batch:', error)
       
@@ -2817,7 +2816,10 @@ async function ensureMovieBuffer() {
       const movie = getNextMovie()
       if (movie) {
         new CardView(movie, cardStackEventTarget)
-        movieByGuid.set(movie.guid, movie)
+        {
+          const guidKey = normalizeGuid(movie.guid) || movie.guid
+          if (guidKey) movieByGuid.set(guidKey, movie)
+        }
         if (i === 0) {
           setTimeout(() => {
             topCardEl = document.querySelector('.js-card-stack > :first-child')
@@ -2843,6 +2845,10 @@ async function ensureMovieBuffer() {
         const movie = getNextMovie()
         if (movie) {
           new CardView(movie, cardStackEventTarget)
+          {
+            const guidKey = normalizeGuid(movie.guid) || movie.guid
+            if (guidKey) movieByGuid.set(guidKey, movie)
+          }
           if (i === 0) {
             setTimeout(() => {
               topCardEl = document.querySelector('.js-card-stack > :first-child')
@@ -2863,10 +2869,15 @@ async function ensureMovieBuffer() {
       })
     
       // IMPORTANT: Add this movie to the rated set so we don't show it again
-      ratedGuids.add(guid);
-      pendingGuids.delete(guid);
+      const normalizedGuid = normalizeGuid(guid)
+      if (normalizedGuid) {
+        ratedGuids.add(normalizedGuid)
+        pendingGuids.delete(normalizedGuid)
+      } else {
+        pendingGuids.delete(guid)
+      }
 
-      const m = movieByGuid.get(guid)
+      const m = movieByGuid.get(normalizedGuid) || movieByGuid.get(guid)
       if (m) {
         // Also add the TMDb ID to prevent showing the same movie with a different GUID
         const normalized = getNormalizedTmdbId(m)
@@ -2899,6 +2910,10 @@ async function ensureMovieBuffer() {
       // Create card if we have a movie
       if (nextMovie) {
         new CardView(nextMovie, cardStackEventTarget)
+        {
+          const guidKey = normalizeGuid(nextMovie.guid) || nextMovie.guid
+          if (guidKey) movieByGuid.set(guidKey, nextMovie)
+        }
       } else {
         console.warn('⚠️ No movies available even after refill attempt')
       }
