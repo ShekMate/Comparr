@@ -978,6 +978,13 @@ class Session {
   }) {
 	  
   const showMyPlexOnly = filters?.showPlexOnly ?? false;
+  const tmdbConfigured = Boolean(Deno.env.get('TMDB_API_KEY'));
+
+  if (!tmdbConfigured && !showMyPlexOnly) {
+    log.warning(
+      'TMDb API key is missing; falling back to Plex library movies for swipe results.',
+    );
+  }
   
   try {
     // Increase batch size to account for movies we'll skip
@@ -1036,7 +1043,9 @@ class Session {
     const maxAttempts = attemptBatchSize;
     let attempts = 0;
 
-    let hasPersonFilters = (filters?.directors?.length || 0) + (filters?.actors?.length || 0) > 0;
+    let hasPersonFilters =
+      tmdbConfigured &&
+      ((filters?.directors?.length || 0) + (filters?.actors?.length || 0) > 0);
     let personMovies: any[] = [];
     let person: { id: number; name: string } | undefined;
 
@@ -1072,11 +1081,11 @@ class Session {
     let pendingCandidate: PendingCandidate | null = null;
 
     const fetchCandidate = async (attemptNumber: number): Promise<any> => {
-      if (showMyPlexOnly) {
+      if (showMyPlexOnly || !tmdbConfigured) {
         return await getFilteredRandomMovie({
           yearMin: filters?.yearMin,
           yearMax: filters?.yearMax,
-          genres: filters?.genres
+          genres: filters?.genres,
         });
       }
 
