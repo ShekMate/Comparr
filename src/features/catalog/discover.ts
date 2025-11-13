@@ -3,7 +3,7 @@ import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
 const TMDB = Deno.env.get("TMDB_API_KEY");
 const DEFAULT_DISCOVER_REGION = 'US';
 const DEFAULT_DISCOVER_LANGUAGES = ['en'];
-const DEFAULT_DISCOVER_YEAR_MIN = 2000;
+const DEFAULT_DISCOVER_YEAR_MIN = 1970;
 
 // Type definitions
 interface DiscoverFilters {

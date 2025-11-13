@@ -176,7 +176,7 @@ interface DiscoverCacheEntry {
 
 const discoverCache: Map<string, DiscoverCacheEntry> = new Map()
 
-const DEFAULT_DISCOVER_VOTE_COUNT = 250
+const DEFAULT_DISCOVER_VOTE_COUNT = 100
 const NEW_RELEASE_WINDOW_MS = 90 * 24 * 60 * 60 * 1000
 
 function getOrCreateCacheEntry(key: string): DiscoverCacheEntry {
