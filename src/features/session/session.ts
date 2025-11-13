@@ -553,6 +553,56 @@ async function saveState(state: PersistedState) {
 // One in-memory copy we mutate, always saved after changes
 const persistedState: PersistedState = await loadState()
 
+const movieIndexByTmdbId = new Map<number, MediaItem>()
+const movieIndexTmdbByGuid = new Map<string, number>()
+
+function rebuildMovieIndexMaps() {
+  movieIndexByTmdbId.clear()
+  movieIndexTmdbByGuid.clear()
+  for (const movie of Object.values(persistedState.movieIndex)) {
+    const tmdbId = extractTmdbIdFromMovie(movie)
+    if (tmdbId != null) {
+      movieIndexByTmdbId.set(tmdbId, movie)
+      movieIndexTmdbByGuid.set(movie.guid, tmdbId)
+    }
+  }
+}
+
+function updateMovieIndexEntry(movie: MediaItem) {
+  const previous = movieIndexTmdbByGuid.get(movie.guid)
+  if (previous != null && movieIndexByTmdbId.get(previous)?.guid === movie.guid) {
+    movieIndexByTmdbId.delete(previous)
+  }
+
+  persistedState.movieIndex[movie.guid] = movie
+
+  const tmdbId = extractTmdbIdFromMovie(movie)
+  if (tmdbId != null) {
+    movieIndexByTmdbId.set(tmdbId, movie)
+    movieIndexTmdbByGuid.set(movie.guid, tmdbId)
+  } else {
+    movieIndexTmdbByGuid.delete(movie.guid)
+  }
+}
+
+function findMovieByTmdbId(tmdbId: number): MediaItem | undefined {
+  const existing = movieIndexByTmdbId.get(tmdbId)
+  if (existing) return existing
+
+  // Fallback in case the map is out of sync
+  for (const movie of Object.values(persistedState.movieIndex)) {
+    const extracted = extractTmdbIdFromMovie(movie)
+    if (extracted === tmdbId) {
+      updateMovieIndexEntry(movie)
+      return movie
+    }
+  }
+
+  return undefined
+}
+
+rebuildMovieIndexMaps()
+
 function upsertRoomUser(roomCode: string, user: User) {
   const room = (persistedState.rooms[roomCode] ??= { users: [] })
   const idx = room.users.findIndex(u => u.name === user.name)
@@ -568,7 +618,7 @@ function removeRoomUser(roomCode: string, userName: string) {
 
 function addMoviesToIndex(movies: MediaItem[]) {
   for (const m of movies) {
-    persistedState.movieIndex[m.guid] = m
+    updateMovieIndexEntry(m)
   }
 }
 
@@ -648,6 +698,103 @@ function extractImdbIdFromMovie(movie: MediaItem): string | null {
   return null
 }
 
+function dedupeUserResponses(user: User, session?: Session): boolean {
+  const deduped: Response[] = []
+  const indexByGuid = new Map<string, number>()
+  const indexByTmdb = new Map<number, number>()
+  let changed = false
+
+  const resolveTmdbId = (response: Response): number | null => {
+    const explicit = typeof response.tmdbId === 'number' && Number.isFinite(response.tmdbId)
+      ? response.tmdbId
+      : null
+    if (explicit != null) return explicit
+
+    const fromGuid = extractTmdbIdFromGuid(response.guid)
+    if (fromGuid != null) return fromGuid
+
+    if (session) {
+      const movie = session.movieForGuid(response.guid)
+      if (movie?.tmdbId != null) {
+        return movie.tmdbId
+      }
+    }
+
+    return null
+  }
+
+  const pickBestGuid = (candidate: string | undefined, fallback: string | undefined): string => {
+    const trimmedCandidate = typeof candidate === 'string' ? candidate : ''
+    const trimmedFallback = typeof fallback === 'string' ? fallback : ''
+
+    if (session) {
+      if (trimmedCandidate && session.movieForGuid(trimmedCandidate)) {
+        return trimmedCandidate
+      }
+      if (trimmedFallback && session.movieForGuid(trimmedFallback)) {
+        return trimmedFallback
+      }
+    }
+
+    return trimmedCandidate || trimmedFallback || ''
+  }
+
+  for (const response of user.responses) {
+    const guid = typeof response.guid === 'string' ? response.guid : ''
+    const tmdbId = resolveTmdbId(response)
+
+    const guidIndex = guid ? indexByGuid.get(guid) : undefined
+    const tmdbIndex = tmdbId != null ? indexByTmdb.get(tmdbId) : undefined
+    const existingIndex = tmdbIndex ?? guidIndex
+
+    if (existingIndex != null) {
+      const existing = deduped[existingIndex]
+      const mergedGuid = pickBestGuid(guid, existing.guid)
+      const mergedTmdb = tmdbId != null ? tmdbId : existing.tmdbId ?? null
+      if (
+        existing.guid !== mergedGuid ||
+        existing.wantsToWatch !== response.wantsToWatch ||
+        (existing.tmdbId ?? null) !== (mergedTmdb ?? null)
+      ) {
+        deduped[existingIndex] = {
+          guid: mergedGuid,
+          wantsToWatch: response.wantsToWatch,
+          tmdbId: mergedTmdb,
+        }
+        changed = true
+      }
+
+      if (guid) indexByGuid.set(guid, existingIndex)
+      if (tmdbId != null) indexByTmdb.set(tmdbId, existingIndex)
+      continue
+    }
+
+    const normalized: Response = {
+      guid,
+      wantsToWatch: response.wantsToWatch,
+      tmdbId: tmdbId ?? null,
+    }
+    if (normalized.tmdbId !== response.tmdbId) {
+      changed = true
+    }
+
+    deduped.push(normalized)
+    const newIndex = deduped.length - 1
+    if (guid) indexByGuid.set(guid, newIndex)
+    if (tmdbId != null) indexByTmdb.set(tmdbId, newIndex)
+  }
+
+  if (deduped.length !== user.responses.length) {
+    changed = true
+  }
+
+  if (changed) {
+    user.responses = deduped
+  }
+
+  return changed
+}
+
 // -------------------------
 // Session class
 // -------------------------
@@ -681,7 +828,7 @@ class Session {
     if (room) {
       for (const u of room.users) {
         // Store users now with null ws; real sockets are added on login
-        this.users.set({
+        const hydratedUser: User = {
           name: u.name,
           responses: (u.responses ?? [])
             .filter(r => typeof r?.guid === 'string' && r.guid.length > 0)
@@ -690,7 +837,9 @@ class Session {
               wantsToWatch: r.wantsToWatch,
               tmdbId: r.tmdbId ?? null,
             })),
-        }, null)
+        }
+        dedupeUserResponses(hydratedUser, this)
+        this.users.set(hydratedUser, null)
       }
       // Rebuild likedMovies for this room from persisted responses
       this.rebuildLikedFromPersisted()
@@ -879,24 +1028,55 @@ class Session {
                         ?? extractTmdbIdFromGuid(guid)
                         ?? null
 
-                  // Find existing response
-                  const existingIndex = user.responses.findIndex(_ => _.guid === guid)
+                  let responsesMutated = false
 
-                  if (existingIndex >= 0) {
-                        // Update existing response instead of rejecting
-                        const prev = user.responses[existingIndex]
+                  // Find existing response by guid or TMDb id
+                  const existingIndexByGuid = user.responses.findIndex(_ => _.guid === guid)
+                  let targetIndex = existingIndexByGuid
+
+                  if (targetIndex < 0 && resolvedTmdbId != null) {
+                        targetIndex = user.responses.findIndex(existing => {
+                          const existingTmdb = existing.tmdbId
+                                ?? this.tmdbIdForGuid(existing.guid)
+                                ?? extractTmdbIdFromGuid(existing.guid)
+                                ?? null
+                          return existingTmdb === resolvedTmdbId
+                        })
+                  }
+
+                  if (targetIndex >= 0) {
+                        const prev = user.responses[targetIndex]
                         const oldValue = prev.wantsToWatch
                         log.debug(`${user.name} is updating rating for ${guid} from ${oldValue} to ${wantsToWatch}`)
-                        user.responses[existingIndex] = {
-                          guid,
+
+                        const preferredGuid = movie
+                          ? movie.guid
+                          : this.movieForGuid(prev.guid)?.guid ?? (guid || prev.guid)
+
+                        const nextResponse: Response = {
+                          guid: preferredGuid,
                           wantsToWatch,
                           tmdbId: resolvedTmdbId ?? prev.tmdbId ?? null,
                         }
+
+                        if (
+                          prev.guid !== nextResponse.guid ||
+                          prev.wantsToWatch !== nextResponse.wantsToWatch ||
+                          (prev.tmdbId ?? null) !== (nextResponse.tmdbId ?? null)
+                        ) {
+                          responsesMutated = true
+                        }
+
+                        user.responses[targetIndex] = nextResponse
                   } else {
-                        // Add new response
                         const action = wantsToWatch === true ? 'likes' : wantsToWatch === false ? 'dislikes' : 'marked as seen'
                         log.debug(`${user.name} ${action} ${guid}`)
                         user.responses.push({ guid, wantsToWatch, tmdbId: resolvedTmdbId })
+                        responsesMutated = true
+                  }
+
+                  if (dedupeUserResponses(user, this)) {
+                        responsesMutated = true
                   }
 
                   // DEBUG: Log the user's current responses
@@ -908,6 +1088,10 @@ class Session {
                   await saveState(persistedState).catch(err =>
                         log.warning(`Failed to save state on response: ${err}`)
                   )
+
+                  if (responsesMutated) {
+                        log.debug(`Deduplicated responses for ${user.name} after rating update`)
+                  }
 
                   if (!movie) {
                         log.error(`${user.name} rated a movie we can't resolve by guid: ${guid}`)
@@ -1786,6 +1970,7 @@ async function hydratePersistedMoviesWithPlexAvailability(): Promise<number> {
         (movie as any).imdbId = imdbId
       }
 
+      updateMovieIndexEntry(movie as MediaItem)
       updatedGuids.push(guid)
     }
   }
@@ -1890,48 +2075,72 @@ export const handleLogin = (ws: WebSocket): Promise<User> => {
           ws.removeListener('message', handler)
           session.add(user, ws)
 
+          let responsesMutated = dedupeUserResponses(user, session)
+
+          const ratedItems: RatedPayloadItem[] = []
+          const ratedGuidSet = new Set<string>()
+          const ratedTmdbIdSet = new Set<number>()
+          const tmdbIdsInItems = new Set<number>()
+
+          for (const responseItem of user.responses) {
+            const resolvedGuid = typeof responseItem.guid === 'string' ? responseItem.guid : ''
+            const tmdbId = responseItem.tmdbId
+              ?? extractTmdbIdFromGuid(resolvedGuid)
+              ?? session.movieForGuid(resolvedGuid)?.tmdbId
+              ?? null
+
+            if (tmdbId != null && responseItem.tmdbId == null) {
+              responseItem.tmdbId = tmdbId
+              responsesMutated = true
+            }
+
+            let movie = session.movieForGuid(resolvedGuid)
+            if (!movie && tmdbId != null) {
+              const fallbackMovie = findMovieByTmdbId(tmdbId)
+              if (fallbackMovie) {
+                movie = fallbackMovie
+                if (fallbackMovie.guid !== resolvedGuid) {
+                  responseItem.guid = fallbackMovie.guid
+                  responsesMutated = true
+                }
+              }
+            }
+
+            const effectiveGuid = responseItem.guid
+            const alreadySeenGuid = ratedGuidSet.has(effectiveGuid)
+            const alreadySeenTmdb = tmdbId != null && tmdbIdsInItems.has(tmdbId)
+
+            ratedGuidSet.add(effectiveGuid)
+            if (tmdbId != null) {
+              ratedTmdbIdSet.add(tmdbId)
+            }
+
+            if (!movie) {
+              continue
+            }
+
+            if (alreadySeenGuid || alreadySeenTmdb) {
+              continue
+            }
+
+            if (tmdbId != null) {
+              tmdbIdsInItems.add(tmdbId)
+            }
+
+            ratedItems.push({
+              guid: effectiveGuid,
+              wantsToWatch: responseItem.wantsToWatch,
+              movie,
+            })
+          }
+
           // Persist (make sure this user is in the room set)
           upsertRoomUser(session.roomCode, user)
           saveState(persistedState).catch(err =>
             log.warning(`Failed to save state on login: ${err}`)
           )
-
-          // Create rated items for the user
-          const ratedItems: RatedPayloadItem[] = user.responses.map(response => {
-            const movie = session.movieForGuid(response.guid);
-
-            if (!movie) return null;
-
-            return {
-              guid: response.guid,
-              wantsToWatch: response.wantsToWatch,
-              movie: movie
-            };
-          }).filter((item): item is RatedPayloadItem => item !== null);
-
-          // FIX: Create Set for efficient filtering
-          const ratedGuidSet = new Set(user.responses.map(_ => _.guid));
-          const ratedTmdbIdSet = new Set<number>();
-          let backfilledTmdb = false;
-          for (const responseItem of user.responses) {
-            const tmdbId = responseItem.tmdbId
-              ?? extractTmdbIdFromGuid(responseItem.guid)
-              ?? session.movieForGuid(responseItem.guid)?.tmdbId
-              ?? null;
-            if (tmdbId != null) {
-              ratedTmdbIdSet.add(tmdbId);
-              if (responseItem.tmdbId == null) {
-                responseItem.tmdbId = tmdbId;
-                backfilledTmdb = true;
-              }
-            }
-          }
-
-          if (backfilledTmdb) {
-            upsertRoomUser(session.roomCode, user);
-            saveState(persistedState).catch(err =>
-              log.warning(`Failed to save state while backfilling login TMDb IDs: ${err}`)
-            );
+          if (responsesMutated) {
+            log.debug(`Normalized stored responses for ${user.name} during login`)
           }
 
           // Re-send any unseen movies (from this session) and existing matches

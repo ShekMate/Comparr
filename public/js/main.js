@@ -547,7 +547,33 @@ async function appendRatedRow({ basePath, likesList, dislikesList, seenList }, m
     card.className = 'watch-card';
     card.dataset.movieId = movieId;
     card.dataset.guid = movie.guid;
-    
+
+    const normalizedTmdbId = tmdbId ? String(tmdbId) : '';
+    const normalizedTitleKey = `${(movie.title || '').trim().toLowerCase()}::${movie.year || ''}`;
+
+    if (likesList) {
+      const removedGuids = [];
+      likesList.querySelectorAll('.watch-card').forEach(existing => {
+        const existingTmdb = existing.dataset.tmdbId || '';
+        const existingGuid = existing.dataset.guid || '';
+        const existingTitleKey = existing.dataset.titleKey || '';
+
+        if (
+          (normalizedTmdbId && existingTmdb && existingTmdb === normalizedTmdbId) ||
+          (movie.guid && existingGuid && existingGuid === movie.guid) ||
+          (normalizedTitleKey && existingTitleKey && existingTitleKey === normalizedTitleKey)
+        ) {
+          removedGuids.push(existingGuid);
+          existing.remove();
+        }
+      });
+
+      if (removedGuids.length > 0 && likesList.dataset.originalOrder) {
+        const order = likesList.dataset.originalOrder.split(',').filter(Boolean);
+        likesList.dataset.originalOrder = order.filter(g => !removedGuids.includes(g)).join(',');
+      }
+    }
+
     // Extract numeric TMDb ID for API calls
     if (movie.guid?.startsWith('tmdb://')) {
       card.dataset.tmdbId = movie.guid.replace('tmdb://', '');
@@ -571,6 +597,11 @@ async function appendRatedRow({ basePath, likesList, dislikesList, seenList }, m
     card.dataset.runtime = movie.runtime || '';
     card.dataset.voteCount = movie.vote_count || 0;
     card.dataset.popularity = movie.popularity || 0;
+    card.dataset.titleKey = normalizedTitleKey;
+
+    if (normalizedTmdbId && !card.dataset.tmdbId) {
+      card.dataset.tmdbId = normalizedTmdbId;
+    }
     
     const streamingServices = getStreamingServices(movie);
     const allServices = [...(streamingServices.subscription || []), ...(streamingServices.free || [])];
@@ -765,6 +796,15 @@ async function appendRatedRow({ basePath, likesList, dislikesList, seenList }, m
   `;
     
     likesList?.appendChild(card);
+
+    if (likesList) {
+      const currentOrder = likesList.dataset.originalOrder
+        ? likesList.dataset.originalOrder.split(',').filter(Boolean)
+        : [];
+      const filteredOrder = currentOrder.filter(g => g !== movie.guid);
+      filteredOrder.push(movie.guid);
+      likesList.dataset.originalOrder = filteredOrder.join(',');
+    }
     
     // Add dropdown toggle handlers (only for enabled buttons)
     const dropdownBtns = card.querySelectorAll('.service-dropdown-btn:not(.disabled)');
@@ -2957,31 +2997,26 @@ watchFilterOverlay?.addEventListener('click', closeWatchFilterModal);
 const watchSortDropdown = document.getElementById('watch-sort');
 const watchSortDirectionBtn = document.getElementById('watch-sort-direction');
 
-// Handle sort dropdown change (keep using old onchange behavior)
+if (watchSortDirectionBtn && !watchSortDirectionBtn.dataset.direction) {
+  watchSortDirectionBtn.dataset.direction = 'desc';
+}
+
+// Handle sort dropdown change with separate direction control
 watchSortDropdown?.addEventListener('change', () => {
-  const sortValue = watchSortDropdown.value;
-  window.sortWatchList(sortValue);
+  const sortField = watchSortDropdown.value;
+  const direction = watchSortDirectionBtn?.dataset.direction || 'desc';
+  window.sortWatchList(`${sortField}-${direction}`);
 });
 
 // Handle direction button click - toggle between asc/desc
 watchSortDirectionBtn?.addEventListener('click', () => {
-  const currentValue = watchSortDropdown.value;
-  
-  // Parse current value (e.g., "date-desc" -> field="date", direction="desc")
-  const parts = currentValue.split('-');
-  const field = parts[0];
-  const currentDirection = parts[1];
-  
-  // Toggle direction
+  const currentDirection = watchSortDirectionBtn.dataset.direction === 'asc' ? 'asc' : 'desc';
   const newDirection = currentDirection === 'desc' ? 'asc' : 'desc';
-  const newValue = `${field}-${newDirection}`;
-  
-  // Update dropdown and trigger sort
-  watchSortDropdown.value = newValue;
-  window.sortWatchList(newValue);
-  
-  // Update button arrow
+  watchSortDirectionBtn.dataset.direction = newDirection;
   watchSortDirectionBtn.textContent = newDirection === 'desc' ? '↓' : '↑';
+
+  const sortField = watchSortDropdown?.value || 'date';
+  window.sortWatchList(`${sortField}-${newDirection}`);
 });
 
 // =========================================================
