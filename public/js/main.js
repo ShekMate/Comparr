@@ -1983,7 +1983,7 @@ const main = async () => {
     showPlexOnly: false,
     languages: [...DEFAULT_LANGUAGES],
     countries: [],
-    // imdbRating: 0.0, //COMMENTED OUT
+    imdbRating: 0.0,
     tmdbRating: 0.0,
     runtimeRange: { min: 0, max: 300 },
     voteCount: DEFAULT_VOTE_COUNT,
@@ -2414,8 +2414,7 @@ const main = async () => {
     })
   })
   */
-  
-  /* COMMENTED OUT - IMDb Rating Filter
+
   const imdbRatingSlider = document.getElementById('imdb-rating')
   const imdbRatingValue = document.getElementById('imdb-rating-value')
   imdbRatingSlider?.addEventListener('input', (e) => {
@@ -2423,8 +2422,7 @@ const main = async () => {
     filterState.imdbRating = rating
     imdbRatingValue.textContent = rating.toFixed(1)
   })
-  */
-  
+
   const tmdbRatingSlider = document.getElementById('tmdb-rating')
   const tmdbRatingValue = document.getElementById('tmdb-rating-value')
   tmdbRatingSlider?.addEventListener('input', (e) => {
@@ -2528,7 +2526,7 @@ const main = async () => {
     //filterState.streamingServices = []
     filterState.languages = [...DEFAULT_LANGUAGES]
     filterState.countries = []
-    //filterState.imdbRating = 0.0
+    filterState.imdbRating = 0.0
     filterState.tmdbRating = 0.0
     filterState.runtimeRange = { min: 0, max: 300 }
     filterState.voteCount = DEFAULT_VOTE_COUNT
@@ -2721,6 +2719,7 @@ async function ensureMovieBuffer() {
           runtimeMax: filterState.runtimeRange.max || undefined,
           voteCount: filterState.voteCount,
           sortBy: filterState.sortBy,
+          imdbRating: filterState.imdbRating,
           rtRating: filterState.rtRating,
           batchSize: BATCH_SIZE
         })

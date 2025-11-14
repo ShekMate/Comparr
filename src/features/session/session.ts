@@ -94,6 +94,7 @@ type DiscoverFilters = {
   runtimeMax?: number
   voteCount?: number
   sortBy?: string
+  imdbRating?: number
   rtRating?: number
 }
 
@@ -376,6 +377,7 @@ interface WebSocketNextBatchMessage {
     runtimeMax?: number
     voteCount?: number
     sortBy?: string
+    imdbRating?: number
     rtRating?: number
   }
 }
@@ -1128,11 +1130,12 @@ class Session {
     countries?: string[]; 
     directors?: Array<{id: number, name: string}>; 
     actors?: Array<{id: number, name: string}>; 
-    runtimeMin?: number; 
-    runtimeMax?: number; 
-    voteCount?: number; 
-    sortBy?: string; 
-    rtRating?: number 
+    runtimeMin?: number;
+    runtimeMax?: number;
+    voteCount?: number;
+    sortBy?: string;
+    imdbRating?: number;
+    rtRating?: number
   }) {
 	  
   const showMyPlexOnly = filters?.showPlexOnly ?? false;
@@ -1387,6 +1390,13 @@ class Session {
         const ratingStr = parts.length > 0 ? parts.join(' <span class="rating-separator">&bull;</span> ') : (plexMovie.rating ?? '');
 
         const summaryStr = (extra?.plot && String(extra.plot)) || (plexMovie.summary && String(plexMovie.summary)) || '';
+
+        if (filters?.imdbRating && filters.imdbRating > 0) {
+          if (!extra?.rating_imdb || extra.rating_imdb < filters.imdbRating) {
+            log.debug(`⛔️ Skipping ${plexMovie.title} - IMDb rating ${extra?.rating_imdb || 'N/A'} below minimum ${filters.imdbRating}`);
+            continue;
+          }
+        }
 
         if (filters?.rtRating && filters.rtRating > 0) {
           if (!extra?.rating_rt || extra.rating_rt < filters.rtRating) {
@@ -1691,6 +1701,7 @@ class Session {
     runtimeMax?: number;
     voteCount?: number;
     sortBy?: string;
+    imdbRating?: number;
     rtRating?: number;
   }): Promise<any> {
 

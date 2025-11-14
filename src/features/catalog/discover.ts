@@ -53,29 +53,12 @@ const STREAMING_PROVIDER_MAP: Record<string, number> = {
   'apple-tv-plus': 350
 };
 
-// Map UI sort options to valid TMDb sort parameters
-// TMDb doesn't support sorting by IMDb rating directly, so we map it to vote_average
-function mapSortOption(sortBy?: string): string {
-  if (!sortBy) return 'popularity.desc';
-
-  // Map IMDb rating to TMDb's vote_average (closest equivalent)
-  if (sortBy === 'imdb_rating.desc') return 'vote_average.desc';
-  if (sortBy === 'imdb_rating.asc') return 'vote_average.asc';
-
-  // Map Rotten Tomatoes rating to vote_average (no direct RT support in TMDb)
-  if (sortBy === 'rt_rating.desc') return 'vote_average.desc';
-  if (sortBy === 'rt_rating.asc') return 'vote_average.asc';
-
-  // Return the original value if it's already a valid TMDb sort option
-  return sortBy;
-}
-
 export async function discoverMovies(filters: DiscoverFilters): Promise<TMDbDiscoverResult> {
   if (!TMDB) return { results: [] };
 
   const params = new URLSearchParams({
     api_key: TMDB,
-    sort_by: mapSortOption(filters.sortBy),
+    sort_by: filters.sortBy || 'popularity.desc',
     include_adult: 'false',
     page: String(filters.page || 1),
     watch_region: DEFAULT_DISCOVER_REGION,  // Required for streaming providers
