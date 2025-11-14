@@ -76,7 +76,7 @@ const filterDisplayNames = {
 };
 
 const DEFAULT_YEAR_MIN = 2000;
-const DEFAULT_VOTE_COUNT = 250;
+const DEFAULT_VOTE_COUNT = 25;
 const DEFAULT_LANGUAGES = ['en'];
 
 // Update dropdown button text based on selected items
