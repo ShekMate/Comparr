@@ -55,7 +55,7 @@ const STREAMING_PROVIDER_MAP: Record<string, number> = {
 
 export async function discoverMovies(filters: DiscoverFilters): Promise<TMDbDiscoverResult> {
   if (!TMDB) return { results: [] };
-  
+
   const params = new URLSearchParams({
     api_key: TMDB,
     sort_by: filters.sortBy || 'popularity.desc',
