@@ -72,6 +72,10 @@ export default class CardView {
     const finalArt = normalizeArt(art);
 
     node.innerHTML = `
+      <button type="button" class="undo-btn" aria-label="Undo last rating" onclick="this.closest('.card')._handleUndo(event)">
+        <i class="fas fa-undo"></i>
+      </button>
+
       <div class="poster-wrapper">
         <img
           class="poster"
@@ -133,10 +137,21 @@ export default class CardView {
     
     downBtn?.addEventListener('touchend', handleRate(false), { passive: false })
     downBtn?.addEventListener('click', handleRate(false))
-    
+
     seenBtn?.addEventListener('touchend', handleRate(null), { passive: false })
     seenBtn?.addEventListener('click', handleRate(null))
-    
+
+    // Add undo button handler
+    const undoBtn = node.querySelector('.undo-btn')
+    const handleUndo = (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      node.dispatchEvent(new Event('undo'))
+    }
+
+    undoBtn?.addEventListener('touchend', handleUndo, { passive: false })
+    undoBtn?.addEventListener('click', handleUndo)
+
     // Add handlers for plot expansion
     const plotEl = node.querySelector('.card-plot')
     const handlePlotToggle = (e) => {

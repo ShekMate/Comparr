@@ -2626,6 +2626,84 @@ const main = async () => {
     }
   })
 
+  // Track last rating for undo functionality
+  let lastRating = null
+
+  // Undo event handler
+  cardStackEventTarget.addEventListener('undo', async () => {
+    if (!lastRating) {
+      console.log('⚠️ No previous rating to undo')
+      return
+    }
+
+    console.log('↩️ Undo: Restoring previous card:', lastRating.movie.title)
+
+    const { guid, wantsToWatch, movie } = lastRating
+
+    // Remove from rated sets
+    const normalizedGuid = normalizeGuid(guid)
+    if (normalizedGuid) {
+      ratedGuids.delete(normalizedGuid)
+    } else {
+      ratedGuids.delete(guid)
+    }
+
+    const normalizedTmdbId = getNormalizedTmdbId(movie)
+    if (normalizedTmdbId) {
+      ratedTmdbIds.delete(normalizedTmdbId)
+    }
+
+    // Remove from the appropriate list (likes, dislikes, or seen)
+    const lists = {
+      likesList: document.querySelector('#tab-likes .cards'),
+      dislikesList: document.querySelector('#tab-dislikes .cards'),
+      seenList: document.querySelector('#tab-seen .cards')
+    }
+
+    const listToRemoveFrom = wantsToWatch === true ? lists.likesList :
+                            wantsToWatch === false ? lists.dislikesList :
+                            lists.seenList
+
+    if (listToRemoveFrom) {
+      const cardId = `movie-${guid.replace(/[^a-zA-Z0-9]/g, '-')}`
+      const cardToRemove = listToRemoveFrom.querySelector(`[data-guid="${guid}"]`) ||
+                          listToRemoveFrom.querySelector(`#${cardId}`)
+      if (cardToRemove) {
+        cardToRemove.remove()
+        console.log('✅ Removed card from list')
+      }
+    }
+
+    // Remove all current cards from the stack
+    const cardStack = document.querySelector('.js-card-stack')
+    if (cardStack) {
+      cardStack.innerHTML = ''
+    }
+
+    // Re-create the undone card at the top of the stack
+    new CardView(movie, cardStackEventTarget)
+    const guidKey = normalizedGuid || guid
+    if (guidKey) movieByGuid.set(guidKey, movie)
+
+    // Re-add the next cards from buffer
+    for (let i = 0; i < Math.min(CARD_STACK_SIZE - 1, movieBuffer.length); i++) {
+      const nextMovie = movieBuffer[i]
+      if (nextMovie) {
+        new CardView(nextMovie, cardStackEventTarget)
+        const nextGuidKey = normalizeGuid(nextMovie.guid) || nextMovie.guid
+        if (nextGuidKey) movieByGuid.set(nextGuidKey, nextMovie)
+      }
+    }
+
+    // Clear last rating so we can't undo twice
+    lastRating = null
+
+    // Update top card reference
+    setTimeout(() => {
+      topCardEl = document.querySelector('.js-card-stack > :first-child')
+    }, 100)
+  })
+
   let movieBuffer = []
   let pendingGuids = new Set()
   let pendingTmdbIds = new Set()
@@ -2906,7 +2984,7 @@ async function ensureMovieBuffer() {
       const { guid, wantsToWatch } = await new Promise(resolve => {
         cardStackEventTarget.addEventListener('response', e => resolve(e.data), { once: true })
       })
-    
+
       // IMPORTANT: Add this movie to the rated set so we don't show it again
       const normalizedGuid = normalizeGuid(guid)
       if (normalizedGuid) {
@@ -2917,6 +2995,11 @@ async function ensureMovieBuffer() {
       }
 
       const m = movieByGuid.get(normalizedGuid) || movieByGuid.get(guid)
+
+      // Save last rating for undo functionality
+      if (m) {
+        lastRating = { guid, wantsToWatch, movie: m }
+      }
       if (m) {
         // Also add the TMDb ID to prevent showing the same movie with a different GUID
         const normalized = getNormalizedTmdbId(m)

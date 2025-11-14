@@ -359,6 +359,52 @@ body:not(.is-logged-in) .card-stack:empty::after {
   transform: scale(1.02);
 }
 
+/* Undo Button */
+.undo-btn {
+  all: unset;
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  color: white;
+  font-size: 1.25rem;
+  font-weight: bold;
+  opacity: 0.5;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Hide undo button on cards that aren't the top card */
+.card:not(:first-child) .undo-btn {
+  display: none;
+}
+
+.undo-btn:hover {
+  opacity: 0.8;
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(1.1);
+}
+
+.undo-btn:active {
+  opacity: 1;
+  transform: scale(0.95);
+}
+
+.undo-btn i {
+  font-weight: bold;
+}
+
 /* Rating Controls (Thumbs) - Enhanced */
 .rate-controls {
   display: flex;
