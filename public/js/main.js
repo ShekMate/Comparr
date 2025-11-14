@@ -2634,9 +2634,8 @@ const main = async () => {
   const BUFFER_MIN_SIZE = 8
   const BATCH_SIZE = 20
 
-  // Swipe history for undo functionality
-  let swipeHistory = []
-  const MAX_HISTORY_SIZE = 10
+  // Swipe history for undo functionality (only track last swipe)
+  let lastSwipe = null
 
   window.ensureMovieBufferPromise = ensureMovieBufferPromise
   window.isLoadingBatch = isLoadingBatch
@@ -2852,8 +2851,8 @@ async function ensureMovieBuffer() {
     const cardStack = document.querySelector('.js-card-stack')
     if (cardStack) cardStack.innerHTML = ''
 
-    // Clear swipe history when filters change
-    swipeHistory = []
+    // Clear undo history when filters change
+    lastSwipe = null
 
     window.__resetMovies = true
     await ensureMovieBuffer()
@@ -2893,15 +2892,13 @@ async function ensureMovieBuffer() {
     }
   }
 
-  // Undo event listener
+  // Undo event listener (only allows undoing the most recent swipe)
   cardStackEventTarget.addEventListener('undo', () => {
-    if (swipeHistory.length === 0) {
-      console.log('⚠️ No swipes to undo')
+    if (!lastSwipe) {
+      console.log('⚠️ No swipe to undo')
       return
     }
 
-    // Get the last swipe from history
-    const lastSwipe = swipeHistory.pop()
     console.log('↩️ Undoing swipe for:', lastSwipe.movie.title)
 
     // Remove from rated sets
@@ -2920,27 +2917,8 @@ async function ensureMovieBuffer() {
     // Remove the last rated row from UI
     removeLastRatedRow(lastSwipe.wantsToWatch)
 
-    // Get the current top card and save its movie data
+    // Create a new card for the previous movie at the top of the stack
     const cardStack = document.querySelector('.js-card-stack')
-    const currentTopCard = cardStack?.querySelector('.card:first-child')
-    let currentTopCardGuid = null
-    let currentTopCardMovie = null
-
-    if (currentTopCard) {
-      currentTopCardGuid = currentTopCard.dataset.guid
-      currentTopCardMovie = movieByGuid.get(normalizeGuid(currentTopCardGuid) || currentTopCardGuid)
-      currentTopCard.remove()
-    }
-
-    // Put the current top card's movie back in the buffer (so user doesn't lose it)
-    if (currentTopCardMovie) {
-      movieBuffer.unshift(currentTopCardMovie)
-    }
-
-    // Put the undone movie back at the front of the buffer
-    movieBuffer.unshift(lastSwipe.movie)
-
-    // Create a new card for the previous movie (it will be appended to the end by CardView)
     const newCard = new CardView(lastSwipe.movie, cardStackEventTarget)
 
     // Move the newly created card to the top of the stack
@@ -2950,6 +2928,9 @@ async function ensureMovieBuffer() {
 
     // Update topCardEl reference
     topCardEl = cardStack?.querySelector('.card:first-child')
+
+    // Clear lastSwipe so user can't undo again until they swipe again
+    lastSwipe = null
 
     console.log('✅ Undo complete - card restored')
   })
@@ -3009,18 +2990,12 @@ async function ensureMovieBuffer() {
           pendingTmdbIds.delete(normalized)
         }
 
-        // Track swipe in history (only if not an undo action)
-        if (!isUndo) {
-          swipeHistory.push({
-            movie: m,
-            guid: normalizedGuid || guid,
-            wantsToWatch,
-            timestamp: Date.now()
-          })
-          // Keep history size manageable
-          if (swipeHistory.length > MAX_HISTORY_SIZE) {
-            swipeHistory.shift()
-          }
+        // Track last swipe for undo functionality
+        lastSwipe = {
+          movie: m,
+          guid: normalizedGuid || guid,
+          wantsToWatch,
+          timestamp: Date.now()
         }
 
         appendRatedRow({ basePath, likesList, dislikesList, seenList }, m, wantsToWatch)
