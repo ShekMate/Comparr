@@ -1,5 +1,9 @@
 // src/features/catalog/enrich.ts
-// Adds plot + ratings to a Plex movie using OMDb first, then TMDb as fallback.
+// Enriches Plex movies with ratings, plot, and metadata.
+// Priority: 1) Local IMDb database, 2) OMDB API, 3) TMDb API
+// The local IMDb database is sourced from daily IMDb dataset dumps.
+
+import { getIMDbRating } from "./imdb-datasets.ts";
 
 const OMDB = Deno.env.get("OMDB_API_KEY");
 const TMDB = Deno.env.get("TMDB_API_KEY");
@@ -166,14 +170,28 @@ export async function enrich({
   let streamingLink: string | null = null;
   let voteCount: number | null = null;
 
-  // 1) OMDb (prefer provided IMDb ID, then plex guid IMDb id, else title+year)
+  // 1) Try local IMDb database first for ratings (if we have an IMDb ID)
+  if (imdbId) {
+    const localRating = getIMDbRating(imdbId);
+    if (localRating !== null) {
+      rating_imdb = localRating;
+    }
+  }
+
+  // 2) OMDb (prefer provided IMDb ID, then plex guid IMDb id, else title+year)
+  // Always query OMDB to get plot, RT ratings, and fallback IMDb rating
   let om = imdbId ? await omdbById(imdbId) : null;
   if (!om) om = await omdbByTitle(title, year ?? undefined);
 
    if (om) {
     plot = om.Plot || null;
     imdbId = om.imdbID || imdbId || null;
-    rating_imdb = om.imdbRating && om.imdbRating !== "N/A" ? Number(om.imdbRating) : null;
+
+    // Only use OMDB rating if we don't have one from local database
+    if (rating_imdb === null) {
+      rating_imdb = om.imdbRating && om.imdbRating !== "N/A" ? Number(om.imdbRating) : null;
+    }
+
     const rtRow = (om.Ratings || []).find((r: any) => r.Source === "Rotten Tomatoes");
     rating_rt = rtRow ? parseInt(String(rtRow.Value).replace("%", ""), 10) : null;
     contentRating = om.Rated && om.Rated !== "N/A" ? om.Rated : null;

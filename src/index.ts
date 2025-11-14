@@ -10,6 +10,7 @@ import { WebSocketServer } from './infra/ws/websocketServer.ts'
 import { initializeRadarrCache, isMovieInRadarr, refreshRadarrCache } from './api/radarr.ts'
 import { requestMovie, isRequestServiceConfigured, getMediaStatus } from './api/jellyseerr.ts'
 import { serveCachedPoster } from './services/cache/poster-cache.ts';
+import { initIMDbDatabase, startBackgroundUpdateJob } from './features/catalog/imdb-datasets.ts';
 
 // ---- DIAGNOSTIC HELPERS (add once near top) --------------------------------
 function newReqId() {
@@ -194,9 +195,13 @@ if (Deno.build.os !== 'windows') {
 log.info(`Listening on port ${PORT}`)
 
 // Initialize Radarr cache in background
-initializeRadarrCache().catch(err => 
+initializeRadarrCache().catch(err =>
   log.error(`Failed to initialize Radarr cache: ${err}`)
 )
+
+// Initialize IMDb ratings database and start background update job
+initIMDbDatabase()
+startBackgroundUpdateJob()
 
 // Initialize Plex availability cache
 import { initPlexCache, isMovieInPlex, waitForPlexCacheReady } from './integrations/plex/cache.ts'
