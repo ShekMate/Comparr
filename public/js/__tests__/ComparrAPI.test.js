@@ -55,6 +55,9 @@ describe('ComparrAPI', () => {
     it('should send login message and resolve on success', async () => {
       const loginPromise = api.login('Alice', 'ROOM123', 'password')
 
+      // Wait for async operations to complete before simulating response
+      await new Promise(resolve => setTimeout(resolve, 0))
+
       // Simulate server response
       mockWebSocket.simulateMessage({
         type: 'loginResponse',
@@ -74,6 +77,9 @@ describe('ComparrAPI', () => {
     it('should reject on login failure', async () => {
       const loginPromise = api.login('Alice', 'ROOM123', 'wrong-password')
 
+      // Wait for async operations to complete before simulating response
+      await new Promise(resolve => setTimeout(resolve, 0))
+
       // Simulate server response
       mockWebSocket.simulateMessage({
         type: 'loginResponse',
@@ -88,6 +94,9 @@ describe('ComparrAPI', () => {
 
     it('should send correct login payload', async () => {
       api.login('Bob', 'ROOM456', 'secret')
+
+      // Wait for message to be sent
+      await new Promise(resolve => setTimeout(resolve, 0))
 
       // Check sent message
       const sentMessage = JSON.parse(mockWebSocket.sentMessages[0])
@@ -199,6 +208,9 @@ describe('ComparrAPI', () => {
     it('should send nextBatch message and return batch data', async () => {
       const batchPromise = api.requestNextBatch()
 
+      // Wait for async operations to complete before simulating response
+      await new Promise(resolve => setTimeout(resolve, 0))
+
       // Simulate server response
       const movies = [{ guid: 'movie3', title: 'The Matrix' }]
       mockWebSocket.simulateMessage({
@@ -212,6 +224,9 @@ describe('ComparrAPI', () => {
 
     it('should send correct message type', async () => {
       api.requestNextBatch()
+
+      // Wait for message to be sent
+      await new Promise(resolve => setTimeout(resolve, 0))
 
       const sentMessage = JSON.parse(mockWebSocket.sentMessages[0])
       expect(sentMessage.type).toBe('nextBatch')
@@ -234,6 +249,9 @@ describe('ComparrAPI', () => {
       }
 
       api.requestNextBatchWithFilters(filters)
+
+      // Wait for message to be sent
+      await new Promise(resolve => setTimeout(resolve, 0))
 
       const sentMessage = JSON.parse(mockWebSocket.sentMessages[0])
       expect(sentMessage.type).toBe('nextBatch')
@@ -260,6 +278,9 @@ describe('ComparrAPI', () => {
       }
 
       const batchPromise = api.requestNextBatchWithFilters(filters)
+
+      // Wait for async operations to complete before simulating response
+      await new Promise(resolve => setTimeout(resolve, 0))
 
       const movies = [{ guid: 'movie4', title: 'Inception', year: 2010 }]
       mockWebSocket.simulateMessage({
