@@ -1,0 +1,121 @@
+name: Tests & Coverage
+
+on:
+  push:
+    branches: ["main", "claude/**"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Backend Tests (Deno)
+        run: npm run test:backend
+
+      - name: Run Frontend Tests (Vitest)
+        run: npm run test:frontend
+
+      - name: Generate Backend Coverage
+        run: npm run coverage:backend
+
+      - name: Generate Frontend Coverage
+        run: npm run coverage:frontend
+
+      - name: Upload Backend Coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage/backend-lcov.info
+          flags: backend
+          name: backend-coverage
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload Frontend Coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage/lcov.info
+          flags: frontend
+          name: frontend-coverage
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Comment Test Results on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            // Read coverage summary if available
+            let coverageComment = '## Test Results\n\n✅ All tests passed!\n\n';
+
+            if (fs.existsSync('./coverage/coverage-summary.json')) {
+              const summary = JSON.parse(fs.readFileSync('./coverage/coverage-summary.json'));
+              const total = summary.total;
+
+              coverageComment += '### Coverage Summary\n\n';
+              coverageComment += `| Metric | Coverage |\n`;
+              coverageComment += `|--------|----------|\n`;
+              coverageComment += `| Lines | ${total.lines.pct}% |\n`;
+              coverageComment += `| Statements | ${total.statements.pct}% |\n`;
+              coverageComment += `| Functions | ${total.functions.pct}% |\n`;
+              coverageComment += `| Branches | ${total.branches.pct}% |\n`;
+            }
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: coverageComment
+            });
+
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linters
+        run: npm run lint
