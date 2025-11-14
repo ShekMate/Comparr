@@ -2634,6 +2634,10 @@ const main = async () => {
   const BUFFER_MIN_SIZE = 8
   const BATCH_SIZE = 20
 
+  // Swipe history for undo functionality
+  let swipeHistory = []
+  const MAX_HISTORY_SIZE = 10
+
   window.ensureMovieBufferPromise = ensureMovieBufferPromise
   window.isLoadingBatch = isLoadingBatch
 
@@ -2844,10 +2848,13 @@ async function ensureMovieBuffer() {
   // NEW triggerNewBatch
   async function triggerNewBatch() {
     console.log('🔧 triggerNewBatch called with filters:', filterState)
-  
+
     const cardStack = document.querySelector('.js-card-stack')
     if (cardStack) cardStack.innerHTML = ''
-  
+
+    // Clear swipe history when filters change
+    swipeHistory = []
+
     window.__resetMovies = true
     await ensureMovieBuffer()
   
@@ -2870,16 +2877,93 @@ async function ensureMovieBuffer() {
     ensureMovieBuffer()
   }
 
+  // Helper function to remove last rated row from UI
+  function removeLastRatedRow(wantsToWatch) {
+    let targetList
+    if (wantsToWatch === true) {
+      targetList = likesList
+    } else if (wantsToWatch === false) {
+      targetList = dislikesList
+    } else {
+      targetList = seenList
+    }
+
+    if (targetList && targetList.lastElementChild) {
+      targetList.lastElementChild.remove()
+    }
+  }
+
+  // Undo event listener
+  cardStackEventTarget.addEventListener('undo', () => {
+    if (swipeHistory.length === 0) {
+      console.log('⚠️ No swipes to undo')
+      return
+    }
+
+    // Get the last swipe from history
+    const lastSwipe = swipeHistory.pop()
+    console.log('↩️ Undoing swipe for:', lastSwipe.movie.title)
+
+    // Remove from rated sets
+    const normalizedGuid = normalizeGuid(lastSwipe.guid)
+    if (normalizedGuid) {
+      ratedGuids.delete(normalizedGuid)
+    } else {
+      ratedGuids.delete(lastSwipe.guid)
+    }
+
+    const normalizedTmdbId = getNormalizedTmdbId(lastSwipe.movie)
+    if (normalizedTmdbId) {
+      ratedTmdbIds.delete(normalizedTmdbId)
+    }
+
+    // Remove the last rated row from UI
+    removeLastRatedRow(lastSwipe.wantsToWatch)
+
+    // Get the current top card and save its movie data
+    const cardStack = document.querySelector('.js-card-stack')
+    const currentTopCard = cardStack?.querySelector('.card:first-child')
+    let currentTopCardGuid = null
+    let currentTopCardMovie = null
+
+    if (currentTopCard) {
+      currentTopCardGuid = currentTopCard.dataset.guid
+      currentTopCardMovie = movieByGuid.get(normalizeGuid(currentTopCardGuid) || currentTopCardGuid)
+      currentTopCard.remove()
+    }
+
+    // Put the current top card's movie back in the buffer (so user doesn't lose it)
+    if (currentTopCardMovie) {
+      movieBuffer.unshift(currentTopCardMovie)
+    }
+
+    // Put the undone movie back at the front of the buffer
+    movieBuffer.unshift(lastSwipe.movie)
+
+    // Create a new card for the previous movie (it will be appended to the end by CardView)
+    const newCard = new CardView(lastSwipe.movie, cardStackEventTarget)
+
+    // Move the newly created card to the top of the stack
+    if (cardStack && newCard.node) {
+      cardStack.insertBefore(newCard.node, cardStack.firstChild)
+    }
+
+    // Update topCardEl reference
+    topCardEl = cardStack?.querySelector('.card:first-child')
+
+    console.log('✅ Undo complete - card restored')
+  })
+
   // NEW loadMoviesWithFilters
   async function loadMoviesWithFilters() {
     window.__resetMovies = false
 
     try {
       await ensureMovieBuffer()
-    
+
       const cardStack = document.querySelector('.js-card-stack')
       if (cardStack) cardStack.innerHTML = ''
-    
+
       for (let i = 0; i < CARD_STACK_SIZE && movieBuffer.length > 0; i++) {
         const movie = getNextMovie()
         if (movie) {
@@ -2895,18 +2979,18 @@ async function ensureMovieBuffer() {
           }
         }
       }
-    
+
       await ensureMovieBuffer()
-    
+
     } catch (error) {
       console.error('❌Error in initial movie loading:', error)
     }
 
     while (true) {
-      const { guid, wantsToWatch } = await new Promise(resolve => {
+      const { guid, wantsToWatch, isUndo } = await new Promise(resolve => {
         cardStackEventTarget.addEventListener('response', e => resolve(e.data), { once: true })
       })
-    
+
       // IMPORTANT: Add this movie to the rated set so we don't show it again
       const normalizedGuid = normalizeGuid(guid)
       if (normalizedGuid) {
@@ -2924,6 +3008,21 @@ async function ensureMovieBuffer() {
           ratedTmdbIds.add(normalized)
           pendingTmdbIds.delete(normalized)
         }
+
+        // Track swipe in history (only if not an undo action)
+        if (!isUndo) {
+          swipeHistory.push({
+            movie: m,
+            guid: normalizedGuid || guid,
+            wantsToWatch,
+            timestamp: Date.now()
+          })
+          // Keep history size manageable
+          if (swipeHistory.length > MAX_HISTORY_SIZE) {
+            swipeHistory.shift()
+          }
+        }
+
         appendRatedRow({ basePath, likesList, dislikesList, seenList }, m, wantsToWatch)
       } else {
         // Best effort cleanup when we don't have the movie handy (should be rare)

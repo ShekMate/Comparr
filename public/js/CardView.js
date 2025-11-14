@@ -73,6 +73,9 @@ export default class CardView {
 
     node.innerHTML = `
       <div class="poster-wrapper">
+        <button type="button" class="undo-button" aria-label="Undo" title="Undo last rating">
+          <i class="fas fa-undo"></i>
+        </button>
         <img
           class="poster"
           src="${finalArt.startsWith('http') ? finalArt : `${this.basePath || ''}${finalArt}`}"
@@ -118,7 +121,8 @@ export default class CardView {
     const upBtn   = node.querySelector('.rate-thumbs-up')
     const downBtn = node.querySelector('.rate-thumbs-down')
     const seenBtn = node.querySelector('.rate-seen')
-    
+    const undoBtn = node.querySelector('.undo-button')
+
     const handleRate = (value) => {
       return (e) => {
         e.preventDefault()
@@ -126,16 +130,25 @@ export default class CardView {
         node.dispatchEvent(new MessageEvent('rate', { data: value }))
       }
     }
-    
+
+    const handleUndo = (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      this.eventTarget.dispatchEvent(new Event('undo'))
+    }
+
     // Use touchend for mobile, click for desktop
     upBtn?.addEventListener('touchend', handleRate(true), { passive: false })
     upBtn?.addEventListener('click', handleRate(true))
-    
+
     downBtn?.addEventListener('touchend', handleRate(false), { passive: false })
     downBtn?.addEventListener('click', handleRate(false))
-    
+
     seenBtn?.addEventListener('touchend', handleRate(null), { passive: false })
     seenBtn?.addEventListener('click', handleRate(null))
+
+    undoBtn?.addEventListener('touchend', handleUndo, { passive: false })
+    undoBtn?.addEventListener('click', handleUndo)
     
     // Add handlers for plot expansion
     const plotEl = node.querySelector('.card-plot')
