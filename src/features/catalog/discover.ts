@@ -70,6 +70,13 @@ export async function discoverMovies(filters: DiscoverFilters): Promise<TMDbDisc
   if (filters.yearMax) params.set('primary_release_date.lte', `${filters.yearMax}-12-31`);
   if (filters.genres?.length) params.set('with_genres', filters.genres.join('|'));
   if (filters.tmdbRating) params.set('vote_average.gte', filters.tmdbRating.toString());
+
+  // CRITICAL FIX: Pass vote count to TMDb API to avoid fetching low-vote movies
+  if (filters.voteCount && filters.voteCount > 0) {
+    params.set('vote_count.gte', filters.voteCount.toString());
+    log.debug(`🎯 Filtering by vote count >= ${filters.voteCount} at API level`);
+  }
+
   if (Array.isArray(filters.languages) && filters.languages.length) {
     params.set('with_original_language', filters.languages.join('|'));
   } else if (filters.languages === undefined) {
