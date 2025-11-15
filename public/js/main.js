@@ -2639,6 +2639,14 @@ const main = async () => {
   
   let topCardEl = null
   const cardStackEventTarget = new EventTarget()
+
+  // Set a random loading message on each page load
+  const cardStackEl = document.querySelector('.js-card-stack')
+  if (cardStackEl) {
+    const randomMessage = getRandomLoadingMessage()
+    cardStackEl.style.setProperty('--empty-text', `"${randomMessage}"`)
+  }
+
   cardStackEventTarget.addEventListener('newTopCard', () => {
     topCardEl = topCardEl?.nextSibling || null
     if (!topCardEl) {

@@ -618,7 +618,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .card-stack:empty::before {
   content: "⟳";
-  font-size: 1.5rem;
+  font-size: 3rem;
   color: var(--color-text-muted);
   position: absolute;
   top: 50%;
@@ -641,10 +641,10 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 @keyframes spin {
   from {
-    transform: translate(-50%, -50%) translateX(-50px) rotate(0deg);
+    rotate: 0deg;
   }
   to {
-    transform: translate(-50%, -50%) translateX(-50px) rotate(360deg);
+    rotate: 360deg;
   }
 }
 
