@@ -618,7 +618,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   color: var(--color-text-muted);
   position: absolute;
   top: 50%;
-  left: 50%;
+  left: calc(50% - 2.5rem);
   animation: spin 1s linear infinite;
 }
 
@@ -636,10 +636,10 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 @keyframes spin {
   from {
-    transform: translate(calc(-100% - 0.5rem), -50%) rotate(0deg);
+    transform: translateY(-50%) rotate(0deg);
   }
   to {
-    transform: translate(calc(-100% - 0.5rem), -50%) rotate(360deg);
+    transform: translateY(-50%) rotate(360deg);
   }
 }
 
