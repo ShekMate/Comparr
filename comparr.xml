@@ -19,7 +19,7 @@
   <!-- Once the repo is public, this raw URL will serve the icon -->
   <Icon>https://raw.githubusercontent.com/ShekMate/Comparr/main/public/assets/icons/favicon-512x512.png</Icon>
 
-  <TemplateURL>https://raw.githubusercontent.com/ShekMate/Comparr/main/unraid-template.xml</TemplateURL>
+  <TemplateURL>https://raw.githubusercontent.com/ShekMate/Comparr/main/comparr.xml</TemplateURL>
   <ExtraParams>--restart unless-stopped</ExtraParams>
   <PostArgs></PostArgs>
   <CPUset></CPUset>
