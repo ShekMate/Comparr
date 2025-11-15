@@ -617,8 +617,9 @@ body:not(.is-logged-in) .card-stack:empty::after {
   font-size: 3rem;
   color: var(--color-text-muted);
   position: absolute;
-  top: 50%;
-  left: calc(50% - 2.5rem);
+  top: calc(50% - 3rem);
+  left: 50%;
+  transform: translateX(-50%) rotate(0deg);
   animation: spin 1s linear infinite;
 }
 
@@ -627,19 +628,20 @@ body:not(.is-logged-in) .card-stack:empty::after {
   font-weight: 600;
   color: var(--color-text-muted);
   position: absolute;
-  top: 50%;
+  top: calc(50% + 1rem);
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
   white-space: nowrap;
   font-size: 1.1rem;
+  text-align: center;
 }
 
 @keyframes spin {
   from {
-    transform: translateY(-50%) rotate(0deg);
+    transform: translateX(-50%) rotate(0deg);
   }
   to {
-    transform: translateY(-50%) rotate(360deg);
+    transform: translateX(-50%) rotate(360deg);
   }
 }
 
@@ -657,8 +659,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
     font-size: 0.95rem;
     left: 50%;
     top: calc(50% + 1.5rem);
-    max-width: 80vw;
-    padding: 0 1rem;
+    max-width: 90vw;
+    padding: 0 0.5rem;
     text-align: center;
     white-space: normal;
   }
