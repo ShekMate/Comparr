@@ -44,6 +44,11 @@ function genreIdsToNames(genreIds: (number | string)[]): string[] {
 
 // Helper function to ensure a movie has Comparr score calculated and rating HTML updated
 function ensureComparrScore(movie: any): void {
+  // Safety check - ensure movie exists
+  if (!movie) {
+    return;
+  }
+
   // Skip if movie doesn't have any ratings
   if (!movie.rating_imdb && !movie.rating_rt && !movie.rating_tmdb) {
     return;
@@ -76,7 +81,9 @@ function ensureComparrScore(movie: any): void {
       parts.push(`<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> ${movie.rating_tmdb}`);
     }
 
-    movie.rating = parts.length > 0 ? parts.join(' <span class="rating-separator">&bull;</span> ') : movie.rating;
+    if (parts.length > 0) {
+      movie.rating = parts.join(' <span class="rating-separator">&bull;</span> ');
+    }
   }
 }
 

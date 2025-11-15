@@ -454,5 +454,5 @@ export async function enrich({
     rating_comparr = Math.round((sum / ratings.length) * 10) / 10; // Round to 1 decimal place
   }
 
-  return { plot, imdbId, rating_imdb, rating_rt, rating_tmdb, rating_comparr, genres, streamingServices, contentRating, tmdbPosterPath: hit?.poster_path || null, cast, writers, director, runtime, streamingLink, voteCount };
+  return { plot, imdbId, rating_imdb, rating_rt, rating_tmdb, rating_comparr, genres, streamingServices, contentRating, tmdbPosterPath: hit?.poster_path || null, cast, writers, director, runtime, streamingLink, voteCount, tmdbId: hit?.id || null };
 }
