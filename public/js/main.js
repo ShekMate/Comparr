@@ -2635,6 +2635,9 @@ const main = async () => {
   const BUFFER_MIN_SIZE = 8
   const BATCH_SIZE = 20
 
+  // Track if initial load has completed (to prevent showing filter notification on startup)
+  let isInitialLoadComplete = false
+
   // Swipe history for undo functionality (only track last swipe)
   let lastSwipe = null
 
@@ -2802,7 +2805,9 @@ async function ensureMovieBuffer() {
         const cardStack = document.querySelector('.js-card-stack')
         const hasVisibleMovies = cardStack && cardStack.children.length > 0
 
-        if (!hasVisibleMovies) {
+        // Only show "no movies with filters" notification if initial load has completed
+        // This prevents the confusing message on app startup before user has set any filters
+        if (!hasVisibleMovies && isInitialLoadComplete) {
           if (cardStack) {
             cardStack.style.setProperty(
               '--empty-text',
@@ -2967,6 +2972,9 @@ async function ensureMovieBuffer() {
     } catch (error) {
       console.error('❌Error in initial movie loading:', error)
     }
+
+    // Mark initial load as complete - now safe to show "no movies with filters" notifications
+    isInitialLoadComplete = true
 
     while (true) {
       const { guid, wantsToWatch, isUndo } = await new Promise(resolve => {
