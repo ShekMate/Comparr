@@ -51,6 +51,26 @@ function formatRuntime(minutes) {
 }
 // ===== END OF HELPER FUNCTIONS =====
 
+// ===== FUNNY LOADING MESSAGES =====
+const funnyLoadingMessages = [
+  "Reticulating popcorn kernels...",
+  "Checking if it's better than the book...",
+  "Convincing directors to release the director's cut...",
+  "Asking Michael Bay to add more explosions...",
+  "Waiting for post-credits scene...",
+  "Rewinding VHS tapes...",
+  "Adjusting the tracking on the VCR...",
+  "Pretending to understand avant-garde cinema...",
+  "Counting plot holes..."
+];
+
+// Get a random loading message
+function getRandomLoadingMessage() {
+  const randomIndex = Math.floor(Math.random() * funnyLoadingMessages.length);
+  return funnyLoadingMessages[randomIndex];
+}
+// ===== END OF FUNNY LOADING MESSAGES =====
+
 // ===== DROPDOWN BUTTON TEXT UPDATE FUNCTIONS =====
 // Helper function to get display names for various filter types
 const filterDisplayNames = {
@@ -2708,6 +2728,13 @@ async function ensureMovieBuffer() {
 
   isLoadingBatch = true
   window.isLoadingBatch = isLoadingBatch
+
+  // Set a random funny loading message
+  const cardStack = document.querySelector('.js-card-stack')
+  if (cardStack) {
+    const randomMessage = getRandomLoadingMessage()
+    cardStack.style.setProperty('--empty-text', `"${randomMessage}"`)
+  }
 
   //FIX: Create and store the promise immediately
   ensureMovieBufferPromise = (async () => {
