@@ -52,7 +52,7 @@
 
 📊 **Rich Metadata** - Displays ratings from IMDb, Rotten Tomatoes, TMDb, and OMDb
 
-🌍 **Multi-Language Support** - Available in English, Spanish, French, German, Italian, Japanese, Korean, Dutch, Portuguese, Russian, and Chinese
+🌍 **Multi-Language UI** - Core interface translated into 11 languages (English, Spanish, French, German, Italian, Japanese, Korean, Dutch, Portuguese, Russian, Chinese)
 
 🔐 **Access Control** - Optional password protection for your instance
 
