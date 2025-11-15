@@ -643,6 +643,22 @@ body:not(.is-logged-in) .card-stack:empty::after {
   }
 }
 
+/* Mobile optimization for loading spinner and messages */
+@media (max-width: 600px) {
+  .card-stack:empty::before {
+    font-size: 2rem;
+    left: calc(50% - 1.75rem);
+  }
+
+  .card-stack:empty::after {
+    font-size: 0.9rem;
+    max-width: calc(100vw - 5rem);
+    padding: 0 0.5rem;
+    text-align: center;
+    white-space: normal;
+  }
+}
+
 .card-stack > .card {
   transition: transform 150ms ease-in;
   touch-action: pan-y;
