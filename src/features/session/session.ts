@@ -42,6 +42,44 @@ function genreIdsToNames(genreIds: (number | string)[]): string[] {
   });
 }
 
+// Helper function to ensure a movie has Comparr score calculated and rating HTML updated
+function ensureComparrScore(movie: any): void {
+  // Skip if movie doesn't have any ratings
+  if (!movie.rating_imdb && !movie.rating_rt && !movie.rating_tmdb) {
+    return;
+  }
+
+  // Calculate Comparr score if missing (requires at least 2 ratings)
+  const ratings = [];
+  if (movie.rating_imdb !== null && movie.rating_imdb !== undefined) ratings.push(movie.rating_imdb);
+  if (movie.rating_tmdb !== null && movie.rating_tmdb !== undefined) ratings.push(movie.rating_tmdb);
+  if (movie.rating_rt !== null && movie.rating_rt !== undefined) ratings.push(movie.rating_rt / 10);
+
+  if (ratings.length >= 2 && (movie.rating_comparr === null || movie.rating_comparr === undefined)) {
+    const sum = ratings.reduce((acc, val) => acc + val, 0);
+    movie.rating_comparr = Math.round((sum / ratings.length) * 10) / 10;
+  }
+
+  // Rebuild rating HTML string if we have a Comparr score
+  if (movie.rating_comparr !== null && movie.rating_comparr !== undefined) {
+    const basePath = Deno.env.get('ROOT_PATH') || '';
+    const parts: string[] = [];
+
+    parts.push(`<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> ${movie.rating_comparr}`);
+    if (movie.rating_imdb != null) {
+      parts.push(`<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> ${movie.rating_imdb}`);
+    }
+    if (movie.rating_rt != null) {
+      parts.push(`<img src="${basePath}/assets/logos/rottentomatoes.svg" alt="RT" class="rating-logo"> ${movie.rating_rt}%`);
+    }
+    if (movie.rating_tmdb != null) {
+      parts.push(`<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> ${movie.rating_tmdb}`);
+    }
+
+    movie.rating = parts.length > 0 ? parts.join(' <span class="rating-separator">&bull;</span> ') : movie.rating;
+  }
+}
+
 // -------------------------
 // Types
 // -------------------------
@@ -1378,6 +1416,9 @@ class Session {
         const parts: string[] = [];
         const basePath = Deno.env.get('ROOT_PATH') || '';
 
+        if (extra?.rating_comparr != null) {
+          parts.push(`<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> ${extra.rating_comparr}`);
+        }
         if (extra?.rating_imdb != null) {
           parts.push(`<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> ${extra.rating_imdb}`);
         }
@@ -1872,6 +1913,9 @@ class Session {
   }
   
   handleMatch(movie: MediaItem, users: User[]) {
+    // Ensure movie has Comparr score calculated (backfill for existing movies)
+    ensureComparrScore(movie)
+
     for (const ws of this.users.values()) {
       const match: WebSocketMatchMessage = {
         type: 'match',
@@ -1890,7 +1934,11 @@ class Session {
     // now uses rebuilt likedMovies; returns any movie liked by user + at least one other
     return [...this.likedMovies.entries()]
       .filter(([, users]) => users.includes(user) && users.length > 1)
-      .map(([movie, users]) => ({ movie, users: users.map(_ => _.name) }))
+      .map(([movie, users]) => {
+        // Ensure movie has Comparr score calculated (backfill for existing movies)
+        ensureComparrScore(movie)
+        return { movie, users: users.map(_ => _.name) }
+      })
   }
 
   destroy() {
@@ -2111,6 +2159,9 @@ export const handleLogin = (ws: WebSocket): Promise<User> => {
             if (tmdbId != null) {
               tmdbIdsInItems.add(tmdbId)
             }
+
+            // Ensure movie has Comparr score calculated (backfill for existing movies)
+            ensureComparrScore(movie)
 
             ratedItems.push({
               guid: effectiveGuid,

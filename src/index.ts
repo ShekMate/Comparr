@@ -594,6 +594,7 @@ for await (const req of server) {
 		// Format rating string with logos (matching session.ts format)
 		const basePath = Deno.env.get('ROOT_PATH') || '';
 		const ratingParts: string[] = [];
+		if (enriched.rating_comparr) ratingParts.push(`<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> ${enriched.rating_comparr}`);
 		if (enriched.rating_imdb) ratingParts.push(`<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> ${enriched.rating_imdb}`);
 		if (enriched.rating_rt)   ratingParts.push(`<img src="${basePath}/assets/logos/rottentomatoes.svg" alt="RT" class="rating-logo"> ${enriched.rating_rt}%`);
 		if (enriched.rating_tmdb) ratingParts.push(`<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> ${enriched.rating_tmdb}`);
@@ -616,6 +617,7 @@ for await (const req of server) {
 			rating_imdb: enriched.rating_imdb,
 			rating_rt: enriched.rating_rt,
 			rating_tmdb: enriched.rating_tmdb,
+			rating_comparr: enriched.rating_comparr,
 			rating,
 			streamingServices: enriched.streamingServices,
 			streamingLink: enriched.streamingLink,
@@ -649,6 +651,7 @@ for await (const req of server) {
 			rating_imdb: enriched.rating_imdb,
 			rating_rt: enriched.rating_rt,
 			rating_tmdb: enriched.rating_tmdb,
+			rating_comparr: enriched.rating_comparr,
 			rating,
 			inPlex,
 			streamingServices: enriched.streamingServices,
