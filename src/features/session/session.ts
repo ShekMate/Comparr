@@ -1370,6 +1370,15 @@ class Session {
 
       log.debug(`Movie attempt ${attemptNumber} - Got: ${plexMovie.title}`);
 
+      // Extract IMDB ID from Plex Guid array if available (for Plex-only filter)
+      if (!plexMovie.imdbId) {
+        const extractedImdbId = extractImdbIdFromMovie(plexMovie);
+        if (extractedImdbId) {
+          plexMovie.imdbId = extractedImdbId;
+          log.debug(`📋 Extracted IMDB ID ${extractedImdbId} for ${plexMovie.title}`);
+        }
+      }
+
       try {
         if (seenGuids.has(plexMovie.guid)) {
           log.debug(`⭐️  Skipping ${plexMovie.title} - already in this room's history`);
