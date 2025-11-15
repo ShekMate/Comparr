@@ -1,0 +1,204 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>Comparr</Name>
+  <Repository>ghcr.io/shekmate/comparr:latest</Repository>
+  <Registry>https://ghcr.io/</Registry>
+  <Network>bridge</Network>
+  <MyIP></MyIP>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+
+  <Support>https://github.com/ShekMate/Comparr</Support>
+  <Project>https://github.com/ShekMate/Comparr</Project>
+
+  <Overview>Swipe to like/dislike and match on movies. Deno-based. Requires Plex and OMDb/TMDb API keys.</Overview>
+  <Category>MediaApp:Tools</Category>
+
+  <WebUI>http://[IP]:[PORT:8000]/</WebUI>
+
+  <!-- Once the repo is public, this raw URL will serve the icon -->
+  <Icon>https://raw.githubusercontent.com/ShekMate/Comparr/main/public/assets/icons/favicon-512x512.png</Icon>
+
+  <TemplateURL>https://raw.githubusercontent.com/ShekMate/Comparr/main/comparr.xml</TemplateURL>
+  <ExtraParams>--restart unless-stopped</ExtraParams>
+  <PostArgs></PostArgs>
+  <CPUset></CPUset>
+
+  <!-- PORTS -->
+  <Config Name="Web Port"
+          Target="8000"
+          Default="8000"
+          Mode="tcp"
+          Description="Web UI port for Comparr"
+          Type="Port"
+          Display="always"
+          Required="true"
+          Mask="false">8000</Config>
+
+  <!-- PATHS -->
+  <Config Name="AppData"
+          Target="/data"
+          Default="/mnt/user/appdata/Comparr-data"
+          Mode="rw"
+          Description="Persistent data directory (session-state.json, etc.)"
+          Type="Path"
+          Display="always"
+          Required="true"
+          Mask="false">/mnt/user/appdata/Comparr-data</Config>
+
+  <!-- CORE REQUIRED VARS -->
+  <Config Name="PLEX_URL"
+          Target="PLEX_URL"
+          Default=""
+          Mode=""
+          Description="Your Plex base URL (e.g. http://192.168.1.83:32400)"
+          Type="Variable"
+          Display="always"
+          Required="true"
+          Mask="false"></Config>
+
+  <Config Name="PLEX_TOKEN"
+          Target="PLEX_TOKEN"
+          Default=""
+          Mode=""
+          Description="Your Plex token"
+          Type="Variable"
+          Display="always"
+          Required="true"
+          Mask="true"></Config>
+
+  <Config Name="OMDB_API_KEY"
+          Target="OMDB_API_KEY"
+          Default=""
+          Mode=""
+          Description="OMDb API key (user-supplied)"
+          Type="Variable"
+          Display="always"
+          Required="true"
+          Mask="true"></Config>
+
+  <Config Name="TMDB_API_KEY"
+          Target="TMDB_API_KEY"
+          Default=""
+          Mode=""
+          Description="TMDb API key (user-supplied)"
+          Type="Variable"
+          Display="always"
+          Required="true"
+          Mask="true"></Config>
+
+  <!-- OPTIONAL INTEGRATIONS -->
+  <Config Name="PLEX_LIBRARY_NAME"
+          Target="PLEX_LIBRARY_NAME"
+          Default=""
+          Mode=""
+          Description="Name to display for your Plex library in streaming services (e.g. AllVids)"
+          Type="Variable"
+          Display="always"
+          Required="false"
+          Mask="false"></Config>
+
+  <Config Name="RADARR_URL"
+          Target="RADARR_URL"
+          Default=""
+          Mode=""
+          Description="(Optional) Radarr URL. Example: http://192.168.1.83:7878"
+          Type="Variable"
+          Display="always"
+          Required="false"
+          Mask="false"></Config>
+
+  <Config Name="RADARR_API_KEY"
+          Target="RADARR_API_KEY"
+          Default=""
+          Mode=""
+          Description="(Optional) Radarr API key"
+          Type="Variable"
+          Display="always"
+          Required="false"
+          Mask="true"></Config>
+
+  <Config Name="JELLYSEERR_URL"
+          Target="JELLYSEERR_URL"
+          Default=""
+          Mode=""
+          Description="(Optional) Jellyseerr URL for movie requests. Example: http://192.168.1.83:5055"
+          Type="Variable"
+          Display="always"
+          Required="false"
+          Mask="false"></Config>
+
+  <Config Name="JELLYSEERR_API_KEY"
+          Target="JELLYSEERR_API_KEY"
+          Default=""
+          Mode=""
+          Description="(Optional) Jellyseerr API key (Settings &gt; General in Jellyseerr)"
+          Type="Variable"
+          Display="always"
+          Required="false"
+          Mask="true"></Config>
+
+  <Config Name="OVERSEERR_URL"
+          Target="OVERSEERR_URL"
+          Default=""
+          Mode=""
+          Description="(Optional) Overseerr URL for movie requests"
+          Type="Variable"
+          Display="always"
+          Required="false"
+          Mask="false"></Config>
+
+  <Config Name="OVERSEERR_API_KEY"
+          Target="OVERSEERR_API_KEY"
+          Default=""
+          Mode=""
+          Description="(Optional) Overseerr API key (Settings &gt; General in Overseerr)"
+          Type="Variable"
+          Display="always"
+          Required="false"
+          Mask="true"></Config>
+
+  <!-- APP ACCESS CONTROL -->
+  <Config Name="ACCESS_PASSWORD"
+          Target="ACCESS_PASSWORD"
+          Default=""
+          Mode=""
+          Description="(Optional) Password required to access Comparr UI"
+          Type="Variable"
+          Display="always"
+          Required="false"
+          Mask="true"></Config>
+
+  <!-- INTERNAL / ADVANCED -->
+  <Config Name="DATA_DIR"
+          Target="DATA_DIR"
+          Default="/data"
+          Mode=""
+          Description="Data dir inside the container (don't change)"
+          Type="Variable"
+          Display="advanced"
+          Required="true"
+          Mask="false">/data</Config>
+
+  <Config Name="PUID"
+          Target="PUID"
+          Default="99"
+          Mode=""
+          Description="Container user ID (maps file ownership). 99 is typical for Unraid."
+          Type="Variable"
+          Display="advanced"
+          Required="false"
+          Mask="false">99</Config>
+
+  <Config Name="PGID"
+          Target="PGID"
+          Default="100"
+          Mode=""
+          Description="Container group ID (maps file ownership). 100 is typical for Unraid."
+          Type="Variable"
+          Display="advanced"
+          Required="false"
+          Mask="false">100</Config>
+
+  <TailscaleStateDir></TailscaleStateDir>
+</Container>
