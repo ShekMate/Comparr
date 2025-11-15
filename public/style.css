@@ -646,16 +646,30 @@ body:not(.is-logged-in) .card-stack:empty::after {
 /* Mobile optimization for loading spinner and messages */
 @media (max-width: 600px) {
   .card-stack:empty::before {
-    font-size: 2rem;
-    left: calc(50% - 1.75rem);
+    font-size: 2.5rem;
+    left: 50%;
+    top: calc(50% - 2rem);
+    transform: translateX(-50%) rotate(0deg);
+    animation: spin-mobile 1s linear infinite;
   }
 
   .card-stack:empty::after {
-    font-size: 0.9rem;
-    max-width: calc(100vw - 5rem);
-    padding: 0 0.5rem;
+    font-size: 0.95rem;
+    left: 50%;
+    top: calc(50% + 1.5rem);
+    max-width: 80vw;
+    padding: 0 1rem;
     text-align: center;
     white-space: normal;
+  }
+
+  @keyframes spin-mobile {
+    from {
+      transform: translateX(-50%) rotate(0deg);
+    }
+    to {
+      transform: translateX(-50%) rotate(360deg);
+    }
   }
 }
 
