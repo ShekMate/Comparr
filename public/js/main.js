@@ -912,10 +912,11 @@ async function appendRatedRow({ basePath, likesList, dislikesList, seenList }, m
             // If we have ratings, update them. If not but rating exists in response, use it
             if (data.rating) {
               ratingEl.innerHTML = data.rating;
-            } else if (data.rating_imdb || data.rating_rt || data.rating_tmdb) {
+            } else if (data.rating_imdb || data.rating_rt || data.rating_tmdb || data.rating_comparr) {
               // Build rating HTML from individual ratings if rating string not provided
               const basePath = document.body.dataset.basePath || '';
               const ratingParts = [];
+              if (data.rating_comparr) ratingParts.push(`<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> ${data.rating_comparr}`);
               if (data.rating_imdb) ratingParts.push(`<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> ${data.rating_imdb}`);
               if (data.rating_rt) ratingParts.push(`<img src="${basePath}/assets/logos/rottentomatoes.svg" alt="RT" class="rating-logo"> ${data.rating_rt}%`);
               if (data.rating_tmdb) ratingParts.push(`<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> ${data.rating_tmdb}`);

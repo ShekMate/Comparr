@@ -1378,6 +1378,9 @@ class Session {
         const parts: string[] = [];
         const basePath = Deno.env.get('ROOT_PATH') || '';
 
+        if (extra?.rating_comparr != null) {
+          parts.push(`<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> ${extra.rating_comparr}`);
+        }
         if (extra?.rating_imdb != null) {
           parts.push(`<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> ${extra.rating_imdb}`);
         }

@@ -160,6 +160,7 @@ export async function enrich({
   let rating_imdb: number | null = null;
   let rating_rt: number | null = null;
   let rating_tmdb: number | null = null;
+  let rating_comparr: number | null = null;
   let genres: string[] = [];
   let streamingServices: { subscription: any[], free: any[] } = { subscription: [], free: [] };
   let contentRating: string | null = null;
@@ -304,8 +305,19 @@ export async function enrich({
     } catch (err) {
       console.log(`[enrich] Failed to check Plex status: ${err?.message || err}`);
     }
-  
-    return { plot, imdbId, rating_imdb, rating_rt, rating_tmdb, genres, streamingServices, contentRating, tmdbPosterPath: hit?.poster_path || null, cast, writers, director, runtime, streamingLink, voteCount, tmdbId: hit?.id || null };
+
+    // Calculate Comparr score (average of available ratings, requires at least 2)
+    const ratings = [];
+    if (rating_imdb !== null) ratings.push(rating_imdb);
+    if (rating_tmdb !== null) ratings.push(rating_tmdb);
+    if (rating_rt !== null) ratings.push(rating_rt / 10); // Convert percentage to decimal
+
+    if (ratings.length >= 2) {
+      const sum = ratings.reduce((acc, val) => acc + val, 0);
+      rating_comparr = Math.round((sum / ratings.length) * 10) / 10; // Round to 1 decimal place
+    }
+
+    return { plot, imdbId, rating_imdb, rating_rt, rating_tmdb, rating_comparr, genres, streamingServices, contentRating, tmdbPosterPath: hit?.poster_path || null, cast, writers, director, runtime, streamingLink, voteCount, tmdbId: hit?.id || null };
   }
 
   // 2) TMDb fallback (overview & vote_average); bounce back to OMDb if we get an IMDb id
@@ -431,5 +443,16 @@ export async function enrich({
     console.log(`[enrich] Failed to check Plex status: ${err?.message || err}`);
   }
 
-  return { plot, imdbId, rating_imdb, rating_rt, rating_tmdb, genres, streamingServices, contentRating, tmdbPosterPath: hit?.poster_path || null, cast, writers, director, runtime, streamingLink, voteCount };
+  // Calculate Comparr score (average of available ratings, requires at least 2)
+  const ratings = [];
+  if (rating_imdb !== null) ratings.push(rating_imdb);
+  if (rating_tmdb !== null) ratings.push(rating_tmdb);
+  if (rating_rt !== null) ratings.push(rating_rt / 10); // Convert percentage to decimal
+
+  if (ratings.length >= 2) {
+    const sum = ratings.reduce((acc, val) => acc + val, 0);
+    rating_comparr = Math.round((sum / ratings.length) * 10) / 10; // Round to 1 decimal place
+  }
+
+  return { plot, imdbId, rating_imdb, rating_rt, rating_tmdb, rating_comparr, genres, streamingServices, contentRating, tmdbPosterPath: hit?.poster_path || null, cast, writers, director, runtime, streamingLink, voteCount };
 }
