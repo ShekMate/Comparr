@@ -52,6 +52,10 @@
 
 📊 **Rich Metadata** - Displays ratings from IMDb, Rotten Tomatoes, TMDb, and OMDb
 
+📝 **Personal Lists** - Track your Watch, Pass, and Seen lists with the ability to move movies between them
+
+↩️ **Undo Support** - Made a mistake? Undo your last rating with one click
+
 🌍 **Multi-Language UI** - Core interface translated into 11 languages (English, Spanish, French, German, Italian, Japanese, Korean, Dutch, Portuguese, Russian, Chinese)
 
 🔐 **Access Control** - Optional password protection for your instance
@@ -291,15 +295,26 @@ Comparr stores session data and ratings in `/data` inside the container. To pres
 ### Joining a Session
 
 1. Open the session link shared by a friend
-2. Start swiping on movies:
-   - **Swipe Right** or **👍** = Yes
-   - **Swipe Left** or **👎** = No
+2. Start rating movies with three options:
+   - **👍 Watch** - Want to watch this
+   - **👎 Pass** - Not interested
+   - **👁️ Seen** - Already watched this
+3. **Undo** - Made a mistake? Click the undo button in the top-left
 
 ### Viewing Matches
 
 1. Click **"View Matches"** in the session
 2. See all movies that everyone voted yes on
 3. Click a movie to open it in Plex or request it via Radarr/Jellyseerr/Overseerr
+
+### Managing Your Lists
+
+1. Access the dropdown menu to view:
+   - **Watch List** - Movies you want to watch
+   - **Pass List** - Movies you're not interested in
+   - **Seen List** - Movies you've already watched
+2. Move movies between lists using the action buttons on each card
+3. Your lists persist across sessions
 
 ---
 
