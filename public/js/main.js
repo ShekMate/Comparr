@@ -77,7 +77,7 @@ const filterDisplayNames = {
 
 const DEFAULT_YEAR_MIN = 2000;
 const DEFAULT_VOTE_COUNT = 25;
-const DEFAULT_LANGUAGES = ['en'];
+const DEFAULT_LANGUAGES = []; // Start with no language filter to show all movies
 
 // Update dropdown button text based on selected items
 function updateDropdownButtonText(buttonId, selectedItems, placeholderText, mapFunction = null) {
