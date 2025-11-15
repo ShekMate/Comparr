@@ -142,12 +142,8 @@ body.is-logged-in .login-section {
   display: none !important;
 }
 
-.is-logged-in .card-stack:empty::after { 
-  content: var(--i18n-loading); 
-}
-
-body:not(.is-logged-in) .card-stack:empty::after { 
-  content: ''; 
+body:not(.is-logged-in) .card-stack:empty::after {
+  content: '';
 }
 
 /* =========================================================
@@ -622,8 +618,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
   color: var(--color-text-muted);
   position: absolute;
   top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) translateX(-50px);
+  left: calc(50% - 50px);
+  transform: translate(-50%, -50%);
   animation: spin 1s linear infinite;
 }
 
@@ -633,18 +629,18 @@ body:not(.is-logged-in) .card-stack:empty::after {
   color: var(--color-text-muted);
   position: absolute;
   top: 50%;
-  left: 50%;
-  transform: translate(-50%,-50%) translateX(20px);
+  left: calc(50% + 20px);
+  transform: translate(-50%, -50%);
   white-space: nowrap;
   font-size: 1.1rem;
 }
 
 @keyframes spin {
   from {
-    rotate: 0deg;
+    transform: translate(-50%, -50%) rotate(0deg);
   }
   to {
-    rotate: 360deg;
+    transform: translate(-50%, -50%) rotate(360deg);
   }
 }
 
