@@ -44,46 +44,54 @@ function genreIdsToNames(genreIds: (number | string)[]): string[] {
 
 // Helper function to ensure a movie has Comparr score calculated and rating HTML updated
 function ensureComparrScore(movie: any): void {
-  // Safety check - ensure movie exists
-  if (!movie) {
-    return;
-  }
-
-  // Skip if movie doesn't have any ratings
-  if (!movie.rating_imdb && !movie.rating_rt && !movie.rating_tmdb) {
-    return;
-  }
-
-  // Calculate Comparr score if missing (requires at least 2 ratings)
-  const ratings = [];
-  if (movie.rating_imdb !== null && movie.rating_imdb !== undefined) ratings.push(movie.rating_imdb);
-  if (movie.rating_tmdb !== null && movie.rating_tmdb !== undefined) ratings.push(movie.rating_tmdb);
-  if (movie.rating_rt !== null && movie.rating_rt !== undefined) ratings.push(movie.rating_rt / 10);
-
-  if (ratings.length >= 2 && (movie.rating_comparr === null || movie.rating_comparr === undefined)) {
-    const sum = ratings.reduce((acc, val) => acc + val, 0);
-    movie.rating_comparr = Math.round((sum / ratings.length) * 10) / 10;
-  }
-
-  // Rebuild rating HTML string if we have a Comparr score
-  if (movie.rating_comparr !== null && movie.rating_comparr !== undefined) {
-    const basePath = Deno.env.get('ROOT_PATH') || '';
-    const parts: string[] = [];
-
-    parts.push(`<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> ${movie.rating_comparr}`);
-    if (movie.rating_imdb != null) {
-      parts.push(`<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> ${movie.rating_imdb}`);
-    }
-    if (movie.rating_rt != null) {
-      parts.push(`<img src="${basePath}/assets/logos/rottentomatoes.svg" alt="RT" class="rating-logo"> ${movie.rating_rt}%`);
-    }
-    if (movie.rating_tmdb != null) {
-      parts.push(`<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> ${movie.rating_tmdb}`);
+  try {
+    // Safety check - ensure movie exists
+    if (!movie) {
+      return;
     }
 
-    if (parts.length > 0) {
-      movie.rating = parts.join(' <span class="rating-separator">&bull;</span> ');
+    // Skip if movie doesn't have any ratings (null/undefined)
+    const hasImdb = typeof movie.rating_imdb === 'number';
+    const hasRt = typeof movie.rating_rt === 'number';
+    const hasTmdb = typeof movie.rating_tmdb === 'number';
+
+    if (!hasImdb && !hasRt && !hasTmdb) {
+      return;
     }
+
+    // Calculate Comparr score if missing (requires at least 2 ratings)
+    const ratings = [];
+    if (hasImdb) ratings.push(movie.rating_imdb);
+    if (hasTmdb) ratings.push(movie.rating_tmdb);
+    if (hasRt) ratings.push(movie.rating_rt / 10);
+
+    if (ratings.length >= 2 && (movie.rating_comparr === null || movie.rating_comparr === undefined)) {
+      const sum = ratings.reduce((acc, val) => acc + val, 0);
+      movie.rating_comparr = Math.round((sum / ratings.length) * 10) / 10;
+    }
+
+    // Rebuild rating HTML string if we have a Comparr score
+    if (movie.rating_comparr !== null && movie.rating_comparr !== undefined) {
+      const basePath = Deno.env.get('ROOT_PATH') || '';
+      const parts: string[] = [];
+
+      parts.push(`<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> ${movie.rating_comparr}`);
+      if (movie.rating_imdb != null) {
+        parts.push(`<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> ${movie.rating_imdb}`);
+      }
+      if (movie.rating_rt != null) {
+        parts.push(`<img src="${basePath}/assets/logos/rottentomatoes.svg" alt="RT" class="rating-logo"> ${movie.rating_rt}%`);
+      }
+      if (movie.rating_tmdb != null) {
+        parts.push(`<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> ${movie.rating_tmdb}`);
+      }
+
+      if (parts.length > 0) {
+        movie.rating = parts.join(' <span class="rating-separator">&bull;</span> ');
+      }
+    }
+  } catch (err) {
+    log.error(`ensureComparrScore failed for movie: ${err?.message || err}`);
   }
 }
 
