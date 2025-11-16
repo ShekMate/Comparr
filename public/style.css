@@ -5213,12 +5213,14 @@ footer {
 
   /* Desktop - Full gradient background everywhere */
   html {
-    background: var(--gradient-surface) !important;
+    background-color: #1e293b !important;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
     min-height: 100vh;
   }
 
   body {
-    background: var(--gradient-surface) !important;
+    background-color: #1e293b !important;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
     min-height: 100vh;
   }
 
@@ -5239,16 +5241,16 @@ footer {
     pointer-events: none;
   }
 
-  .app:not([hidden]) {
+  body:not(.is-logged-in) .app:not([hidden]) {
     background: transparent !important;
   }
 
-  .login-section:not([hidden]) {
+  body:not(.is-logged-in) .login-section:not([hidden]) {
     background: transparent !important;
     min-height: 100vh;
   }
 
-  .password-form {
+  body:not(.is-logged-in) .password-form {
     background: transparent !important;
     border: none !important;
     border-radius: 0 !important;
