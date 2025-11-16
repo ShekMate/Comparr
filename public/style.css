@@ -5212,13 +5212,30 @@ footer {
 @media (min-width: 601px) {
 
   /* Desktop Password Screen - Full gradient background */
-  body:not(.is-logged-in) {
+  html {
     background: var(--gradient-surface) !important;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background: var(--gradient-surface) !important;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+  }
+
+  .app:not([hidden]) {
+    background: var(--gradient-surface);
+    margin: 0;
+    padding: 0;
   }
 
   .login-section:not([hidden]) {
     background: var(--gradient-surface);
     min-height: 100vh;
+    margin: 0;
+    padding: var(--s2);
   }
 
   .password-form {
