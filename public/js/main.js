@@ -509,7 +509,7 @@ async function login(api) {
       } catch (err) {
         // Show password form again on login failure
         loginForm.style.display = 'none'
-        passwordForm.style.display = 'block'
+        passwordForm.style.display = 'flex'
         passwordForm.elements.accessPassword.value = ''
         alert(err.message)
       }
