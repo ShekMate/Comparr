@@ -8,6 +8,8 @@
   [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
   [![Docker](https://img.shields.io/badge/docker-ready-brightgreen.svg)](https://www.docker.com/)
   [![Deno](https://img.shields.io/badge/deno-1.38.5-blue.svg)](https://deno.land/)
+  [![Privacy](https://img.shields.io/badge/privacy-local%20only-success.svg)](SECURITY.md)
+  [![No Telemetry](https://img.shields.io/badge/telemetry-none-success.svg)](SECURITY.md)
 
   Help you and your friends decide what to watch from your Plex library with an intuitive swipe-based interface.
 
@@ -19,6 +21,7 @@
 
 ## Table of Contents
 
+- [Security & Privacy](#security--privacy)
 - [Features](#features)
 - [Screenshots](#screenshots)
 - [Quick Start](#quick-start)
@@ -39,6 +42,23 @@
 - [Contributing](#contributing)
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
+
+---
+
+## Security & Privacy
+
+**Your API keys and data stay on your server. We have no access to your credentials.**
+
+Comparr runs entirely locally in a Docker container on your own hardware. There is no telemetry, analytics, or data collection of any kind. All API keys and tokens are stored only in your local environment and never leave your network.
+
+For complete details on how we protect your privacy and how you can verify it yourself, see **[SECURITY.md](SECURITY.md)**.
+
+Key points:
+- ✅ All code is open source and auditable
+- ✅ No telemetry or tracking
+- ✅ Your API keys never leave your server
+- ✅ You can verify network traffic yourself
+- ✅ Data stored only in your local mounted volume
 
 ---
 
