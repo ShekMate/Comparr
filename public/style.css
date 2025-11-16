@@ -5210,22 +5210,24 @@ footer {
    ============================================================================================================ */
 
 @media (min-width: 601px) {
-  
-  /* Start adding desktop styles here */
-  /* Recommended: Copy structure from mobile section above and adjust widths, spacing, layouts */
-  
-  /* Example starter:
-  
-  body {
-    background: var(--color-background);
-    color: var(--color-text-primary);
+
+  /* Desktop Password Screen - Full gradient background */
+  body:not(.is-logged-in) {
+    background: var(--gradient-surface) !important;
   }
-  
-  .app:not([hidden]) {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 2rem;
+
+  .login-section:not([hidden]) {
+    background: var(--gradient-surface);
+    min-height: 100vh;
   }
-  
-  */
+
+  .password-form {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    max-width: 32rem;
+  }
+
 }
