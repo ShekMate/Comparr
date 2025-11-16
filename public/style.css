@@ -123,7 +123,7 @@ body::before {
   left: 0;
   width: 100%;
   height: 100%;
-  background: 
+  background:
     radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.15) 0%, transparent 50%),
     radial-gradient(circle at 80% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
     radial-gradient(circle at 40% 40%, rgba(6, 182, 212, 0.1) 0%, transparent 50%);
@@ -149,8 +149,8 @@ body:not(.is-logged-in) #tab-likes,
 body:not(.is-logged-in) #tab-dislikes,
 body:not(.is-logged-in) #tab-seen,
 body:not(.is-logged-in) #tab-filters,
-body:not(.is-logged-in) .rate-controls { 
-  display: none !important; 
+body:not(.is-logged-in) .rate-controls {
+  display: none !important;
 }
 
 body.is-logged-in .login-section {
@@ -164,10 +164,10 @@ body:not(.is-logged-in) .card-stack:empty::after {
 /* =========================================================
    3) NAVIGATION TABS - Enhanced
    ========================================================= */
-.tabbar { 
-  display: flex; 
-  gap: .5rem; 
-  justify-content: center; 
+.tabbar {
+  display: flex;
+  gap: .5rem;
+  justify-content: center;
   margin: 1.5rem auto 1rem;
   padding: 0.5rem;
   background: rgba(30, 41, 59, 0.6);
@@ -182,8 +182,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .tabbar button {
-  all: unset; 
-  cursor: pointer; 
+  all: unset;
+  cursor: pointer;
   padding: .75rem 1.5rem;
   border: none;
   background: transparent;
@@ -198,7 +198,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   gap: 0.5rem;
 }
 
-.tabbar button.is-active { 
+.tabbar button.is-active {
   background: var(--gradient-primary);
   color: white;
   box-shadow: var(--shadow-md);
@@ -211,8 +211,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
   transform: translateY(-1px);
 }
 
-.tab-panel[hidden] { 
-  display: none; 
+.tab-panel[hidden] {
+  display: none;
 }
 
 /* Dropdown Menu - Enhanced */
@@ -476,8 +476,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
   color: white;
 }
 
-.rate-controls[disabled] button { 
-  opacity: .5; 
+.rate-controls[disabled] button {
+  opacity: .5;
 }
 
 .card > .rate-controls {
@@ -505,8 +505,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
   border-radius: 0 0 var(--radius-2xl) var(--radius-2xl);
 }
 
-.card-meta > * { 
-  margin: 0 0 .75rem; 
+.card-meta > * {
+  margin: 0 0 .75rem;
 }
 
 .card > .card-meta {
@@ -703,8 +703,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
   transform: none;
 }
 
-.card-stack > .card:nth-of-type(n + 2) .poster { 
-  opacity: 1; 
+.card-stack > .card:nth-of-type(n + 2) .poster {
+  opacity: 1;
 }
 
 .card-stack > .card:nth-of-type(1) { z-index: 4; }
@@ -716,7 +716,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 /* =========================================================
    7) MATCHES SECTION - Enhanced
    ========================================================= */
-.matches-section:not([hidden]) { 
+.matches-section:not([hidden]) {
   text-align: center;
   padding: 2rem;
 }
@@ -728,11 +728,12 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .matches-section hr {
-  width: 80vw; 
+    width: 100%;
+    max-width: 95%;
   border: 1px solid rgba(51, 65, 85, 0.3);
   border-radius: 2px;
-  margin: auto; 
-  position: relative; 
+  margin: auto;
+  position: relative;
   overflow: visible;
   background: var(--gradient-primary);
   height: 2px;
@@ -740,10 +741,10 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .matches-section hr::before {
   content: attr(data-room-code);
-  position: absolute; 
-  bottom: 0; 
-  left: 0; 
-  display: block; 
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  display: block;
   font-size: .8rem;
   background: var(--gradient-primary);
   color: white;
@@ -756,7 +757,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .matches-title {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-weight: 600; 
+  font-weight: 600;
   font-size: 1.5rem;
   color: var(--color-text-primary);
   margin-top: var(--s2);
@@ -783,11 +784,11 @@ body:not(.is-logged-in) .card-stack:empty::after {
   box-shadow: var(--shadow-md);
 }
 
-.matches-title .matches-count::before { 
-  content: attr(data-count); 
+.matches-title .matches-count::before {
+  content: attr(data-count);
 }
 
-.matches-title .matches-count[data-count='0'] { 
+.matches-title .matches-count[data-count='0'] {
   background: var(--color-surface-light);
   color: var(--color-text-muted);
 }
@@ -814,13 +815,13 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 /* Empty state */
 .matches-list:empty::before {
-  position: absolute; 
-  min-width: 80vw; 
-  left: 50%; 
+  position: absolute;
+  min-width: 80vw;
+  left: 50%;
   top: 50%;
-  content: var(--i18n-no-matches); 
+  content: var(--i18n-no-matches);
   transform: translate(-50%,-50%);
-  font-weight: 600; 
+  font-weight: 600;
   color: var(--color-text-muted);
   font-size: 1.1rem;
 }
@@ -829,8 +830,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
    8) LOGIN SECTION - Enhanced
    ========================================================= */
 .login-section:not([hidden]) {
-  display: grid; 
-  justify-items: center; 
+  display: grid;
+  justify-items: center;
   padding: var(--s2) var(--s2) var(--s5) var(--s2);
   min-height: 100vh;
   align-content: center;
@@ -858,9 +859,9 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .login-form label {
   display: block;
   margin: 0 0 .25rem 0;
-  font-size: 1rem; 
-  font-weight: 600; 
-  text-align: left; 
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: left;
   color: var(--color-text-primary);
 }
 
@@ -883,15 +884,15 @@ body:not(.is-logged-in) .card-stack:empty::after {
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
-.login-form input::placeholder { 
+.login-form input::placeholder {
   color: var(--color-text-muted);
 }
 
-.login-form .room-code-container { 
-  display: flex; 
+.login-form .room-code-container {
+  display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
-  width: 100%; 
+  width: 100%;
   gap: 0.5rem;
   align-items: stretch;
 }
@@ -904,8 +905,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .login-form .room-code-container .generate-button {
   flex: 0 0 auto;
-  display: flex; 
-  align-items: center; 
+  display: flex;
+  align-items: center;
   justify-content: center;
   background: var(--gradient-primary);
   color: white;
@@ -926,10 +927,10 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .login-form .room-code-container .generate-button abbr {
-  display: block; 
-  width: 100%; 
-  text-align: center; 
-  text-decoration: none; 
+  display: block;
+  width: 100%;
+  text-align: center;
+  text-decoration: none;
   color: white;
 }
 
@@ -1123,10 +1124,10 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .filter-group > label {
-  display: block; 
+  display: block;
   margin-bottom: 0.625rem;
   font-weight: 600;
-  cursor: default; 
+  cursor: default;
   width: fit-content;
   color: var(--color-text-primary);
   font-size: 0.875rem;
@@ -1306,42 +1307,6 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .toggle-switch input:focus + .toggle-slider {
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
 }
-
-/* COMMENTED OUT - Streaming checkboxes styles (no longer used)
-.streaming-checkboxes,
-.rating-checkboxes {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s2);
-  margin-top: var(--s2);
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.streaming-checkbox,
-.rating-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 0.9rem;
-  cursor: pointer;
-  width: fit-content;
-  color: var(--color-text-secondary);
-  transition: color 0.2s ease;
-}
-
-.streaming-checkbox:hover,
-.rating-checkbox:hover {
-  color: var(--color-text-primary);
-}
-
-.streaming-checkbox input[type="checkbox"],
-.rating-checkbox input[type="checkbox"] {
-  width: 1.1rem;
-  height: 1.1rem;
-  accent-color: var(--color-primary);
-}
-*/
 
 .rating-checkbox {
   display: flex;
@@ -1885,32 +1850,32 @@ body:not(.is-logged-in) .card-stack:empty::after {
   .match-popup {
     max-width: 95%;
   }
-  
+
   .match-popup-content {
     padding: 1.5rem 1rem;
   }
-  
+
   .match-popup-icon {
     width: 60px;
     height: 60px;
   }
-  
+
   .match-popup-icon i {
     font-size: 2rem;
   }
-  
+
   .match-popup-title {
     font-size: 1.5rem;
   }
-  
+
   .match-popup-message {
     font-size: 0.9rem;
   }
-  
+
   .match-popup-actions {
     flex-direction: column;
   }
-  
+
   .match-popup-actions .btn-primary,
   .match-popup-actions .btn-secondary {
     width: 100%;
@@ -2012,25 +1977,25 @@ body:not(.is-logged-in) .card-stack:empty::after {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .watch-list-header h3 {
     text-align: center;
   }
-  
+
   .sort-controls {
     justify-content: center;
   }
-  
+
   .sort-controls select {
     width: 100%;
     font-size: 0.8rem;
   }
-  
+
   /* Hide button text on mobile, show only icon */
   .expand-collapse-btn span {
     display: none;
   }
-  
+
   .expand-collapse-btn {
     padding: 0.5rem;
     min-width: auto;
@@ -2383,28 +2348,28 @@ body:not(.is-logged-in) .card-stack:empty::after {
     gap: 0.75rem;
     padding: 0 1rem;
   }
-  
+
   .match-card-header {
     padding: 0.85rem 1rem;
   }
-  
+
   .match-card-title {
     font-size: 1rem;
   }
-  
+
   .match-card-content {
     padding: 1rem;
   }
-  
+
   .match-card-poster img {
     width: 80px;
     height: 120px;
   }
-  
+
   .match-card-plot {
     font-size: 0.8rem;
   }
-  
+
   .match-card-actions {
     flex-direction: row;
     justify-content: flex-start;
@@ -2414,17 +2379,6 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 /* Empty State */
-.matches-list:empty::before {
-  position: absolute;
-  min-width: 80vw;
-  left: 50%;
-  top: 50%;
-  content: var(--i18n-no-matches);
-  transform: translate(-50%, -50%);
-  font-weight: 600;
-  color: var(--color-text-muted);
-  font-size: 1.1rem;
-}
 
 /* Service Dropdown Buttons */
 .service-dropdown {
@@ -2651,35 +2605,35 @@ body:not(.is-logged-in) .card-stack:empty::after {
   .watch-list-container {
     padding: 0 1rem 1rem;
   }
-  
+
   .watch-list {
     gap: 0.5rem; /* Even tighter on mobile */
   }
-  
+
   .watch-card-collapsed {
     padding: 0.6rem 0.75rem;
   }
-  
+
   .watch-card-title-compact {
     font-size: 0.85rem;
   }
-  
+
   .watch-card-details {
     padding: 0.75rem;
   }
-  
+
   .watch-card-poster img {
     width: 80px;
     height: 120px;
   }
-  
+
   .watch-card-actions {
     flex-direction: row;
     justify-content: flex-start;
     gap: 0.5rem;
     flex-wrap: wrap;
   }
-  
+
   .service-dropdown-btn,
   .add-to-plex-btn,
   .plex-status {
@@ -2689,18 +2643,18 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .minigrid {
-  display: grid; 
-  grid-auto-flow: column; 
-  grid-auto-columns: 8rem; 
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 8rem;
   gap: 1rem;
-  overflow-x: auto; 
-  padding: 0 2rem 2rem; 
+  overflow-x: auto;
+  padding: 0 2rem 2rem;
   scroll-snap-type: x mandatory;
 }
 
-.minicard { 
-  display: flex; 
-  flex-direction: column; 
+.minicard {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   background: var(--gradient-card);
   padding: 1rem;
@@ -2713,31 +2667,31 @@ body:not(.is-logged-in) .card-stack:empty::after {
   transform: translateY(-2px);
 }
 
-.minicard img { 
-  width: 100%; 
+.minicard img {
+  width: 100%;
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
 }
 
-.minicard .title { 
-  font-size: .8rem; 
-  margin-top: .5rem; 
+.minicard .title {
+  font-size: .8rem;
+  margin-top: .5rem;
   color: var(--color-text-secondary);
-  text-align: center; 
+  text-align: center;
 }
 
 /* =========================================================
    11) FOOTER & MISC - Enhanced
    ========================================================= */
 footer {
-  display: flex; 
+  display: flex;
   flex-direction: column;
-  align-items: center; 
+  align-items: center;
   justify-content: center;
   gap: 0.5rem;
   color: var(--color-text-muted);
-  font-size: 0.9rem; 
-  font-weight: 500; 
+  font-size: 0.9rem;
+  font-weight: 500;
   padding: 2rem 0;
   margin-top: auto;
 }
@@ -2768,10 +2722,10 @@ footer {
   vertical-align: middle;
 }
 
-#tab-likes, 
-#tab-dislikes, 
-#tab-seen, 
-#tab-filters { 
+#tab-likes,
+#tab-dislikes,
+#tab-seen,
+#tab-filters {
   padding: 0;
 }
 
@@ -2780,7 +2734,7 @@ footer {
    ========================================================= */
 
 /* Accessibility */
-  
+
   .card-stack:empty::before {
     font-size: 2.5rem;
     left: 50%;
@@ -2822,8 +2776,8 @@ footer {
   transform: none;
 }
 
-.card-stack > .card:nth-of-type(n + 2) .poster { 
-  opacity: 1; 
+.card-stack > .card:nth-of-type(n + 2) .poster {
+  opacity: 1;
 }
 
 .card-stack > .card:nth-of-type(1) { z-index: 4; }
@@ -2835,7 +2789,7 @@ footer {
 /* =========================================================
    7) MATCHES SECTION - Enhanced
    ========================================================= */
-.matches-section:not([hidden]) { 
+.matches-section:not([hidden]) {
   text-align: center;
   padding: 2rem;
 }
@@ -2847,11 +2801,12 @@ footer {
 }
 
 .matches-section hr {
-  width: 80vw; 
+    width: 100%;
+    max-width: 95%;
   border: 1px solid rgba(51, 65, 85, 0.3);
   border-radius: 2px;
-  margin: auto; 
-  position: relative; 
+  margin: auto;
+  position: relative;
   overflow: visible;
   background: var(--gradient-primary);
   height: 2px;
@@ -2859,10 +2814,10 @@ footer {
 
 .matches-section hr::before {
   content: attr(data-room-code);
-  position: absolute; 
-  bottom: 0; 
-  left: 0; 
-  display: block; 
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  display: block;
   font-size: .8rem;
   background: var(--gradient-primary);
   color: white;
@@ -2875,7 +2830,7 @@ footer {
 
 .matches-title {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-weight: 600; 
+  font-weight: 600;
   font-size: 1.5rem;
   color: var(--color-text-primary);
   margin-top: var(--s2);
@@ -2902,11 +2857,11 @@ footer {
   box-shadow: var(--shadow-md);
 }
 
-.matches-title .matches-count::before { 
-  content: attr(data-count); 
+.matches-title .matches-count::before {
+  content: attr(data-count);
 }
 
-.matches-title .matches-count[data-count='0'] { 
+.matches-title .matches-count[data-count='0'] {
   background: var(--color-surface-light);
   color: var(--color-text-muted);
 }
@@ -2932,24 +2887,13 @@ footer {
 }
 
 /* Empty state */
-.matches-list:empty::before {
-  position: absolute; 
-  min-width: 80vw; 
-  left: 50%; 
-  top: 50%;
-  content: var(--i18n-no-matches); 
-  transform: translate(-50%,-50%);
-  font-weight: 600; 
-  color: var(--color-text-muted);
-  font-size: 1.1rem;
-}
 
 /* =========================================================
    8) LOGIN SECTION - Enhanced
    ========================================================= */
 .login-section:not([hidden]) {
-  display: grid; 
-  justify-items: center; 
+  display: grid;
+  justify-items: center;
   padding: var(--s2) var(--s2) var(--s5) var(--s2);
   min-height: 100vh;
   align-content: center;
@@ -2977,9 +2921,9 @@ footer {
 .login-form label {
   display: block;
   margin: 0 0 .25rem 0;
-  font-size: 1rem; 
-  font-weight: 600; 
-  text-align: left; 
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: left;
   color: var(--color-text-primary);
 }
 
@@ -3002,15 +2946,15 @@ footer {
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
-.login-form input::placeholder { 
+.login-form input::placeholder {
   color: var(--color-text-muted);
 }
 
-.login-form .room-code-container { 
-  display: flex; 
+.login-form .room-code-container {
+  display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
-  width: 100%; 
+  width: 100%;
   gap: 0.5rem;
   align-items: stretch;
 }
@@ -3023,8 +2967,8 @@ footer {
 
 .login-form .room-code-container .generate-button {
   flex: 0 0 auto;
-  display: flex; 
-  align-items: center; 
+  display: flex;
+  align-items: center;
   justify-content: center;
   background: var(--gradient-primary);
   color: white;
@@ -3045,10 +2989,10 @@ footer {
 }
 
 .login-form .room-code-container .generate-button abbr {
-  display: block; 
-  width: 100%; 
-  text-align: center; 
-  text-decoration: none; 
+  display: block;
+  width: 100%;
+  text-align: center;
+  text-decoration: none;
   color: white;
 }
 
@@ -3242,10 +3186,10 @@ footer {
 }
 
 .filter-group > label {
-  display: block; 
+  display: block;
   margin-bottom: 0.625rem;
   font-weight: 600;
-  cursor: default; 
+  cursor: default;
   width: fit-content;
   color: var(--color-text-primary);
   font-size: 0.875rem;
@@ -3425,42 +3369,6 @@ footer {
 .toggle-switch input:focus + .toggle-slider {
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
 }
-
-/* COMMENTED OUT - Streaming checkboxes styles (no longer used)
-.streaming-checkboxes,
-.rating-checkboxes {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s2);
-  margin-top: var(--s2);
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.streaming-checkbox,
-.rating-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 0.9rem;
-  cursor: pointer;
-  width: fit-content;
-  color: var(--color-text-secondary);
-  transition: color 0.2s ease;
-}
-
-.streaming-checkbox:hover,
-.rating-checkbox:hover {
-  color: var(--color-text-primary);
-}
-
-.streaming-checkbox input[type="checkbox"],
-.rating-checkbox input[type="checkbox"] {
-  width: 1.1rem;
-  height: 1.1rem;
-  accent-color: var(--color-primary);
-}
-*/
 
 .rating-checkbox {
   display: flex;
@@ -4004,32 +3912,32 @@ footer {
   .match-popup {
     max-width: 95%;
   }
-  
+
   .match-popup-content {
     padding: 1.5rem 1rem;
   }
-  
+
   .match-popup-icon {
     width: 60px;
     height: 60px;
   }
-  
+
   .match-popup-icon i {
     font-size: 2rem;
   }
-  
+
   .match-popup-title {
     font-size: 1.5rem;
   }
-  
+
   .match-popup-message {
     font-size: 0.9rem;
   }
-  
+
   .match-popup-actions {
     flex-direction: column;
   }
-  
+
   .match-popup-actions .btn-primary,
   .match-popup-actions .btn-secondary {
     width: 100%;
@@ -4131,25 +4039,25 @@ footer {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .watch-list-header h3 {
     text-align: center;
   }
-  
+
   .sort-controls {
     justify-content: center;
   }
-  
+
   .sort-controls select {
     width: 100%;
     font-size: 0.8rem;
   }
-  
+
   /* Hide button text on mobile, show only icon */
   .expand-collapse-btn span {
     display: none;
   }
-  
+
   .expand-collapse-btn {
     padding: 0.5rem;
     min-width: auto;
@@ -4502,28 +4410,28 @@ footer {
     gap: 0.75rem;
     padding: 0 1rem;
   }
-  
+
   .match-card-header {
     padding: 0.85rem 1rem;
   }
-  
+
   .match-card-title {
     font-size: 1rem;
   }
-  
+
   .match-card-content {
     padding: 1rem;
   }
-  
+
   .match-card-poster img {
     width: 80px;
     height: 120px;
   }
-  
+
   .match-card-plot {
     font-size: 0.8rem;
   }
-  
+
   .match-card-actions {
     flex-direction: row;
     justify-content: flex-start;
@@ -4533,17 +4441,6 @@ footer {
 }
 
 /* Empty State */
-.matches-list:empty::before {
-  position: absolute;
-  min-width: 80vw;
-  left: 50%;
-  top: 50%;
-  content: var(--i18n-no-matches);
-  transform: translate(-50%, -50%);
-  font-weight: 600;
-  color: var(--color-text-muted);
-  font-size: 1.1rem;
-}
 
 /* Service Dropdown Buttons */
 .service-dropdown {
@@ -4770,35 +4667,35 @@ footer {
   .watch-list-container {
     padding: 0 1rem 1rem;
   }
-  
+
   .watch-list {
     gap: 0.5rem; /* Even tighter on mobile */
   }
-  
+
   .watch-card-collapsed {
     padding: 0.6rem 0.75rem;
   }
-  
+
   .watch-card-title-compact {
     font-size: 0.85rem;
   }
-  
+
   .watch-card-details {
     padding: 0.75rem;
   }
-  
+
   .watch-card-poster img {
     width: 80px;
     height: 120px;
   }
-  
+
   .watch-card-actions {
     flex-direction: row;
     justify-content: flex-start;
     gap: 0.5rem;
     flex-wrap: wrap;
   }
-  
+
   .service-dropdown-btn,
   .add-to-plex-btn,
   .plex-status {
@@ -4808,18 +4705,18 @@ footer {
 }
 
 .minigrid {
-  display: grid; 
-  grid-auto-flow: column; 
-  grid-auto-columns: 8rem; 
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 8rem;
   gap: 1rem;
-  overflow-x: auto; 
-  padding: 0 2rem 2rem; 
+  overflow-x: auto;
+  padding: 0 2rem 2rem;
   scroll-snap-type: x mandatory;
 }
 
-.minicard { 
-  display: flex; 
-  flex-direction: column; 
+.minicard {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   background: var(--gradient-card);
   padding: 1rem;
@@ -4832,31 +4729,31 @@ footer {
   transform: translateY(-2px);
 }
 
-.minicard img { 
-  width: 100%; 
+.minicard img {
+  width: 100%;
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
 }
 
-.minicard .title { 
-  font-size: .8rem; 
-  margin-top: .5rem; 
+.minicard .title {
+  font-size: .8rem;
+  margin-top: .5rem;
   color: var(--color-text-secondary);
-  text-align: center; 
+  text-align: center;
 }
 
 /* =========================================================
    11) FOOTER & MISC - Enhanced
    ========================================================= */
 footer {
-  display: flex; 
+  display: flex;
   flex-direction: column;
-  align-items: center; 
+  align-items: center;
   justify-content: center;
   gap: 0.5rem;
   color: var(--color-text-muted);
-  font-size: 0.9rem; 
-  font-weight: 500; 
+  font-size: 0.9rem;
+  font-weight: 500;
   padding: 2rem 0;
   margin-top: auto;
 }
@@ -4887,10 +4784,10 @@ footer {
   vertical-align: middle;
 }
 
-#tab-likes, 
-#tab-dislikes, 
-#tab-seen, 
-#tab-filters { 
+#tab-likes,
+#tab-dislikes,
+#tab-seen,
+#tab-filters {
   padding: 0;
 }
 
@@ -4910,18 +4807,18 @@ footer {
 
 /* Hover Devices */
 @media (hover: hover) {
-  a.card:hover { 
+  a.card:hover {
     border-color: var(--color-primary);
   }
-  
+
   .rate-controls:not([disabled]) .rate-thumbs-up:hover {
     transform: scale(1.2);
   }
-  
+
   .rate-controls:not([disabled]) .rate-thumbs-down:hover {
     transform: scale(1.2);
   }
-  
+
   .rate-controls:not([disabled]) .rate-seen:hover {
     transform: scale(1.2);
   }
@@ -4932,11 +4829,11 @@ footer {
   .dropdown-item:hover {
     background: transparent;
   }
-  
+
   .minicard:hover {
     transform: none;
   }
-  
+
   .matches-list li:hover {
     transform: none;
   }
@@ -4944,10 +4841,10 @@ footer {
 
 /* Mobile Phones (ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â°Ãƒâ€šÃ‚Â¤ 600px) */
 @media (max-width: 600px) {
-  html, body { 
+  html, body {
     -webkit-text-size-adjust: 100%;
   }
-  
+
   /* Tabbar Mobile */
   .tabbar {
     flex-wrap: wrap;
@@ -4955,17 +4852,17 @@ footer {
     padding: 0.1rem 0.1rem !important;
     gap: 0.1rem;
     overflow: visible;
-	width: 325px !important;
-    max-width: 325px !important;
+    width: 100% !important;
+    max-width: min(325px, 95vw) !important;
 	justify-content: space-between !important;
   }
-  
+
   .tabbar button {
     padding: 0.15rem .5rem !important;
     font-size: 0.45rem;
     font-weight: 500;
   }
-  
+
   /* Dropdown Mobile - LEFT ALIGNED */
   .dropdown-menu {
     text-align: left !important;
@@ -4974,11 +4871,11 @@ footer {
     transform: translateX(-50%) translateY(8px) !important;
     min-width: 140px;
   }
-  
+
   .dropdown.show .dropdown-menu {
     transform: translateX(-50%) translateY(8px) scale(1) !important;
   }
-  
+
   .dropdown-item {
     padding: 0.75rem 1rem !important;
     font-size: 0.85rem !important;
@@ -4987,11 +4884,11 @@ footer {
     justify-content: flex-start !important;
     text-align: left !important;
   }
-  
+
   .dropdown-item i {
     margin-right: 0.5rem !important;
   }
-  
+
   /* Rating Logos */
   .card-ratings {
     font-size: 1.05rem;
@@ -5010,24 +4907,25 @@ footer {
     margin: 0 0.08rem;
     font-size: 0.85em;
   }
-  
+
   /* Section Spacing */
   .rate-section:not([hidden]) {
     padding-top: 0rem !important;
   }
-  
+
   /* Login Mobile */
-  .login-form { 
+  .login-form {
     width: 90vw;
+    max-width: 100%;
     row-gap: 1rem;
     padding: 0 1rem;
   }
-  
+
   .login-section .logo {
     width: clamp(6rem, 55vw, 12rem);
     margin: 0 auto;
   }
-  
+
   .login-section:not([hidden]) {
     padding: var(--s2);  /* 1rem all sides */
     padding-bottom: var(--s5);  /* 3rem bottom only */
@@ -5037,12 +4935,12 @@ footer {
     flex-direction: column;
     justify-content: center;  /* Centers, but gap+padding still reduce top */
 }
-  
+
   .login-form .submit-button {
     margin: var(--s3) auto 0;
     width: 100%;
   }
-  
+
   .login-instructions {
     background: var(--gradient-surface);
     border: 1px solid rgba(51, 65, 85, 0.3);
@@ -5075,11 +4973,11 @@ footer {
   .login-instructions li:last-child {
     margin-bottom: 0;
   }
-  
+
   .login-form label {
     margin: 0 0 0.25rem 0;
   }
-  
+
   .login-form input {
     padding: 0.75rem 1rem;
   }
@@ -5101,23 +4999,23 @@ footer {
     box-shadow: var(--shadow-xl);
     backdrop-filter: blur(20px);
   }
-  
+
   /* Card Mobile */
   .card {
     width: 325px;
 	position: relative;
 	gap: 0 !important;
   }
-  
+
   .card-meta {
     padding-top: 0.5rem !important;
 	margin-top: 0rem !important;
   }
-  
+
   .card-title {
     margin-top: 0 !important;
   }
-  
+
   .card-plot {
     min-height: 44px !important;
     padding: 8px !important;
@@ -5129,7 +5027,7 @@ footer {
     z-index: 998 !important;
     position: relative !important;
   }
-  
+
   .card > * {
     pointer-events: auto !important;
   }
@@ -5138,13 +5036,13 @@ footer {
   .card .card-meta {
     pointer-events: none;
   }
-  
+
   .card .card-plot,
   .card button,
   .card .rate-controls {
     pointer-events: auto !important;
   }
-  
+
   .poster-wrapper {
     margin: 0 !important;
     padding: 0 !important;
@@ -5152,17 +5050,17 @@ footer {
     justify-content: center;
     align-items: center;
   }
-  
+
   .card-crew {
     font-size: 0.7rem;
     line-height: 1.5;
     margin: 0.5rem 0;
   }
-  
+
   .card-crew i {
     font-size: 0.65rem;
   }
-  
+
   /* Rate Controls Mobile */
   .card > .rate-controls {
     margin-top: 0 !important;
@@ -5170,7 +5068,7 @@ footer {
     padding-top: 0 !important;
     padding-bottom: 0 !important;
   }
-  
+
   .rate-controls {
     padding: 0 0.3rem !important;
     gap: 3rem !important;
@@ -5178,7 +5076,7 @@ footer {
     justify-content: center !important;
     align-items: flex-start !important;
   }
-  
+
   .rate-controls .button-wrapper {
     display: flex !important;
     flex-direction: column !important;
@@ -5190,7 +5088,7 @@ footer {
     z-index: 999 !important;
     pointer-events: auto !important;
   }
-  
+
   .rate-controls button {
     width: 60px !important;
     height: 32px !important;
@@ -5202,7 +5100,7 @@ footer {
     position: relative !important;
     z-index: 999 !important;
   }
-  
+
   .rate-controls .button-label {
     font-size: 0.65rem !important;
     color: #cbd5e1 !important;
@@ -5218,108 +5116,108 @@ footer {
     line-height: 1.2 !important;
     letter-spacing: 0 !important;
   }
-   
+
   /* Matches Mobile */
   .matches-list {
     grid-template-columns: 1fr;
     padding: 0;  /* Changed to 0 */
     width: 100%;
   }
-  
+
   /* Filters Mobile */
   .filters-container {
     padding: 0 1rem 1rem;
   }
-  
+
   .filter-group {
     padding: 1rem;
   }
-  
+
   .dropdown-button {
     max-width: 100%;
   }
-  
+
   .dropdown-list {
     max-width: 100%;
   }
-  
+
   .where-to-watch-toggle {
     flex-direction: column;
     gap: 0.5rem;
   }
-  
+
   .toggle-option {
     width: 100%;
   }
-  
+
   /* Tables Mobile */
   .watch-table-container {
     padding: 1rem;
   }
-  
+
   .watch-table th,
   .watch-table td {
     padding: 0.75rem;
   }
-  
+
   .movie-info {
     gap: 0.75rem;
   }
-  
+
   .movie-poster {
     width: 32px;
     height: 48px;
   }
-  
+
   .toggle-switch-container {
     justify-content: space-between;
   }
-  
+
   .toggle-label-text {
     font-size: 0.85rem;
   }
-  
+
   .services-btn {
     padding: 0.4rem 0.75rem;
     font-size: 0.8rem;
   }
-  
+
   .services-dropdown-menu {
     min-width: 200px;
     max-height: 350px;
   }
-  
+
   .service-item {
     padding: 0.6rem 0.875rem;
     font-size: 0.85rem;
   }
-  
+
   /* Mobile adjustments for clickable service links */
   .service-link-wrapper .service-item {
     padding: 0.6rem 0.875rem;
     font-size: 0.85rem;
   }
-  
+
   .service-footer {
     padding: 0.6rem 0.875rem;
     font-size: 0.7rem;
   }
-  
+
   .service-footer i {
     font-size: 0.65rem;
   }
-  
+
   .services-footer {
     padding: 0.5rem 0.875rem;
   }
-  
+
   .tmdb-link,
   .justwatch-attribution {
     font-size: 0.75rem;
 }
 
 /* ============================================================================================================
-   DESKTOP STYLES (min-width: 601px)  
+   DESKTOP STYLES (min-width: 601px)
    ============================================================================================================
    CLEAN SLATE - Add desktop-specific styles here
    Start by copying needed mobile styles above and adjusting for desktop
