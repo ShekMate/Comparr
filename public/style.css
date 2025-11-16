@@ -97,6 +97,30 @@ body, p {
 }
 
 /* ============================================================================================================
+   AUTHENTICATION STATES - Apply to all screen sizes
+   ============================================================================================================ */
+
+/* Authentication States */
+body:not(.is-logged-in) .tabbar,
+body:not(.is-logged-in) #tab-swipe,
+body:not(.is-logged-in) #tab-matches,
+body:not(.is-logged-in) #tab-likes,
+body:not(.is-logged-in) #tab-dislikes,
+body:not(.is-logged-in) #tab-seen,
+body:not(.is-logged-in) #tab-filters,
+body:not(.is-logged-in) .rate-controls {
+  display: none !important;
+}
+
+body.is-logged-in .login-section {
+  display: none !important;
+}
+
+body:not(.is-logged-in) .card-stack:empty::after {
+  content: '';
+}
+
+/* ============================================================================================================
    MOBILE STYLES (max-width: 600px)
    ============================================================================================================
    ALL your existing styles are here - mobile design is protected
@@ -139,26 +163,6 @@ body::before {
   min-height: 100vh;
   padding: env(safe-area-inset-top,0) env(safe-area-inset-right,0)
            env(safe-area-inset-bottom,0) env(safe-area-inset-left,0);
-}
-
-/* Authentication States */
-body:not(.is-logged-in) .tabbar,
-body:not(.is-logged-in) #tab-swipe,
-body:not(.is-logged-in) #tab-matches,
-body:not(.is-logged-in) #tab-likes,
-body:not(.is-logged-in) #tab-dislikes,
-body:not(.is-logged-in) #tab-seen,
-body:not(.is-logged-in) #tab-filters,
-body:not(.is-logged-in) .rate-controls {
-  display: none !important;
-}
-
-body.is-logged-in .login-section {
-  display: none !important;
-}
-
-body:not(.is-logged-in) .card-stack:empty::after {
-  content: '';
 }
 
 /* =========================================================
