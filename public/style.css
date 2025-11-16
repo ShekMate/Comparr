@@ -4845,24 +4845,6 @@ footer {
     -webkit-text-size-adjust: 100%;
   }
 
-  /* Tabbar Mobile */
-  .tabbar {
-    flex-wrap: wrap;
-    margin: 0.25rem auto 0rem !important;
-    padding: 0.1rem 0.1rem !important;
-    gap: 0.1rem;
-    overflow: visible;
-    width: 100% !important;
-    max-width: min(325px, 95vw) !important;
-	justify-content: space-between !important;
-  }
-
-  .tabbar button {
-    padding: 0.15rem .5rem !important;
-    font-size: 0.45rem;
-    font-weight: 500;
-  }
-
   /* Dropdown Mobile - LEFT ALIGNED */
   .dropdown-menu {
     text-align: left !important;
