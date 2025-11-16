@@ -5332,4 +5332,117 @@ footer {
     transform: translateY(-2px) !important;
     box-shadow: var(--shadow-lg) !important;
   }
+
+  .login-form {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    gap: 1.5rem !important;
+    max-width: 28rem !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .login-form .login-instructions {
+    background: rgba(30, 41, 59, 0.6) !important;
+    border: 1px solid rgba(51, 65, 85, 0.3) !important;
+    border-radius: var(--radius-xl) !important;
+    padding: 1.5rem !important;
+    backdrop-filter: blur(10px) !important;
+  }
+
+  .login-form .login-instructions h3 {
+    margin: 0 0 1rem 0 !important;
+    font-size: 1.25rem !important;
+    font-weight: 600 !important;
+    color: var(--color-text-primary) !important;
+    text-align: center !important;
+  }
+
+  .login-form .login-instructions ol {
+    margin: 0 !important;
+    padding-left: 1.5rem !important;
+    color: var(--color-text-secondary) !important;
+    line-height: 1.8 !important;
+  }
+
+  .login-form .login-instructions li {
+    margin-bottom: 0.5rem !important;
+    font-size: 0.95rem !important;
+  }
+
+  .login-form label {
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    color: var(--color-text-primary) !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  .login-form input {
+    width: 100% !important;
+    background: rgba(15, 23, 42, 0.8) !important;
+    color: var(--color-text-primary) !important;
+    border: 1px solid rgba(51, 65, 85, 0.5) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 0.875rem 1rem !important;
+    font-size: 1rem !important;
+    transition: all 0.3s ease !important;
+    backdrop-filter: blur(10px) !important;
+  }
+
+  .login-form input:focus {
+    outline: none !important;
+    border-color: var(--color-primary) !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+  }
+
+  .login-form .room-code-container {
+    display: flex !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
+  }
+
+  .login-form .room-code-container input {
+    flex: 1 !important;
+  }
+
+  .login-form .room-code-container .generate-button {
+    flex-shrink: 0 !important;
+    background: var(--gradient-primary) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: var(--radius-md) !important;
+    padding: 0.875rem 1.5rem !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+  }
+
+  .login-form .room-code-container .generate-button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: var(--shadow-md) !important;
+  }
+
+  .login-form .submit-button {
+    width: 100% !important;
+    padding: 0.875rem 2rem !important;
+    background: var(--gradient-primary) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: var(--radius-md) !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    box-shadow: var(--shadow-md) !important;
+    margin-top: 0.5rem !important;
+  }
+
+  .login-form .submit-button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: var(--shadow-lg) !important;
+  }
 }
