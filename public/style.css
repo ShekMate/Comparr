@@ -2892,6 +2892,7 @@ footer {
 
 /* Empty state */
 
+@media (max-width: 600px) {
 /* =========================================================
    8) LOGIN SECTION - Enhanced
    ========================================================= */
@@ -3148,6 +3149,7 @@ footer {
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
+} /* End mobile-only login section */
 
 /* =========================================================
    9) FILTERS SECTION - Enhanced
