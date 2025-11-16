@@ -7,10 +7,10 @@
     <title>Comparr</title>
 
     <!-- Load CSS from site root (/public is web root) -->
-    <link rel="stylesheet" href="/style.css?v=20240115">
+    <link rel="stylesheet" href="${ROOT_PATH}/style.css?v=20240115">
     <!-- Font Awesome Icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link rel="icon" type="image/x-icon" href="/assets/icons/favicon.ico">
+    <link rel="icon" type="image/x-icon" href="${ROOT_PATH}/assets/icons/favicon.ico">
   </head>
 
   <body
@@ -28,13 +28,13 @@
       <section class="login-section">
         <img
           class="logo"
-          src="${ROOT_PATH}/assets/comparrlogo.png"
+          src="${ROOT_PATH}/assets/logos/comparrlogo.png"
           alt="Comparr Logo"
         />
 
         <!-- Password verification screen -->
         <form class="password-form js-password-form" name="passwordVerification" style="display: block;">
-		  <img src="/assets/troll_bridge_keeper.png" alt="Troll bridge keeper" style="max-width: 400px; margin-bottom: 1rem; border-radius: 8px;">
+		  <img src="${ROOT_PATH}/assets/troll_bridge_keeper.png" alt="Troll bridge keeper" style="max-width: 400px; margin-bottom: 1rem; border-radius: 8px;">
 		  <label for="access-password">${ACCESS_PASSWORD_LABEL}</label>
 		  <div class="password-input-container">
 			 <input 
@@ -145,13 +145,7 @@
               <input type="radio" name="sort" value="vote_count.desc"> Votes
             </label>
             <label class="sort-option">
-              <input type="radio" name="sort" value="vote_average.desc"> TMDb Rating
-            </label>
-            <label class="sort-option">
-              <input type="radio" name="sort" value="imdb_rating.desc"> IMDb Rating
-            </label>
-            <label class="sort-option">
-              <input type="radio" name="sort" value="rt_rating.desc"> Rotten Tomatoes Rating
+              <input type="radio" name="sort" value="vote_average.desc"> Rating
             </label>
           </div>
         </div>
@@ -218,12 +212,12 @@
         Where to Watch:
       </label>
       <div class="toggle-switch-container">
-        <span class="toggle-label-text">All Movies</span>
+        <span class="toggle-label-text active">All Movies</span>
         <label class="toggle-switch">
           <input type="checkbox" id="plex-only-toggle">
           <span class="toggle-slider"></span>
         </label>
-        <span class="toggle-label-text active">My Plex Only</span>
+        <span class="toggle-label-text">My Plex Only</span>
       </div>
     </div>
 	
@@ -427,8 +421,7 @@
         </div>
       </div>
     </div>
-    
-    <!-- COMMENTED OUT - Minimum IMDb Rating 
+
     <div class="filter-group">
       <label>
         <i class="fas fa-star"></i>
@@ -440,8 +433,7 @@
           <span id="imdb-rating-value">0.0</span><span class="rating-unit">/ 10</span>
         </div>
       </div>
-    </div> 
-	-->
+    </div>
 
     <!-- COMMENTED OUT - Rotten Tomatoes Filter 
     <div class="filter-group">
@@ -484,7 +476,7 @@
 		  Votes:
 		</div>
 		<div class="rating-slider-container">
-		  <input type="range" id="vote-count" min="0" max="2000" step="50" value="0">
+		  <input type="range" id="vote-count" min="0" max="2000" step="25" value="25">
 		  <div class="rating-display">
 			<span id="vote-count-value">0</span><span class="rating-unit">votes</span>
 		  </div>
@@ -577,23 +569,17 @@
 		  </h3>
 		  <div class="sort-controls">
 			<div class="sort-controls-wrapper">
-			  <select id="watch-sort" class="watch-sort-dropdown">
-				<option value="date-desc">Date Added</option>
-				<option value="date-asc" style="display:none;">Date Added</option>
-				<option value="release_date-desc">Release Date</option>
-				<option value="release_date-asc" style="display:none;">Release Date</option>
-				<option value="popularity-desc">Popularity</option>
-				<option value="popularity-asc" style="display:none;">Popularity</option>
-				<option value="vote_count-desc">Votes</option>
-				<option value="vote_count-asc" style="display:none;">Votes</option>
-				<option value="imdb-desc">IMDb Rating</option>
-				<option value="imdb-asc" style="display:none;">IMDb Rating</option>
-				<option value="rt-desc">Rotten Tomatoes Rating</option>
-				<option value="rt-asc" style="display:none;">Rotten Tomatoes Rating</option>
-				<option value="tmdb-desc">TMDb Rating</option>
-				<option value="tmdb-asc" style="display:none;">TMDb Rating</option>
-			  </select>
-			  <button id="watch-sort-direction" class="sort-direction-btn" title="Sort Direction">
+                          <select id="watch-sort" class="watch-sort-dropdown">
+                                <option value="date">Date Added</option>
+                                <option value="release_date">Release Date</option>
+                                <option value="title">Title</option>
+                                <option value="popularity">Popularity</option>
+                                <option value="vote_count">Votes</option>
+                                <option value="imdb">IMDb Rating</option>
+                                <option value="rt">Rotten Tomatoes Rating</option>
+                                <option value="tmdb">TMDb Rating</option>
+                          </select>
+			  <button id="watch-sort-direction" class="sort-direction-btn" type="button" title="Sort Direction">
 				↓
 			  </button>
 			</div>
@@ -763,7 +749,7 @@
             <div style="margin-top: 1.5rem;">
               <span class="subfilter-label">Votes:</span>
               <div class="rating-slider-container">
-                <input type="range" id="watch-vote-count" min="0" max="2000" step="50" value="0">
+                <input type="range" id="watch-vote-count" min="0" max="2000" step="25" value="25">
                 <div class="rating-display">
                   <span id="watch-vote-count-value">0</span><span class="rating-unit">votes</span>
                 </div>
@@ -848,7 +834,7 @@
       <p class="justwatch-footer-attribution">
         Powered by 
         <a href="https://www.justwatch.com" target="_blank" rel="noopener">
-          <img src="/assets/logos/justwatch.svg" alt="JustWatch" width="40" height="40">
+          <img src="${ROOT_PATH}/assets/logos/justwatch.svg" alt="JustWatch" width="40" height="40">
         </a>
       </p>
     </footer>

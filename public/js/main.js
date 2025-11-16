@@ -448,7 +448,7 @@ async function login(api) {
       // Store password and show login form
       verifiedPassword = accessPassword
       passwordForm.style.display = 'none'
-      loginForm.style.display = 'flex'
+      loginForm.style.display = 'block'
       
       // Scroll to top of page
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -509,7 +509,7 @@ async function login(api) {
       } catch (err) {
         // Show password form again on login failure
         loginForm.style.display = 'none'
-        passwordForm.style.display = 'flex'
+        passwordForm.style.display = 'block'
         passwordForm.elements.accessPassword.value = ''
         alert(err.message)
       }
