@@ -4851,6 +4851,24 @@ footer {
     -webkit-text-size-adjust: 100%;
   }
 
+  /* Tabbar Mobile */
+  .tabbar {
+    flex-wrap: wrap;
+    margin: 0.25rem auto 0rem !important;
+    padding: 0.1rem 0.1rem !important;
+    gap: 0.1rem;
+    overflow: visible;
+    width: 100% !important;
+    max-width: min(325px, 95vw) !important;
+    justify-content: space-between !important;
+  }
+
+  .tabbar button {
+    padding: 0.15rem .5rem !important;
+    font-size: 0.45rem;
+    font-weight: 500;
+  }
+
   /* Dropdown Mobile - LEFT ALIGNED */
   .dropdown-menu {
     text-align: left !important;
@@ -5237,6 +5255,54 @@ footer {
     filter: blur(40px);
     z-index: -1;
     pointer-events: none;
+  }
+
+  /* Tabbar Desktop */
+  .tabbar {
+    display: flex;
+    gap: .5rem;
+    justify-content: center;
+    margin: 1.5rem auto 1rem;
+    padding: 0.5rem;
+    background: rgba(30, 41, 59, 0.6);
+    backdrop-filter: blur(20px);
+    border-radius: var(--radius-2xl);
+    border: 1px solid rgba(51, 65, 85, 0.3);
+    box-shadow: var(--shadow-lg);
+    max-width: fit-content;
+    overflow: visible;
+    position: relative;
+    z-index: 1000;
+  }
+
+  .tabbar button {
+    all: unset;
+    cursor: pointer;
+    padding: .75rem 1.5rem;
+    border: none;
+    background: transparent;
+    color: var(--color-text-secondary);
+    border-radius: var(--radius-xl);
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .tabbar button.is-active {
+    background: var(--gradient-primary);
+    color: white;
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+  }
+
+  .tabbar button:hover:not(.is-active) {
+    background: rgba(51, 65, 85, 0.5);
+    color: var(--color-text-primary);
+    transform: translateY(-1px);
   }
 
   .login-section {
