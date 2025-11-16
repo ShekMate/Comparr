@@ -448,7 +448,7 @@ async function login(api) {
       // Store password and show login form
       verifiedPassword = accessPassword
       passwordForm.style.display = 'none'
-      loginForm.style.display = 'block'
+      loginForm.style.display = 'flex'
       
       // Scroll to top of page
       window.scrollTo({ top: 0, behavior: 'smooth' })
