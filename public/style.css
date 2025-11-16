@@ -5243,111 +5243,111 @@ footer {
     pointer-events: none;
   }
 
-  body:not(.is-logged-in) .app:not([hidden]) {
+  .app:not([hidden]) {
     background: transparent !important;
   }
 
-  body:not(.is-logged-in) .login-section:not([hidden]) {
+  .login-section:not([hidden]) {
     background: transparent !important;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    padding: 2rem;
-    gap: 2rem;
+    min-height: 100vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    padding: 2rem !important;
+    gap: 2rem !important;
   }
 
-  body:not(.is-logged-in) .login-section .logo {
-    width: clamp(8rem, 50%, 15.5rem);
-    margin: 0 0 2rem 0;
-    display: block;
+  .login-section .logo {
+    width: clamp(8rem, 50%, 15.5rem) !important;
+    margin: 0 0 2rem 0 !important;
+    display: block !important;
   }
 
-  body:not(.is-logged-in) .password-form {
+  .password-form {
     background: transparent !important;
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
     backdrop-filter: none !important;
-    max-width: 32rem;
-    padding: 2rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2rem;
-    width: 100%;
+    max-width: 32rem !important;
+    padding: 2rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 2rem !important;
+    width: 100% !important;
   }
 
-  body:not(.is-logged-in) .password-form img {
-    width: 100%;
-    max-width: 400px;
-    height: auto;
-    margin: 0 auto 1rem;
-    display: block;
-    border-radius: 8px;
+  .password-form img {
+    width: 100% !important;
+    max-width: 400px !important;
+    height: auto !important;
+    margin: 0 auto 1rem !important;
+    display: block !important;
+    border-radius: 8px !important;
   }
 
-  body:not(.is-logged-in) .password-form label[for="access-password"] {
-    display: block;
-    margin-bottom: 1rem;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    font-size: 1.25rem;
-    font-weight: 700;
-    background: var(--gradient-primary);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    width: 100%;
-    text-align: center;
+  .password-form label[for="access-password"] {
+    display: block !important;
+    margin-bottom: 1rem !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    background: var(--gradient-primary) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    width: 100% !important;
+    text-align: center !important;
   }
 
-  body:not(.is-logged-in) .password-input-container {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    width: 100%;
-    max-width: 300px;
-    gap: 1rem;
-    margin: 0 auto;
+  .password-input-container {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    max-width: 300px !important;
+    gap: 1rem !important;
+    margin: 0 auto !important;
   }
 
-  body:not(.is-logged-in) .password-form input {
-    width: 100%;
-    background: rgba(15, 23, 42, 0.8);
-    color: var(--color-text-primary);
-    border: 1px solid rgba(51, 65, 85, 0.5);
-    border-radius: var(--radius-md);
-    padding: 0.75rem 1rem;
-    font-size: 1rem;
-    text-align: center;
-    outline: none;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
+  .password-form input {
+    width: 100% !important;
+    background: rgba(15, 23, 42, 0.8) !important;
+    color: var(--color-text-primary) !important;
+    border: 1px solid rgba(51, 65, 85, 0.5) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 0.75rem 1rem !important;
+    font-size: 1rem !important;
+    text-align: center !important;
+    outline: none !important;
+    transition: all 0.3s ease !important;
+    backdrop-filter: blur(10px) !important;
   }
 
-  body:not(.is-logged-in) .password-form input:focus {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  .password-form input:focus {
+    border-color: var(--color-primary) !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
   }
 
-  body:not(.is-logged-in) .password-form .submit-button {
-    align-self: center;
-    width: auto;
-    padding: 0.75rem 2rem;
-    background: var(--gradient-primary);
-    color: white;
-    border: none;
-    border-radius: var(--radius-md);
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
+  .password-form .submit-button {
+    align-self: center !important;
+    width: auto !important;
+    padding: 0.75rem 2rem !important;
+    background: var(--gradient-primary) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: var(--radius-md) !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
   }
 
-  body:not(.is-logged-in) .password-form .submit-button:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
+  .password-form .submit-button:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: var(--shadow-md) !important;
   }
 
 }
