@@ -4915,6 +4915,8 @@ footer {
 
   /* Login Mobile */
   .login-form {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
     width: 90vw;
     max-width: 100%;
     row-gap: 1rem;
