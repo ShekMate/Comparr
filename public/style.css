@@ -5447,4 +5447,269 @@ footer {
     transform: translateY(-2px) !important;
     box-shadow: var(--shadow-lg) !important;
   }
+
+  /* Dropdown Desktop */
+  .dropdown-menu {
+    text-align: left !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) translateY(8px) !important;
+    min-width: 140px;
+  }
+
+  .dropdown.show .dropdown-menu {
+    transform: translateX(-50%) translateY(8px) scale(1) !important;
+  }
+
+  .dropdown-item {
+    padding: 0.75rem 1rem !important;
+    font-size: 0.85rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+  }
+
+  .dropdown-item i {
+    margin-right: 0.5rem !important;
+  }
+
+  /* Rating Logos Desktop */
+  .card-ratings {
+    font-size: 1.05rem;
+    gap: 0.05rem;
+    margin-top: 0.05rem !important;
+    padding-top: 0 !important;
+    clear: both !important;
+  }
+
+  .rating-logo {
+    height: 16px;
+    margin-right: 0.05rem;
+  }
+
+  .rating-separator {
+    margin: 0 0.08rem;
+    font-size: 0.85em;
+  }
+
+  /* Section Spacing Desktop */
+  .rate-section:not([hidden]) {
+    padding-top: 0rem !important;
+  }
+
+  /* Card Desktop */
+  .card {
+    width: 325px;
+    position: relative;
+    gap: 0 !important;
+  }
+
+  .card-meta {
+    padding-top: 0.5rem !important;
+    margin-top: 0rem !important;
+  }
+
+  .card-title {
+    margin-top: 0 !important;
+  }
+
+  .card-plot {
+    min-height: 44px !important;
+    padding: 8px !important;
+    margin-top: -8px !important;
+    margin-left: -8px !important;
+    margin-right: -8px !important;
+    margin-bottom: 0rem !important;
+    padding-bottom: 0rem !important;
+    z-index: 998 !important;
+    position: relative !important;
+  }
+
+  .card > * {
+    pointer-events: auto !important;
+  }
+
+  .card .poster-wrapper,
+  .card .card-meta {
+    pointer-events: none;
+  }
+
+  .card .card-plot,
+  .card button,
+  .card .rate-controls {
+    pointer-events: auto !important;
+  }
+
+  .poster-wrapper {
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .card-crew {
+    font-size: 0.7rem;
+    line-height: 1.5;
+    margin: 0.5rem 0;
+  }
+
+  .card-crew i {
+    font-size: 0.65rem;
+  }
+
+  /* Rate Controls Desktop */
+  .card > .rate-controls {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .rate-controls {
+    padding: 0 0.3rem !important;
+    gap: 3rem !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: flex-start !important;
+  }
+
+  .rate-controls .button-wrapper {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.05rem !important;
+    min-width: 60px !important;
+    position: relative !important;
+    z-index: 999 !important;
+    pointer-events: auto !important;
+  }
+
+  .rate-controls button {
+    width: 60px !important;
+    height: 32px !important;
+    font-size: 1.25rem !important;
+    min-width: 60px !important;
+    min-height: 32px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    position: relative !important;
+    z-index: 999 !important;
+  }
+
+  .rate-controls .button-label {
+    font-size: 0.65rem !important;
+    color: #cbd5e1 !important;
+    display: block !important;
+    visibility: visible !important;
+    font-weight: 500 !important;
+    text-align: center !important;
+    width: 100% !important;
+    margin: 0 !important;
+    margin-top: -0.5rem !important;
+    padding: 0 !important;
+    padding-bottom: 0.3rem !important;
+    line-height: 1.2 !important;
+    letter-spacing: 0 !important;
+  }
+
+  /* Matches Desktop */
+  .matches-list {
+    grid-template-columns: 1fr;
+    padding: 0;
+    width: 100%;
+  }
+
+  /* Filters Desktop */
+  .filters-container {
+    padding: 0 1rem 1rem;
+  }
+
+  .filter-group {
+    padding: 1rem;
+  }
+
+  .dropdown-button {
+    max-width: 100%;
+  }
+
+  .dropdown-list {
+    max-width: 100%;
+  }
+
+  .where-to-watch-toggle {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .toggle-option {
+    width: 100%;
+  }
+
+  /* Tables Desktop */
+  .watch-table-container {
+    padding: 1rem;
+  }
+
+  .watch-table th,
+  .watch-table td {
+    padding: 0.75rem;
+  }
+
+  .movie-info {
+    gap: 0.75rem;
+  }
+
+  .movie-poster {
+    width: 32px;
+    height: 48px;
+  }
+
+  .toggle-switch-container {
+    justify-content: space-between;
+  }
+
+  .toggle-label-text {
+    font-size: 0.85rem;
+  }
+
+  .services-btn {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .services-dropdown-menu {
+    min-width: 200px;
+    max-height: 350px;
+  }
+
+  .service-item {
+    padding: 0.6rem 0.875rem;
+    font-size: 0.85rem;
+  }
+
+  .service-link-wrapper .service-item {
+    padding: 0.6rem 0.875rem;
+    font-size: 0.85rem;
+  }
+
+  .service-footer {
+    padding: 0.6rem 0.875rem;
+    font-size: 0.7rem;
+  }
+
+  .service-footer i {
+    font-size: 0.65rem;
+  }
+
+  .services-footer {
+    padding: 0.5rem 0.875rem;
+  }
+
+  .tmdb-link,
+  .justwatch-attribution {
+    font-size: 0.75rem;
+  }
 }
