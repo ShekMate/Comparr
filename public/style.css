@@ -5203,6 +5203,7 @@ footer {
   .justwatch-attribution {
     font-size: 0.75rem;
 }
+} /* Close mobile media query from line 4849 */
 
 /* ============================================================================================================
    DESKTOP STYLES (min-width: 601px)
