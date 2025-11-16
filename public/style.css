@@ -5211,31 +5211,41 @@ footer {
 
 @media (min-width: 601px) {
 
-  /* Desktop Password Screen - Full gradient background */
+  /* Desktop - Full gradient background everywhere */
   html {
     background: var(--gradient-surface) !important;
-    margin: 0;
-    padding: 0;
+    min-height: 100vh;
   }
 
   body {
     background: var(--gradient-surface) !important;
-    margin: 0;
-    padding: 0;
     min-height: 100vh;
+  }
+
+  /* Add animated background for desktop like mobile has */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background:
+      radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 40% 40%, rgba(6, 182, 212, 0.1) 0%, transparent 50%);
+    filter: blur(40px);
+    z-index: -1;
+    pointer-events: none;
   }
 
   .app:not([hidden]) {
-    background: var(--gradient-surface);
-    margin: 0;
-    padding: 0;
+    background: transparent !important;
   }
 
   .login-section:not([hidden]) {
-    background: var(--gradient-surface);
+    background: transparent !important;
     min-height: 100vh;
-    margin: 0;
-    padding: var(--s2);
   }
 
   .password-form {
@@ -5245,6 +5255,7 @@ footer {
     box-shadow: none !important;
     backdrop-filter: none !important;
     max-width: 32rem;
+    padding: 2rem;
   }
 
 }
