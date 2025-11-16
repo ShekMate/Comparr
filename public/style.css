@@ -5255,7 +5255,7 @@ footer {
     margin: 0 0 2rem 0 !important;
   }
 
-  .password-form {
+  .password-form:not([style*="display: none"]) {
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
@@ -5333,7 +5333,7 @@ footer {
     box-shadow: var(--shadow-lg) !important;
   }
 
-  .login-form {
+  .login-form:not([style*="display: none"]) {
     display: flex !important;
     flex-direction: column !important;
     align-items: stretch !important;
