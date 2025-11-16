@@ -5213,28 +5213,28 @@ footer {
 
 @media (min-width: 601px) {
   html {
-    background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+    background: red !important;
   }
-  
+
   body {
-    background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+    background: red !important;
   }
-  
+
   .login-section {
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
     min-height: 100vh !important;
-    background: transparent !important;
+    background: yellow !important;
   }
-  
+
   .password-form {
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
-    background: none !important;
-    border: none !important;
+    background: blue !important;
+    border: 5px solid green !important;
     box-shadow: none !important;
   }
 }
