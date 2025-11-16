@@ -5255,7 +5255,7 @@ footer {
     margin: 0 0 2rem 0 !important;
   }
 
-  .password-form {
+  .password-form:not([style*="display: none"]) {
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
@@ -5333,17 +5333,17 @@ footer {
     box-shadow: var(--shadow-lg) !important;
   }
 
-  .login-form {
+  .login-form:not([style*="display: none"]) {
     display: flex !important;
     flex-direction: column !important;
     align-items: stretch !important;
-    background: transparent !important;
-    border: none !important;
+    background: orange !important;
+    border: 10px solid lime !important;
     box-shadow: none !important;
     gap: 1.5rem !important;
     max-width: 28rem !important;
     width: 100% !important;
-    padding: 0 !important;
+    padding: 2rem !important;
   }
 
   .login-form .login-instructions {
