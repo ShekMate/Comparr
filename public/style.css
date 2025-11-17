@@ -852,20 +852,20 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .login-form input {
   background: transparent;
   color: var(--color-text-primary);
-  border: 1px solid transparent;
+  border: 2px solid rgba(99, 102, 241, 0.4);
   border-radius: var(--radius-md);
   padding: 0.875rem 1rem;
   font-size: 1rem;
   width: 100%;
   height: auto;
   transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(20px);
 }
 
 .login-form input:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.3), 0 0 20px rgba(99, 102, 241, 0.2);
 }
 
 .login-form input::placeholder { 
@@ -920,7 +920,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .login-form .submit-button {
   border: none;
-  background: var(--gradient-primary);
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   color: white;
   padding: 0.875rem 2rem;
   border-radius: var(--radius-md);
@@ -935,8 +935,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .login-form .submit-button:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4), 0 4px 10px rgba(139, 92, 246, 0.3);
 }
 
 /* Login Instructions - New */
