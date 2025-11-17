@@ -7,6 +7,7 @@ on:
     types:
       - completed
     branches: [ "main", "dev" ]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -14,8 +15,8 @@ permissions:
 
 jobs:
   build:
-    # Only run if tests passed (or on direct push to main)
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'push' }}
+    # Only run if tests passed (or on direct push to main/dev or manual trigger)
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
