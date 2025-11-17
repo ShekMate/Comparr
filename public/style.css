@@ -155,10 +155,10 @@ body:not(.is-logged-in) .card-stack:empty::after {
   justify-content: center; 
   margin: 1.5rem auto 1rem;
   padding: 0.5rem;
-  background: rgba(30, 41, 59, 0.6);
+  background: transparent;
   backdrop-filter: blur(20px);
   border-radius: var(--radius-2xl);
-  border: 1px solid rgba(51, 65, 85, 0.3);
+  border: 1px solid transparent;
   box-shadow: var(--shadow-lg);
   max-width: fit-content;
   overflow: visible;
@@ -191,7 +191,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .tabbar button:hover:not(.is-active) {
-  background: rgba(51, 65, 85, 0.5);
+  background: transparent;
   color: var(--color-text-primary);
   transform: translateY(-1px);
 }
@@ -213,9 +213,9 @@ body:not(.is-logged-in) .card-stack:empty::after {
   top: 100%;
   left: 50%;
   transform: translateX(-50%) translateY(8px);
-  background: var(--gradient-surface);
+  background: transparent;
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(51, 65, 85, 0.3);
+  border: 1px solid transparent;
   border-radius: var(--radius-xl);
   padding: 0.5rem;
   min-width: 160px;
@@ -256,7 +256,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .dropdown-item:hover {
-  background: rgba(51, 65, 85, 0.5);
+  background: transparent;
   color: var(--color-text-primary);
 }
 
@@ -272,7 +272,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .dropdown.show .dropdown-toggle {
-  background: rgba(51, 65, 85, 0.3) !important;
+  background: transparent !important;
 }
 
 .dropdown-toggle::after {
@@ -312,8 +312,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
   display: inline-flex;
   flex-direction: column;
   width: calc(var(--height) * .6666);
-  background: var(--gradient-card);
-  border: 1px solid rgba(51, 65, 85, 0.3);
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: var(--radius-2xl);
   overflow: hidden;
   position: relative;
@@ -406,7 +406,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   margin: 0;
   margin-top: 0 !important; /* Force no top margin */
   padding: 0rem;
-  background: rgba(15, 23, 42, 0.8);
+  background: transparent;
   backdrop-filter: blur(10px);
   width: 100%;
 }
@@ -485,7 +485,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   padding: 1.5rem;
   text-align: center;
   color: var(--color-text-primary);
-  background: rgba(15, 23, 42, 0.6);
+  background: transparent;
   backdrop-filter: blur(10px);
   border-radius: 0 0 var(--radius-2xl) var(--radius-2xl);
 }
@@ -714,7 +714,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .matches-section hr {
   width: 80vw; 
-  border: 1px solid rgba(51, 65, 85, 0.3);
+  border: 1px solid transparent;
   border-radius: 2px;
   margin: auto; 
   position: relative; 
@@ -850,9 +850,9 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .login-form input {
-  background: rgba(15, 23, 42, 0.8);
+  background: transparent;
   color: var(--color-text-primary);
-  border: 1px solid rgba(51, 65, 85, 0.5);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   padding: 0.875rem 1rem;
   font-size: 1rem;
@@ -941,8 +941,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 /* Login Instructions - New */
 .login-instructions {
-  background: var(--gradient-surface);
-  border: 1px solid rgba(51, 65, 85, 0.3);
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: var(--radius-xl);
   padding: 1.5rem;
   margin-bottom: 2rem;
@@ -984,11 +984,11 @@ body:not(.is-logged-in) .card-stack:empty::after {
   margin: 0 auto;
   gap: 2rem;
   padding: 2rem;
-  background: var(--gradient-surface);
-  border-radius: var(--radius-2xl);
-  border: 1px solid rgba(51, 65, 85, 0.3);
-  box-shadow: var(--shadow-xl);
-  backdrop-filter: blur(20px);
+  background: transparent;
+  border-radius: 0;
+  border: 1px solid transparent;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .password-form img {
@@ -997,8 +997,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
   height: auto;
   margin: 0 auto;
   display: block;
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .password-form label[for="access-password"] {
@@ -1007,10 +1007,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 1.25rem;
   font-weight: 700;
-  background: var(--gradient-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--color-text-primary);
   width: 100%;
   text-align: center;
 }
@@ -1027,9 +1024,9 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .password-form input {
   width: 100%;
-  background: rgba(15, 23, 42, 0.8);
+  background: transparent;
   color: var(--color-text-primary);
-  border: 1px solid rgba(51, 65, 85, 0.5);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   padding: 0.75rem 1rem;
   font-size: 1rem;
@@ -1092,11 +1089,11 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .filter-group {
-  background: var(--gradient-surface);
+  background: transparent;
   padding: 0.625rem;
   border-radius: var(--radius-lg);
   margin-bottom: 0.625rem;
-  border: 1px solid rgba(51, 65, 85, 0.3);
+  border: 1px solid transparent;
   backdrop-filter: blur(10px);
   position: relative;
   display: flex;
@@ -1143,9 +1140,9 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .runtime-range-container input[type="number"] {
   width: 85px;
   padding: 0.5rem 0.625rem;
-  border: 1px solid rgba(51, 65, 85, 0.5);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
-  background: rgba(15, 23, 42, 0.8);
+  background: transparent;
   color: var(--color-text-primary);
   text-align: center;
   transition: all 0.3s ease;
@@ -1171,10 +1168,10 @@ body:not(.is-logged-in) .card-stack:empty::after {
   display: flex;
   gap: 1rem;
   margin-top: var(--s2);
-  background: rgba(15, 23, 42, 0.8);
+  background: transparent;
   padding: 0.5rem;
   border-radius: var(--radius-md);
-  border: 1px solid rgba(51, 65, 85, 0.5);
+  border: 1px solid transparent;
 }
 
 .toggle-option {
@@ -1191,7 +1188,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .toggle-option:hover {
-  background: rgba(51, 65, 85, 0.3);
+  background: transparent;
 }
 
 .toggle-option input[type="radio"] {
@@ -1222,9 +1219,9 @@ body:not(.is-logged-in) .card-stack:empty::after {
   gap: 0.625rem;
   margin-top: 0.5rem;
   padding: 0.5rem 0.625rem;
-  background: rgba(15, 23, 42, 0.8);
+  background: transparent;
   border-radius: var(--radius-md);
-  border: 1px solid rgba(51, 65, 85, 0.5);
+  border: 1px solid transparent;
 }
 
 .toggle-label-text {
@@ -1263,7 +1260,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   background-color: var(--color-surface-lighter);
   transition: 0.3s;
   border-radius: 22px;
-  border: 2px solid rgba(51, 65, 85, 0.5);
+  border: 2px solid transparent;
 }
 
 .toggle-slider:before {
@@ -1341,7 +1338,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .rating-checkbox:hover {
-  background: rgba(51, 65, 85, 0.5);
+  background: transparent;
   color: var(--color-text-primary);
 }
 
@@ -1365,9 +1362,9 @@ body:not(.is-logged-in) .card-stack:empty::after {
   width: 100%;
   max-width: 100%;
   padding: 0.5rem 0.75rem;
-  background: rgba(15, 23, 42, 0.8);
+  background: transparent;
   color: var(--color-text-primary);
-  border: 1px solid rgba(51, 65, 85, 0.5);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   cursor: pointer;
   text-align: left;
@@ -1401,8 +1398,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .dropdown-list {
   display: none;
   margin-top: 0.5rem;
-  background: var(--gradient-surface);
-  border: 1px solid rgba(51, 65, 85, 0.5);
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   max-height: 180px;
   overflow-y: auto;
@@ -1456,7 +1453,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .language-checkbox:hover,
 .country-checkbox:hover,
 .sort-option:hover {
-  background: rgba(51, 65, 85, 0.5);
+  background: transparent;
   color: var(--color-text-primary);
 }
 
@@ -1492,7 +1489,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   flex: 1;
   max-width: 100%;
   height: 6px;
-  background: rgba(51, 65, 85, 0.5);
+  background: transparent;
   border-radius: var(--radius-sm);
   outline: none;
   accent-color: var(--color-primary);
@@ -1605,9 +1602,9 @@ body:not(.is-logged-in) .card-stack:empty::after {
   width: 90%;
   max-width: 600px;
   max-height: 85vh;
-  background: var(--gradient-surface);
+  background: transparent;
   border-radius: var(--radius-2xl);
-  border: 1px solid rgba(51, 65, 85, 0.3);
+  border: 1px solid transparent;
   box-shadow: var(--shadow-xl);
   backdrop-filter: blur(20px);
   z-index: 9999;
@@ -1623,10 +1620,10 @@ body:not(.is-logged-in) .card-stack:empty::after {
   justify-content: space-between;
   align-items: center;
   padding: 1rem 1.25rem;
-  border-bottom: 1px solid rgba(51, 65, 85, 0.3);
+  border-bottom: 1px solid transparent;
   position: sticky;
   top: 0;
-  background: var(--gradient-surface);
+  background: transparent;
   z-index: 10;
 }
 
@@ -1669,10 +1666,10 @@ body:not(.is-logged-in) .card-stack:empty::after {
   display: flex;
   gap: 0.75rem;
   padding: 1rem 1.25rem;
-  border-top: 1px solid rgba(51, 65, 85, 0.3);
+  border-top: 1px solid transparent;
   position: sticky;
   bottom: 0;
-  background: var(--gradient-surface);
+  background: transparent;
   justify-content: center;
 }
 
@@ -1690,7 +1687,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .filter-modal::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.5);
+  background: transparent;
   border-radius: 4px;
 }
 
@@ -1707,7 +1704,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .reset-filters-btn {
   background: var(--color-surface-light);
   color: var(--color-text-secondary);
-  border: 1px solid rgba(51, 65, 85, 0.5);
+  border: 1px solid transparent;
   padding: 0.5rem 1.5rem;
   border-radius: var(--radius-md);
   font-weight: 600;
@@ -1757,7 +1754,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   transform: translate(-50%, -50%) scale(0.8);
   width: 90%;
   max-width: 500px;
-  background: var(--gradient-surface);
+  background: transparent;
   border-radius: var(--radius-2xl);
   border: 2px solid var(--color-primary);
   box-shadow: var(--shadow-xl);
@@ -1856,7 +1853,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .match-popup-actions .btn-secondary {
   background: var(--color-surface-light);
   color: var(--color-text-primary);
-  border: 1px solid rgba(51, 65, 85, 0.5);
+  border: 1px solid transparent;
 }
 
 .match-popup-actions .btn-secondary:hover {
@@ -1936,7 +1933,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   padding: 0.5rem 1rem;
   background: var(--color-surface);
   color: var(--color-text-primary);
-  border: 1px solid rgba(51, 65, 85, 0.5);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   font-size: 0.85rem;
   cursor: pointer;
@@ -1960,7 +1957,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   align-items: center;
   gap: 0.4rem;
   padding: 0.5rem 1rem;
-  background: rgba(99, 102, 241, 0.15);
+  background: transparent;
   color: var(--color-primary-light);
   border: 1px solid rgba(99, 102, 241, 0.3);
   border-radius: var(--radius-md);
@@ -1972,8 +1969,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .expand-collapse-btn:hover {
-  background: rgba(99, 102, 241, 0.25);
-  border-color: rgba(99, 102, 241, 0.5);
+  background: transparent;
+  border-color: transparent;
   transform: translateY(-1px);
 }
 
@@ -2051,7 +2048,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   display: flex;
   gap: 0.5rem;
   padding: 0.25rem 1rem 0.25rem 0;
-  border-top: 1px solid rgba(51, 65, 85, 0.3);
+  border-top: 1px solid transparent;
   margin-top: 0rem;
   margin-bottom: 0rem;
   justify-content: flex-start;
@@ -2139,8 +2136,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .watch-card {
   display: flex;
   flex-direction: column;
-  background: var(--gradient-surface);
-  border: 1px solid rgba(51, 65, 85, 0.3);
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: var(--radius-xl);
   padding: 0; /* No padding - let children control it */
   transition: all 0.3s ease;
@@ -2153,7 +2150,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .watch-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
-  border-color: rgba(99, 102, 241, 0.3);
+  border-color: transparent;
   z-index: 2;
 }
 
@@ -2170,7 +2167,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .watch-card-collapsed:hover {
-  background: rgba(99, 102, 241, 0.05);
+  background: transparent;
 }
 
 /* Metadata in collapsed header */
@@ -2233,7 +2230,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .watch-card-details {
   display: none;
   padding: 1rem;
-  border-top: 1px solid rgba(51, 65, 65, 0.2);
+  border-top: 1px solid transparent;
 }
 
 .watch-card.expanded .watch-card-details {
@@ -2292,20 +2289,20 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .badge-rating {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.3);
+  background: transparent;
+  border-color: transparent;
   color: #60a5fa;
 }
 
 .badge-genre {
-  background: rgba(139, 92, 246, 0.15);
-  border-color: rgba(139, 92, 246, 0.3);
+  background: transparent;
+  border-color: transparent;
   color: #a78bfa;
 }
 
 .badge-runtime {
-  background: rgba(34, 197, 94, 0.15);
-  border-color: rgba(34, 197, 94, 0.3);
+  background: transparent;
+  border-color: transparent;
   color: #4ade80;
 }
 
@@ -2418,9 +2415,9 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .service-dropdown-btn {
-  background: rgba(51, 65, 85, 0.5);
+  background: transparent;
   color: var(--color-text-primary);
-  border: 1px solid rgba(51, 65, 85, 0.5);
+  border: 1px solid transparent;
   padding: 0.6rem 1rem;
   border-radius: var(--radius-md);
   font-size: 0.75rem;
@@ -2436,7 +2433,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .service-dropdown-btn:not(.disabled):hover {
-  background: rgba(51, 65, 85, 0.7);
+  background: transparent;
   border-color: var(--color-primary);
 }
 
@@ -2446,9 +2443,9 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .service-dropdown-btn.disabled {
-  background: rgba(51, 65, 85, 0.3);
+  background: transparent;
   color: var(--color-text-muted);
-  border-color: rgba(51, 65, 85, 0.3);
+  border-color: transparent;
   cursor: not-allowed;
   opacity: 0.5;
 }
@@ -2457,8 +2454,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
-  background: var(--gradient-surface);
-  border: 1px solid rgba(51, 65, 85, 0.5);
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   min-width: 200px;
   max-height: 300px;
@@ -2482,7 +2479,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   padding: 0.75rem 1rem;
   color: var(--color-text-secondary);
   font-size: 0.85rem;
-  border-bottom: 1px solid rgba(51, 65, 85, 0.2);
+  border-bottom: 1px solid transparent;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
@@ -2494,7 +2491,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .service-item:hover {
-  background: rgba(51, 65, 85, 0.5);
+  background: transparent;
   color: var(--color-text-primary);
 }
 
@@ -2515,7 +2512,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .service-link-wrapper:hover {
-  background: rgba(99, 102, 241, 0.05);
+  background: transparent;
 }
 
 /* Update service-item styles for clickable version */
@@ -2523,7 +2520,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   padding: 0.75rem 1rem;
   color: var(--color-text-secondary);
   font-size: 0.85rem;
-  border-bottom: 1px solid rgba(51, 65, 85, 0.2);
+  border-bottom: 1px solid transparent;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
@@ -2531,7 +2528,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .service-link-wrapper .service-item:last-of-type {
-  border-bottom: 1px solid rgba(51, 65, 85, 0.3);
+  border-bottom: 1px solid transparent;
 }
 
 .service-link-wrapper:hover .service-item {
@@ -2550,8 +2547,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
   align-items: center;
   gap: 0.5rem;
   justify-content: center;
-  border-top: 1px solid rgba(51, 65, 85, 0.3);
-  background: rgba(99, 102, 241, 0.05);
+  border-top: 1px solid transparent;
+  background: transparent;
   transition: all 0.2s ease;
 }
 
@@ -2687,10 +2684,10 @@ body:not(.is-logged-in) .card-stack:empty::after {
   display: flex; 
   flex-direction: column; 
   align-items: center;
-  background: var(--gradient-card);
+  background: transparent;
   padding: 1rem;
   border-radius: var(--radius-lg);
-  border: 1px solid rgba(51, 65, 85, 0.3);
+  border: 1px solid transparent;
   transition: transform 0.2s ease;
 }
 
@@ -2910,8 +2907,8 @@ footer {
   }
   
   .login-instructions {
-    background: var(--gradient-surface);
-    border: 1px solid rgba(51, 65, 85, 0.3);
+    background: transparent;
+    border: 1px solid transparent;
     border-radius: var(--radius-xl);
     padding: 1rem;
     margin-bottom: 1rem;
@@ -2961,9 +2958,9 @@ footer {
     margin: 0 auto;
     gap: 2rem;
     padding: 2rem;
-    background: var(--gradient-surface);
+    background: transparent;
     border-radius: var(--radius-2xl);
-    border: 1px solid rgba(51, 65, 85, 0.3);
+    border: 1px solid transparent;
     box-shadow: var(--shadow-xl);
     backdrop-filter: blur(20px);
   }
@@ -3508,9 +3505,9 @@ footer {
   height: 2rem;
   min-width: 2rem;
   padding: 0;
-  background: rgba(15, 23, 42, 0.8);
+  background: transparent;
   color: var(--color-text-primary);
-  border: 1px solid rgba(51, 65, 85, 0.5);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   cursor: pointer;
   display: flex;
@@ -3537,7 +3534,7 @@ footer {
   padding: 0.4rem 0.6rem;
   background: var(--color-surface);
   color: var(--color-text-primary);
-  border: 1px solid rgba(51, 65, 85, 0.5);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   font-size: 0.85rem;
   cursor: pointer;

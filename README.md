@@ -515,7 +515,7 @@ Heavily rewritten and rebranded as **Comparr** by [ShekMate](https://github.com/
 
 <div align="center">
 
-  **Made with ❤️ for the Plex community**
+  **Made with ❤️ for the Plex and Unraid community**
 
   If you find Comparr useful, please consider starring the repository!
 

@@ -1,12 +1,13 @@
 name: Build & Push Docker image
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "dev" ]
   workflow_run:
     workflows: ["Tests & Coverage"]
     types:
       - completed
-    branches: [ "main" ]
+    branches: [ "main", "dev" ]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -14,8 +15,6 @@ permissions:
 
 jobs:
   build:
-    # Only run if tests passed (or on direct push to main)
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'push' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,7 +32,8 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=raw,value=latest
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
             type=sha
             type=ref,event=tag
 
