@@ -3283,6 +3283,11 @@ footer {
     background: transparent;
     border: none;
   }
+
+  /* Reduce spacing above submit button - desktop only */
+  .login-form .submit-button {
+    margin-top: 1rem !important;
+  }
 }
 
 /* =========================================================
