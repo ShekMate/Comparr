@@ -406,7 +406,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   margin: 0;
   margin-top: 0 !important; /* Force no top margin */
   padding: 0rem;
-  background: transparent;
+  background: rgba(15, 23, 42, 0.95);
   backdrop-filter: blur(10px);
   width: 100%;
 }
@@ -485,7 +485,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   padding: 1.5rem;
   text-align: center;
   color: var(--color-text-primary);
-  background: transparent;
+  background: rgba(15, 23, 42, 0.95);
   backdrop-filter: blur(10px);
   border-radius: 0 0 var(--radius-2xl) var(--radius-2xl);
 }
