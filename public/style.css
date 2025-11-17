@@ -330,7 +330,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 /* Poster */
 .poster-wrapper {
   order: 10;
-  background: var(--color-surface);
+  background: var(--color-background);
   border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
   overflow: hidden;
   margin: 0 0 var(--gap-poster-to-thumbs);
