@@ -3276,11 +3276,12 @@ footer {
   }
 
   /* Login form instructions - desktop only */
-  .login-instructions {
-    max-width: 24rem;
-    margin-inline: auto;
-    margin-bottom: 1rem;
-    padding: 1rem 1.5rem;
+  .login-form .login-instructions {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100%;
+    background: transparent;
+    border: none;
   }
 }
 
