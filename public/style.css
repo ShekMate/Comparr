@@ -3247,7 +3247,7 @@ footer {
   }
 }
 
-/* Desktop (ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â°Ãƒâ€šÃ‚Â¥ 769px) */
+/* Desktop (ÃƒÆ'Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â°Ãƒâ€šÃ‚Â¥ 769px) */
 @media (min-width: 769px) {
   .card {
     width: 100% !important;
@@ -3270,9 +3270,17 @@ footer {
     margin-inline: auto;
     text-align: center;
   }
-  
+
   .matches-list {
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  }
+
+  /* Login form instructions - desktop only */
+  .login-instructions {
+    max-width: 24rem;
+    margin-inline: auto;
+    margin-bottom: 1rem;
+    padding: 1rem 1.5rem;
   }
 }
 
