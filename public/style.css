@@ -3271,6 +3271,18 @@ footer {
     text-align: center;
   }
 
+  /* Rate Controls Desktop - spread across full card width */
+  .rate-controls {
+    width: 100%;
+    max-width: 400px;
+    justify-content: space-between !important;
+    padding: 0 1rem !important;
+  }
+
+  .rate-controls .button-wrapper {
+    gap: 0rem !important;
+  }
+
   .matches-list {
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   }
