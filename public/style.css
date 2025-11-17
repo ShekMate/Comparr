@@ -1033,12 +1033,12 @@ body:not(.is-logged-in) .card-stack:empty::after {
   text-align: center;
   outline: none;
   transition: all 0.3s ease;
-  backdrop-filter: none;
+  backdrop-filter: blur(20px);
 }
 
 .password-form input:focus {
-  border-color: transparent;
-  box-shadow: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.3), 0 0 20px rgba(99, 102, 241, 0.2);
 }
 
 .password-form input::placeholder {
@@ -1049,9 +1049,9 @@ body:not(.is-logged-in) .card-stack:empty::after {
   align-self: center;
   width: auto;
   padding: 0.75rem 2rem;
-  background: transparent;
-  color: var(--color-text-primary);
-  border: 1px solid transparent;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  border: none;
   border-radius: var(--radius-md);
   font-size: 1rem;
   font-weight: 600;
@@ -1060,8 +1060,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .password-form .submit-button:hover {
-  transform: none;
-  box-shadow: none;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4), 0 4px 10px rgba(139, 92, 246, 0.3);
 }
 
 /* =========================================================
