@@ -3256,8 +3256,8 @@ footer {
   }
 
   .poster-wrapper {
-    width: auto;
-    max-width: 400px;
+    width: 80%;
+    max-width: 320px;
     margin: 0 auto var(--gap-poster-to-thumbs);
 	display: flex;
     justify-content: center;
