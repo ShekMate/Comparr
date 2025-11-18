@@ -3256,13 +3256,12 @@ footer {
   }
 
   .poster-wrapper {
-    width: 80%;
-    max-width: 320px;
+    width: 100%;
+    max-width: 400px;
     margin: 0 auto var(--gap-poster-to-thumbs);
 	display: flex;
     justify-content: center;
     align-items: center;
-    background: transparent;
   }
 
   .card-meta {
