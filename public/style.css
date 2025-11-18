@@ -213,9 +213,9 @@ body:not(.is-logged-in) .card-stack:empty::after {
   top: 100%;
   left: 50%;
   transform: translateX(-50%) translateY(8px);
-  background: transparent;
+  background: var(--color-surface);
   backdrop-filter: blur(20px);
-  border: 1px solid transparent;
+  border: 1px solid var(--color-line);
   border-radius: var(--radius-xl);
   padding: 0.5rem;
   min-width: 160px;
