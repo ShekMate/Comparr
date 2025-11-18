@@ -3276,11 +3276,15 @@ footer {
     width: 100%;
     max-width: 400px;
     justify-content: space-between !important;
-    padding: 0 1rem !important;
+    padding: 0 !important;
   }
 
   .rate-controls .button-wrapper {
     gap: 0rem !important;
+  }
+
+  .rate-controls .button-label {
+    margin-top: -0.25rem !important;
   }
 
   .matches-list {
