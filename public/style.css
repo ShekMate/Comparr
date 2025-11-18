@@ -1140,7 +1140,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .runtime-range-container input[type="number"] {
   width: 85px;
   padding: 0.5rem 0.625rem;
-  border: 1px solid transparent;
+  border: 1px solid rgba(99, 102, 241, 0.3);
   border-radius: var(--radius-md);
   background: transparent;
   color: var(--color-text-primary);
@@ -1364,7 +1364,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   padding: 0.5rem 0.75rem;
   background: transparent;
   color: var(--color-text-primary);
-  border: 1px solid transparent;
+  border: 1px solid rgba(99, 102, 241, 0.3);
   border-radius: var(--radius-md);
   cursor: pointer;
   text-align: left;
