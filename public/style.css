@@ -3304,6 +3304,19 @@ footer {
   .login-form .submit-button {
     margin-top: 1rem !important;
   }
+
+  /* Increase spacing between ratings - desktop only */
+  .card-ratings {
+    gap: 0.5rem;
+  }
+
+  .rating-logo {
+    margin-right: 0.25rem;
+  }
+
+  .rating-separator {
+    margin: 0 0.3rem;
+  }
 }
 
 /* =========================================================
