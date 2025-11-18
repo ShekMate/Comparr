@@ -213,9 +213,9 @@ body:not(.is-logged-in) .card-stack:empty::after {
   top: 100%;
   left: 50%;
   transform: translateX(-50%) translateY(8px);
-  background: transparent;
+  background: var(--color-surface);
   backdrop-filter: blur(20px);
-  border: 1px solid transparent;
+  border: 1px solid var(--color-line);
   border-radius: var(--radius-xl);
   padding: 0.5rem;
   min-width: 160px;
@@ -330,7 +330,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 /* Poster */
 .poster-wrapper {
   order: 10;
-  background: var(--color-surface);
+  background: var(--color-background);
   border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
   overflow: hidden;
   margin: 0 0 var(--gap-poster-to-thumbs);
@@ -406,7 +406,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   margin: 0;
   margin-top: 0 !important; /* Force no top margin */
   padding: 0rem;
-  background: transparent;
+  background: rgba(15, 23, 42, 0.95);
   backdrop-filter: blur(10px);
   width: 100%;
 }
@@ -485,7 +485,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   padding: 1.5rem;
   text-align: center;
   color: var(--color-text-primary);
-  background: transparent;
+  background: rgba(15, 23, 42, 0.95);
   backdrop-filter: blur(10px);
   border-radius: 0 0 var(--radius-2xl) var(--radius-2xl);
 }
@@ -1069,7 +1069,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
    ========================================================= */
 .filters-container {
   padding: 0 1rem 1rem;
-  max-width: 700px;
+  max-width: 450px;
   margin: 0 auto;
   overflow: visible;
   position: relative;
@@ -1140,7 +1140,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .runtime-range-container input[type="number"] {
   width: 85px;
   padding: 0.5rem 0.625rem;
-  border: 1px solid transparent;
+  border: 1px solid rgba(99, 102, 241, 0.3);
   border-radius: var(--radius-md);
   background: transparent;
   color: var(--color-text-primary);
@@ -1364,7 +1364,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   padding: 0.5rem 0.75rem;
   background: transparent;
   color: var(--color-text-primary);
-  border: 1px solid transparent;
+  border: 1px solid rgba(99, 102, 241, 0.3);
   border-radius: var(--radius-md);
   cursor: pointer;
   text-align: left;
@@ -3096,6 +3096,7 @@ footer {
   
   .filter-group {
     padding: 1rem;
+    margin-bottom: 0.25rem;
   }
   
   .dropdown-button {
@@ -3251,13 +3252,13 @@ footer {
 @media (min-width: 769px) {
   .card {
     width: 100% !important;
-    max-width: 320px;
+    max-width: 400px;
     align-items: center;
   }
 
   .poster-wrapper {
-    width: auto;
-    max-width: 320px;
+    width: 100%;
+    max-width: 400px;
     margin: 0 auto var(--gap-poster-to-thumbs);
 	display: flex;
     justify-content: center;
@@ -3269,6 +3270,22 @@ footer {
     max-width: 70ch;
     margin-inline: auto;
     text-align: center;
+  }
+
+  /* Rate Controls Desktop - spread across poster width */
+  .rate-controls {
+    width: 100%;
+    max-width: 400px;
+    justify-content: space-between !important;
+    padding: 0 10% !important;
+  }
+
+  .rate-controls .button-wrapper {
+    gap: 0rem !important;
+  }
+
+  .rate-controls .button-label {
+    margin-top: -0.25rem !important;
   }
 
   .matches-list {
@@ -3287,6 +3304,19 @@ footer {
   /* Reduce spacing above submit button - desktop only */
   .login-form .submit-button {
     margin-top: 1rem !important;
+  }
+
+  /* Increase spacing between ratings - desktop only */
+  .card-ratings {
+    gap: 0.5rem;
+  }
+
+  .rating-logo {
+    margin-right: 0.25rem;
+  }
+
+  .rating-separator {
+    margin: 0 0.3rem;
   }
 }
 
