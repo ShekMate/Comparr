@@ -3271,10 +3271,10 @@ footer {
     text-align: center;
   }
 
-  /* Rate Controls Desktop - spread across full card width */
+  /* Rate Controls Desktop - spread across poster width */
   .rate-controls {
-    width: 100%;
-    max-width: 400px;
+    width: 80%;
+    max-width: 320px;
     justify-content: space-between !important;
     padding: 0 !important;
   }
