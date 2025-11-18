@@ -3273,10 +3273,10 @@ footer {
 
   /* Rate Controls Desktop - spread across poster width */
   .rate-controls {
-    width: 80%;
-    max-width: 320px;
+    width: 100%;
+    max-width: 400px;
     justify-content: space-between !important;
-    padding: 0 !important;
+    padding: 0 10% !important;
   }
 
   .rate-controls .button-wrapper {
