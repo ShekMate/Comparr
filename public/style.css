@@ -3410,6 +3410,14 @@ footer {
     gap: 1.5rem !important;
   }
 
+  /* Add visual separation to filter groups */
+  .filter-group {
+    border: 1px solid rgba(99, 102, 241, 0.3) !important;
+    background: rgba(15, 23, 42, 0.4) !important;
+    padding: 1rem !important;
+    margin-bottom: 0 !important;
+  }
+
   /* Sort By - top left */
   .filter-group:nth-of-type(1) {
     grid-column: 1;
