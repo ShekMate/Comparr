@@ -3324,7 +3324,8 @@ footer {
   .card-plot {
     font-size: 0.9rem !important;
     line-height: 1.5 !important;
-    margin-bottom: 1.5rem !important;
+    margin-top: 2rem !important;
+    margin-bottom: 2rem !important;
     -webkit-line-clamp: 4 !important;
   }
 
@@ -3332,12 +3333,13 @@ footer {
     font-size: 1.15rem !important;
     gap: 0.75rem !important;
     justify-content: flex-start !important;
-    margin-bottom: 1.5rem !important;
+    margin-bottom: 0 !important;
   }
 
   .card-crew {
     font-size: 0.85rem !important;
-    margin: 1.25rem 0 !important;
+    margin: 0 !important;
+    margin-top: 2rem !important;
   }
 
   .card-crew .crew-line {
@@ -3348,8 +3350,14 @@ footer {
     gap: 0rem !important;
   }
 
+  .rate-controls button {
+    width: 70px !important;
+    height: 70px !important;
+  }
+
   .rate-controls .button-label {
     margin-top: -0.25rem !important;
+    font-size: 0.7rem !important;
   }
 
   .matches-list {
