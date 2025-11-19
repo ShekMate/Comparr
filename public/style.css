@@ -3392,6 +3392,90 @@ footer {
   .rating-separator {
     margin: 0 0.4rem !important;
   }
+
+  /* Desktop Filters Layout - Two Column Grid */
+  .filters-container {
+    max-width: 950px !important;
+    padding: 0 2rem 2rem !important;
+  }
+
+  #tab-filters h3 {
+    grid-column: 1 / -1;
+    margin-bottom: 1.5rem !important;
+  }
+
+  .filters-container {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 1.5rem !important;
+  }
+
+  /* Sort By - top left */
+  .filter-group:nth-of-type(1) {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  /* Where to Watch - top right */
+  .filter-group:nth-of-type(3) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  /* Year Range - row 2 left */
+  .filter-group:nth-of-type(2) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  /* Runtime - row 2 right */
+  .filter-group:nth-of-type(9) {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  /* Genre - row 3 left */
+  .filter-group:nth-of-type(4) {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  /* Language - row 3 right */
+  .filter-group:nth-of-type(5) {
+    grid-column: 2;
+    grid-row: 3;
+  }
+
+  /* Country - row 4 left */
+  .filter-group:nth-of-type(6) {
+    grid-column: 1;
+    grid-row: 4;
+  }
+
+  /* Content Rating - row 4 right */
+  .filter-group:nth-of-type(8) {
+    grid-column: 2;
+    grid-row: 4;
+  }
+
+  /* IMDb Rating - row 5 left */
+  .filter-group:nth-of-type(7) {
+    grid-column: 1;
+    grid-row: 5;
+  }
+
+  /* TMDb Filters - row 5 right */
+  .filter-group:nth-of-type(10) {
+    grid-column: 2;
+    grid-row: 5;
+  }
+
+  /* Apply/Reset buttons - full width at bottom */
+  .apply-filters-container {
+    grid-column: 1 / -1 !important;
+    grid-row: 6;
+    margin-top: 1rem !important;
+  }
 }
 
 /* =========================================================
