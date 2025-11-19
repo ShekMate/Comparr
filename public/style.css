@@ -3260,6 +3260,8 @@ footer {
     gap: 0;
     align-items: start;
     padding: 0;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(20px);
   }
 
   .poster-wrapper {
@@ -3271,7 +3273,15 @@ footer {
     margin: 0;
 	display: flex;
     justify-content: center;
-    align-items: flex-start;
+    align-items: center;
+    border-radius: var(--radius-2xl) 0 0 var(--radius-2xl);
+    background: var(--color-background);
+  }
+
+  .card .poster {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
     border-radius: var(--radius-2xl) 0 0 var(--radius-2xl);
   }
 
@@ -3284,6 +3294,7 @@ footer {
     padding: 2rem;
     text-align: left;
     border-radius: 0 var(--radius-2xl) 0 0;
+    background: rgba(15, 23, 42, 0.95);
   }
 
   /* Rate Controls Desktop - positioned on the right */
@@ -3295,6 +3306,32 @@ footer {
     justify-content: space-between !important;
     padding: 1.5rem 10% 2rem 10% !important;
     border-radius: 0 0 var(--radius-2xl) 0;
+    background: rgba(15, 23, 42, 0.95);
+  }
+
+  /* Bigger metadata text for desktop */
+  .card-title {
+    font-size: 1.75rem !important;
+    margin-bottom: 1rem !important;
+  }
+
+  .card-plot {
+    font-size: 1.1rem !important;
+    line-height: 1.6 !important;
+    margin-bottom: 1.5rem !important;
+    -webkit-line-clamp: 5 !important;
+  }
+
+  .card-ratings {
+    font-size: 1.2rem !important;
+    gap: 0.5rem !important;
+    justify-content: flex-start !important;
+    margin-bottom: 1rem !important;
+  }
+
+  .card-crew {
+    font-size: 1rem !important;
+    margin: 1rem 0 !important;
   }
 
   .rate-controls .button-wrapper {
