@@ -3282,9 +3282,11 @@ footer {
   }
 
   .card .poster {
-    width: auto !important;
+    width: 100% !important;
     height: 75vh !important;
-    object-fit: contain;
+    max-width: 100% !important;
+    object-fit: contain !important;
+    aspect-ratio: 2 / 3 !important;
     border-radius: var(--radius-2xl) 0 0 var(--radius-2xl);
   }
 
