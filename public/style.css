@@ -3318,26 +3318,30 @@ footer {
   /* Metadata text sizing for desktop */
   .card-title {
     font-size: 1.3rem !important;
-    margin-bottom: 0.75rem !important;
+    margin-bottom: 1.5rem !important;
   }
 
   .card-plot {
     font-size: 0.9rem !important;
     line-height: 1.5 !important;
-    margin-bottom: 1rem !important;
+    margin-bottom: 1.5rem !important;
     -webkit-line-clamp: 4 !important;
   }
 
   .card-ratings {
-    font-size: 1rem !important;
-    gap: 0.5rem !important;
+    font-size: 1.15rem !important;
+    gap: 0.75rem !important;
     justify-content: flex-start !important;
-    margin-bottom: 0.75rem !important;
+    margin-bottom: 1.5rem !important;
   }
 
   .card-crew {
     font-size: 0.85rem !important;
-    margin: 0.75rem 0 !important;
+    margin: 1.25rem 0 !important;
+  }
+
+  .card-crew .crew-line {
+    margin-bottom: 0.5rem !important;
   }
 
   .rate-controls .button-wrapper {
@@ -3367,16 +3371,13 @@ footer {
   }
 
   /* Increase spacing between ratings - desktop only */
-  .card-ratings {
-    gap: 0.5rem;
-  }
-
   .rating-logo {
-    margin-right: 0.25rem;
+    height: 20px !important;
+    margin-right: 0.35rem !important;
   }
 
   .rating-separator {
-    margin: 0 0.3rem;
+    margin: 0 0.4rem !important;
   }
 }
 
