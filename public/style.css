@@ -3317,16 +3317,17 @@ footer {
 
   /* Metadata text sizing for desktop */
   .card-title {
-    font-size: 1.3rem !important;
-    margin-bottom: 1.5rem !important;
+    font-size: 1.6rem !important;
+    margin-bottom: 0.75rem !important;
   }
 
   .card-plot {
     font-size: 1.05rem !important;
     line-height: 1.6 !important;
-    margin-top: 4rem !important;
-    margin-bottom: 4rem !important;
-    -webkit-line-clamp: 4 !important;
+    margin-top: 1.5rem !important;
+    margin-bottom: 1.5rem !important;
+    -webkit-line-clamp: unset !important;
+    display: block !important;
   }
 
   .card-ratings {
@@ -3339,7 +3340,7 @@ footer {
   .card-crew {
     font-size: 0.85rem !important;
     margin: 0 !important;
-    margin-top: 4rem !important;
+    margin-top: 1.5rem !important;
   }
 
   .card-crew .crew-line {
