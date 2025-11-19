@@ -3252,7 +3252,7 @@ footer {
 @media (min-width: 769px) {
   .card {
     width: 100% !important;
-    max-width: 900px;
+    max-width: 1400px;
     min-height: 75vh;
     display: grid !important;
     grid-template-columns: auto 1fr;
