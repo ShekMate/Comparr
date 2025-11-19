@@ -3258,10 +3258,11 @@ footer {
     grid-template-columns: auto 1fr;
     grid-template-rows: 1fr auto;
     gap: 0;
-    align-items: start;
+    align-items: stretch;
     padding: 0;
-    background: rgba(15, 23, 42, 0.95);
+    background: rgba(15, 23, 42, 0.95) !important;
     backdrop-filter: blur(20px);
+    overflow: hidden;
   }
 
   .poster-wrapper {
@@ -3271,17 +3272,20 @@ footer {
     max-width: 350px;
     min-height: 75vh;
     margin: 0;
+    padding: 0;
 	display: flex;
     justify-content: center;
     align-items: center;
     border-radius: var(--radius-2xl) 0 0 var(--radius-2xl);
-    background: var(--color-background);
+    background: rgba(15, 23, 42, 0.95) !important;
+    overflow: hidden;
   }
 
   .card .poster {
-    width: 100% !important;
+    width: auto !important;
     height: 100% !important;
-    object-fit: cover;
+    max-width: 100%;
+    object-fit: contain;
     border-radius: var(--radius-2xl) 0 0 var(--radius-2xl);
   }
 
@@ -3294,7 +3298,8 @@ footer {
     padding: 2rem;
     text-align: left;
     border-radius: 0 var(--radius-2xl) 0 0;
-    background: rgba(15, 23, 42, 0.95);
+    background: rgba(15, 23, 42, 0.95) !important;
+    backdrop-filter: blur(10px);
   }
 
   /* Rate Controls Desktop - positioned on the right */
@@ -3306,32 +3311,33 @@ footer {
     justify-content: space-between !important;
     padding: 1.5rem 10% 2rem 10% !important;
     border-radius: 0 0 var(--radius-2xl) 0;
-    background: rgba(15, 23, 42, 0.95);
+    background: rgba(15, 23, 42, 0.95) !important;
+    backdrop-filter: blur(10px);
   }
 
-  /* Bigger metadata text for desktop */
+  /* Metadata text sizing for desktop */
   .card-title {
-    font-size: 1.75rem !important;
-    margin-bottom: 1rem !important;
+    font-size: 1.3rem !important;
+    margin-bottom: 0.75rem !important;
   }
 
   .card-plot {
-    font-size: 1.1rem !important;
-    line-height: 1.6 !important;
-    margin-bottom: 1.5rem !important;
-    -webkit-line-clamp: 5 !important;
+    font-size: 0.9rem !important;
+    line-height: 1.5 !important;
+    margin-bottom: 1rem !important;
+    -webkit-line-clamp: 4 !important;
   }
 
   .card-ratings {
-    font-size: 1.2rem !important;
+    font-size: 1rem !important;
     gap: 0.5rem !important;
     justify-content: flex-start !important;
-    margin-bottom: 1rem !important;
+    margin-bottom: 0.75rem !important;
   }
 
   .card-crew {
-    font-size: 1rem !important;
-    margin: 1rem 0 !important;
+    font-size: 0.85rem !important;
+    margin: 0.75rem 0 !important;
   }
 
   .rate-controls .button-wrapper {
