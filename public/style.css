@@ -3309,7 +3309,7 @@ footer {
     width: 100%;
     max-width: none;
     justify-content: space-between !important;
-    padding: 1.5rem 10% 2rem 10% !important;
+    padding: 1.5rem 2rem 2rem 2rem !important;
     border-radius: 0 0 var(--radius-2xl) 0;
     background: rgba(15, 23, 42, 0.95) !important;
     backdrop-filter: blur(10px);
@@ -3324,8 +3324,8 @@ footer {
   .card-plot {
     font-size: 0.9rem !important;
     line-height: 1.5 !important;
-    margin-top: 2rem !important;
-    margin-bottom: 2rem !important;
+    margin-top: 4rem !important;
+    margin-bottom: 4rem !important;
     -webkit-line-clamp: 4 !important;
   }
 
@@ -3339,7 +3339,7 @@ footer {
   .card-crew {
     font-size: 0.85rem !important;
     margin: 0 !important;
-    margin-top: 2rem !important;
+    margin-top: 4rem !important;
   }
 
   .card-crew .crew-line {
