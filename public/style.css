@@ -3348,22 +3348,21 @@ footer {
 
   .rate-controls .button-wrapper {
     gap: 0rem !important;
-    align-items: flex-start !important;
+    align-items: center !important;
   }
 
   .rate-controls button {
     width: 70px !important;
     height: 70px !important;
     font-size: 2.5rem !important;
-    justify-content: flex-start !important;
-    padding-left: 0.5rem !important;
+    justify-content: center !important;
+    border: 2px solid rgba(255, 255, 255, 0.2) !important;
   }
 
   .rate-controls .button-label {
     margin-top: -0.25rem !important;
     font-size: 0.7rem !important;
-    text-align: left !important;
-    padding-left: 0.5rem !important;
+    text-align: center !important;
   }
 
   .matches-list {
