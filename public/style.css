@@ -3348,6 +3348,7 @@ footer {
 
   .rate-controls .button-wrapper {
     gap: 0rem !important;
+    align-items: flex-start !important;
   }
 
   .rate-controls button {
@@ -3361,6 +3362,8 @@ footer {
   .rate-controls .button-label {
     margin-top: -0.25rem !important;
     font-size: 0.7rem !important;
+    text-align: left !important;
+    padding-left: 0.5rem !important;
   }
 
   .matches-list {
