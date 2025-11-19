@@ -3275,18 +3275,18 @@ footer {
     padding: 0;
 	display: flex;
     justify-content: center;
-    align-items: stretch;
+    align-items: center;
     border-radius: var(--radius-2xl) 0 0 var(--radius-2xl);
     background: rgba(15, 23, 42, 0.95) !important;
     overflow: hidden;
   }
 
   .card .poster {
-    width: 100% !important;
-    height: 75vh !important;
-    max-width: 100% !important;
-    object-fit: contain !important;
-    aspect-ratio: 2 / 3 !important;
+    width: auto !important;
+    height: 100% !important;
+    min-height: 75vh !important;
+    max-width: none !important;
+    object-fit: cover !important;
     border-radius: var(--radius-2xl) 0 0 var(--radius-2xl);
   }
 
