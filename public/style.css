@@ -1553,6 +1553,84 @@ body:not(.is-logged-in) .card-stack:empty::after {
   font-size: 0.8125rem;
 }
 
+/* Desktop Grid Layout for Filters */
+@media (min-width: 768px) {
+  .filters-container {
+    max-width: 900px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    grid-template-areas:
+      "sort where-to-watch"
+      "year content-rating"
+      "genre language"
+      "country runtime"
+      "imdb tmdb-rating"
+      "tmdb-votes tmdb-votes";
+  }
+
+  .filter-sort {
+    grid-area: sort;
+  }
+
+  .filter-where-to-watch {
+    grid-area: where-to-watch;
+  }
+
+  .filter-year {
+    grid-area: year;
+  }
+
+  .filter-content-rating {
+    grid-area: content-rating;
+  }
+
+  .filter-genre {
+    grid-area: genre;
+  }
+
+  .filter-language {
+    grid-area: language;
+  }
+
+  .filter-country {
+    grid-area: country;
+  }
+
+  .filter-runtime {
+    grid-area: runtime;
+  }
+
+  .filter-imdb {
+    grid-area: imdb;
+  }
+
+  .filter-tmdb-rating {
+    grid-area: tmdb-rating;
+  }
+
+  .filter-tmdb-votes {
+    grid-area: tmdb-votes;
+  }
+
+  /* Make "Where to Watch" match "Sort By" height */
+  .filter-sort,
+  .filter-where-to-watch {
+    align-items: stretch;
+  }
+
+  .filter-where-to-watch .toggle-switch-container {
+    padding: 0.5rem 0.625rem;
+    margin-top: 0.5rem;
+  }
+
+  /* Remove any extra margin/padding that might make it taller */
+  .filter-sort .sort-controls-wrapper,
+  .filter-where-to-watch {
+    height: 100%;
+  }
+}
+
 .apply-filters-container {
   margin-top: 1rem;
   text-align: center;
