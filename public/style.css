@@ -1569,10 +1569,19 @@ body:not(.is-logged-in) .card-stack:empty::after {
       "imdb tmdb-rating"
       "tmdb-votes tmdb-votes"
       "buttons buttons";
+    position: relative;
+    z-index: auto;
+  }
+
+  /* Remove margins in grid mode - gap handles spacing */
+  .filters-container .filter-group {
+    margin-bottom: 0;
+    margin-top: 0;
   }
 
   #tab-filters h3 {
     grid-area: header;
+    z-index: 1;
   }
 
   .filter-sort {
@@ -1623,21 +1632,10 @@ body:not(.is-logged-in) .card-stack:empty::after {
     grid-area: buttons;
   }
 
-  /* Make "Where to Watch" match "Sort By" height */
-  .filter-sort,
-  .filter-where-to-watch {
-    align-items: stretch;
-  }
-
+  /* Make "Where to Watch" match "Sort By" height by removing extra padding */
   .filter-where-to-watch .toggle-switch-container {
-    padding: 0.5rem 0.625rem;
+    padding: 0.375rem 0.625rem;
     margin-top: 0.5rem;
-  }
-
-  /* Remove any extra margin/padding that might make it taller */
-  .filter-sort .sort-controls-wrapper,
-  .filter-where-to-watch {
-    height: 100%;
   }
 }
 
