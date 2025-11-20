@@ -3307,7 +3307,7 @@ footer {
     width: 100%;
     max-width: none;
     justify-content: flex-start !important;
-    gap: 2rem !important;
+    gap: 1rem !important;
     padding: 1.5rem 2rem 2rem 2rem !important;
     border-radius: 0 0 var(--radius-2xl) 0;
     background: rgba(15, 23, 42, 0.95) !important;
