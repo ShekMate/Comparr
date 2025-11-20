@@ -1557,90 +1557,103 @@ body:not(.is-logged-in) .card-stack:empty::after {
 @media (min-width: 768px) {
   .filters-container {
     max-width: 900px;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-    grid-template-areas:
-      "header header"
-      "sort where-to-watch"
-      "year content-rating"
-      "genre language"
-      "country runtime"
-      "imdb tmdb-rating"
-      "tmdb-votes tmdb-votes"
-      "buttons buttons";
-    position: static;
-    z-index: auto;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    grid-template-rows: auto auto auto auto auto auto auto auto !important;
+    gap: 0.75rem !important;
+    position: static !important;
+    z-index: auto !important;
   }
 
   /* Remove margins in grid mode - gap handles spacing */
   .filters-container .filter-group {
-    margin-bottom: 0;
-    margin-top: 0;
-    position: static;
+    margin-bottom: 0 !important;
+    margin-top: 0 !important;
+    position: static !important;
   }
 
   /* Override first-of-type margin */
   .filters-container .filter-group:first-of-type {
-    margin-top: 0;
+    margin-top: 0 !important;
   }
 
   /* Remove margin-top from buttons in grid mode */
   .filters-container > .apply-filters-container {
-    margin-top: 0;
+    margin-top: 0 !important;
   }
 
+  /* Row 1: Header - spans both columns */
   .filters-container > h3 {
-    grid-area: header;
-    margin: 0 0 0 0;
+    grid-column: 1 / 3 !important;
+    grid-row: 1 !important;
+    margin: 0 !important;
   }
 
+  /* Row 2: Sort By | Where to Watch */
   .filters-container > .filter-sort {
-    grid-area: sort;
+    grid-column: 1 !important;
+    grid-row: 2 !important;
   }
 
   .filters-container > .filter-where-to-watch {
-    grid-area: where-to-watch;
+    grid-column: 2 !important;
+    grid-row: 2 !important;
   }
 
+  /* Row 3: Release Year Range | Content Rating */
   .filters-container > .filter-year {
-    grid-area: year;
+    grid-column: 1 !important;
+    grid-row: 3 !important;
   }
 
   .filters-container > .filter-content-rating {
-    grid-area: content-rating;
+    grid-column: 2 !important;
+    grid-row: 3 !important;
   }
 
+  /* Row 4: Genre | Language */
   .filters-container > .filter-genre {
-    grid-area: genre;
+    grid-column: 1 !important;
+    grid-row: 4 !important;
   }
 
   .filters-container > .filter-language {
-    grid-area: language;
+    grid-column: 2 !important;
+    grid-row: 4 !important;
   }
 
+  /* Row 5: Country | Runtime */
   .filters-container > .filter-country {
-    grid-area: country;
+    grid-column: 1 !important;
+    grid-row: 5 !important;
   }
 
   .filters-container > .filter-runtime {
-    grid-area: runtime;
+    grid-column: 2 !important;
+    grid-row: 5 !important;
   }
 
+  /* Row 6: IMDb Rating | TMDb Rating */
   .filters-container > .filter-imdb {
-    grid-area: imdb;
+    grid-column: 1 !important;
+    grid-row: 6 !important;
   }
 
   .filters-container > .filter-tmdb-rating {
-    grid-area: tmdb-rating;
+    grid-column: 2 !important;
+    grid-row: 6 !important;
   }
 
+  /* Row 7: TMDb Votes - spans both columns */
   .filters-container > .filter-tmdb-votes {
-    grid-area: tmdb-votes;
+    grid-column: 1 / 3 !important;
+    grid-row: 7 !important;
   }
 
+  /* Row 8: Buttons - spans both columns */
   .filters-container > .apply-filters-container {
-    grid-area: buttons;
+    grid-column: 1 / 3 !important;
+    grid-row: 8 !important;
   }
 
   /* Make "Where to Watch" match "Sort By" height by removing extra padding */
