@@ -3311,6 +3311,15 @@ footer {
     gap: 0.5rem;
   }
 
+  /* Double spacing between cast/plot and plot/ratings - desktop only */
+  .card-crew {
+    margin-bottom: 1.5rem;
+  }
+
+  .card-plot {
+    margin-bottom: 2rem;
+  }
+
   .rating-logo {
     margin-right: 0.25rem;
   }
