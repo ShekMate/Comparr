@@ -3318,6 +3318,16 @@ footer {
   .rating-separator {
     margin: 0 0.3rem;
   }
+
+  /* Increase spacing between cast and plot - desktop only */
+  .card-crew {
+    margin-bottom: 1.5rem;
+  }
+
+  /* Increase spacing between plot and ratings - desktop only */
+  .card-plot {
+    margin-bottom: 1.5rem;
+  }
 }
 
 /* =========================================================
