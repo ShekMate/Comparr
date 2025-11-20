@@ -1569,8 +1569,6 @@ body:not(.is-logged-in) .card-stack:empty::after {
       "imdb tmdb-rating"
       "tmdb-votes tmdb-votes"
       "buttons buttons";
-    position: relative;
-    z-index: auto;
   }
 
   /* Remove margins in grid mode - gap handles spacing */
@@ -1579,9 +1577,15 @@ body:not(.is-logged-in) .card-stack:empty::after {
     margin-top: 0;
   }
 
+  /* Remove margin-top from buttons in grid mode */
+  .filters-container > .apply-filters-container {
+    margin-top: 0;
+  }
+
   .filters-container > h3 {
     grid-area: header;
-    z-index: 1;
+    position: relative;
+    z-index: 10;
   }
 
   .filters-container > .filter-sort {
