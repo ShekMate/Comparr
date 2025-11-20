@@ -3607,6 +3607,16 @@ footer {
     grid-row: 6;
     margin-top: 1rem !important;
   }
+
+  /* Increase spacing between cast and plot - desktop only */
+  .card-crew {
+    margin-bottom: 1.5rem;
+  }
+
+  /* Increase spacing between plot and ratings - desktop only */
+  .card-plot {
+    margin-bottom: 1.5rem;
+  }
 }
 
 /* =========================================================
