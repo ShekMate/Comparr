@@ -1569,11 +1569,19 @@ body:not(.is-logged-in) .card-stack:empty::after {
       "imdb tmdb-rating"
       "tmdb-votes tmdb-votes"
       "buttons buttons";
+    position: static;
+    z-index: auto;
   }
 
   /* Remove margins in grid mode - gap handles spacing */
   .filters-container .filter-group {
     margin-bottom: 0;
+    margin-top: 0;
+    position: static;
+  }
+
+  /* Override first-of-type margin */
+  .filters-container .filter-group:first-of-type {
     margin-top: 0;
   }
 
@@ -1584,8 +1592,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
   .filters-container > h3 {
     grid-area: header;
-    position: relative;
-    z-index: 10;
+    margin: 0 0 0 0;
   }
 
   .filters-container > .filter-sort {
