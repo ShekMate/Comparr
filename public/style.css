@@ -1579,56 +1579,56 @@ body:not(.is-logged-in) .card-stack:empty::after {
     margin-top: 0;
   }
 
-  #tab-filters h3 {
+  .filters-container > h3 {
     grid-area: header;
     z-index: 1;
   }
 
-  .filter-sort {
+  .filters-container > .filter-sort {
     grid-area: sort;
   }
 
-  .filter-where-to-watch {
+  .filters-container > .filter-where-to-watch {
     grid-area: where-to-watch;
   }
 
-  .filter-year {
+  .filters-container > .filter-year {
     grid-area: year;
   }
 
-  .filter-content-rating {
+  .filters-container > .filter-content-rating {
     grid-area: content-rating;
   }
 
-  .filter-genre {
+  .filters-container > .filter-genre {
     grid-area: genre;
   }
 
-  .filter-language {
+  .filters-container > .filter-language {
     grid-area: language;
   }
 
-  .filter-country {
+  .filters-container > .filter-country {
     grid-area: country;
   }
 
-  .filter-runtime {
+  .filters-container > .filter-runtime {
     grid-area: runtime;
   }
 
-  .filter-imdb {
+  .filters-container > .filter-imdb {
     grid-area: imdb;
   }
 
-  .filter-tmdb-rating {
+  .filters-container > .filter-tmdb-rating {
     grid-area: tmdb-rating;
   }
 
-  .filter-tmdb-votes {
+  .filters-container > .filter-tmdb-votes {
     grid-area: tmdb-votes;
   }
 
-  .apply-filters-container {
+  .filters-container > .apply-filters-container {
     grid-area: buttons;
   }
 
