@@ -162,8 +162,12 @@ export default class CardView {
     plotEl?.addEventListener('click', handlePlotToggle)
     
     // Attach swipe handler ONLY to poster to allow scrolling on text/metadata areas
+    // Only enable swipe on touch-capable devices (mobile/tablet)
     const posterEl = node.querySelector('.poster')
-    posterEl?.addEventListener('pointerdown', this.handleSwipe)
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+    if (isTouchDevice) {
+      posterEl?.addEventListener('pointerdown', this.handleSwipe)
+    }
     
     // Append to card stack
     console.log(`🎴 CardView: Appending card for "${this.movieData.title}" to stack`)
