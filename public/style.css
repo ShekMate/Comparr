@@ -3494,6 +3494,19 @@ footer {
   }
 
   /* Increase spacing between ratings - desktop only */
+  .card-ratings {
+    gap: 0.5rem;
+  }
+
+  /* Double spacing between cast/plot and plot/ratings - desktop only */
+  .card-crew {
+    margin-bottom: 1.5rem;
+  }
+
+  .card-plot {
+    margin-bottom: 2rem;
+  }
+
   .rating-logo {
     height: 24px !important;
     margin-right: 0.35rem !important;
