@@ -3454,6 +3454,9 @@ footer {
 
   .card-crew .crew-line {
     margin-bottom: 0.5rem !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
   }
 
   .rate-controls .button-wrapper {
