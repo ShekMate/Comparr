@@ -84,28 +84,6 @@ export default class CardView {
         />
       </div>
 
-
-      <div class="rate-controls">
-        <div class="button-wrapper">
-          <button type="button" class="rate-thumbs-down" aria-label="Thumbs down" onclick="this.closest('.card')._handleDown(event)">
-            <i class="fas fa-thumbs-down"></i>
-          </button>
-          <span class="button-label">Pass</span>
-        </div>
-        <div class="button-wrapper">
-          <button type="button" class="rate-seen" aria-label="Mark as seen" onclick="this.closest('.card')._handleSeen(event)">
-            <i class="fas fa-eye"></i>
-          </button>
-          <span class="button-label">Seen</span>
-        </div>
-        <div class="button-wrapper">
-          <button type="button" class="rate-thumbs-up" aria-label="Thumbs up" onclick="this.closest('.card')._handleUp(event)">
-            <i class="fas fa-thumbs-up"></i>
-          </button>
-          <span class="button-label">Watch</span>
-        </div>
-      </div>
-
       <div class="card-meta">
         <div class="card-title">
           ${title}${type === 'movie' ? ` (${year})` : ''}
@@ -113,6 +91,28 @@ export default class CardView {
         ${this.renderCrewInfo()}
         ${summary ? `<p class="card-plot" onclick="this.closest('.card')._handlePlot(event)">${summary}</p>` : ''}
         ${rating ? `<div class="card-ratings">${rating}</div>` : ''}
+        ${this.renderStreamingProviders()}
+
+        <div class="rate-controls">
+          <div class="button-wrapper">
+            <button type="button" class="rate-thumbs-down" aria-label="Thumbs down" onclick="this.closest('.card')._handleDown(event)">
+              <i class="fas fa-thumbs-down"></i>
+            </button>
+            <span class="button-label">Pass</span>
+          </div>
+          <div class="button-wrapper">
+            <button type="button" class="rate-seen" aria-label="Mark as seen" onclick="this.closest('.card')._handleSeen(event)">
+              <i class="fas fa-eye"></i>
+            </button>
+            <span class="button-label">Seen</span>
+          </div>
+          <div class="button-wrapper">
+            <button type="button" class="rate-thumbs-up" aria-label="Thumbs up" onclick="this.closest('.card')._handleUp(event)">
+              <i class="fas fa-thumbs-up"></i>
+            </button>
+            <span class="button-label">Watch</span>
+          </div>
+        </div>
       </div>
     `;
 
@@ -401,6 +401,88 @@ export default class CardView {
     if (lines.length === 0) return '';
     
     return `<div class="card-crew">${lines.join('')}</div>`;
+  }
+
+  renderStreamingProviders() {
+    // Get streaming services in the format: { subscription: [], free: [] }
+    let streamingServices = { subscription: [], free: [] }
+
+    if (!this.movieData.streamingServices) {
+      return ''
+    }
+
+    if (this.movieData.streamingServices.subscription || this.movieData.streamingServices.free) {
+      // Already in correct format
+      streamingServices = {
+        subscription: this.movieData.streamingServices.subscription || [],
+        free: this.movieData.streamingServices.free || []
+      }
+    } else if (Array.isArray(this.movieData.streamingServices)) {
+      // Old array format - treat as subscription
+      streamingServices.subscription = this.movieData.streamingServices
+    }
+
+    // Filter out Plex from subscription services
+    const plexLibraryName = window.PLEX_LIBRARY_NAME || 'Plex'
+    streamingServices.subscription = streamingServices.subscription.filter(
+      s => s.name !== plexLibraryName
+    )
+
+    const hasSubscription = streamingServices.subscription.length > 0
+    const hasFree = streamingServices.free.length > 0
+
+    if (!hasSubscription && !hasFree) {
+      return ''
+    }
+
+    return `
+      <div class="card-streaming">
+        <div class="streaming-header">
+          <i class="fas fa-tv"></i> Where to Watch
+        </div>
+        <div class="streaming-services">
+          ${hasSubscription ? `
+            <div class="streaming-category">
+              <div class="streaming-category-label">Subscription</div>
+              <div class="streaming-logos">
+                ${this.renderServiceLogos(streamingServices.subscription)}
+              </div>
+            </div>
+          ` : ''}
+          ${hasFree ? `
+            <div class="streaming-category">
+              <div class="streaming-category-label">Free</div>
+              <div class="streaming-logos">
+                ${this.renderServiceLogos(streamingServices.free)}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `
+  }
+
+  renderServiceLogos(services) {
+    if (!services || services.length === 0) {
+      return '<span class="no-services">None available</span>'
+    }
+
+    const basePath = this.basePath || ''
+
+    return services.map(s => {
+      const logoUrl = s.logo_path
+        ? (s.logo_path.startsWith('/assets/')
+            ? `${basePath}${s.logo_path}`
+            : `https://image.tmdb.org/t/p/original${s.logo_path}`)
+        : null
+      const serviceName = s.name || s.provider_name || 'Unknown'
+
+      return `
+        <div class="streaming-service-item" title="${serviceName}">
+          ${logoUrl ? `<img src="${logoUrl}" alt="${serviceName}" class="streaming-logo">` : `<span>${serviceName}</span>`}
+        </div>
+      `
+    }).join('')
   }
 
   destroy() {
