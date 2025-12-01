@@ -3758,6 +3758,14 @@ footer {
     font-size: 1.05rem !important;
   }
 
+  .watch-card-metadata .metadata-badge i {
+    font-size: 1.05rem !important;
+  }
+
+  .watch-list-header {
+    justify-content: center !important;
+  }
+
   .watch-card-title-compact {
     font-size: 1.25rem !important;
   }
