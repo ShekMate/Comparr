@@ -3717,7 +3717,7 @@ footer {
   }
 
   /* Watch/Pass/Seen List Cards - Desktop Layout */
-  .watch-card-details {
+  .watch-card.expanded .watch-card-details {
     display: flex !important;
     flex-direction: row;
     gap: 2rem;
@@ -3730,13 +3730,13 @@ footer {
     flex-shrink: 0;
   }
 
-  .watch-card-poster img {
+  .watch-card.expanded .watch-card-poster img {
     width: 300px !important;
     height: 450px !important;
     object-fit: cover;
   }
 
-  .watch-card-content {
+  .watch-card.expanded .watch-card-content {
     flex: 1;
     display: flex;
     flex-direction: column;
