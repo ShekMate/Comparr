@@ -96,13 +96,9 @@ export class MatchesView {
             ${movie.summary ? `
             <p class="watch-card-summary">${movie.summary}</p>
             ` : ''}
-            
+
             ${this.renderWatchCardMetadata(movie)}
-            
-            ${movie.rating ? `
-            <div class="watch-card-ratings">${movie.rating}</div>
-            ` : ''}
-            
+
             <div class="watch-card-actions">
               ${this.renderWatchCardStreamingButton(movie)}
               ${this.renderWatchCardPlexButton(movie)}
@@ -117,6 +113,9 @@ export class MatchesView {
                   <i class="fas fa-sync-alt"></i>
                 </button>
               </div>
+              ${movie.rating ? `
+              <div class="watch-card-ratings">${movie.rating}</div>
+              ` : ''}
             </div>
           </div>
         </div>
