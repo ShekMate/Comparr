@@ -3763,7 +3763,19 @@ footer {
   }
 
   .watch-list-header {
-    justify-content: center !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 1rem !important;
+  }
+
+  .watch-list-header h3 {
+    width: 100%;
+    text-align: center !important;
+  }
+
+  .watch-list-header .sort-controls {
+    width: 100%;
+    justify-content: flex-end !important;
   }
 
   .watch-card-title-compact {
@@ -3778,15 +3790,34 @@ footer {
   .watch-card-actions {
     margin-top: 0 !important;
     display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .watch-card-actions .list-actions {
+    order: 1;
+    display: flex;
     gap: 0.5rem;
-    align-items: center;
+  }
+
+  .watch-card-actions .service-dropdown,
+  .watch-card-actions .add-to-plex-btn,
+  .watch-card-actions .plex-status {
+    order: 2;
   }
 
   .watch-card-actions .watch-card-ratings {
     width: 100%;
-    margin-top: 0.75rem !important;
+    order: 3;
+  }
+
+  .service-dropdown-btn {
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  }
+
+  .service-dropdown-btn:disabled {
+    opacity: 0.5;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
   }
 }
 
