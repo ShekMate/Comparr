@@ -3768,24 +3768,17 @@ footer {
   }
 
   .watch-card-actions {
-    margin-top: auto;
+    margin-top: 0 !important;
     display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
   }
 
   .watch-card-actions .watch-card-ratings {
-    order: 2;
-  }
-
-  .watch-card-actions > .service-dropdown,
-  .watch-card-actions > .add-to-plex-btn,
-  .watch-card-actions > .plex-status {
-    order: 1;
-  }
-
-  .watch-card-actions > .list-actions {
-    order: 1;
+    width: 100%;
+    margin-top: 0.75rem !important;
   }
 }
 
