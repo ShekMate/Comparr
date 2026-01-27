@@ -2238,3 +2238,121 @@ export const handleLogin = (ws: WebSocket): Promise<User> => {
     ws.addListener('message', handler)
   })
 }
+
+// -------------------------
+// Bulk IMDb import
+// -------------------------
+export interface ImportedMovie {
+  guid: string
+  title: string
+  year: string
+  summary: string
+  art: string
+  rating: string
+  key: string
+  type: 'movie'
+  tmdbId: number | null
+  imdbId?: string
+  genres?: string[]
+  runtime?: number
+  contentRating?: string
+  streamingServices?: { subscription: any[], free: any[] }
+  streamingLink?: string | null
+}
+
+/**
+ * Bulk-import movies as "seen" (wantsToWatch=null) for a user in a room.
+ * Creates the room/user if they don't exist. Returns the list of newly
+ * imported movies (skips duplicates).
+ */
+export async function bulkImportSeen(
+  roomCode: string,
+  userName: string,
+  movies: ImportedMovie[],
+): Promise<{ imported: number; skipped: number; movies: ImportedMovie[] }> {
+  // Ensure room exists in persisted state
+  const room = (persistedState.rooms[roomCode] ??= { users: [] })
+
+  // Find or create user
+  let userEntry = room.users.find(u => u.name === userName)
+  if (!userEntry) {
+    userEntry = { name: userName, responses: [] }
+    room.users.push(userEntry)
+  }
+
+  // Build sets of existing responses for fast duplicate detection
+  const existingGuids = new Set<string>()
+  const existingTmdbIds = new Set<number>()
+
+  for (const r of userEntry.responses) {
+    if (r.guid) existingGuids.add(r.guid)
+    if (r.tmdbId != null) existingTmdbIds.add(r.tmdbId)
+    const tmdbFromGuid = extractTmdbIdFromGuid(r.guid)
+    if (tmdbFromGuid != null) existingTmdbIds.add(tmdbFromGuid)
+  }
+
+  let imported = 0
+  let skipped = 0
+  const importedMovies: ImportedMovie[] = []
+
+  for (const movie of movies) {
+    const tmdbId = movie.tmdbId ?? extractTmdbIdFromGuid(movie.guid)
+
+    // Skip if already rated
+    if (existingGuids.has(movie.guid)) {
+      skipped++
+      continue
+    }
+    if (tmdbId != null && existingTmdbIds.has(tmdbId)) {
+      skipped++
+      continue
+    }
+
+    // Add response
+    userEntry.responses.push({
+      guid: movie.guid,
+      wantsToWatch: null, // seen
+      tmdbId: tmdbId ?? null,
+    })
+
+    // Track for dedup
+    existingGuids.add(movie.guid)
+    if (tmdbId != null) existingTmdbIds.add(tmdbId)
+
+    // Add to movie index
+    const mediaItem: MediaItem = {
+      guid: movie.guid,
+      title: movie.title,
+      summary: movie.summary,
+      year: movie.year,
+      art: movie.art,
+      rating: movie.rating,
+      key: movie.key,
+      type: 'movie',
+      tmdbId: tmdbId ?? null,
+      genres: movie.genres,
+      runtime: movie.runtime,
+      contentRating: movie.contentRating,
+      streamingServices: movie.streamingServices ?? { subscription: [], free: [] },
+      streamingLink: movie.streamingLink ?? null,
+    }
+
+    // Store imdbId as ad-hoc property (used by enrich/refresh lookups)
+    if (movie.imdbId) {
+      (mediaItem as any).imdbId = movie.imdbId
+    }
+
+    updateMovieIndexEntry(mediaItem)
+
+    imported++
+    importedMovies.push(movie)
+  }
+
+  // Save state
+  await saveState(persistedState).catch(err =>
+    log.warning(`Failed to save state after IMDb import: ${err}`)
+  )
+
+  log.info(`IMDb import: ${imported} imported, ${skipped} skipped for ${userName} in room ${roomCode}`)
+  return { imported, skipped, movies: importedMovies }
+}

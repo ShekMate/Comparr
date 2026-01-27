@@ -2692,7 +2692,169 @@ const main = async () => {
     }
   }
 
-  
+  // =========================================================
+  // IMDb Import Handler (URL sync + CSV upload)
+  // =========================================================
+  const imdbImportBtn = document.getElementById('imdb-import-btn')
+  const imdbImportPanel = document.getElementById('imdb-import-panel')
+  const imdbUrlInput = document.getElementById('imdb-url-input')
+  const imdbUrlSyncBtn = document.getElementById('imdb-url-sync-btn')
+  const imdbCsvUploadBtn = document.getElementById('imdb-csv-upload-btn')
+  const imdbCsvInput = document.getElementById('imdb-csv-input')
+  const imdbImportProgress = document.getElementById('imdb-import-progress')
+  const imdbImportStatus = document.getElementById('imdb-import-status')
+  const imdbImportBar = document.getElementById('imdb-import-bar')
+
+  // Toggle the import panel
+  if (imdbImportBtn && imdbImportPanel) {
+    imdbImportBtn.addEventListener('click', () => {
+      const isVisible = imdbImportPanel.style.display !== 'none'
+      imdbImportPanel.style.display = isVisible ? 'none' : 'block'
+    })
+  }
+
+  // Shared helper: show import results in the UI
+  function handleImdbImportResult(result) {
+    if (result.movies && result.movies.length > 0) {
+      for (const movie of result.movies) {
+        appendRatedRow({ basePath, likesList, dislikesList, seenList }, movie, null)
+      }
+    }
+    if (imdbImportBar) imdbImportBar.style.width = '100%'
+    if (imdbImportStatus) {
+      imdbImportStatus.textContent = `Done! ${result.imported} imported, ${result.skipped} already in list (${result.total} in source).`
+    }
+    showNotification(`IMDb sync complete: ${result.imported} movies added to Seen list.`)
+    setTimeout(() => {
+      if (imdbImportProgress) imdbImportProgress.style.display = 'none'
+    }, 5000)
+  }
+
+  function showImdbProgress(text) {
+    if (imdbImportProgress) imdbImportProgress.style.display = 'block'
+    if (imdbImportStatus) imdbImportStatus.textContent = text
+    if (imdbImportBar) {
+      imdbImportBar.style.width = '10%'
+      imdbImportBar.classList.remove('error')
+    }
+  }
+
+  function showImdbError(err) {
+    console.error('IMDb import error:', err)
+    if (imdbImportStatus) imdbImportStatus.textContent = `Import failed: ${err.message}`
+    if (imdbImportBar) {
+      imdbImportBar.style.width = '100%'
+      imdbImportBar.classList.add('error')
+    }
+    showNotification(`IMDb import failed: ${err.message}`)
+  }
+
+  // --- URL Sync handler ---
+  if (imdbUrlSyncBtn && imdbUrlInput) {
+    imdbUrlSyncBtn.addEventListener('click', async () => {
+      const imdbUrl = imdbUrlInput.value.trim()
+      if (!imdbUrl) {
+        showNotification('Please paste an IMDb list URL.')
+        return
+      }
+
+      // Basic URL validation
+      if (!imdbUrl.includes('imdb.com/')) {
+        showNotification('Please enter a valid IMDb URL.')
+        return
+      }
+
+      showImdbProgress('Fetching list from IMDb...')
+      imdbUrlSyncBtn.disabled = true
+
+      try {
+        if (imdbImportBar) imdbImportBar.style.width = '20%'
+        if (imdbImportStatus) imdbImportStatus.textContent = 'Fetching list from IMDb...'
+
+        const apiBase = document.body.dataset.basePath || ''
+        const response = await fetch(`${apiBase}/api/imdb-import-url`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imdbUrl, roomCode, userName }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.error || `Server error: ${response.status}`)
+        }
+
+        if (imdbImportStatus) imdbImportStatus.textContent = 'Processing results...'
+        if (imdbImportBar) imdbImportBar.style.width = '80%'
+
+        const result = await response.json()
+        handleImdbImportResult(result)
+      } catch (err) {
+        showImdbError(err)
+      } finally {
+        imdbUrlSyncBtn.disabled = false
+      }
+    })
+
+    // Allow pressing Enter in the URL input
+    imdbUrlInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        imdbUrlSyncBtn.click()
+      }
+    })
+  }
+
+  // --- CSV Upload handler ---
+  if (imdbCsvUploadBtn && imdbCsvInput) {
+    imdbCsvUploadBtn.addEventListener('click', () => {
+      imdbCsvInput.click()
+    })
+
+    imdbCsvInput.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+
+      if (!file.name.toLowerCase().endsWith('.csv')) {
+        showNotification('Please select a CSV file exported from IMDb.')
+        imdbCsvInput.value = ''
+        return
+      }
+
+      showImdbProgress('Reading file...')
+      imdbCsvUploadBtn.disabled = true
+
+      try {
+        const csvContent = await file.text()
+        if (imdbImportStatus) imdbImportStatus.textContent = 'Sending to server...'
+        if (imdbImportBar) imdbImportBar.style.width = '20%'
+
+        const apiBase = document.body.dataset.basePath || ''
+        const response = await fetch(`${apiBase}/api/imdb-import`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ csvContent, roomCode, userName }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.error || `Server error: ${response.status}`)
+        }
+
+        if (imdbImportStatus) imdbImportStatus.textContent = 'Processing results...'
+        if (imdbImportBar) imdbImportBar.style.width = '80%'
+
+        const result = await response.json()
+        handleImdbImportResult(result)
+      } catch (err) {
+        showImdbError(err)
+      } finally {
+        imdbCsvUploadBtn.disabled = false
+        imdbCsvInput.value = ''
+      }
+    })
+  }
+
+
 async function ensureMovieBuffer() {
   // If already loading, return the existing promise with timeout
   if (ensureMovieBufferPromise) {
