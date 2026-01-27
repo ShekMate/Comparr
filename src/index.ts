@@ -796,6 +796,172 @@ for await (const req of server) {
       continue
     }
 
+    // --- API: Import from a public IMDb list URL
+    if (p === '/api/imdb-import-url' && req.method === 'POST') {
+      try {
+        const TMDB_KEY = Deno.env.get('TMDB_API_KEY')
+        if (!TMDB_KEY) {
+          await req.respond({
+            status: 400,
+            body: JSON.stringify({ error: 'TMDb API key is required for IMDb import' }),
+            headers: new Headers({ 'content-type': 'application/json' }),
+          })
+          continue
+        }
+
+        const decoder = new TextDecoder()
+        const body = decoder.decode(await Deno.readAll(req.body))
+        const { imdbUrl, roomCode, userName } = JSON.parse(body)
+
+        if (!imdbUrl || !roomCode || !userName) {
+          await req.respond({
+            status: 400,
+            body: JSON.stringify({ error: 'Missing required fields: imdbUrl, roomCode, userName' }),
+            headers: new Headers({ 'content-type': 'application/json' }),
+          })
+          continue
+        }
+
+        // Extract list ID from various IMDb URL formats
+        // Supports: /list/ls123456789, /user/ur123/ratings, /user/ur123/watchlist
+        const listMatch = imdbUrl.match(/\/list\/(ls\d+)/)
+        const ratingsMatch = imdbUrl.match(/\/user\/(ur\d+)\/ratings/)
+        const watchlistMatch = imdbUrl.match(/\/user\/(ur\d+)\/watchlist/)
+
+        let exportUrl: string
+        if (listMatch) {
+          exportUrl = `https://www.imdb.com/list/${listMatch[1]}/export`
+        } else if (ratingsMatch) {
+          exportUrl = `https://www.imdb.com/user/${ratingsMatch[1]}/ratings/export`
+        } else if (watchlistMatch) {
+          exportUrl = `https://www.imdb.com/user/${watchlistMatch[1]}/watchlist/export`
+        } else {
+          await req.respond({
+            status: 400,
+            body: JSON.stringify({
+              error: 'Invalid IMDb URL. Please provide a public list URL (e.g. https://www.imdb.com/list/ls123456789/) or ratings URL (e.g. https://www.imdb.com/user/ur12345678/ratings/).',
+            }),
+            headers: new Headers({ 'content-type': 'application/json' }),
+          })
+          continue
+        }
+
+        log.info(`IMDb URL import requested by ${userName} in room ${roomCode}: ${exportUrl}`)
+
+        // Fetch CSV from IMDb
+        const imdbResponse = await fetch(exportUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; Comparr/1.0)',
+            'Accept': 'text/csv, */*',
+          },
+        })
+
+        if (!imdbResponse.ok) {
+          const hint = imdbResponse.status === 403 || imdbResponse.status === 404
+            ? ' Make sure the list is set to public on IMDb.'
+            : ''
+          await req.respond({
+            status: 502,
+            body: JSON.stringify({
+              error: `Failed to fetch from IMDb (HTTP ${imdbResponse.status}).${hint}`,
+            }),
+            headers: new Headers({ 'content-type': 'application/json' }),
+          })
+          continue
+        }
+
+        const csvContent = await imdbResponse.text()
+        log.info(`IMDb CSV fetched: ${csvContent.length} bytes`)
+
+        // Parse the CSV
+        const rows = parseImdbCsv(csvContent)
+        log.info(`IMDb CSV parsed: ${rows.length} movie entries found`)
+
+        if (rows.length === 0) {
+          await req.respond({
+            status: 200,
+            body: JSON.stringify({ imported: 0, skipped: 0, total: 0, movies: [] }),
+            headers: new Headers({ 'content-type': 'application/json' }),
+          })
+          continue
+        }
+
+        // Look up each movie via TMDb (with throttling)
+        const movies: any[] = []
+        const { getBestPosterUrl, prefetchPoster } = await import('./services/cache/poster-cache.ts')
+        let lookupCount = 0
+
+        for (const row of rows) {
+          if (lookupCount > 0 && lookupCount % 30 === 0) {
+            await new Promise(resolve => setTimeout(resolve, 1100))
+          }
+
+          const result = await lookupMovieByImdbId(row.imdbId, TMDB_KEY)
+          lookupCount++
+
+          if (!result) {
+            log.debug(`IMDb URL import: Could not find ${row.imdbId} (${row.title}) on TMDb`)
+            continue
+          }
+
+          const artUrl = result.posterPath
+            ? getBestPosterUrl(result.posterPath, 'tmdb')
+            : ''
+
+          if (result.posterPath) {
+            prefetchPoster(result.posterPath, 'tmdb')
+          }
+
+          movies.push({
+            guid: result.guid,
+            title: result.title,
+            year: result.year,
+            summary: result.summary,
+            art: artUrl,
+            rating: '',
+            key: `/tmdb/${result.tmdbId}`,
+            type: 'movie',
+            tmdbId: result.tmdbId,
+            imdbId: result.imdbId,
+            genres: result.genres,
+            genre_ids: result.genreIds,
+            runtime: result.runtime,
+            contentRating: result.contentRating,
+            vote_count: result.voteCount,
+            original_language: result.originalLanguage,
+            streamingServices: { subscription: [], free: [] },
+            streamingLink: null,
+          })
+        }
+
+        log.info(`IMDb URL import: ${movies.length} movies resolved from TMDb`)
+
+        const result = await bulkImportSeen(roomCode, userName, movies)
+
+        await req.respond({
+          status: 200,
+          body: JSON.stringify({
+            imported: result.imported,
+            skipped: result.skipped,
+            total: rows.length,
+            movies: result.movies,
+          }),
+          headers: new Headers({ 'content-type': 'application/json' }),
+        })
+
+        log.info(`IMDb URL import complete: ${result.imported} imported, ${result.skipped} skipped (${rows.length} total)`)
+
+      } catch (err) {
+        log.error(`IMDb URL import failed: ${err?.message || err}`)
+        await req.respond({
+          status: 500,
+          body: JSON.stringify({ error: 'IMDb URL import failed', detail: err?.message || String(err) }),
+          headers: new Headers({ 'content-type': 'application/json' }),
+        })
+      }
+      continue
+    }
+
     // --- WebSocket for app events/login
     if (p === '/ws') {
       wss.connect(req)

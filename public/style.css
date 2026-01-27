@@ -4225,13 +4225,137 @@ footer {
   width: auto;
 }
 
-/* IMDb Import Progress */
-.imdb-import-progress {
+/* IMDb Import Panel */
+.imdb-import-panel {
   margin: 0 2rem 1rem;
-  padding: 0.75rem 1rem;
+  padding: 1rem;
   background: rgba(30, 41, 59, 0.8);
   border-radius: var(--radius-md);
   border: 1px solid rgba(51, 65, 85, 0.5);
+}
+
+.imdb-import-panel-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.imdb-import-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.4rem;
+}
+
+.imdb-url-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.imdb-url-input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(51, 65, 85, 0.6);
+  background: rgba(15, 23, 42, 0.6);
+  color: var(--color-text-primary);
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.imdb-url-input::placeholder {
+  color: rgba(148, 163, 184, 0.5);
+}
+
+.imdb-url-input:focus {
+  border-color: var(--color-primary);
+}
+
+.imdb-url-sync-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 1rem;
+  background: var(--gradient-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: opacity 0.2s ease;
+}
+
+.imdb-url-sync-btn:hover {
+  opacity: 0.9;
+}
+
+.imdb-url-sync-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.imdb-import-hint {
+  font-size: 0.75rem;
+  color: rgba(148, 163, 184, 0.6);
+  margin: 0.35rem 0 0;
+  line-height: 1.4;
+}
+
+.imdb-import-hint strong {
+  color: rgba(148, 163, 184, 0.8);
+}
+
+.imdb-import-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: rgba(148, 163, 184, 0.4);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.imdb-import-divider::before,
+.imdb-import-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(51, 65, 85, 0.5);
+}
+
+.imdb-csv-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.8rem;
+  background: rgba(51, 65, 85, 0.5);
+  color: var(--color-text-secondary);
+  border: 1px solid rgba(51, 65, 85, 0.5);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s ease;
+}
+
+.imdb-csv-upload-btn:hover {
+  background: rgba(51, 65, 85, 0.7);
+  color: var(--color-text-primary);
+}
+
+.imdb-csv-upload-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* IMDb Import Progress */
+.imdb-import-progress {
+  margin-top: 0.75rem;
+  padding: 0.75rem 0 0;
+  border-top: 1px solid rgba(51, 65, 85, 0.3);
 }
 
 .imdb-import-progress-text {
@@ -4260,7 +4384,7 @@ footer {
   background: linear-gradient(135deg, #ef4444, #dc2626);
 }
 
-/* Mobile responsive for seen list header */
+/* Mobile responsive for seen list header & import panel */
 @media (max-width: 600px) {
   .seen-list-header {
     padding: 0 1rem;
@@ -4277,7 +4401,15 @@ footer {
     justify-content: center;
   }
 
-  .imdb-import-progress {
+  .imdb-import-panel {
     margin: 0 1rem 1rem;
+  }
+
+  .imdb-url-row {
+    flex-direction: column;
+  }
+
+  .imdb-url-sync-btn {
+    justify-content: center;
   }
 }

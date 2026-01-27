@@ -818,20 +818,51 @@
             Seen List
           </h3>
           <div class="seen-header-actions">
-            <button id="imdb-import-btn" class="imdb-import-btn" title="Import watched movies from IMDb">
+            <button id="imdb-import-btn" class="imdb-import-btn" title="Sync watched movies from IMDb">
               <img src="${ROOT_PATH}/assets/logos/imdb.svg" alt="IMDb" class="imdb-import-logo">
-              Import
+              Sync
             </button>
-            <input type="file" id="imdb-csv-input" accept=".csv" style="display: none;">
           </div>
         </div>
-        <!-- IMDb import progress bar -->
-        <div id="imdb-import-progress" class="imdb-import-progress" style="display: none;">
-          <div class="imdb-import-progress-text">
-            <span id="imdb-import-status">Importing...</span>
+        <!-- IMDb import panel (toggled by Sync button) -->
+        <div id="imdb-import-panel" class="imdb-import-panel" style="display: none;">
+          <div class="imdb-import-panel-inner">
+            <div class="imdb-import-url-section">
+              <label for="imdb-url-input" class="imdb-import-label">Paste a public IMDb list or ratings URL</label>
+              <div class="imdb-url-row">
+                <input
+                  type="url"
+                  id="imdb-url-input"
+                  class="imdb-url-input"
+                  placeholder="https://www.imdb.com/list/ls012345678/"
+                >
+                <button id="imdb-url-sync-btn" class="imdb-url-sync-btn">
+                  <i class="fas fa-sync-alt"></i> Sync
+                </button>
+              </div>
+              <p class="imdb-import-hint">
+                Supports list, ratings, or watchlist URLs.
+                The list must be set to <strong>public</strong> on IMDb.
+              </p>
+            </div>
+            <div class="imdb-import-divider">
+              <span>or</span>
+            </div>
+            <div class="imdb-import-csv-section">
+              <button id="imdb-csv-upload-btn" class="imdb-csv-upload-btn">
+                <i class="fas fa-file-upload"></i> Upload IMDb CSV export
+              </button>
+              <input type="file" id="imdb-csv-input" accept=".csv" style="display: none;">
+            </div>
           </div>
-          <div class="imdb-import-progress-bar">
-            <div id="imdb-import-bar" class="imdb-import-bar"></div>
+          <!-- Progress bar -->
+          <div id="imdb-import-progress" class="imdb-import-progress" style="display: none;">
+            <div class="imdb-import-progress-text">
+              <span id="imdb-import-status">Importing...</span>
+            </div>
+            <div class="imdb-import-progress-bar">
+              <div id="imdb-import-bar" class="imdb-import-bar"></div>
+            </div>
           </div>
         </div>
         <div class="watch-list-container">
