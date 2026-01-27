@@ -2692,7 +2692,102 @@ const main = async () => {
     }
   }
 
-  
+  // =========================================================
+  // IMDb Import Handler
+  // =========================================================
+  const imdbImportBtn = document.getElementById('imdb-import-btn')
+  const imdbCsvInput = document.getElementById('imdb-csv-input')
+  const imdbImportProgress = document.getElementById('imdb-import-progress')
+  const imdbImportStatus = document.getElementById('imdb-import-status')
+  const imdbImportBar = document.getElementById('imdb-import-bar')
+
+  if (imdbImportBtn && imdbCsvInput) {
+    imdbImportBtn.addEventListener('click', () => {
+      imdbCsvInput.click()
+    })
+
+    imdbCsvInput.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+
+      // Validate file type
+      if (!file.name.toLowerCase().endsWith('.csv')) {
+        showNotification('Please select a CSV file exported from IMDb.')
+        imdbCsvInput.value = ''
+        return
+      }
+
+      // Show progress
+      if (imdbImportProgress) imdbImportProgress.style.display = 'block'
+      if (imdbImportStatus) imdbImportStatus.textContent = 'Reading file...'
+      if (imdbImportBar) {
+        imdbImportBar.style.width = '10%'
+        imdbImportBar.classList.remove('error')
+      }
+      imdbImportBtn.disabled = true
+
+      try {
+        // Read the CSV file
+        const csvContent = await file.text()
+        if (imdbImportStatus) imdbImportStatus.textContent = 'Sending to server...'
+        if (imdbImportBar) imdbImportBar.style.width = '20%'
+
+        // Send to backend
+        const apiBase = document.body.dataset.basePath || ''
+        const response = await fetch(`${apiBase}/api/imdb-import`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            csvContent,
+            roomCode,
+            userName,
+          }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.error || `Server error: ${response.status}`)
+        }
+
+        if (imdbImportStatus) imdbImportStatus.textContent = 'Processing results...'
+        if (imdbImportBar) imdbImportBar.style.width = '80%'
+
+        const result = await response.json()
+
+        // Add imported movies to the Seen list UI
+        if (result.movies && result.movies.length > 0) {
+          for (const movie of result.movies) {
+            appendRatedRow({ basePath, likesList, dislikesList, seenList }, movie, null)
+          }
+        }
+
+        if (imdbImportBar) imdbImportBar.style.width = '100%'
+        if (imdbImportStatus) {
+          imdbImportStatus.textContent = `Done! ${result.imported} imported, ${result.skipped} already in list (${result.total} movies in file).`
+        }
+        showNotification(`IMDb import complete: ${result.imported} movies added to Seen list.`)
+
+        // Hide progress after a delay
+        setTimeout(() => {
+          if (imdbImportProgress) imdbImportProgress.style.display = 'none'
+        }, 5000)
+
+      } catch (err) {
+        console.error('IMDb import error:', err)
+        if (imdbImportStatus) imdbImportStatus.textContent = `Import failed: ${err.message}`
+        if (imdbImportBar) {
+          imdbImportBar.style.width = '100%'
+          imdbImportBar.classList.add('error')
+        }
+        showNotification(`IMDb import failed: ${err.message}`)
+      } finally {
+        imdbImportBtn.disabled = false
+        imdbCsvInput.value = '' // Reset so same file can be selected again
+      }
+    })
+  }
+
+
 async function ensureMovieBuffer() {
   // If already loading, return the existing promise with timeout
   if (ensureMovieBufferPromise) {
