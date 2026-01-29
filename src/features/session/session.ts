@@ -10,6 +10,7 @@ import { isMovieInPlex, waitForPlexCacheReady } from '../../integrations/plex/ca
 import { MOVIE_BATCH_SIZE, ACCESS_PASSWORD } from '../../core/config.ts'
 import { validateTMDbPoster, getBestPosterPath, isMovieValid } from '../media/poster-validation.ts'
 import { getBestPosterUrl, prefetchPoster } from '../../services/cache/poster-cache.ts'
+import { tmdbRateLimiter, omdbRateLimiter } from '../../core/rate-limiter.ts'
 
 // Genre ID to name mapping (TMDb genre IDs)
 const GENRE_MAP: Record<number, string> = {
@@ -2355,4 +2356,258 @@ export async function bulkImportSeen(
 
   log.info(`IMDb import: ${imported} imported, ${skipped} skipped for ${userName} in room ${roomCode}`)
   return { imported, skipped, movies: importedMovies }
+}
+
+// -------------------------
+// Background IMDb Import with WebSocket Updates
+// -------------------------
+export interface ImdbImportJob {
+  roomCode: string
+  userName: string
+  imdbRows: Array<{ imdbId: string; title: string; year: number | null }>
+}
+
+/**
+ * Find the WebSocket for a user in a room.
+ */
+function findUserWebSocket(roomCode: string, userName: string): WebSocket | null {
+  const session = activeSessions.get(roomCode)
+  if (!session) return null
+
+  for (const [user, ws] of session.users.entries()) {
+    if (user.name === userName && ws) {
+      return ws
+    }
+  }
+  return null
+}
+
+/**
+ * Send a message to a specific user via WebSocket.
+ */
+function sendToUser(roomCode: string, userName: string, message: any): boolean {
+  const ws = findUserWebSocket(roomCode, userName)
+  if (!ws) return false
+
+  try {
+    ws.send(JSON.stringify(message))
+    return true
+  } catch (err) {
+    log.warning(`Failed to send WS message to ${userName}: ${err}`)
+    return false
+  }
+}
+
+/**
+ * Process IMDb import in background with rate limiting and full enrichment.
+ * Sends each movie to the user via WebSocket as it's processed.
+ */
+export async function processImdbImportBackground(job: ImdbImportJob): Promise<void> {
+  const { roomCode, userName, imdbRows } = job
+  const total = imdbRows.length
+
+  log.info(`[IMDb Import] Starting background import of ${total} movies for ${userName} in ${roomCode}`)
+
+  // Send start message
+  sendToUser(roomCode, userName, {
+    type: 'imdbImportProgress',
+    payload: { status: 'started', total, processed: 0, imported: 0, skipped: 0 },
+  })
+
+  // Build existing response sets for dedup
+  const room = persistedState.rooms[roomCode] ?? { users: [] }
+  let userEntry = room.users.find(u => u.name === userName)
+  if (!userEntry) {
+    userEntry = { name: userName, responses: [] }
+    room.users.push(userEntry)
+    persistedState.rooms[roomCode] = room
+  }
+
+  const existingGuids = new Set<string>()
+  const existingTmdbIds = new Set<number>()
+  for (const r of userEntry.responses) {
+    if (r.guid) existingGuids.add(r.guid)
+    if (r.tmdbId != null) existingTmdbIds.add(r.tmdbId)
+    const tmdbFromGuid = extractTmdbIdFromGuid(r.guid)
+    if (tmdbFromGuid != null) existingTmdbIds.add(tmdbFromGuid)
+  }
+
+  let processed = 0
+  let imported = 0
+  let skipped = 0
+
+  const TMDB_KEY = Deno.env.get('TMDB_API_KEY')
+
+  for (const row of imdbRows) {
+    processed++
+
+    // Rate limit: wait for token before making API calls
+    await tmdbRateLimiter.acquire()
+
+    try {
+      // 1. Look up movie by IMDb ID via TMDb find endpoint
+      const findResp = await fetch(
+        `https://api.themoviedb.org/3/find/${row.imdbId}?api_key=${TMDB_KEY}&external_source=imdb_id`
+      )
+
+      if (!findResp.ok) {
+        log.debug(`[IMDb Import] TMDb find failed for ${row.imdbId}: HTTP ${findResp.status}`)
+        skipped++
+        continue
+      }
+
+      const findData = await findResp.json()
+      const tmdbMovie = findData.movie_results?.[0]
+
+      if (!tmdbMovie) {
+        log.debug(`[IMDb Import] No TMDb result for ${row.imdbId} (${row.title})`)
+        skipped++
+        continue
+      }
+
+      const tmdbId = tmdbMovie.id
+      const guid = `tmdb://${tmdbId}`
+
+      // Check for duplicates
+      if (existingGuids.has(guid) || existingTmdbIds.has(tmdbId)) {
+        skipped++
+        // Send progress update periodically
+        if (processed % 10 === 0) {
+          sendToUser(roomCode, userName, {
+            type: 'imdbImportProgress',
+            payload: { status: 'processing', total, processed, imported, skipped },
+          })
+        }
+        continue
+      }
+
+      // 2. Full enrichment using existing pipeline (this respects rate limits internally via caching)
+      await omdbRateLimiter.acquire()
+      const enriched = await enrich({
+        title: tmdbMovie.title,
+        year: tmdbMovie.release_date ? new Date(tmdbMovie.release_date).getFullYear() : null,
+        imdbId: row.imdbId,
+      })
+
+      // 3. Build the full movie object
+      const posterPath = enriched?.tmdbPosterPath || tmdbMovie.poster_path
+      const artUrl = posterPath ? getBestPosterUrl(posterPath, 'tmdb') : ''
+
+      if (posterPath) {
+        prefetchPoster(posterPath, 'tmdb')
+      }
+
+      // Build rating string like the discovery flow does
+      let ratingStr = ''
+      const ratingParts: string[] = []
+      if (enriched?.rating_imdb) ratingParts.push(`IMDb: ${enriched.rating_imdb}`)
+      if (enriched?.rating_rt) ratingParts.push(`RT: ${enriched.rating_rt}%`)
+      if (enriched?.rating_tmdb) ratingParts.push(`TMDb: ${enriched.rating_tmdb}`)
+      if (ratingParts.length > 0) ratingStr = ratingParts.join(' | ')
+
+      const movie: ImportedMovie = {
+        guid,
+        title: tmdbMovie.title,
+        year: tmdbMovie.release_date ? String(new Date(tmdbMovie.release_date).getFullYear()) : '',
+        summary: enriched?.plot || tmdbMovie.overview || '',
+        art: artUrl,
+        rating: ratingStr,
+        key: `/tmdb/${tmdbId}`,
+        type: 'movie',
+        tmdbId,
+        imdbId: row.imdbId,
+        genres: enriched?.genres || [],
+        runtime: enriched?.runtime ?? null,
+        contentRating: enriched?.contentRating ?? null,
+        streamingServices: enriched?.streamingServices ?? { subscription: [], free: [] },
+        streamingLink: enriched?.streamingLink ?? null,
+      }
+
+      // Also include fields needed by frontend filtering
+      const movieWithExtras = {
+        ...movie,
+        genre_ids: tmdbMovie.genre_ids || [],
+        vote_count: enriched?.voteCount || tmdbMovie.vote_count || 0,
+        original_language: tmdbMovie.original_language || null,
+        director: enriched?.director || null,
+        cast: enriched?.cast || [],
+        writers: enriched?.writers || [],
+        rating_imdb: enriched?.rating_imdb || null,
+        rating_rt: enriched?.rating_rt || null,
+        rating_tmdb: enriched?.rating_tmdb || null,
+        rating_comparr: enriched?.rating_comparr || null,
+      }
+
+      // 4. Add response to user
+      userEntry.responses.push({
+        guid,
+        wantsToWatch: null, // seen
+        tmdbId,
+      })
+      existingGuids.add(guid)
+      existingTmdbIds.add(tmdbId)
+
+      // 5. Add to movie index
+      const mediaItem: MediaItem = {
+        guid,
+        title: movie.title,
+        summary: movie.summary,
+        year: movie.year,
+        art: movie.art,
+        rating: movie.rating,
+        key: movie.key,
+        type: 'movie',
+        tmdbId,
+        genres: movie.genres,
+        runtime: movie.runtime ?? undefined,
+        contentRating: movie.contentRating ?? undefined,
+        streamingServices: movie.streamingServices,
+        streamingLink: movie.streamingLink,
+      }
+      if (row.imdbId) {
+        (mediaItem as any).imdbId = row.imdbId
+      }
+      updateMovieIndexEntry(mediaItem)
+
+      imported++
+
+      // 6. Send movie to user via WebSocket
+      sendToUser(roomCode, userName, {
+        type: 'imdbImportMovie',
+        payload: { movie: movieWithExtras, progress: { total, processed, imported, skipped } },
+      })
+
+      // Save state periodically (every 25 movies)
+      if (imported % 25 === 0) {
+        await saveState(persistedState).catch(err =>
+          log.warning(`Failed to save state during import: ${err}`)
+        )
+      }
+
+    } catch (err) {
+      log.warning(`[IMDb Import] Failed to process ${row.imdbId}: ${err?.message || err}`)
+      skipped++
+    }
+
+    // Send progress update every 10 movies
+    if (processed % 10 === 0) {
+      sendToUser(roomCode, userName, {
+        type: 'imdbImportProgress',
+        payload: { status: 'processing', total, processed, imported, skipped },
+      })
+    }
+  }
+
+  // Final save
+  await saveState(persistedState).catch(err =>
+    log.warning(`Failed to save state after import: ${err}`)
+  )
+
+  // Send completion message
+  sendToUser(roomCode, userName, {
+    type: 'imdbImportProgress',
+    payload: { status: 'completed', total, processed, imported, skipped },
+  })
+
+  log.info(`[IMDb Import] Completed: ${imported} imported, ${skipped} skipped for ${userName} in ${roomCode}`)
 }

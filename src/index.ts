@@ -4,8 +4,8 @@ import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
 import { getServerId, proxyPoster } from './api/plex.ts'
 import { PLEX_URL, PORT, LINK_TYPE, RADARR_URL, RADARR_API_KEY, JELLYSEERR_URL, JELLYSEERR_API_KEY, OVERSEERR_URL, OVERSEERR_API_KEY } from './core/config.ts'
 import { getLinkTypeForRequest } from './core/i18n.ts'
-import { handleLogin, ensurePlexHydrationReady, bulkImportSeen } from './features/session/session.ts'
-import { parseImdbCsv, lookupMovieByImdbId } from './features/session/imdb-import.ts'
+import { handleLogin, ensurePlexHydrationReady, processImdbImportBackground } from './features/session/session.ts'
+import { parseImdbCsv } from './features/session/imdb-import.ts'
 import { serveFile } from './infra/http/staticFileServer.ts'
 import { WebSocketServer } from './infra/ws/websocketServer.ts'
 import { initializeRadarrCache, isMovieInRadarr, refreshRadarrCache } from './api/radarr.ts'
@@ -676,7 +676,7 @@ for await (const req of server) {
 	  continue;
 	}
 
-    // --- API: Import IMDb watched movies as "seen"
+    // --- API: Import IMDb watched movies as "seen" (background processing)
     if (p === '/api/imdb-import' && req.method === 'POST') {
       try {
         const TMDB_KEY = Deno.env.get('TMDB_API_KEY')
@@ -702,7 +702,7 @@ for await (const req of server) {
           continue
         }
 
-        log.info(`IMDb import requested by ${userName} in room ${roomCode}`)
+        log.info(`IMDb CSV import requested by ${userName} in room ${roomCode}`)
 
         // Parse the CSV
         const rows = parseImdbCsv(csvContent)
@@ -711,79 +711,32 @@ for await (const req of server) {
         if (rows.length === 0) {
           await req.respond({
             status: 200,
-            body: JSON.stringify({ imported: 0, skipped: 0, total: 0, movies: [] }),
+            body: JSON.stringify({ status: 'completed', total: 0 }),
             headers: new Headers({ 'content-type': 'application/json' }),
           })
           continue
         }
 
-        // Look up each movie via TMDb (with throttling)
-        const movies: any[] = []
-        const basePath = Deno.env.get('ROOT_PATH') || ''
-        const { getBestPosterUrl, prefetchPoster } = await import('./services/cache/poster-cache.ts')
-        let lookupCount = 0
+        // Convert to the format expected by background processor
+        const imdbRows = rows.map(r => ({
+          imdbId: r.imdbId,
+          title: r.title,
+          year: r.year,
+        }))
 
-        for (const row of rows) {
-          // Throttle: ~30 requests per second to stay within TMDb limits
-          if (lookupCount > 0 && lookupCount % 30 === 0) {
-            await new Promise(resolve => setTimeout(resolve, 1100))
-          }
+        // Start background processing (non-blocking)
+        processImdbImportBackground({ roomCode, userName, imdbRows }).catch(err => {
+          log.error(`Background IMDb import failed: ${err?.message || err}`)
+        })
 
-          const result = await lookupMovieByImdbId(row.imdbId, TMDB_KEY)
-          lookupCount++
-
-          if (!result) {
-            log.debug(`IMDb import: Could not find ${row.imdbId} (${row.title}) on TMDb`)
-            continue
-          }
-
-          const artUrl = result.posterPath
-            ? getBestPosterUrl(result.posterPath, 'tmdb')
-            : ''
-
-          if (result.posterPath) {
-            prefetchPoster(result.posterPath, 'tmdb')
-          }
-
-          movies.push({
-            guid: result.guid,
-            title: result.title,
-            year: result.year,
-            summary: result.summary,
-            art: artUrl,
-            rating: '',
-            key: `/tmdb/${result.tmdbId}`,
-            type: 'movie',
-            tmdbId: result.tmdbId,
-            imdbId: result.imdbId,
-            genres: result.genres,
-            genre_ids: result.genreIds,
-            runtime: result.runtime,
-            contentRating: result.contentRating,
-            vote_count: result.voteCount,
-            original_language: result.originalLanguage,
-            streamingServices: { subscription: [], free: [] },
-            streamingLink: null,
-          })
-        }
-
-        log.info(`IMDb import: ${movies.length} movies resolved from TMDb`)
-
-        // Bulk import as seen
-        const result = await bulkImportSeen(roomCode, userName, movies)
-
+        // Return immediately - movies will arrive via WebSocket
         await req.respond({
-          status: 200,
-          body: JSON.stringify({
-            imported: result.imported,
-            skipped: result.skipped,
-            total: rows.length,
-            movies: result.movies,
-          }),
+          status: 202,
+          body: JSON.stringify({ status: 'started', total: rows.length }),
           headers: new Headers({ 'content-type': 'application/json' }),
         })
 
-        log.info(`IMDb import complete: ${result.imported} imported, ${result.skipped} skipped (${rows.length} total in CSV)`)
+        log.info(`IMDb CSV import started in background: ${rows.length} movies to process`)
 
       } catch (err) {
         log.error(`IMDb import failed: ${err?.message || err}`)
@@ -796,7 +749,7 @@ for await (const req of server) {
       continue
     }
 
-    // --- API: Import from a public IMDb list URL
+    // --- API: Import from a public IMDb list URL (background processing)
     if (p === '/api/imdb-import-url' && req.method === 'POST') {
       try {
         const TMDB_KEY = Deno.env.get('TMDB_API_KEY')
@@ -823,7 +776,6 @@ for await (const req of server) {
         }
 
         // Extract list ID from various IMDb URL formats
-        // Supports: /list/ls123456789, /user/ur123/ratings, /user/ur123/watchlist
         const listMatch = imdbUrl.match(/\/list\/(ls\d+)/)
         const ratingsMatch = imdbUrl.match(/\/user\/(ur\d+)\/ratings/)
         const watchlistMatch = imdbUrl.match(/\/user\/(ur\d+)\/watchlist/)
@@ -848,7 +800,7 @@ for await (const req of server) {
 
         log.info(`IMDb URL import requested by ${userName} in room ${roomCode}: ${exportUrl}`)
 
-        // Fetch CSV from IMDb
+        // Fetch CSV from IMDb (do this synchronously so we can return error if URL is bad)
         const imdbResponse = await fetch(exportUrl, {
           headers: {
             'User-Agent': 'Mozilla/5.0 (compatible; Comparr/1.0)',
@@ -880,76 +832,32 @@ for await (const req of server) {
         if (rows.length === 0) {
           await req.respond({
             status: 200,
-            body: JSON.stringify({ imported: 0, skipped: 0, total: 0, movies: [] }),
+            body: JSON.stringify({ status: 'completed', total: 0 }),
             headers: new Headers({ 'content-type': 'application/json' }),
           })
           continue
         }
 
-        // Look up each movie via TMDb (with throttling)
-        const movies: any[] = []
-        const { getBestPosterUrl, prefetchPoster } = await import('./services/cache/poster-cache.ts')
-        let lookupCount = 0
+        // Convert to the format expected by background processor
+        const imdbRows = rows.map(r => ({
+          imdbId: r.imdbId,
+          title: r.title,
+          year: r.year,
+        }))
 
-        for (const row of rows) {
-          if (lookupCount > 0 && lookupCount % 30 === 0) {
-            await new Promise(resolve => setTimeout(resolve, 1100))
-          }
+        // Start background processing (non-blocking)
+        processImdbImportBackground({ roomCode, userName, imdbRows }).catch(err => {
+          log.error(`Background IMDb URL import failed: ${err?.message || err}`)
+        })
 
-          const result = await lookupMovieByImdbId(row.imdbId, TMDB_KEY)
-          lookupCount++
-
-          if (!result) {
-            log.debug(`IMDb URL import: Could not find ${row.imdbId} (${row.title}) on TMDb`)
-            continue
-          }
-
-          const artUrl = result.posterPath
-            ? getBestPosterUrl(result.posterPath, 'tmdb')
-            : ''
-
-          if (result.posterPath) {
-            prefetchPoster(result.posterPath, 'tmdb')
-          }
-
-          movies.push({
-            guid: result.guid,
-            title: result.title,
-            year: result.year,
-            summary: result.summary,
-            art: artUrl,
-            rating: '',
-            key: `/tmdb/${result.tmdbId}`,
-            type: 'movie',
-            tmdbId: result.tmdbId,
-            imdbId: result.imdbId,
-            genres: result.genres,
-            genre_ids: result.genreIds,
-            runtime: result.runtime,
-            contentRating: result.contentRating,
-            vote_count: result.voteCount,
-            original_language: result.originalLanguage,
-            streamingServices: { subscription: [], free: [] },
-            streamingLink: null,
-          })
-        }
-
-        log.info(`IMDb URL import: ${movies.length} movies resolved from TMDb`)
-
-        const result = await bulkImportSeen(roomCode, userName, movies)
-
+        // Return immediately - movies will arrive via WebSocket
         await req.respond({
-          status: 200,
-          body: JSON.stringify({
-            imported: result.imported,
-            skipped: result.skipped,
-            total: rows.length,
-            movies: result.movies,
-          }),
+          status: 202,
+          body: JSON.stringify({ status: 'started', total: rows.length }),
           headers: new Headers({ 'content-type': 'application/json' }),
         })
 
-        log.info(`IMDb URL import complete: ${result.imported} imported, ${result.skipped} skipped (${rows.length} total)`)
+        log.info(`IMDb URL import started in background: ${rows.length} movies to process`)
 
       } catch (err) {
         log.error(`IMDb URL import failed: ${err?.message || err}`)
