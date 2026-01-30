@@ -2875,8 +2875,8 @@ const main = async () => {
 
       try {
         const csvContent = await file.text()
-        if (imdbImportStatus) imdbImportStatus.textContent = 'Sending to server...'
-        if (imdbImportBar) imdbImportBar.style.width = '15%'
+        if (imdbImportStatus) imdbImportStatus.textContent = 'Uploading CSV...'
+        if (imdbImportBar) imdbImportBar.style.width = '10%'
 
         const apiBase = document.body.dataset.basePath || ''
         const response = await fetch(`${apiBase}/api/imdb-import`, {
@@ -2884,6 +2884,8 @@ const main = async () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ csvContent, roomCode, userName }),
         })
+
+        if (imdbImportBar) imdbImportBar.style.width = '20%'
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}))
@@ -2903,9 +2905,19 @@ const main = async () => {
           }, 3000)
         } else if (result.status === 'started') {
           // Background processing started - progress updates will come via WebSocket
-          if (imdbImportStatus) imdbImportStatus.textContent = `Processing ${result.total} movies in background...`
-          if (imdbImportBar) imdbImportBar.style.width = '10%'
-          // Buttons stay disabled - will be re-enabled by WebSocket completion handler
+          if (imdbImportStatus) imdbImportStatus.textContent = `Processing ${result.total} movies... (updates via WebSocket)`
+          if (imdbImportBar) imdbImportBar.style.width = '25%'
+
+          // Set a fallback timeout - if no WebSocket updates after 30s, show a note
+          setTimeout(() => {
+            const currentStatus = imdbImportStatus?.textContent || ''
+            if (currentStatus.includes('Processing') && currentStatus.includes('WebSocket')) {
+              if (imdbImportStatus) imdbImportStatus.textContent = `Processing ${result.total} movies... (check Seen list, refresh if needed)`
+              // Re-enable buttons so user isn't stuck
+              imdbCsvUploadBtn.disabled = false
+              if (imdbUrlSyncBtn) imdbUrlSyncBtn.disabled = false
+            }
+          }, 30000)
         }
       } catch (err) {
         showImdbError(err)
