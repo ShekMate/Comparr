@@ -835,6 +835,9 @@ for await (const req of server) {
         const csvContent = await imdbResponse.text()
         log.info(`IMDb CSV fetched: ${csvContent.length} bytes`)
 
+        // Debug: log first 500 chars to see what we got
+        log.info(`IMDb CSV preview: ${csvContent.substring(0, 500).replace(/\n/g, '\\n')}`)
+
         // Parse the CSV
         const rows = parseImdbCsv(csvContent)
         log.info(`IMDb CSV parsed: ${rows.length} movie entries found`)
