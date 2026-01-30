@@ -84,28 +84,6 @@ export default class CardView {
         />
       </div>
 
-
-      <div class="rate-controls">
-        <div class="button-wrapper">
-          <button type="button" class="rate-thumbs-down" aria-label="Thumbs down" onclick="this.closest('.card')._handleDown(event)">
-            <i class="fas fa-thumbs-down"></i>
-          </button>
-          <span class="button-label">Pass</span>
-        </div>
-        <div class="button-wrapper">
-          <button type="button" class="rate-seen" aria-label="Mark as seen" onclick="this.closest('.card')._handleSeen(event)">
-            <i class="fas fa-eye"></i>
-          </button>
-          <span class="button-label">Seen</span>
-        </div>
-        <div class="button-wrapper">
-          <button type="button" class="rate-thumbs-up" aria-label="Thumbs up" onclick="this.closest('.card')._handleUp(event)">
-            <i class="fas fa-thumbs-up"></i>
-          </button>
-          <span class="button-label">Watch</span>
-        </div>
-      </div>
-
       <div class="card-meta">
         <div class="card-title">
           ${title}${type === 'movie' ? ` (${year})` : ''}
@@ -113,6 +91,27 @@ export default class CardView {
         ${this.renderCrewInfo()}
         ${summary ? `<p class="card-plot" onclick="this.closest('.card')._handlePlot(event)">${summary}</p>` : ''}
         ${rating ? `<div class="card-ratings">${rating}</div>` : ''}
+
+        <div class="rate-controls">
+          <div class="button-wrapper">
+            <button type="button" class="rate-thumbs-down" aria-label="Thumbs down" onclick="this.closest('.card')._handleDown(event)">
+              <i class="fas fa-thumbs-down"></i>
+            </button>
+            <span class="button-label">Pass</span>
+          </div>
+          <div class="button-wrapper">
+            <button type="button" class="rate-seen" aria-label="Mark as seen" onclick="this.closest('.card')._handleSeen(event)">
+              <i class="fas fa-eye"></i>
+            </button>
+            <span class="button-label">Seen</span>
+          </div>
+          <div class="button-wrapper">
+            <button type="button" class="rate-thumbs-up" aria-label="Thumbs up" onclick="this.closest('.card')._handleUp(event)">
+              <i class="fas fa-thumbs-up"></i>
+            </button>
+            <span class="button-label">Watch</span>
+          </div>
+        </div>
       </div>
     `;
 
@@ -162,8 +161,12 @@ export default class CardView {
     plotEl?.addEventListener('click', handlePlotToggle)
     
     // Attach swipe handler ONLY to poster to allow scrolling on text/metadata areas
+    // Only enable swipe on touch-capable devices (mobile/tablet)
     const posterEl = node.querySelector('.poster')
-    posterEl?.addEventListener('pointerdown', this.handleSwipe)
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+    if (isTouchDevice) {
+      posterEl?.addEventListener('pointerdown', this.handleSwipe)
+    }
     
     // Append to card stack
     console.log(`🎴 CardView: Appending card for "${this.movieData.title}" to stack`)

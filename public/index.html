@@ -7,7 +7,7 @@
     <title>Comparr</title>
 
     <!-- Load CSS from site root (/public is web root) -->
-    <link rel="stylesheet" href="${ROOT_PATH}/style.css?v=20240115">
+    <link rel="stylesheet" href="${ROOT_PATH}/style.css?v=20241201f">
     <!-- Font Awesome Icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="icon" type="image/x-icon" href="${ROOT_PATH}/assets/icons/favicon.ico">
@@ -124,7 +124,7 @@
     </h3>
     
     <!-- Sort Options -->
-    <div class="filter-group">
+    <div class="filter-group filter-sort">
       <label>
         <i class="fas fa-sort"></i>
         Sort By:
@@ -154,20 +154,7 @@
         </button>
       </div>
     </div>
-    
-	<!-- Year Range -->
-    <div class="filter-group">
-      <label>
-        <i class="fas fa-calendar"></i>
-        Release Year Range:
-      </label>
-      <div class="year-range-container">
-        <input type="number" id="year-min" min="1895" placeholder="1895">
-        <span>to</span>
-        <input type="number" id="year-max" min="1895" placeholder="2025">
-      </div>
-    </div>
-    
+
     <!-- COMMENTED OUT - Streaming Services Filter (replaced with Where to Watch toggle)
     <div class="filter-group">
       <label>
@@ -180,7 +167,7 @@
         </label>
         <label class="streaming-checkbox">
           <input type="checkbox" value="amazon-prime"> Amazon Prime
-        </label> 
+        </label>
 		<label class="streaming-checkbox">
           <input type="checkbox" value="apple-tv-plus"> Apple TV+
         </label>
@@ -206,7 +193,7 @@
     </div>
     -->
 	<!-- Where to Watch Toggle -->
-    <div class="filter-group">
+    <div class="filter-group filter-where-to-watch">
       <label>
         <i class="fas fa-glasses"></i>
         Where to Watch:
@@ -220,9 +207,55 @@
         <span class="toggle-label-text">My Plex Only</span>
       </div>
     </div>
-	
+
+	<!-- Year Range -->
+    <div class="filter-group filter-year">
+      <label>
+        <i class="fas fa-calendar"></i>
+        Release Year Range:
+      </label>
+      <div class="year-range-container">
+        <input type="number" id="year-min" min="1895" placeholder="1895">
+        <span>to</span>
+        <input type="number" id="year-max" min="1895" placeholder="2025">
+      </div>
+    </div>
+
+    <!-- Content Ratings -->
+    <div class="filter-group filter-content-rating">
+      <label>
+        <i class="fas fa-shield-alt"></i>
+        Content Rating:
+      </label>
+      <div class="content-rating-dropdown">
+        <button type="button" class="dropdown-button" id="rating-dropdown-toggle">
+          Select Ratings <span class="dropdown-arrow">&#9660;</span>
+        </button>
+        <div class="dropdown-list" id="rating-dropdown-list" style="display: none;">
+          <label class="rating-checkbox">
+            <input type="checkbox" value="G"> G
+          </label>
+          <label class="rating-checkbox">
+            <input type="checkbox" value="PG"> PG
+          </label>
+          <label class="rating-checkbox">
+            <input type="checkbox" value="PG-13"> PG-13
+          </label>
+          <label class="rating-checkbox">
+            <input type="checkbox" value="R"> R
+          </label>
+          <label class="rating-checkbox">
+            <input type="checkbox" value="NC-17"> NC-17
+          </label>
+          <label class="rating-checkbox">
+            <input type="checkbox" value="NR"> Not Rated
+          </label>
+        </div>
+      </div>
+    </div>
+
     <!-- Genres -->
-    <div class="filter-group">
+    <div class="filter-group filter-genre">
       <label>
         <i class="fas fa-theater-masks"></i>
         Genre:
@@ -294,7 +327,7 @@
     </div>
 
     <!-- Language Filter -->
-    <div class="filter-group">
+    <div class="filter-group filter-language">
       <label>
         <i class="fas fa-language"></i>
         Language:
@@ -354,7 +387,7 @@
     </div>
 
     <!-- Country Filter -->
-    <div class="filter-group">
+    <div class="filter-group filter-country">
       <label>
         <i class="fas fa-globe"></i>
         Country:
@@ -422,7 +455,21 @@
       </div>
     </div>
 
-    <div class="filter-group">
+    <!-- Runtime Filter -->
+    <div class="filter-group filter-runtime">
+      <label>
+        <i class="fas fa-clock"></i>
+        Runtime (minutes):
+      </label>
+      <div class="runtime-range-container">
+        <input type="number" id="runtime-min" min="0" max="300" placeholder="0">
+        <span>to</span>
+        <input type="number" id="runtime-max" min="0" max="300" placeholder="300">
+      </div>
+    </div>
+
+    <!-- IMDb Rating -->
+    <div class="filter-group filter-imdb">
       <label>
         <i class="fas fa-star"></i>
         IMDb Rating:
@@ -435,7 +482,7 @@
       </div>
     </div>
 
-    <!-- COMMENTED OUT - Rotten Tomatoes Filter 
+    <!-- COMMENTED OUT - Rotten Tomatoes Filter
     <div class="filter-group">
       <label>
         <i class="fas fa-star"></i>
@@ -449,86 +496,34 @@
       </div>
     </div>
     -->
-	
-	<!-- TMDb Filters (Combined) -->
-	<div class="filter-group">
+
+	<!-- TMDb Rating -->
+	<div class="filter-group filter-tmdb-rating">
 	  <label>
 		<i class="fas fa-star"></i>
-		TMDb Filters:
+		TMDb Rating:
 	  </label>
-	  
-	  <!-- Rating Slider -->
-	  <div style="margin-top: 1rem;">
-		<div style="font-size: 0.9rem; color: var(--color-text-secondary); margin-bottom: 0.5rem;">
-		  Rating:
-		</div>
-		<div class="rating-slider-container">
-		  <input type="range" id="tmdb-rating" min="0" max="10" step="0.1" value="0">
-		  <div class="rating-display">
-			<span id="tmdb-rating-value">0.0</span><span class="rating-unit">/ 10</span>
-		  </div>
+	  <div class="rating-slider-container">
+		<input type="range" id="tmdb-rating" min="0" max="10" step="0.1" value="0">
+		<div class="rating-display">
+		  <span id="tmdb-rating-value">0.0</span><span class="rating-unit">/ 10</span>
 		</div>
 	  </div>
-  
-	  <!-- Vote Count Slider -->
-	  <div style="margin-top: 1.5rem;">
-		<div style="font-size: 0.9rem; color: var(--color-text-secondary); margin-bottom: 0.5rem;">
-		  Votes:
-		</div>
-		<div class="rating-slider-container">
-		  <input type="range" id="vote-count" min="0" max="2000" step="25" value="25">
-		  <div class="rating-display">
-			<span id="vote-count-value">0</span><span class="rating-unit">votes</span>
-		  </div>
-		</div>
-	  </div>
-	</div>    
+	</div>
 
-    <!-- Content Ratings -->
-    <div class="filter-group">
-      <label>
-        <i class="fas fa-shield-alt"></i>
-        Content Rating:
-      </label>
-      <div class="content-rating-dropdown">
-        <button type="button" class="dropdown-button" id="rating-dropdown-toggle">
-          Select Ratings <span class="dropdown-arrow">&#9660;</span>
-        </button>
-        <div class="dropdown-list" id="rating-dropdown-list" style="display: none;">
-          <label class="rating-checkbox">
-            <input type="checkbox" value="G"> G
-          </label>
-          <label class="rating-checkbox">
-            <input type="checkbox" value="PG"> PG
-          </label>
-          <label class="rating-checkbox">
-            <input type="checkbox" value="PG-13"> PG-13
-          </label>
-          <label class="rating-checkbox">
-            <input type="checkbox" value="R"> R
-          </label>
-          <label class="rating-checkbox">
-            <input type="checkbox" value="NC-17"> NC-17
-          </label>
-          <label class="rating-checkbox">
-            <input type="checkbox" value="NR"> Not Rated
-          </label>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Runtime Filter -->
-    <div class="filter-group">
-      <label>
-        <i class="fas fa-clock"></i>
-        Runtime (minutes):
-      </label>
-      <div class="runtime-range-container">
-        <input type="number" id="runtime-min" min="0" max="300" placeholder="0">
-        <span>to</span>
-        <input type="number" id="runtime-max" min="0" max="300" placeholder="300">
-      </div>
-    </div>
+	<!-- TMDb Votes -->
+	<div class="filter-group filter-tmdb-votes">
+	  <label>
+		<i class="fas fa-users"></i>
+		TMDb Votes:
+	  </label>
+	  <div class="rating-slider-container">
+		<input type="range" id="vote-count" min="0" max="5000" step="25" value="0">
+		<div class="rating-display">
+		  <span id="vote-count-value">0</span><span class="rating-unit">votes</span>
+		</div>
+	  </div>
+	</div>
   
     <!-- Apply Filters -->
     <div class="apply-filters-container">
@@ -817,10 +812,59 @@
 	  
 	  <!-- ===== Seen panel ===== -->
       <section class="tab-panel" id="tab-seen" hidden>
-        <h3>
-          <i class="fas fa-eye" style="color: var(--color-warning); margin-right: 0.5rem;"></i>
-          Seen List
-        </h3>
+        <div class="seen-list-header">
+          <h3>
+            <i class="fas fa-eye" style="color: var(--color-warning); margin-right: 0.5rem;"></i>
+            Seen List
+          </h3>
+          <div class="seen-header-actions">
+            <button id="imdb-import-btn" class="imdb-import-btn" title="Sync watched movies from IMDb">
+              <img src="${ROOT_PATH}/assets/logos/imdb.svg" alt="IMDb" class="imdb-import-logo">
+              Sync
+            </button>
+          </div>
+        </div>
+        <!-- IMDb import panel (toggled by Sync button) -->
+        <div id="imdb-import-panel" class="imdb-import-panel" style="display: none;">
+          <div class="imdb-import-panel-inner">
+            <div class="imdb-import-url-section">
+              <label for="imdb-url-input" class="imdb-import-label">Paste a public IMDb list or ratings URL</label>
+              <div class="imdb-url-row">
+                <input
+                  type="url"
+                  id="imdb-url-input"
+                  class="imdb-url-input"
+                  placeholder="https://www.imdb.com/list/ls012345678/"
+                >
+                <button id="imdb-url-sync-btn" class="imdb-url-sync-btn">
+                  <i class="fas fa-sync-alt"></i> Sync
+                </button>
+              </div>
+              <p class="imdb-import-hint">
+                Supports list, ratings, or watchlist URLs.
+                The list must be set to <strong>public</strong> on IMDb.
+              </p>
+            </div>
+            <div class="imdb-import-divider">
+              <span>or</span>
+            </div>
+            <div class="imdb-import-csv-section">
+              <button id="imdb-csv-upload-btn" class="imdb-csv-upload-btn">
+                <i class="fas fa-file-upload"></i> Upload IMDb CSV export
+              </button>
+              <input type="file" id="imdb-csv-input" accept=".csv" style="display: none;">
+            </div>
+          </div>
+          <!-- Progress bar -->
+          <div id="imdb-import-progress" class="imdb-import-progress" style="display: none;">
+            <div class="imdb-import-progress-text">
+              <span id="imdb-import-status">Importing...</span>
+            </div>
+            <div class="imdb-import-progress-bar">
+              <div id="imdb-import-bar" class="imdb-import-bar"></div>
+            </div>
+          </div>
+        </div>
         <div class="watch-list-container">
           <div class="watch-list seen-list">
             <!-- Movies will be inserted here as cards -->

@@ -4,7 +4,8 @@ import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
 import { getServerId, proxyPoster } from './api/plex.ts'
 import { PLEX_URL, PORT, LINK_TYPE, RADARR_URL, RADARR_API_KEY, JELLYSEERR_URL, JELLYSEERR_API_KEY, OVERSEERR_URL, OVERSEERR_API_KEY } from './core/config.ts'
 import { getLinkTypeForRequest } from './core/i18n.ts'
-import { handleLogin, ensurePlexHydrationReady } from './features/session/session.ts'
+import { handleLogin, ensurePlexHydrationReady, processImdbImportBackground } from './features/session/session.ts'
+import { parseImdbCsv } from './features/session/imdb-import.ts'
 import { serveFile } from './infra/http/staticFileServer.ts'
 import { WebSocketServer } from './infra/ws/websocketServer.ts'
 import { initializeRadarrCache, isMovieInRadarr, refreshRadarrCache } from './api/radarr.ts'
@@ -674,6 +675,210 @@ for await (const req of server) {
 	  }
 	  continue;
 	}
+
+    // --- API: Import IMDb watched movies as "seen" (background processing)
+    if (p === '/api/imdb-import' && req.method === 'POST') {
+      try {
+        const TMDB_KEY = Deno.env.get('TMDB_API_KEY')
+        if (!TMDB_KEY) {
+          await req.respond({
+            status: 400,
+            body: JSON.stringify({ error: 'TMDb API key is required for IMDb import' }),
+            headers: new Headers({ 'content-type': 'application/json' }),
+          })
+          continue
+        }
+
+        const decoder = new TextDecoder()
+        const body = decoder.decode(await Deno.readAll(req.body))
+        const { csvContent, roomCode, userName } = JSON.parse(body)
+
+        if (!csvContent || !roomCode || !userName) {
+          await req.respond({
+            status: 400,
+            body: JSON.stringify({ error: 'Missing required fields: csvContent, roomCode, userName' }),
+            headers: new Headers({ 'content-type': 'application/json' }),
+          })
+          continue
+        }
+
+        log.info(`IMDb CSV import requested by ${userName} in room ${roomCode}`)
+
+        // Parse the CSV
+        const rows = parseImdbCsv(csvContent)
+        log.info(`IMDb CSV parsed: ${rows.length} movie entries found`)
+
+        if (rows.length === 0) {
+          await req.respond({
+            status: 200,
+            body: JSON.stringify({ status: 'completed', total: 0 }),
+            headers: new Headers({ 'content-type': 'application/json' }),
+          })
+          continue
+        }
+
+        // Convert to the format expected by background processor
+        const imdbRows = rows.map(r => ({
+          imdbId: r.imdbId,
+          title: r.title,
+          year: r.year,
+        }))
+
+        // Start background processing (non-blocking)
+        processImdbImportBackground({ roomCode, userName, imdbRows }).catch(err => {
+          log.error(`Background IMDb import failed: ${err?.message || err}`)
+        })
+
+        // Return immediately - movies will arrive via WebSocket
+        await req.respond({
+          status: 202,
+          body: JSON.stringify({ status: 'started', total: rows.length }),
+          headers: new Headers({ 'content-type': 'application/json' }),
+        })
+
+        log.info(`IMDb CSV import started in background: ${rows.length} movies to process`)
+
+      } catch (err) {
+        log.error(`IMDb import failed: ${err?.message || err}`)
+        await req.respond({
+          status: 500,
+          body: JSON.stringify({ error: 'IMDb import failed', detail: err?.message || String(err) }),
+          headers: new Headers({ 'content-type': 'application/json' }),
+        })
+      }
+      continue
+    }
+
+    // --- API: Import from a public IMDb list URL (background processing)
+    if (p === '/api/imdb-import-url' && req.method === 'POST') {
+      try {
+        const TMDB_KEY = Deno.env.get('TMDB_API_KEY')
+        if (!TMDB_KEY) {
+          await req.respond({
+            status: 400,
+            body: JSON.stringify({ error: 'TMDb API key is required for IMDb import' }),
+            headers: new Headers({ 'content-type': 'application/json' }),
+          })
+          continue
+        }
+
+        const decoder = new TextDecoder()
+        const body = decoder.decode(await Deno.readAll(req.body))
+        const { imdbUrl, roomCode, userName } = JSON.parse(body)
+
+        if (!imdbUrl || !roomCode || !userName) {
+          await req.respond({
+            status: 400,
+            body: JSON.stringify({ error: 'Missing required fields: imdbUrl, roomCode, userName' }),
+            headers: new Headers({ 'content-type': 'application/json' }),
+          })
+          continue
+        }
+
+        // Extract list ID from various IMDb URL formats
+        // More lenient regex patterns to handle various URL formats
+        const listMatch = imdbUrl.match(/\/list\/(ls\d+)/i)
+        const ratingsMatch = imdbUrl.match(/\/user\/(ur\d+)\/ratings/i)
+        const watchlistMatch = imdbUrl.match(/\/user\/(ur\d+)\/watchlist/i)
+        // Also match just the user profile URL (assume ratings)
+        const userOnlyMatch = imdbUrl.match(/\/user\/(ur\d+)\/?(?:\?|$)/i)
+
+        log.info(`IMDb URL parsing: url="${imdbUrl}" list=${!!listMatch} ratings=${!!ratingsMatch} watchlist=${!!watchlistMatch} userOnly=${!!userOnlyMatch}`)
+
+        let exportUrl: string
+        if (listMatch) {
+          exportUrl = `https://www.imdb.com/list/${listMatch[1]}/export`
+        } else if (ratingsMatch) {
+          exportUrl = `https://www.imdb.com/user/${ratingsMatch[1]}/ratings/export`
+        } else if (watchlistMatch) {
+          exportUrl = `https://www.imdb.com/user/${watchlistMatch[1]}/watchlist/export`
+        } else if (userOnlyMatch) {
+          // User just pasted their profile URL, assume they want ratings
+          exportUrl = `https://www.imdb.com/user/${userOnlyMatch[1]}/ratings/export`
+          log.info(`IMDb URL: User profile URL detected, assuming ratings export`)
+        } else {
+          log.warning(`IMDb URL: No pattern matched for "${imdbUrl}"`)
+          await req.respond({
+            status: 400,
+            body: JSON.stringify({
+              error: 'Invalid IMDb URL. Please provide a public list URL (e.g. https://www.imdb.com/list/ls123456789/) or ratings URL (e.g. https://www.imdb.com/user/ur12345678/ratings/).',
+            }),
+            headers: new Headers({ 'content-type': 'application/json' }),
+          })
+          continue
+        }
+
+        log.info(`IMDb URL import requested by ${userName} in room ${roomCode}: ${exportUrl}`)
+
+        // Fetch CSV from IMDb (do this synchronously so we can return error if URL is bad)
+        const imdbResponse = await fetch(exportUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; Comparr/1.0)',
+            'Accept': 'text/csv, */*',
+          },
+        })
+
+        if (!imdbResponse.ok) {
+          const hint = imdbResponse.status === 403 || imdbResponse.status === 404
+            ? ' Make sure the list is set to public on IMDb.'
+            : ''
+          await req.respond({
+            status: 502,
+            body: JSON.stringify({
+              error: `Failed to fetch from IMDb (HTTP ${imdbResponse.status}).${hint}`,
+            }),
+            headers: new Headers({ 'content-type': 'application/json' }),
+          })
+          continue
+        }
+
+        const csvContent = await imdbResponse.text()
+        log.info(`IMDb CSV fetched: ${csvContent.length} bytes`)
+
+        // Parse the CSV
+        const rows = parseImdbCsv(csvContent)
+        log.info(`IMDb CSV parsed: ${rows.length} movie entries found`)
+
+        if (rows.length === 0) {
+          await req.respond({
+            status: 200,
+            body: JSON.stringify({ status: 'completed', total: 0 }),
+            headers: new Headers({ 'content-type': 'application/json' }),
+          })
+          continue
+        }
+
+        // Convert to the format expected by background processor
+        const imdbRows = rows.map(r => ({
+          imdbId: r.imdbId,
+          title: r.title,
+          year: r.year,
+        }))
+
+        // Start background processing (non-blocking)
+        processImdbImportBackground({ roomCode, userName, imdbRows }).catch(err => {
+          log.error(`Background IMDb URL import failed: ${err?.message || err}`)
+        })
+
+        // Return immediately - movies will arrive via WebSocket
+        await req.respond({
+          status: 202,
+          body: JSON.stringify({ status: 'started', total: rows.length }),
+          headers: new Headers({ 'content-type': 'application/json' }),
+        })
+
+        log.info(`IMDb URL import started in background: ${rows.length} movies to process`)
+
+      } catch (err) {
+        log.error(`IMDb URL import failed: ${err?.message || err}`)
+        await req.respond({
+          status: 500,
+          body: JSON.stringify({ error: 'IMDb URL import failed', detail: err?.message || String(err) }),
+          headers: new Headers({ 'content-type': 'application/json' }),
+        })
+      }
+      continue
+    }
 
     // --- WebSocket for app events/login
     if (p === '/ws') {
