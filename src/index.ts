@@ -776,9 +776,14 @@ for await (const req of server) {
         }
 
         // Extract list ID from various IMDb URL formats
-        const listMatch = imdbUrl.match(/\/list\/(ls\d+)/)
-        const ratingsMatch = imdbUrl.match(/\/user\/(ur\d+)\/ratings/)
-        const watchlistMatch = imdbUrl.match(/\/user\/(ur\d+)\/watchlist/)
+        // More lenient regex patterns to handle various URL formats
+        const listMatch = imdbUrl.match(/\/list\/(ls\d+)/i)
+        const ratingsMatch = imdbUrl.match(/\/user\/(ur\d+)\/ratings/i)
+        const watchlistMatch = imdbUrl.match(/\/user\/(ur\d+)\/watchlist/i)
+        // Also match just the user profile URL (assume ratings)
+        const userOnlyMatch = imdbUrl.match(/\/user\/(ur\d+)\/?(?:\?|$)/i)
+
+        log.info(`IMDb URL parsing: url="${imdbUrl}" list=${!!listMatch} ratings=${!!ratingsMatch} watchlist=${!!watchlistMatch} userOnly=${!!userOnlyMatch}`)
 
         let exportUrl: string
         if (listMatch) {
@@ -787,7 +792,12 @@ for await (const req of server) {
           exportUrl = `https://www.imdb.com/user/${ratingsMatch[1]}/ratings/export`
         } else if (watchlistMatch) {
           exportUrl = `https://www.imdb.com/user/${watchlistMatch[1]}/watchlist/export`
+        } else if (userOnlyMatch) {
+          // User just pasted their profile URL, assume they want ratings
+          exportUrl = `https://www.imdb.com/user/${userOnlyMatch[1]}/ratings/export`
+          log.info(`IMDb URL: User profile URL detected, assuming ratings export`)
         } else {
+          log.warning(`IMDb URL: No pattern matched for "${imdbUrl}"`)
           await req.respond({
             status: 400,
             body: JSON.stringify({
