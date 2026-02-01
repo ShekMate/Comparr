@@ -240,11 +240,11 @@ export class ComparrAPI extends EventTarget {
 
   async requestNextBatchWithFilters(filters) {
     await this._waitOpen();
-    
+
 	console.log('ComparrAPI received filters:', filters);
     console.log('Directors:', filters.directors);
-    console.log('Actors:', filters.actors);    
-    
+    console.log('Actors:', filters.actors);
+
     const message = {
       type: 'nextBatch',
       payload: {
@@ -254,7 +254,7 @@ export class ComparrAPI extends EventTarget {
         // streamingServices: filters.streamingServices,
         showPlexOnly: filters.showPlexOnly,
         contentRatings: filters.contentRatings,
-        // imdbRating: filters.imdbRating,  // COMMENTED OUT
+        imdbRating: filters.imdbRating,
 		tmdbRating: filters.tmdbRating,
 		languages: filters.languages,
 		countries: filters.countries,
@@ -265,14 +265,14 @@ export class ComparrAPI extends EventTarget {
       // rtRating: filters.rtRating  // COMMENTED OUT
       }
     };
-    
+
     console.log('🌐 FILTER DEBUG - WebSocket sending filters:');
     console.log('  Year Range:', message.payload.yearMin, '-', message.payload.yearMax);
     console.log('  Genres:', message.payload.genres);
     // console.log('  Streaming:', message.payload.streamingServices);
     console.log('  Show Plex Only:', message.payload.showPlexOnly);
     console.log('  Content Ratings:', message.payload.contentRatings);
-    // console.log('  IMDb Rating:', message.payload.imdbRating);  // COMMENTED OUT
+    console.log('  IMDb Rating:', message.payload.imdbRating);
     console.log('  TMDb Rating:', message.payload.tmdbRating);
     // console.log('  RT Rating:', message.payload.rtRating);  // COMMENTED OUT
     console.log('  Languages:', message.payload.languages);
