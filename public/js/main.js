@@ -204,33 +204,47 @@ function updateWatchContentRatingButton(selectedRatings) {
 
 /* --------------------- tabs --------------------- */
 function initTabs() {
+  // Get both navigation containers (mobile tabbar and desktop sidebar)
+  const sidebar = document.querySelector('.sidebar')
   const tabbar = document.querySelector('.tabbar')
-  if (!tabbar) return
+  const panels = document.querySelectorAll('.tab-panel')
 
-  const buttons = tabbar.querySelectorAll('[data-tab]')
-  const panels  = document.querySelectorAll('.tab-panel')
+  if (!sidebar && !tabbar) return
+
+  // Get all navigation buttons from both containers
+  const sidebarButtons = sidebar ? sidebar.querySelectorAll('[data-tab]') : []
+  const tabbarButtons = tabbar ? tabbar.querySelectorAll('[data-tab]') : []
+  const allButtons = [...sidebarButtons, ...tabbarButtons]
+
+  // Dropdown support (for mobile tabbar)
   const dropdown = document.querySelector('.dropdown')
   const dropdownToggle = document.querySelector('.dropdown-toggle')
   const dropdownItems = document.querySelectorAll('.dropdown-item')
 
   // PREVENT DUPLICATE EVENT LISTENERS
-  if (dropdownToggle && dropdownToggle.dataset.initialized) {
+  const initMarker = sidebar || tabbar
+  if (initMarker.dataset.initialized) {
     return // Already initialized, don't add duplicate listeners
   }
 
   const activate = id => {
-    buttons.forEach(b => b.classList.toggle('is-active', b.dataset.tab === id))
-    dropdownItems.forEach(item => item.classList.toggle('active', item.dataset.tab === id))
+    // Update all buttons in both sidebar and tabbar
+    allButtons.forEach(b => b.classList.toggle('is-active', b.dataset.tab === id))
+    if (dropdownItems) {
+      dropdownItems.forEach(item => item.classList.toggle('active', item.dataset.tab === id))
+    }
     panels.forEach(p => { p.hidden = (p.id !== id) })
-  
+
     // Update dropdown toggle text if a dropdown item is active
-    const activeDropdownItem = Array.from(dropdownItems).find(item => item.dataset.tab === id)
-    if (activeDropdownItem) {
-      dropdownToggle.innerHTML = `<i class="fas fa-star"></i> ${activeDropdownItem.textContent}`
-      dropdownToggle.classList.add('is-active')
-    } else {
-      dropdownToggle.innerHTML = '<i class="fas fa-star"></i> Ratings'
-      dropdownToggle.classList.remove('is-active')
+    if (dropdownToggle && dropdownItems) {
+      const activeDropdownItem = Array.from(dropdownItems).find(item => item.dataset.tab === id)
+      if (activeDropdownItem) {
+        dropdownToggle.innerHTML = `<i class="fas fa-star"></i> ${activeDropdownItem.textContent}`
+        dropdownToggle.classList.add('is-active')
+      } else {
+        dropdownToggle.innerHTML = '<i class="fas fa-star"></i> Ratings'
+        dropdownToggle.classList.remove('is-active')
+      }
     }
   }
 
@@ -241,15 +255,16 @@ function initTabs() {
   })
 
   // Close dropdown when clicking outside
-  document.addEventListener('click', () => {
-    dropdown.classList.remove('show')
-  })
+  if (dropdown) {
+    document.addEventListener('click', () => {
+      dropdown.classList.remove('show')
+    })
+  }
 
-  // tab switching
-  buttons.forEach(btn => btn.addEventListener('click', () => {
-    const tabId = btn.dataset.tab;
+  // Tab switching handler
+  const handleTabClick = (tabId) => {
     activate(tabId);
-    
+
     // Handle Watch list auto-refresh
     if (tabId === 'tab-likes') {
       startWatchListAutoRefresh();
@@ -261,34 +276,28 @@ function initTabs() {
     } else {
       stopWatchListAutoRefresh();
     }
-  }))
-  
-  dropdownItems.forEach(item => {
-    item.addEventListener('click', () => {
-      const tabId = item.dataset.tab;
-      activate(tabId);
-      dropdown.classList.remove('show');
-      
-      // Handle Watch list auto-refresh
-      if (tabId === 'tab-likes') {
-        startWatchListAutoRefresh();
-        setTimeout(refreshWatchListStatus, 500);
-        // Reset expand/collapse button state
-        if (typeof resetExpandCollapseButton === 'function') {
-          resetExpandCollapseButton();
-        }
-      } else {
-        stopWatchListAutoRefresh();
-      }
-    })
-  })
-  // Mark as initialized
-  if (dropdownToggle) {
-    dropdownToggle.dataset.initialized = 'true'
   }
 
+  // Attach click handlers to all buttons (sidebar and tabbar)
+  allButtons.forEach(btn => btn.addEventListener('click', () => {
+    handleTabClick(btn.dataset.tab);
+  }))
+
+  // Dropdown item switching
+  if (dropdownItems) {
+    dropdownItems.forEach(item => {
+      item.addEventListener('click', () => {
+        handleTabClick(item.dataset.tab);
+        dropdown?.classList.remove('show');
+      })
+    })
+  }
+
+  // Mark as initialized
+  initMarker.dataset.initialized = 'true'
+
   // Activate first tab by default
-  if (buttons[0]) activate(buttons[0].dataset.tab)
+  if (allButtons[0]) activate(allButtons[0].dataset.tab)
   
   // Handle refresh button click
   const refreshBtn = document.getElementById('refresh-watch-btn');
