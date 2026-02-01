@@ -2757,9 +2757,6 @@ const main = async () => {
   const imdbUrlSyncBtn = document.getElementById('imdb-url-sync-btn')
   const imdbCsvUploadBtn = document.getElementById('imdb-csv-upload-btn')
   const imdbCsvInput = document.getElementById('imdb-csv-input')
-  const imdbImportProgress = document.getElementById('imdb-import-progress')
-  const imdbImportStatus = document.getElementById('imdb-import-status')
-  const imdbImportBar = document.getElementById('imdb-import-bar')
 
   // Toggle the import panel
   if (imdbImportBtn && imdbImportPanel) {
