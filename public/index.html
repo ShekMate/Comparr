@@ -77,10 +77,6 @@
 	  	  <i class="fas fa-arrows-h"></i>
 		  Swipe
 	    </button>
-	    <button class="tab-button" data-tab="tab-filters">
-		  <i class="fas fa-filter"></i>
-		  Filters
-	    </button>
 	    <div class="dropdown">
 		  <button class="tab-button dropdown-toggle" type="button">
 		    <i class="fas fa-star"></i>
@@ -117,10 +113,6 @@
 		    <i class="fas fa-arrows-h"></i>
 		    <span>Swipe</span>
 		  </button>
-		  <button class="sidebar-item" data-tab="tab-filters">
-		    <i class="fas fa-filter"></i>
-		    <span>Filters</span>
-		  </button>
 		  <div class="sidebar-section-label">Ratings</div>
 		  <button class="sidebar-item" data-tab="tab-matches">
 		    <i class="fas fa-heart"></i>
@@ -146,6 +138,11 @@
         class="tab-panel rate-section js-rate-section is-active"
         id="tab-swipe"
       >
+        <div class="swipe-header">
+          <button id="swipe-filter-btn" class="swipe-filter-btn" title="Filter Movies">
+            <i class="fas fa-filter"></i>
+          </button>
+        </div>
         <div class="card-stack js-card-stack"></div>
       </section>
 
@@ -830,7 +827,260 @@
           </button>
         </div>
       </div>
-	  
+
+      <!-- ===== Swipe Filter Modal ===== -->
+      <div class="modal-overlay" id="swipe-filter-overlay"></div>
+      <div class="filter-modal" id="swipe-filter-modal">
+        <div class="modal-header">
+          <h3>
+            <i class="fas fa-filter"></i>
+            Movie Filters
+          </h3>
+          <button class="close-btn" id="swipe-filter-close">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <!-- Sort Options -->
+          <div class="filter-group">
+            <label>
+              <i class="fas fa-sort"></i>
+              Sort By:
+            </label>
+            <div class="sort-controls-wrapper">
+              <div class="sort-dropdown">
+                <button type="button" class="dropdown-button" id="swipe-sort-dropdown-toggle">
+                  Popularity <span class="dropdown-arrow">&#9660;</span>
+                </button>
+                <div class="dropdown-list" id="swipe-sort-dropdown-list" style="display: none;">
+                  <label class="sort-option">
+                    <input type="radio" name="swipe-sort" value="popularity.desc" checked> Popularity
+                  </label>
+                  <label class="sort-option">
+                    <input type="radio" name="swipe-sort" value="release_date.desc"> Release Date
+                  </label>
+                  <label class="sort-option">
+                    <input type="radio" name="swipe-sort" value="vote_count.desc"> Votes
+                  </label>
+                  <label class="sort-option">
+                    <input type="radio" name="swipe-sort" value="vote_average.desc"> Rating
+                  </label>
+                </div>
+              </div>
+              <button type="button" class="sort-direction-btn" id="swipe-sort-direction-btn" title="Sort Direction">
+                ↓
+              </button>
+            </div>
+          </div>
+
+          <!-- Where to Watch Toggle -->
+          <div class="filter-group">
+            <label>
+              <i class="fas fa-glasses"></i>
+              Where to Watch:
+            </label>
+            <div class="toggle-switch-container">
+              <span class="toggle-label-text active">All Movies</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="swipe-plex-only-toggle">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label-text">My Plex Only</span>
+            </div>
+          </div>
+
+          <!-- Year Range -->
+          <div class="filter-group">
+            <label>
+              <i class="fas fa-calendar"></i>
+              Release Year:
+            </label>
+            <div class="year-range-container">
+              <input type="number" placeholder="1895" id="swipe-year-min">
+              <span>to</span>
+              <input type="number" placeholder="2025" id="swipe-year-max">
+            </div>
+          </div>
+
+          <!-- Content Ratings -->
+          <div class="filter-group">
+            <label>
+              <i class="fas fa-shield-alt"></i>
+              Content Rating:
+            </label>
+            <button type="button" class="dropdown-button" id="swipe-rating-toggle">
+              Select Ratings <span class="dropdown-arrow">&#9660;</span>
+            </button>
+            <div class="dropdown-list" id="swipe-rating-list">
+              <label class="rating-checkbox"><input type="checkbox" value="G"> G</label>
+              <label class="rating-checkbox"><input type="checkbox" value="PG"> PG</label>
+              <label class="rating-checkbox"><input type="checkbox" value="PG-13"> PG-13</label>
+              <label class="rating-checkbox"><input type="checkbox" value="R"> R</label>
+              <label class="rating-checkbox"><input type="checkbox" value="NC-17"> NC-17</label>
+              <label class="rating-checkbox"><input type="checkbox" value="NR"> Not Rated</label>
+            </div>
+          </div>
+
+          <!-- Genres -->
+          <div class="filter-group">
+            <label>
+              <i class="fas fa-theater-masks"></i>
+              Genre:
+            </label>
+            <button type="button" class="dropdown-button" id="swipe-genre-toggle">
+              Select Genres <span class="dropdown-arrow">&#9660;</span>
+            </button>
+            <div class="dropdown-list" id="swipe-genre-list">
+              <label class="genre-checkbox"><input type="checkbox" value="28"> Action</label>
+              <label class="genre-checkbox"><input type="checkbox" value="12"> Adventure</label>
+              <label class="genre-checkbox"><input type="checkbox" value="16"> Animation</label>
+              <label class="genre-checkbox"><input type="checkbox" value="35"> Comedy</label>
+              <label class="genre-checkbox"><input type="checkbox" value="80"> Crime</label>
+              <label class="genre-checkbox"><input type="checkbox" value="99"> Documentary</label>
+              <label class="genre-checkbox"><input type="checkbox" value="18"> Drama</label>
+              <label class="genre-checkbox"><input type="checkbox" value="10751"> Family</label>
+              <label class="genre-checkbox"><input type="checkbox" value="14"> Fantasy</label>
+              <label class="genre-checkbox"><input type="checkbox" value="36"> History</label>
+              <label class="genre-checkbox"><input type="checkbox" value="27"> Horror</label>
+              <label class="genre-checkbox"><input type="checkbox" value="10402"> Music</label>
+              <label class="genre-checkbox"><input type="checkbox" value="9648"> Mystery</label>
+              <label class="genre-checkbox"><input type="checkbox" value="10749"> Romance</label>
+              <label class="genre-checkbox"><input type="checkbox" value="878"> Science Fiction</label>
+              <label class="genre-checkbox"><input type="checkbox" value="10770"> TV Movie</label>
+              <label class="genre-checkbox"><input type="checkbox" value="53"> Thriller</label>
+              <label class="genre-checkbox"><input type="checkbox" value="10752"> War</label>
+              <label class="genre-checkbox"><input type="checkbox" value="37"> Western</label>
+            </div>
+          </div>
+
+          <!-- Languages -->
+          <div class="filter-group">
+            <label>
+              <i class="fas fa-language"></i>
+              Language:
+            </label>
+            <button type="button" class="dropdown-button" id="swipe-language-toggle">
+              Select Languages <span class="dropdown-arrow">&#9660;</span>
+            </button>
+            <div class="dropdown-list" id="swipe-language-list">
+              <label class="language-checkbox"><input type="checkbox" value="en"> English</label>
+              <label class="language-checkbox"><input type="checkbox" value="es"> Spanish</label>
+              <label class="language-checkbox"><input type="checkbox" value="fr"> French</label>
+              <label class="language-checkbox"><input type="checkbox" value="de"> German</label>
+              <label class="language-checkbox"><input type="checkbox" value="it"> Italian</label>
+              <label class="language-checkbox"><input type="checkbox" value="pt"> Portuguese</label>
+              <label class="language-checkbox"><input type="checkbox" value="ja"> Japanese</label>
+              <label class="language-checkbox"><input type="checkbox" value="ko"> Korean</label>
+              <label class="language-checkbox"><input type="checkbox" value="zh"> Chinese</label>
+              <label class="language-checkbox"><input type="checkbox" value="hi"> Hindi</label>
+              <label class="language-checkbox"><input type="checkbox" value="ar"> Arabic</label>
+              <label class="language-checkbox"><input type="checkbox" value="ru"> Russian</label>
+              <label class="language-checkbox"><input type="checkbox" value="nl"> Dutch</label>
+              <label class="language-checkbox"><input type="checkbox" value="sv"> Swedish</label>
+              <label class="language-checkbox"><input type="checkbox" value="no"> Norwegian</label>
+            </div>
+          </div>
+
+          <!-- Countries -->
+          <div class="filter-group">
+            <label>
+              <i class="fas fa-globe"></i>
+              Country:
+            </label>
+            <button type="button" class="dropdown-button" id="swipe-country-toggle">
+              Select Countries <span class="dropdown-arrow">&#9660;</span>
+            </button>
+            <div class="dropdown-list" id="swipe-country-list">
+              <label class="country-checkbox"><input type="checkbox" value="US"> United States</label>
+              <label class="country-checkbox"><input type="checkbox" value="GB"> United Kingdom</label>
+              <label class="country-checkbox"><input type="checkbox" value="CA"> Canada</label>
+              <label class="country-checkbox"><input type="checkbox" value="AU"> Australia</label>
+              <label class="country-checkbox"><input type="checkbox" value="FR"> France</label>
+              <label class="country-checkbox"><input type="checkbox" value="DE"> Germany</label>
+              <label class="country-checkbox"><input type="checkbox" value="ES"> Spain</label>
+              <label class="country-checkbox"><input type="checkbox" value="IT"> Italy</label>
+              <label class="country-checkbox"><input type="checkbox" value="JP"> Japan</label>
+              <label class="country-checkbox"><input type="checkbox" value="KR"> South Korea</label>
+              <label class="country-checkbox"><input type="checkbox" value="CN"> China</label>
+              <label class="country-checkbox"><input type="checkbox" value="IN"> India</label>
+              <label class="country-checkbox"><input type="checkbox" value="BR"> Brazil</label>
+              <label class="country-checkbox"><input type="checkbox" value="MX"> Mexico</label>
+              <label class="country-checkbox"><input type="checkbox" value="NL"> Netherlands</label>
+              <label class="country-checkbox"><input type="checkbox" value="SE"> Sweden</label>
+              <label class="country-checkbox"><input type="checkbox" value="NO"> Norway</label>
+              <label class="country-checkbox"><input type="checkbox" value="DK"> Denmark</label>
+            </div>
+          </div>
+
+          <!-- Runtime -->
+          <div class="filter-group">
+            <label>
+              <i class="fas fa-clock"></i>
+              Runtime (minutes):
+            </label>
+            <div class="runtime-range-container">
+              <input type="number" id="swipe-runtime-min" placeholder="0">
+              <span>to</span>
+              <input type="number" id="swipe-runtime-max" placeholder="300">
+            </div>
+          </div>
+
+          <!-- IMDb Rating -->
+          <div class="filter-group">
+            <label>
+              <i class="fas fa-star"></i>
+              IMDb Rating:
+            </label>
+            <div class="rating-slider-container">
+              <input type="range" id="swipe-imdb-rating" min="0" max="10" step="0.1" value="0">
+              <div class="rating-display">
+                <span id="swipe-imdb-rating-value">0.0</span><span class="rating-unit">/ 10</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- TMDb Rating -->
+          <div class="filter-group">
+            <label>
+              <i class="fas fa-star"></i>
+              TMDb Rating:
+            </label>
+            <div class="rating-slider-container">
+              <input type="range" id="swipe-tmdb-rating" min="0" max="10" step="0.1" value="0">
+              <div class="rating-display">
+                <span id="swipe-tmdb-rating-value">0.0</span><span class="rating-unit">/ 10</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- TMDb Votes -->
+          <div class="filter-group">
+            <label>
+              <i class="fas fa-users"></i>
+              TMDb Votes:
+            </label>
+            <div class="rating-slider-container">
+              <input type="range" id="swipe-vote-count" min="0" max="5000" step="25" value="0">
+              <div class="rating-display">
+                <span id="swipe-vote-count-value">0</span><span class="rating-unit">votes</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="reset-filters-btn" id="swipe-filter-reset">
+            <i class="fas fa-undo"></i>
+            Reset
+          </button>
+          <button class="apply-filters-btn" id="swipe-filter-apply">
+            <i class="fas fa-search"></i>
+            Apply
+          </button>
+        </div>
+      </div>
+
       <!-- ===== Pass panel ===== -->
       <section class="tab-panel" id="tab-dislikes" hidden>
         <h3>

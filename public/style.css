@@ -425,6 +425,38 @@ body.is-logged-in footer {
   justify-content: center;
   overflow: visible;
   min-height: 70vh;
+  position: relative;
+}
+
+/* Swipe Header with Filter Button */
+.swipe-header {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10;
+}
+
+.swipe-filter-btn {
+  padding: 0.5rem;
+  background: rgba(51, 65, 85, 0.5);
+  color: white;
+  border: 1px solid rgba(51, 65, 85, 0.5);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.swipe-filter-btn:hover {
+  background: rgba(99, 102, 241, 0.3);
+  border-color: var(--color-primary);
+}
+
+.swipe-filter-btn.has-filters {
+  background: rgba(99, 102, 241, 0.3);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 /* =========================================================
@@ -2448,6 +2480,7 @@ body.is-logged-in footer {
   position: relative;
   z-index: 1;
   overflow: visible; /* CHANGED from hidden to visible */
+  width: 100%; /* Ensure collapsed cards span full width */
 }
 
 .watch-card:hover {
