@@ -25,8 +25,9 @@ function normalizeURL(url: string): string {
 
 export const serveFile = async (req: ServerRequest, basePath = 'public') => {
   const publicRoot = join(Deno.cwd(), basePath.replace(/^\/+/, ''));
-  const reqPathRaw =
-    req.url === '/' ? 'index.html' : normalizeURL(req.url).replace(/^\/+/, ''); // strip leading '/'
+  const urlPath = normalizeURL(req.url).replace(/^\/+/, ''); // strip leading '/'
+  // Use index.html for root path (handles both '/' and '/?query=params')
+  const reqPathRaw = urlPath === '' ? 'index.html' : urlPath;
 
   const normalizedPath = join(publicRoot, reqPathRaw);
 
