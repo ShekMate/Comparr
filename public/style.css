@@ -164,7 +164,7 @@ body.is-logged-in .app {
   width: 200px;
   background: var(--color-surface);
   border-right: 1px solid var(--color-line);
-  display: none; /* Hidden by default (mobile-first) */
+  display: flex;
   flex-direction: column;
   z-index: 1000;
   overflow-y: auto;
