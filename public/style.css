@@ -254,12 +254,25 @@ body.is-logged-in footer {
 
 /* Mobile: Show tabbar, hide sidebar */
 @media (max-width: 768px) {
-  .sidebar {
+  /* High specificity rule to absolutely ensure sidebar is hidden on mobile */
+  html body nav.sidebar,
+  html body .sidebar,
+  nav.sidebar,
+  .sidebar,
+  #sidebar {
     display: none !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    max-width: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    position: absolute !important;
+    left: -9999px !important;
   }
 
   .tabbar {
     display: flex !important;
+    visibility: visible !important;
   }
 
   body.is-logged-in .tab-panel,
