@@ -204,33 +204,47 @@ function updateWatchContentRatingButton(selectedRatings) {
 
 /* --------------------- tabs --------------------- */
 function initTabs() {
+  // Get both navigation containers (mobile tabbar and desktop sidebar)
+  const sidebar = document.querySelector('.sidebar')
   const tabbar = document.querySelector('.tabbar')
-  if (!tabbar) return
+  const panels = document.querySelectorAll('.tab-panel')
 
-  const buttons = tabbar.querySelectorAll('[data-tab]')
-  const panels  = document.querySelectorAll('.tab-panel')
+  if (!sidebar && !tabbar) return
+
+  // Get all navigation buttons from both containers
+  const sidebarButtons = sidebar ? sidebar.querySelectorAll('[data-tab]') : []
+  const tabbarButtons = tabbar ? tabbar.querySelectorAll('[data-tab]') : []
+  const allButtons = [...sidebarButtons, ...tabbarButtons]
+
+  // Dropdown support (for mobile tabbar)
   const dropdown = document.querySelector('.dropdown')
   const dropdownToggle = document.querySelector('.dropdown-toggle')
   const dropdownItems = document.querySelectorAll('.dropdown-item')
 
   // PREVENT DUPLICATE EVENT LISTENERS
-  if (dropdownToggle && dropdownToggle.dataset.initialized) {
+  const initMarker = sidebar || tabbar
+  if (initMarker.dataset.initialized) {
     return // Already initialized, don't add duplicate listeners
   }
 
   const activate = id => {
-    buttons.forEach(b => b.classList.toggle('is-active', b.dataset.tab === id))
-    dropdownItems.forEach(item => item.classList.toggle('active', item.dataset.tab === id))
+    // Update all buttons in both sidebar and tabbar
+    allButtons.forEach(b => b.classList.toggle('is-active', b.dataset.tab === id))
+    if (dropdownItems) {
+      dropdownItems.forEach(item => item.classList.toggle('active', item.dataset.tab === id))
+    }
     panels.forEach(p => { p.hidden = (p.id !== id) })
-  
+
     // Update dropdown toggle text if a dropdown item is active
-    const activeDropdownItem = Array.from(dropdownItems).find(item => item.dataset.tab === id)
-    if (activeDropdownItem) {
-      dropdownToggle.innerHTML = `<i class="fas fa-star"></i> ${activeDropdownItem.textContent}`
-      dropdownToggle.classList.add('is-active')
-    } else {
-      dropdownToggle.innerHTML = '<i class="fas fa-star"></i> Ratings'
-      dropdownToggle.classList.remove('is-active')
+    if (dropdownToggle && dropdownItems) {
+      const activeDropdownItem = Array.from(dropdownItems).find(item => item.dataset.tab === id)
+      if (activeDropdownItem) {
+        dropdownToggle.innerHTML = `<i class="fas fa-star"></i> ${activeDropdownItem.textContent}`
+        dropdownToggle.classList.add('is-active')
+      } else {
+        dropdownToggle.innerHTML = '<i class="fas fa-star"></i> Ratings'
+        dropdownToggle.classList.remove('is-active')
+      }
     }
   }
 
@@ -241,15 +255,16 @@ function initTabs() {
   })
 
   // Close dropdown when clicking outside
-  document.addEventListener('click', () => {
-    dropdown.classList.remove('show')
-  })
+  if (dropdown) {
+    document.addEventListener('click', () => {
+      dropdown.classList.remove('show')
+    })
+  }
 
-  // tab switching
-  buttons.forEach(btn => btn.addEventListener('click', () => {
-    const tabId = btn.dataset.tab;
+  // Tab switching handler
+  const handleTabClick = (tabId) => {
     activate(tabId);
-    
+
     // Handle Watch list auto-refresh
     if (tabId === 'tab-likes') {
       startWatchListAutoRefresh();
@@ -261,34 +276,28 @@ function initTabs() {
     } else {
       stopWatchListAutoRefresh();
     }
-  }))
-  
-  dropdownItems.forEach(item => {
-    item.addEventListener('click', () => {
-      const tabId = item.dataset.tab;
-      activate(tabId);
-      dropdown.classList.remove('show');
-      
-      // Handle Watch list auto-refresh
-      if (tabId === 'tab-likes') {
-        startWatchListAutoRefresh();
-        setTimeout(refreshWatchListStatus, 500);
-        // Reset expand/collapse button state
-        if (typeof resetExpandCollapseButton === 'function') {
-          resetExpandCollapseButton();
-        }
-      } else {
-        stopWatchListAutoRefresh();
-      }
-    })
-  })
-  // Mark as initialized
-  if (dropdownToggle) {
-    dropdownToggle.dataset.initialized = 'true'
   }
 
+  // Attach click handlers to all buttons (sidebar and tabbar)
+  allButtons.forEach(btn => btn.addEventListener('click', () => {
+    handleTabClick(btn.dataset.tab);
+  }))
+
+  // Dropdown item switching
+  if (dropdownItems) {
+    dropdownItems.forEach(item => {
+      item.addEventListener('click', () => {
+        handleTabClick(item.dataset.tab);
+        dropdown?.classList.remove('show');
+      })
+    })
+  }
+
+  // Mark as initialized
+  initMarker.dataset.initialized = 'true'
+
   // Activate first tab by default
-  if (buttons[0]) activate(buttons[0].dataset.tab)
+  if (allButtons[0]) activate(allButtons[0].dataset.tab)
   
   // Handle refresh button click
   const refreshBtn = document.getElementById('refresh-watch-btn');
@@ -2068,6 +2077,9 @@ const main = async () => {
     // rtRating: 0 //COMMENTED OUT
   }
 
+  // Expose filterState globally for swipe filter modal
+  window.filterState = filterState
+
   // Filter UI elements
   // const streamingCheckboxes = document.querySelectorAll('#streaming-checkboxes input[type="checkbox"]')  // COMMENTED OUT
   const currentYear = new Date().getFullYear()
@@ -2757,9 +2769,6 @@ const main = async () => {
   const imdbUrlSyncBtn = document.getElementById('imdb-url-sync-btn')
   const imdbCsvUploadBtn = document.getElementById('imdb-csv-upload-btn')
   const imdbCsvInput = document.getElementById('imdb-csv-input')
-  const imdbImportProgress = document.getElementById('imdb-import-progress')
-  const imdbImportStatus = document.getElementById('imdb-import-status')
-  const imdbImportBar = document.getElementById('imdb-import-bar')
 
   // Toggle the import panel
   if (imdbImportBtn && imdbImportPanel) {
@@ -2875,8 +2884,8 @@ const main = async () => {
 
       try {
         const csvContent = await file.text()
-        if (imdbImportStatus) imdbImportStatus.textContent = 'Sending to server...'
-        if (imdbImportBar) imdbImportBar.style.width = '15%'
+        if (imdbImportStatus) imdbImportStatus.textContent = 'Uploading CSV...'
+        if (imdbImportBar) imdbImportBar.style.width = '10%'
 
         const apiBase = document.body.dataset.basePath || ''
         const response = await fetch(`${apiBase}/api/imdb-import`, {
@@ -2884,6 +2893,8 @@ const main = async () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ csvContent, roomCode, userName }),
         })
+
+        if (imdbImportBar) imdbImportBar.style.width = '20%'
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}))
@@ -2903,9 +2914,19 @@ const main = async () => {
           }, 3000)
         } else if (result.status === 'started') {
           // Background processing started - progress updates will come via WebSocket
-          if (imdbImportStatus) imdbImportStatus.textContent = `Processing ${result.total} movies in background...`
-          if (imdbImportBar) imdbImportBar.style.width = '10%'
-          // Buttons stay disabled - will be re-enabled by WebSocket completion handler
+          if (imdbImportStatus) imdbImportStatus.textContent = `Processing ${result.total} movies... (updates via WebSocket)`
+          if (imdbImportBar) imdbImportBar.style.width = '25%'
+
+          // Set a fallback timeout - if no WebSocket updates after 30s, show a note
+          setTimeout(() => {
+            const currentStatus = imdbImportStatus?.textContent || ''
+            if (currentStatus.includes('Processing') && currentStatus.includes('WebSocket')) {
+              if (imdbImportStatus) imdbImportStatus.textContent = `Processing ${result.total} movies... (check Seen list, refresh if needed)`
+              // Re-enable buttons so user isn't stuck
+              imdbCsvUploadBtn.disabled = false
+              if (imdbUrlSyncBtn) imdbUrlSyncBtn.disabled = false
+            }
+          }, 30000)
         }
       } catch (err) {
         showImdbError(err)
@@ -3141,6 +3162,9 @@ async function ensureMovieBuffer() {
   
     ensureMovieBuffer()
   }
+
+  // Expose triggerNewBatch globally for swipe filter modal
+  window.triggerNewBatch = triggerNewBatch
 
   // Helper function to remove last rated row from UI
   function removeLastRatedRow(wantsToWatch) {
@@ -3716,6 +3740,603 @@ watchFilterReset?.addEventListener('click', () => {
   updateWatchCountryButton([]);
   updateWatchContentRatingButton([]);
 });
+
+// =========================================================
+// Swipe Filter Modal
+// =========================================================
+const swipeFilterBtn = document.getElementById('swipe-filter-btn');
+const swipeFilterModal = document.getElementById('swipe-filter-modal');
+const swipeFilterOverlay = document.getElementById('swipe-filter-overlay');
+const swipeFilterClose = document.getElementById('swipe-filter-close');
+const swipeFilterApply = document.getElementById('swipe-filter-apply');
+const swipeFilterReset = document.getElementById('swipe-filter-reset');
+
+// Swipe filter modal sliders
+const swipeImdbRating = document.getElementById('swipe-imdb-rating');
+const swipeImdbValue = document.getElementById('swipe-imdb-rating-value');
+const swipeTmdbRating = document.getElementById('swipe-tmdb-rating');
+const swipeTmdbValue = document.getElementById('swipe-tmdb-rating-value');
+const swipeVoteCount = document.getElementById('swipe-vote-count');
+const swipeVoteValue = document.getElementById('swipe-vote-count-value');
+
+// Swipe filter dropdown button update functions
+function updateSwipeGenreButton(selected) {
+  const btn = document.getElementById('swipe-genre-toggle');
+  if (!btn) return;
+  const count = selected.length;
+  btn.innerHTML = count === 0 ? 'Select Genres <span class="dropdown-arrow">▼</span>' :
+                  count === 1 ? `1 genre <span class="dropdown-arrow">▼</span>` :
+                  `${count} genres <span class="dropdown-arrow">▼</span>`;
+}
+
+function updateSwipeLanguageButton(selected) {
+  const btn = document.getElementById('swipe-language-toggle');
+  if (!btn) return;
+  const count = selected.length;
+  btn.innerHTML = count === 0 ? 'Select Languages <span class="dropdown-arrow">▼</span>' :
+                  count === 1 ? `1 language <span class="dropdown-arrow">▼</span>` :
+                  `${count} languages <span class="dropdown-arrow">▼</span>`;
+}
+
+function updateSwipeCountryButton(selected) {
+  const btn = document.getElementById('swipe-country-toggle');
+  if (!btn) return;
+  const count = selected.length;
+  btn.innerHTML = count === 0 ? 'Select Countries <span class="dropdown-arrow">▼</span>' :
+                  count === 1 ? `1 country <span class="dropdown-arrow">▼</span>` :
+                  `${count} countries <span class="dropdown-arrow">▼</span>`;
+}
+
+function updateSwipeContentRatingButton(selected) {
+  const btn = document.getElementById('swipe-rating-toggle');
+  if (!btn) return;
+  const count = selected.length;
+  btn.innerHTML = count === 0 ? 'Select Ratings <span class="dropdown-arrow">▼</span>' :
+                  count === 1 ? `1 rating <span class="dropdown-arrow">▼</span>` :
+                  `${count} ratings <span class="dropdown-arrow">▼</span>`;
+}
+
+function updateSwipeSortButton(sortBy) {
+  const btn = document.getElementById('swipe-sort-dropdown-toggle');
+  if (!btn) return;
+  const sortLabels = {
+    'popularity.desc': 'Popularity',
+    'popularity.asc': 'Popularity',
+    'release_date.desc': 'Release Date',
+    'release_date.asc': 'Release Date',
+    'vote_count.desc': 'Votes',
+    'vote_count.asc': 'Votes',
+    'vote_average.desc': 'Rating',
+    'vote_average.asc': 'Rating'
+  };
+  const baseSortBy = sortBy.replace('.asc', '.desc');
+  btn.innerHTML = `${sortLabels[baseSortBy] || 'Popularity'} <span class="dropdown-arrow">▼</span>`;
+}
+
+// Sync swipe filter modal UI with filterState
+function syncSwipeFilterModalWithState() {
+  // Year range
+  const yearMin = document.getElementById('swipe-year-min');
+  const yearMax = document.getElementById('swipe-year-max');
+  if (yearMin && window.filterState) yearMin.value = window.filterState.yearRange?.min || '';
+  if (yearMax && window.filterState) yearMax.value = window.filterState.yearRange?.max || '';
+
+  // Runtime
+  const runtimeMin = document.getElementById('swipe-runtime-min');
+  const runtimeMax = document.getElementById('swipe-runtime-max');
+  if (runtimeMin && window.filterState) runtimeMin.value = window.filterState.runtimeRange?.min || '';
+  if (runtimeMax && window.filterState) runtimeMax.value = window.filterState.runtimeRange?.max || '';
+
+  // Sliders
+  if (swipeImdbRating && window.filterState) {
+    swipeImdbRating.value = window.filterState.imdbRating || 0;
+    if (swipeImdbValue) swipeImdbValue.textContent = (window.filterState.imdbRating || 0).toFixed(1);
+  }
+  if (swipeTmdbRating && window.filterState) {
+    swipeTmdbRating.value = window.filterState.tmdbRating || 0;
+    if (swipeTmdbValue) swipeTmdbValue.textContent = (window.filterState.tmdbRating || 0).toFixed(1);
+  }
+  if (swipeVoteCount && window.filterState) {
+    swipeVoteCount.value = window.filterState.voteCount || 0;
+    if (swipeVoteValue) swipeVoteValue.textContent = (window.filterState.voteCount || 0).toLocaleString();
+  }
+
+  // Plex toggle
+  const plexToggle = document.getElementById('swipe-plex-only-toggle');
+  if (plexToggle && window.filterState) {
+    plexToggle.checked = window.filterState.showPlexOnly || false;
+    // Update toggle labels
+    const container = plexToggle.closest('.toggle-switch-container');
+    if (container) {
+      const labels = container.querySelectorAll('.toggle-label-text');
+      labels.forEach((label, index) => {
+        if (index === 0) label.classList.toggle('active', !plexToggle.checked);
+        else label.classList.toggle('active', plexToggle.checked);
+      });
+    }
+  }
+
+  // Sort
+  if (window.filterState?.sortBy) {
+    const sortRadios = document.querySelectorAll('input[name="swipe-sort"]');
+    const baseSortBy = window.filterState.sortBy.replace('.asc', '.desc');
+    sortRadios.forEach(radio => {
+      radio.checked = radio.value === baseSortBy;
+    });
+    updateSwipeSortButton(window.filterState.sortBy);
+
+    // Update direction button
+    const dirBtn = document.getElementById('swipe-sort-direction-btn');
+    if (dirBtn) {
+      const isAsc = window.filterState.sortBy.endsWith('.asc');
+      dirBtn.textContent = isAsc ? '↑' : '↓';
+      dirBtn.dataset.direction = isAsc ? 'asc' : 'desc';
+    }
+  }
+
+  // Checkboxes - Genres
+  document.querySelectorAll('#swipe-genre-list input[type="checkbox"]').forEach(cb => {
+    const val = parseInt(cb.value);
+    cb.checked = window.filterState?.genres?.includes(val) || false;
+  });
+  updateSwipeGenreButton(window.filterState?.genres || []);
+
+  // Checkboxes - Languages
+  document.querySelectorAll('#swipe-language-list input[type="checkbox"]').forEach(cb => {
+    cb.checked = window.filterState?.languages?.includes(cb.value) || false;
+  });
+  updateSwipeLanguageButton(window.filterState?.languages || []);
+
+  // Checkboxes - Countries
+  document.querySelectorAll('#swipe-country-list input[type="checkbox"]').forEach(cb => {
+    cb.checked = window.filterState?.countries?.includes(cb.value) || false;
+  });
+  updateSwipeCountryButton(window.filterState?.countries || []);
+
+  // Checkboxes - Content Ratings
+  document.querySelectorAll('#swipe-rating-list input[type="checkbox"]').forEach(cb => {
+    cb.checked = window.filterState?.contentRatings?.includes(cb.value) || false;
+  });
+  updateSwipeContentRatingButton(window.filterState?.contentRatings || []);
+}
+
+// Check if any filters are active (for button styling)
+function hasActiveSwipeFilters() {
+  if (!window.filterState) return false;
+  const fs = window.filterState;
+  const currentYear = new Date().getFullYear();
+  return (
+    fs.genres?.length > 0 ||
+    fs.contentRatings?.length > 0 ||
+    fs.countries?.length > 0 ||
+    (fs.languages?.length > 0 && !(fs.languages.length === 1 && fs.languages[0] === 'en')) ||
+    fs.showPlexOnly ||
+    fs.imdbRating > 0 ||
+    fs.tmdbRating > 0 ||
+    fs.voteCount > 0 ||
+    (fs.yearRange?.min && fs.yearRange.min > 1895) ||
+    (fs.yearRange?.max && fs.yearRange.max < currentYear) ||
+    (fs.runtimeRange?.min && fs.runtimeRange.min > 0) ||
+    (fs.runtimeRange?.max && fs.runtimeRange.max < 300)
+  );
+}
+
+function updateSwipeFilterButtonState() {
+  if (swipeFilterBtn) {
+    swipeFilterBtn.classList.toggle('has-filters', hasActiveSwipeFilters());
+  }
+}
+
+function openSwipeFilterModal() {
+  syncSwipeFilterModalWithState();
+  swipeFilterModal?.classList.add('active');
+  swipeFilterOverlay?.classList.add('active');
+}
+
+function closeSwipeFilterModal() {
+  swipeFilterModal?.classList.remove('active');
+  swipeFilterOverlay?.classList.remove('active');
+}
+
+swipeFilterBtn?.addEventListener('click', openSwipeFilterModal);
+swipeFilterClose?.addEventListener('click', closeSwipeFilterModal);
+swipeFilterOverlay?.addEventListener('click', closeSwipeFilterModal);
+
+// Setup swipe filter modal dropdowns
+function setupSwipeFilterDropdowns() {
+  const overlay = document.getElementById('filter-dropdown-overlay') || (() => {
+    const el = document.createElement('div');
+    el.id = 'filter-dropdown-overlay';
+    el.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10000;';
+    document.body.appendChild(el);
+    return el;
+  })();
+
+  const pairs = [
+    {
+      type: 'swipe-genre',
+      toggle: document.getElementById('swipe-genre-toggle'),
+      list: document.getElementById('swipe-genre-list'),
+      checkboxes: document.querySelectorAll('#swipe-genre-list input[type="checkbox"]')
+    },
+    {
+      type: 'swipe-language',
+      toggle: document.getElementById('swipe-language-toggle'),
+      list: document.getElementById('swipe-language-list'),
+      checkboxes: document.querySelectorAll('#swipe-language-list input[type="checkbox"]')
+    },
+    {
+      type: 'swipe-country',
+      toggle: document.getElementById('swipe-country-toggle'),
+      list: document.getElementById('swipe-country-list'),
+      checkboxes: document.querySelectorAll('#swipe-country-list input[type="checkbox"]')
+    },
+    {
+      type: 'swipe-rating',
+      toggle: document.getElementById('swipe-rating-toggle'),
+      list: document.getElementById('swipe-rating-list'),
+      checkboxes: document.querySelectorAll('#swipe-rating-list input[type="checkbox"]')
+    },
+    {
+      type: 'swipe-sort',
+      toggle: document.getElementById('swipe-sort-dropdown-toggle'),
+      list: document.getElementById('swipe-sort-dropdown-list'),
+      radios: document.querySelectorAll('input[name="swipe-sort"]')
+    }
+  ];
+
+  let currentOpen = null;
+
+  function closeAllSwipeDropdowns() {
+    pairs.forEach(p => {
+      if (p.list) {
+        p.list.style.display = 'none';
+        p.list.style.pointerEvents = 'none';
+      }
+      if (p.toggle) p.toggle.classList.remove('open');
+    });
+    currentOpen = null;
+  }
+
+  function openSwipeDropdown(pair) {
+    if (!pair.toggle || !pair.list) return;
+    const rect = pair.toggle.getBoundingClientRect();
+    overlay.appendChild(pair.list);
+    pair.list.style.cssText = `
+      position: fixed !important;
+      top: ${rect.bottom + 4}px !important;
+      left: ${rect.left}px !important;
+      width: ${Math.max(rect.width, 200)}px !important;
+      max-height: 250px !important;
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      z-index: 10001 !important;
+      background: var(--gradient-surface) !important;
+      border: 1px solid rgba(51, 65, 85, 0.5) !important;
+      border-radius: var(--radius-md) !important;
+      overflow-y: auto !important;
+      backdrop-filter: blur(20px) !important;
+      box-shadow: var(--shadow-xl) !important;
+    `;
+    pair.toggle.classList.add('open');
+    currentOpen = pair.type;
+  }
+
+  pairs.forEach(pair => {
+    if (!pair.toggle || !pair.list) return;
+
+    const handleToggle = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (currentOpen === pair.type) {
+        closeAllSwipeDropdowns();
+      } else {
+        closeAllSwipeDropdowns();
+        setTimeout(() => openSwipeDropdown(pair), 10);
+      }
+    };
+
+    pair.toggle.addEventListener('touchend', handleToggle, { passive: false });
+    pair.toggle.addEventListener('click', handleToggle);
+    pair.list.addEventListener('click', (e) => e.stopPropagation());
+
+    // Genre checkboxes
+    if (pair.type === 'swipe-genre' && pair.checkboxes) {
+      pair.checkboxes.forEach(cb => {
+        cb.addEventListener('change', (e) => {
+          const val = parseInt(e.target.value);
+          if (e.target.checked) {
+            if (!window.filterState.genres.includes(val)) window.filterState.genres.push(val);
+          } else {
+            window.filterState.genres = window.filterState.genres.filter(id => id !== val);
+          }
+          updateSwipeGenreButton(window.filterState.genres);
+          // Also sync the old Filters tab
+          document.querySelectorAll('#genre-dropdown-list input[type="checkbox"]').forEach(oldCb => {
+            if (parseInt(oldCb.value) === val) oldCb.checked = e.target.checked;
+          });
+        });
+      });
+    }
+
+    // Language checkboxes
+    if (pair.type === 'swipe-language' && pair.checkboxes) {
+      pair.checkboxes.forEach(cb => {
+        cb.addEventListener('change', (e) => {
+          const val = e.target.value;
+          if (e.target.checked) {
+            if (!window.filterState.languages.includes(val)) window.filterState.languages.push(val);
+          } else {
+            window.filterState.languages = window.filterState.languages.filter(l => l !== val);
+          }
+          updateSwipeLanguageButton(window.filterState.languages);
+          document.querySelectorAll('#language-dropdown-list input[type="checkbox"]').forEach(oldCb => {
+            if (oldCb.value === val) oldCb.checked = e.target.checked;
+          });
+        });
+      });
+    }
+
+    // Country checkboxes
+    if (pair.type === 'swipe-country' && pair.checkboxes) {
+      pair.checkboxes.forEach(cb => {
+        cb.addEventListener('change', (e) => {
+          const val = e.target.value;
+          if (e.target.checked) {
+            if (!window.filterState.countries.includes(val)) window.filterState.countries.push(val);
+          } else {
+            window.filterState.countries = window.filterState.countries.filter(c => c !== val);
+          }
+          updateSwipeCountryButton(window.filterState.countries);
+          document.querySelectorAll('#country-dropdown-list input[type="checkbox"]').forEach(oldCb => {
+            if (oldCb.value === val) oldCb.checked = e.target.checked;
+          });
+        });
+      });
+    }
+
+    // Content Rating checkboxes
+    if (pair.type === 'swipe-rating' && pair.checkboxes) {
+      pair.checkboxes.forEach(cb => {
+        cb.addEventListener('change', (e) => {
+          const val = e.target.value;
+          if (e.target.checked) {
+            if (!window.filterState.contentRatings.includes(val)) window.filterState.contentRatings.push(val);
+          } else {
+            window.filterState.contentRatings = window.filterState.contentRatings.filter(r => r !== val);
+          }
+          updateSwipeContentRatingButton(window.filterState.contentRatings);
+          document.querySelectorAll('#rating-dropdown-list input[type="checkbox"]').forEach(oldCb => {
+            if (oldCb.value === val) oldCb.checked = e.target.checked;
+          });
+        });
+      });
+    }
+
+    // Sort radios
+    if (pair.type === 'swipe-sort' && pair.radios) {
+      pair.radios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+          if (e.target.checked) {
+            const dirBtn = document.getElementById('swipe-sort-direction-btn');
+            const direction = dirBtn?.dataset.direction || 'desc';
+            const baseValue = e.target.value.replace(/\.(asc|desc)$/, '');
+            window.filterState.sortBy = `${baseValue}.${direction}`;
+            updateSwipeSortButton(window.filterState.sortBy);
+            // Also sync old Filters tab
+            document.querySelectorAll('input[name="sort"]').forEach(oldRadio => {
+              if (oldRadio.value === e.target.value) oldRadio.checked = true;
+            });
+            setTimeout(closeAllSwipeDropdowns, 100);
+          }
+        });
+      });
+    }
+  });
+
+  // Sort direction button
+  const swipeSortDirBtn = document.getElementById('swipe-sort-direction-btn');
+  swipeSortDirBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    const currentDir = swipeSortDirBtn.dataset.direction || 'desc';
+    const newDir = currentDir === 'desc' ? 'asc' : 'desc';
+    swipeSortDirBtn.dataset.direction = newDir;
+    swipeSortDirBtn.textContent = newDir === 'asc' ? '↑' : '↓';
+
+    // Update filterState.sortBy
+    if (window.filterState?.sortBy) {
+      const baseSort = window.filterState.sortBy.replace(/\.(asc|desc)$/, '');
+      window.filterState.sortBy = `${baseSort}.${newDir}`;
+
+      // Sync old Filters tab direction button
+      const oldDirBtn = document.getElementById('sort-direction-btn');
+      if (oldDirBtn) {
+        oldDirBtn.dataset.direction = newDir;
+        oldDirBtn.textContent = newDir === 'asc' ? '↑' : '↓';
+      }
+    }
+  });
+
+  // Close dropdowns on outside click within modal
+  swipeFilterModal?.addEventListener('click', (e) => {
+    if (currentOpen) {
+      const clickedInside = pairs.some(p => p.toggle?.contains(e.target) || p.list?.contains(e.target));
+      if (!clickedInside) closeAllSwipeDropdowns();
+    }
+  });
+}
+
+// Slider event listeners
+swipeImdbRating?.addEventListener('input', (e) => {
+  const val = parseFloat(e.target.value);
+  if (swipeImdbValue) swipeImdbValue.textContent = val.toFixed(1);
+  if (window.filterState) window.filterState.imdbRating = val;
+  // Sync old slider
+  const oldSlider = document.getElementById('imdb-rating');
+  const oldValue = document.getElementById('imdb-rating-value');
+  if (oldSlider) oldSlider.value = val;
+  if (oldValue) oldValue.textContent = val.toFixed(1);
+});
+
+swipeTmdbRating?.addEventListener('input', (e) => {
+  const val = parseFloat(e.target.value);
+  if (swipeTmdbValue) swipeTmdbValue.textContent = val.toFixed(1);
+  if (window.filterState) window.filterState.tmdbRating = val;
+  const oldSlider = document.getElementById('tmdb-rating');
+  const oldValue = document.getElementById('tmdb-rating-value');
+  if (oldSlider) oldSlider.value = val;
+  if (oldValue) oldValue.textContent = val.toFixed(1);
+});
+
+swipeVoteCount?.addEventListener('input', (e) => {
+  const val = parseInt(e.target.value);
+  if (swipeVoteValue) swipeVoteValue.textContent = val.toLocaleString();
+  if (window.filterState) window.filterState.voteCount = val;
+  const oldSlider = document.getElementById('vote-count');
+  const oldValue = document.getElementById('vote-count-value');
+  if (oldSlider) oldSlider.value = val;
+  if (oldValue) oldValue.textContent = val.toLocaleString();
+});
+
+// Year range inputs
+document.getElementById('swipe-year-min')?.addEventListener('change', (e) => {
+  const val = parseInt(e.target.value) || 1895;
+  if (window.filterState) window.filterState.yearRange.min = val;
+  const oldInput = document.getElementById('year-min');
+  if (oldInput) oldInput.value = val;
+});
+
+document.getElementById('swipe-year-max')?.addEventListener('change', (e) => {
+  const val = parseInt(e.target.value) || new Date().getFullYear();
+  if (window.filterState) window.filterState.yearRange.max = val;
+  const oldInput = document.getElementById('year-max');
+  if (oldInput) oldInput.value = val;
+});
+
+// Runtime range inputs
+document.getElementById('swipe-runtime-min')?.addEventListener('change', (e) => {
+  const val = parseInt(e.target.value) || 0;
+  if (window.filterState) window.filterState.runtimeRange.min = val;
+  const oldInput = document.getElementById('runtime-min');
+  if (oldInput) oldInput.value = val;
+});
+
+document.getElementById('swipe-runtime-max')?.addEventListener('change', (e) => {
+  const val = parseInt(e.target.value) || 300;
+  if (window.filterState) window.filterState.runtimeRange.max = val;
+  const oldInput = document.getElementById('runtime-max');
+  if (oldInput) oldInput.value = val;
+});
+
+// Plex toggle
+document.getElementById('swipe-plex-only-toggle')?.addEventListener('change', (e) => {
+  if (window.filterState) window.filterState.showPlexOnly = e.target.checked;
+  // Update toggle labels
+  const container = e.target.closest('.toggle-switch-container');
+  if (container) {
+    const labels = container.querySelectorAll('.toggle-label-text');
+    labels.forEach((label, index) => {
+      if (index === 0) label.classList.toggle('active', !e.target.checked);
+      else label.classList.toggle('active', e.target.checked);
+    });
+  }
+  // Sync old toggle
+  const oldToggle = document.getElementById('plex-only-toggle');
+  if (oldToggle) {
+    oldToggle.checked = e.target.checked;
+    oldToggle.dispatchEvent(new Event('change'));
+  }
+});
+
+// Apply button
+swipeFilterApply?.addEventListener('click', (e) => {
+  e.preventDefault();
+  window.__resetMovies = true;
+  if (typeof triggerNewBatch === 'function') triggerNewBatch();
+  closeSwipeFilterModal();
+  updateSwipeFilterButtonState();
+});
+
+// Reset button
+swipeFilterReset?.addEventListener('click', () => {
+  const currentYear = new Date().getFullYear();
+
+  // Reset filterState
+  if (window.filterState) {
+    window.filterState.yearRange = { min: 1895, max: currentYear };
+    window.filterState.genres = [];
+    window.filterState.contentRatings = [];
+    window.filterState.showPlexOnly = false;
+    window.filterState.languages = ['en'];
+    window.filterState.countries = [];
+    window.filterState.imdbRating = 0;
+    window.filterState.tmdbRating = 0;
+    window.filterState.runtimeRange = { min: 0, max: 300 };
+    window.filterState.voteCount = 0;
+    window.filterState.sortBy = 'popularity.desc';
+  }
+
+  // Reset UI
+  document.querySelectorAll('#swipe-filter-modal input[type="checkbox"]').forEach(cb => {
+    cb.checked = cb.value === 'en'; // Keep English selected by default for languages
+  });
+  document.querySelectorAll('#swipe-filter-modal input[type="radio"]').forEach(radio => {
+    radio.checked = radio.value === 'popularity.desc';
+  });
+
+  const yearMin = document.getElementById('swipe-year-min');
+  const yearMax = document.getElementById('swipe-year-max');
+  const runtimeMin = document.getElementById('swipe-runtime-min');
+  const runtimeMax = document.getElementById('swipe-runtime-max');
+  const plexToggle = document.getElementById('swipe-plex-only-toggle');
+  const sortDirBtn = document.getElementById('swipe-sort-direction-btn');
+
+  if (yearMin) yearMin.value = '';
+  if (yearMax) yearMax.value = '';
+  if (runtimeMin) runtimeMin.value = '';
+  if (runtimeMax) runtimeMax.value = '';
+  if (swipeImdbRating) swipeImdbRating.value = 0;
+  if (swipeImdbValue) swipeImdbValue.textContent = '0.0';
+  if (swipeTmdbRating) swipeTmdbRating.value = 0;
+  if (swipeTmdbValue) swipeTmdbValue.textContent = '0.0';
+  if (swipeVoteCount) swipeVoteCount.value = 0;
+  if (swipeVoteValue) swipeVoteValue.textContent = '0';
+  if (plexToggle) {
+    plexToggle.checked = false;
+    const container = plexToggle.closest('.toggle-switch-container');
+    if (container) {
+      const labels = container.querySelectorAll('.toggle-label-text');
+      labels.forEach((label, index) => {
+        label.classList.toggle('active', index === 0);
+      });
+    }
+  }
+  if (sortDirBtn) {
+    sortDirBtn.dataset.direction = 'desc';
+    sortDirBtn.textContent = '↓';
+  }
+
+  // Reset dropdown button texts
+  updateSwipeGenreButton([]);
+  updateSwipeLanguageButton(['en']);
+  updateSwipeCountryButton([]);
+  updateSwipeContentRatingButton([]);
+  updateSwipeSortButton('popularity.desc');
+
+  // Sync with old Filters tab
+  const oldResetBtn = document.getElementById('reset-filters');
+  if (oldResetBtn) oldResetBtn.click();
+
+  updateSwipeFilterButtonState();
+});
+
+// Initialize swipe filter dropdowns
+setupSwipeFilterDropdowns();
+
+// Update filter button state on page load
+setTimeout(updateSwipeFilterButtonState, 100);
 
 // ===== MATCH POPUP FUNCTIONS =====
 function showMatchPopup(matchData) {
