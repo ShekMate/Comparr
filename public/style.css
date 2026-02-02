@@ -151,11 +151,6 @@ body:not(.is-logged-in) .card-stack:empty::after {
    3) SIDEBAR NAVIGATION - Sonarr-style
    ========================================================= */
 
-/* Main app layout with sidebar */
-body.is-logged-in .app {
-  flex-direction: row;
-}
-
 .sidebar {
   position: fixed;
   left: 0;
@@ -164,7 +159,7 @@ body.is-logged-in .app {
   width: 200px;
   background: var(--color-surface);
   border-right: 1px solid var(--color-line);
-  display: flex;
+  display: none;
   flex-direction: column;
   z-index: 1000;
   overflow-y: auto;
@@ -231,24 +226,29 @@ body.is-logged-in .app {
   font-size: 1rem;
 }
 
-/* Main content area offset for sidebar */
-body.is-logged-in .tab-panel,
-body.is-logged-in .login-section {
-  margin-left: 200px;
-}
-
-body.is-logged-in footer {
-  margin-left: 200px;
-}
-
 /* Desktop: Show sidebar, hide tabbar */
 @media (min-width: 769px) {
+  /* Main app layout with sidebar */
+  body.is-logged-in .app {
+    flex-direction: row;
+  }
+
   .tabbar {
     display: none !important;
   }
 
   .sidebar {
     display: flex;
+  }
+
+  /* Main content area offset for sidebar */
+  body.is-logged-in .tab-panel,
+  body.is-logged-in .login-section {
+    margin-left: 200px;
+  }
+
+  body.is-logged-in footer {
+    margin-left: 200px;
   }
 }
 
@@ -581,17 +581,14 @@ body.is-logged-in footer {
 
 .rate-controls .button-wrapper {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.05rem !important;
+  justify-content: center;
 }
 
 .rate-controls button {
   all: unset;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  font-size: 1.5rem;
+  border-radius: 999px;
+  font-size: 0.95rem;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -599,19 +596,23 @@ body.is-logged-in footer {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.9rem;
   touch-action: manipulation;
   -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
 }
 
 .rate-controls .button-label {
-  font-size: 0.7rem;
-  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  color: inherit;
   text-align: center;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-top: 0 !important;
-  padding-top: 0 !important;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+.rate-controls button i {
+  font-size: 1rem;
 }
 
 .rate-thumbs-up {
@@ -3385,50 +3386,47 @@ footer {
   
   .rate-controls {
     padding: 0 0.3rem !important;
-    gap: 3rem !important;
+    gap: 0.6rem !important;
     display: flex !important;
     justify-content: center !important;
-    align-items: flex-start !important;
+    align-items: center !important;
   }
   
   .rate-controls .button-wrapper {
     display: flex !important;
-    flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 0.05rem !important;
-    min-width: 60px !important;
+    gap: 0 !important;
+    min-width: auto !important;
 	position: relative !important;
     z-index: 999 !important;
     pointer-events: auto !important;
   }
   
   .rate-controls button {
-    width: 60px !important;
-    height: 32px !important;
-    font-size: 1.25rem !important;
-    min-width: 60px !important;
-    min-height: 32px !important;
-    padding: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    font-size: 0.85rem !important;
+    min-width: auto !important;
+    min-height: auto !important;
+    padding: 0.35rem 0.7rem !important;
     margin: 0 !important;
     position: relative !important;
     z-index: 999 !important;
   }
   
   .rate-controls .button-label {
-    font-size: 0.65rem !important;
-    color: #cbd5e1 !important;
-    display: block !important;
+    font-size: 0.75rem !important;
+    color: inherit !important;
+    display: inline-flex !important;
     visibility: visible !important;
-    font-weight: 500 !important;
+    font-weight: 600 !important;
     text-align: center !important;
-    width: 100% !important;
+    width: auto !important;
     margin: 0 !important;
-	margin-top: -0.5rem !important;
     padding: 0 !important;
-	padding-bottom: 0.3rem !important;
     line-height: 1.2 !important;
-    letter-spacing: 0 !important;
+    letter-spacing: 0.02em !important;
   }
    
   /* Matches Mobile */
@@ -3663,7 +3661,7 @@ footer {
     width: 100%;
     max-width: none;
     justify-content: flex-start !important;
-    gap: 9.75rem !important;
+    gap: 1.5rem !important;
     padding: 1.5rem 0 2rem 0 !important;
     margin-top: auto;
     border-radius: 0;
@@ -3724,21 +3722,22 @@ footer {
   }
 
   .rate-controls .button-wrapper {
-    gap: 0rem !important;
+    gap: 0 !important;
     align-items: center !important;
   }
 
   .rate-controls button {
-    width: 56px !important;
-    height: 56px !important;
-    font-size: 1.8rem !important;
+    width: auto !important;
+    height: auto !important;
+    font-size: 1rem !important;
     justify-content: center !important;
     border: 2px solid rgba(255, 255, 255, 0.2) !important;
+    padding: 0.5rem 1.1rem !important;
   }
 
   .rate-controls .button-label {
-    margin-top: -0.25rem !important;
-    font-size: 0.7rem !important;
+    margin-top: 0 !important;
+    font-size: 0.85rem !important;
     text-align: center !important;
   }
 
