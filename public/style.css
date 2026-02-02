@@ -254,8 +254,11 @@ body.is-logged-in footer {
 
 /* Mobile: Show tabbar, hide sidebar */
 @media (max-width: 768px) {
-  .sidebar {
+  .sidebar,
+  nav.sidebar,
+  #sidebar {
     display: none !important;
+    visibility: hidden !important;
   }
 
   .tabbar {
