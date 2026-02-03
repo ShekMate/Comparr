@@ -2804,8 +2804,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
-  background: transparent;
-  border: 1px solid transparent;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
   border-radius: var(--radius-md);
   min-width: 200px;
   max-height: 300px;
@@ -2841,7 +2841,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .service-item:hover {
-  background: transparent;
+  background: var(--color-surface-light);
   color: var(--color-text-primary);
 }
 
