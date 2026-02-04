@@ -2258,6 +2258,18 @@ body:not(.is-logged-in) .card-stack:empty::after {
   margin: 0 auto;
 }
 
+.watch-list-header,
+.seen-list-header,
+#tab-dislikes > h3 {
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#tab-dislikes > h3 {
+  padding: 0 2rem;
+}
+
 .watch-list-header {
   display: flex;
   justify-content: space-between;
@@ -3947,7 +3959,11 @@ footer {
   }
 
   .watch-card-title-compact {
-    font-size: 1.25rem !important;
+    font-size: 0.95rem !important;
+  }
+
+  .watch-card-year {
+    font-size: 0.85rem !important;
   }
 
   .watch-card-ratings {
