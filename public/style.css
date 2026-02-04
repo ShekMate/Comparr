@@ -2252,17 +2252,24 @@ body:not(.is-logged-in) .card-stack:empty::after {
 /* =========================================================
    10) WATCH LISTS - Dropdown Button Layout
    ========================================================= */
-.watch-list-container {
-  padding: 0 2rem 2rem;
-  max-width: 1200px;
+.watch-list-layout {
+  width: min(100%, 1200px);
   margin: 0 auto;
+  padding: 0 2rem 2rem;
+}
+
+.watch-list-container {
+  padding: 0;
+  max-width: none;
+  margin: 0;
+  width: 100%;
 }
 
 .watch-list-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 2rem;
+  padding: 0;
   margin-bottom: 1rem;
   flex-wrap: wrap;
   gap: 0.25rem;
@@ -2980,7 +2987,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 /* Mobile: Compact collapsible cards */
 @media (max-width: 600px) {
-  .watch-list-container {
+  .watch-list-layout {
     padding: 0 1rem 1rem;
   }
   
@@ -3947,7 +3954,11 @@ footer {
   }
 
   .watch-card-title-compact {
-    font-size: 1.25rem !important;
+    font-size: 0.95rem !important;
+  }
+
+  .watch-card-year {
+    font-size: 0.85rem !important;
   }
 
   .watch-card-ratings {
@@ -4349,7 +4360,7 @@ footer {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 0 2rem;
+  padding: 0;
   margin-bottom: 1rem;
   position: relative;
 }
@@ -4364,7 +4375,7 @@ footer {
   align-items: center;
   gap: 0.5rem;
   position: absolute;
-  right: 2rem;
+  right: 0;
 }
 
 .imdb-import-btn {
@@ -4559,7 +4570,7 @@ footer {
 /* Mobile responsive for seen list header & import panel */
 @media (max-width: 600px) {
   .seen-list-header {
-    padding: 0 1rem;
+    padding: 0;
     flex-direction: column;
     align-items: stretch;
     gap: 0.5rem;
