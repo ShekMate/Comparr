@@ -2565,6 +2565,16 @@ body:not(.is-logged-in) .card-stack:empty::after {
   font-weight: 400;
 }
 
+@media (min-width: 601px) {
+  .watch-card-title-compact {
+    font-size: 0.9rem;
+  }
+
+  .watch-card-year {
+    font-size: 0.85rem;
+  }
+}
+
 .expand-icon {
   color: var(--color-text-muted);
   font-size: 0.75rem;
