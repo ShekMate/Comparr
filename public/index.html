@@ -1099,18 +1099,18 @@
 	  
       <!-- ===== Seen panel ===== -->
       <section class="tab-panel" id="tab-seen" hidden>
+        <div class="seen-header-actions">
+          <button id="imdb-import-btn" class="imdb-import-btn" title="Sync watched movies from IMDb">
+            <img src="${ROOT_PATH}/assets/logos/imdb.svg" alt="IMDb" class="imdb-import-logo">
+            Sync
+          </button>
+        </div>
         <div class="watch-list-layout">
           <div class="seen-list-header">
             <h3>
               <i class="fas fa-eye" style="color: var(--color-warning); margin-right: 0.5rem;"></i>
               Seen List
             </h3>
-            <div class="seen-header-actions">
-              <button id="imdb-import-btn" class="imdb-import-btn" title="Sync watched movies from IMDb">
-                <img src="${ROOT_PATH}/assets/logos/imdb.svg" alt="IMDb" class="imdb-import-logo">
-                Sync
-              </button>
-            </div>
           </div>
           <!-- IMDb import panel (toggled by Sync button) -->
           <div id="imdb-import-panel" class="imdb-import-panel" style="display: none;">
