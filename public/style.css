@@ -4379,25 +4379,25 @@ footer {
    IMDb Import - Seen List Header
    ========================================================= */
 .seen-list-header {
-  display: flex;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   padding: 0;
   margin-bottom: 1rem;
-  position: relative;
 }
 
 .seen-list-header h3 {
+  grid-column: 2;
   margin: 0;
   text-align: center;
 }
 
 .seen-header-actions {
+  grid-column: 3;
   display: flex;
   align-items: center;
+  justify-self: end;
   gap: 0.5rem;
-  position: absolute;
-  right: 0;
 }
 
 .imdb-import-btn {
@@ -4593,6 +4593,7 @@ footer {
 @media (max-width: 600px) {
   .seen-list-header {
     padding: 0;
+    display: flex;
     flex-direction: column;
     align-items: stretch;
     gap: 0.5rem;
