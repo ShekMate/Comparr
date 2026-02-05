@@ -4383,14 +4383,15 @@ footer {
 }
 
 .seen-list-header {
-  display: flex;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   padding: 0;
   margin-bottom: 1rem;
 }
 
 .seen-list-header h3 {
+  grid-column: 2;
   margin: 0;
   text-align: center;
 }
@@ -4401,6 +4402,7 @@ footer {
   right: 2rem;
   display: flex;
   align-items: center;
+  justify-self: end;
   gap: 0.5rem;
 }
 
