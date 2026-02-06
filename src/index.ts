@@ -4,7 +4,7 @@ import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
 import { getServerId, proxyPoster } from './api/plex.ts'
 import { PLEX_URL, PORT, LINK_TYPE, RADARR_URL, RADARR_API_KEY, JELLYSEERR_URL, JELLYSEERR_API_KEY, OVERSEERR_URL, OVERSEERR_API_KEY } from './core/config.ts'
 import { getLinkTypeForRequest } from './core/i18n.ts'
-import { handleLogin, ensurePlexHydrationReady, processImdbImportBackground } from './features/session/session.ts'
+import { handleLogin, ensurePlexHydrationReady, processImdbImportBackground, getMatchesForUser } from './features/session/session.ts'
 import { parseImdbCsv } from './features/session/imdb-import.ts'
 import { serveFile } from './infra/http/staticFileServer.ts'
 import { WebSocketServer } from './infra/ws/websocketServer.ts'
@@ -254,6 +254,38 @@ for await (const req of server) {
       await req.respond({
         status: 200,
         body: JSON.stringify({ configured: isRequestServiceConfigured() }),
+        headers: new Headers({ 'content-type': 'application/json' }),
+      })
+      continue
+    }
+
+    if (p === '/api/matches') {
+      const url = new URL(req.url, 'http://local')
+      const roomCode = url.searchParams.get('code') || ''
+      const userName = url.searchParams.get('user') || ''
+
+      if (!roomCode || !userName) {
+        await req.respond({
+          status: 400,
+          body: JSON.stringify({ error: 'Missing room code or user' }),
+          headers: new Headers({ 'content-type': 'application/json' }),
+        })
+        continue
+      }
+
+      const matches = getMatchesForUser(roomCode, userName)
+      if (matches === null) {
+        await req.respond({
+          status: 404,
+          body: JSON.stringify({ error: 'Room not found' }),
+          headers: new Headers({ 'content-type': 'application/json' }),
+        })
+        continue
+      }
+
+      await req.respond({
+        status: 200,
+        body: JSON.stringify({ matches }),
         headers: new Headers({ 'content-type': 'application/json' }),
       })
       continue
