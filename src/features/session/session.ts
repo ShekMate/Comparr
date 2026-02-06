@@ -2033,6 +2033,20 @@ class Session {
     }
   }
 
+  private upsertMatchRecord(movie: MediaItem, users: User[]) {
+    const existingMatch = this.matches.find(match => match.movie.guid === movie.guid)
+    const createdAt = existingMatch?.createdAt ?? Date.now()
+    const matchUsers = users.map(_ => _.name)
+
+    if (existingMatch) {
+      existingMatch.users = matchUsers
+    } else {
+      this.matches.push({ movie, users: matchUsers, createdAt })
+    }
+
+    return { matchUsers, createdAt }
+  }
+
   getExistingMatches(user: User) {
     // now uses rebuilt likedMovies; returns any movie liked by user + at least one other
     const matches = [...this.likedMovies.entries()]
