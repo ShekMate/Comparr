@@ -2402,6 +2402,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   display: flex;
   flex-direction: column;
   gap: 0.5rem; /* Tighter spacing */
+  width: 100%;
 }
 
 /* Pass List & Seen List */
@@ -2410,6 +2411,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  width: 100%;
 }
 
 /* List Action Buttons */
@@ -2515,6 +2517,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   z-index: 1;
   overflow: visible; /* CHANGED from hidden to visible */
   width: 100%; /* Ensure collapsed cards span full width */
+  align-self: stretch;
 }
 
 .watch-card:hover {
@@ -2534,6 +2537,9 @@ body:not(.is-logged-in) .card-stack:empty::after {
   cursor: pointer;
   padding: 0.75rem 1rem;
   transition: background 0.2s;
+  width: 100%;
+  display: block;
+  box-sizing: border-box;
 }
 
 .watch-card-collapsed:hover {
