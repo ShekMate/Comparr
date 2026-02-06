@@ -370,7 +370,7 @@ export class MatchesView {
       this.render()
     }
     
-    // Send action to server to remove match for all users
+    // Send action to server
     try {
       const response = await fetch('/api/match-action', {
         method: 'POST',

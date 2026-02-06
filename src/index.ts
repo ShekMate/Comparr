@@ -1005,8 +1005,8 @@ for await (const req of server) {
 		  continue
 		}
 
-		// Remove the match for all users in this room
-		const removedCount = session.removeMatch(guid)
+		// Remove the match for the acting user
+		const removedCount = session.removeMatch(guid, userName, action)
 		
 		log.info(`Removed ${removedCount} match(es) for movie ${guid}`)
 
