@@ -875,37 +875,73 @@ class Session {
       this.rebuildLikedFromPersisted()
     }
   }
-  removeMatch(guid: string): number {
-    let removedCount = 0
-  
-    // Find all matches for this movie guid
-    const matchesToRemove = this.matches.filter(match => 
-      match.movie.guid === guid
-    )
-  
-    // Remove each match
-    for (const match of matchesToRemove) {
-      const index = this.matches.indexOf(match)
-      if (index > -1) {
-        this.matches.splice(index, 1)
-        removedCount++
-      
-        // Notify all users in the match that it was removed
-        for (const userName of match.users) {
-          const user = [...this.users.keys()].find(u => u.name === userName)
-          if (user) {
-            const ws = this.users.get(user)
-            if (ws && !ws.isClosed) {
-              ws.send(JSON.stringify({
-                type: 'matchRemoved',
-                payload: { guid }
-              }))
-            }
+  removeMatch(guid: string, userName: string, action: 'seen' | 'pass'): number {
+    // Find the acting user and update their response
+    const actingUser = [...this.users.keys()].find(u => u.name === userName)
+    if (actingUser) {
+      const wantsToWatch = action === 'seen' ? null : false
+      const existingIdx = actingUser.responses.findIndex(r => r.guid === guid)
+      if (existingIdx >= 0) {
+        actingUser.responses[existingIdx].wantsToWatch = wantsToWatch
+      } else {
+        actingUser.responses.push({ guid, wantsToWatch, tmdbId: null })
+      }
+
+      // Remove the acting user from likedMovies for this movie
+      for (const [movie, users] of this.likedMovies.entries()) {
+        if (movie.guid === guid) {
+          const nextUsers = users.filter(u => u !== actingUser)
+          if (nextUsers.length > 0) {
+            this.likedMovies.set(movie, nextUsers)
+          } else {
+            this.likedMovies.delete(movie)
           }
+          break
         }
       }
+
+      // Persist the response change
+      upsertRoomUser(this.roomCode, actingUser)
+      saveState(persistedState).catch(err =>
+        log.warning(`Failed to save state on match removal: ${err}`)
+      )
     }
-  
+
+    let removedCount = 0
+
+    // Check if the match still has 2+ users in likedMovies
+    let stillMatched = false
+    for (const [movie, users] of this.likedMovies.entries()) {
+      if (movie.guid === guid && users.length > 1) {
+        stillMatched = true
+        // Update the match record with remaining users
+        const existingMatch = this.matches.find(m => m.movie.guid === guid)
+        if (existingMatch) {
+          existingMatch.users = users.map(u => u.name)
+        }
+        break
+      }
+    }
+
+    if (!stillMatched) {
+      // Remove the match record entirely
+      const matchIdx = this.matches.findIndex(m => m.movie.guid === guid)
+      if (matchIdx > -1) {
+        this.matches.splice(matchIdx, 1)
+        removedCount++
+      }
+    }
+
+    // Notify all connected users about the change
+    for (const [user, ws] of this.users.entries()) {
+      if (ws && !ws.isClosed) {
+        ws.send(JSON.stringify({
+          type: 'matchRemoved',
+          payload: { guid }
+        }))
+      }
+    }
+
     return removedCount
   }
 
@@ -1037,7 +1073,7 @@ class Session {
   handleMessage = async (user: User, msg: string) => {
     try {
       const decodedMessage: WebSocketMessage = JSON.parse(msg)
-	  log.info(`DEBUG: Received WebSocket message from ${user.name}: type=${decodedMessage.type}, payload=${JSON.stringify(decodedMessage.payload)}`)
+	  log.debug(`Received WebSocket message from ${user.name}: type=${decodedMessage.type}`)
       switch (decodedMessage.type) {
         case 'nextBatch': {
           const filters = decodedMessage.payload || {}
@@ -1109,54 +1145,58 @@ class Session {
                         responsesMutated = true
                   }
 
-                  // DEBUG: Log the user's current responses
-                  log.info(`DEBUG: User ${user.name} now has ${user.responses.length} responses`)
-                  log.info(`DEBUG: Latest response: ${JSON.stringify({ guid, wantsToWatch, tmdbId: resolvedTmdbId })}`)
-
-                  // persist immediately so we never lose it
-                  upsertRoomUser(this.roomCode, user)
-                  await saveState(persistedState).catch(err =>
-                        log.warning(`Failed to save state on response: ${err}`)
-                  )
-
-                  if (responsesMutated) {
-                        log.debug(`Deduplicated responses for ${user.name} after rating update`)
-                  }
+                  log.debug(`${user.name} now has ${user.responses.length} responses`)
 
                   if (!movie) {
                         log.error(`${user.name} rated a movie we can't resolve by guid: ${guid}`)
                         break
                   }
 
-                  // Look up existing entry *by object identity*
-                  let movieObj = this.movieList.find(m => m.guid === movie.guid) ||
+                  // Look up the canonical movie object for this guid
+                  const movieObj = this.movieList.find(m => m.guid === movie.guid) ||
                         persistedState.movieIndex[movie.guid] ||
-			movie
+                        movie
 
-		  const existingUsers = this.likedMovies.get(movieObj) ?? []
+                  // Look up likedMovies by guid (not object identity) to avoid
+                  // stale Map keys after movieIndex objects are replaced
+                  let existingUsers: User[] = []
+                  let existingMovieKey: MediaItem | undefined
+                  for (const [m, users] of this.likedMovies.entries()) {
+                    if (m.guid === movieObj.guid) {
+                      existingUsers = users
+                      existingMovieKey = m
+                      break
+                    }
+                  }
 
-		  if (wantsToWatch) {
-			// User likes this movie - add them if not already in the list
-			if (!existingUsers.includes(user)) {
-			  const nextUsers = [...existingUsers, user]
-			  this.likedMovies.set(movieObj, nextUsers)
-			  
-			  // If multiple users like it, broadcast a match
-			  if (nextUsers.length > 1) {
-				this.handleMatch(movieObj, nextUsers)
-			  }
-			}
-		  } else {
-			// User doesn't like this movie (pass or seen) - remove them if they were in the list
-			if (existingUsers.includes(user)) {
-			  const nextUsers = existingUsers.filter(u => u !== user)
-			  if (nextUsers.length > 0) {
-				this.likedMovies.set(movieObj, nextUsers)
-			  } else {
-				this.likedMovies.delete(movieObj)
-			  }
-			}
-		  }
+                  if (wantsToWatch) {
+                    // User likes this movie - add them if not already in the list
+                    if (!existingUsers.includes(user)) {
+                      const nextUsers = [...existingUsers, user]
+                      // Remove stale key if the object reference changed
+                      if (existingMovieKey && existingMovieKey !== movieObj) {
+                        this.likedMovies.delete(existingMovieKey)
+                      }
+                      this.likedMovies.set(movieObj, nextUsers)
+
+                      // If multiple users like it, broadcast a match
+                      if (nextUsers.length > 1) {
+                        this.handleMatch(movieObj, nextUsers)
+                      }
+                    }
+                  } else {
+                    // User doesn't like this movie (pass or seen) - remove them
+                    if (existingUsers.includes(user)) {
+                      const nextUsers = existingUsers.filter(u => u !== user)
+                      // Always remove old key first
+                      if (existingMovieKey) {
+                        this.likedMovies.delete(existingMovieKey)
+                      }
+                      if (nextUsers.length > 0) {
+                        this.likedMovies.set(movieObj, nextUsers)
+                      }
+                    }
+                  }
 
 		  // Persist: user responses + (optionally) liked state can be derived, so we just save users + movieIndex
 		  upsertRoomUser(this.roomCode, user)
@@ -1919,15 +1959,15 @@ class Session {
         if (detailsResponse.ok) {
           const details = await detailsResponse.json();
           imdbId = details.external_ids?.imdb_id;
-          console.log(`DEBUG: Got IMDb ID ${imdbId} for TMDb movie ${tmdbMovie.title}`);
+          log.debug(`Got IMDb ID ${imdbId} for TMDb movie ${tmdbMovie.title}`);
         }
       } catch (e) {
-        console.log(`DEBUG: Failed to get IMDb ID for ${tmdbMovie.title}: ${e}`);
+        log.debug(`Failed to get IMDb ID for ${tmdbMovie.title}: ${e}`);
       }
 
       // Convert TMDb format to Plex-like format
       const thumbUrl = tmdbMovie.poster_path ? `/tmdb-poster${tmdbMovie.poster_path}` : '';
-      console.log('DEBUG getTMDbMovie thumb:', thumbUrl);
+      log.debug(`getTMDbMovie thumb: ${thumbUrl}`);
 
       const formatted = {
         title: tmdbMovie.title,
@@ -2008,15 +2048,7 @@ class Session {
     // Ensure movie has Comparr score calculated (backfill for existing movies)
     ensureComparrScore(movie)
 
-    const existingMatch = this.matches.find(match => match.movie.guid === movie.guid)
-    const createdAt = existingMatch?.createdAt ?? Date.now()
-    const matchUsers = users.map(_ => _.name)
-
-    if (existingMatch) {
-      existingMatch.users = matchUsers
-    } else {
-      this.matches.push({ movie, users: matchUsers, createdAt })
-    }
+    const { matchUsers, createdAt } = this.upsertMatchRecord(movie, users)
 
     for (const ws of this.users.values()) {
       const match: WebSocketMatchMessage = {
@@ -2048,17 +2080,18 @@ class Session {
   }
 
   getExistingMatches(user: User) {
-    // now uses rebuilt likedMovies; returns any movie liked by user + at least one other
+    // Derives matches from likedMovies; returns any movie liked by user + at least one other
     const matches = [...this.likedMovies.entries()]
       .filter(([, users]) => users.includes(user) && users.length > 1)
       .map(([movie, users]) => {
         // Ensure movie has Comparr score calculated (backfill for existing movies)
         ensureComparrScore(movie)
-        const existingMatch = this.matches.find(match => match.movie.guid === movie.guid)
+        // Ensure a match record exists (backfills for restored sessions)
+        const { matchUsers, createdAt } = this.upsertMatchRecord(movie, users)
         return {
           movie,
-          users: users.map(_ => _.name),
-          createdAt: existingMatch?.createdAt ?? 0,
+          users: matchUsers,
+          createdAt,
         }
       })
       .sort((a, b) => b.createdAt - a.createdAt)
@@ -2335,8 +2368,7 @@ export const handleLogin = (ws: WebSocket): Promise<User> => {
               rated: ratedItems
             },
           }
-                log.info(`DEBUG: Login response sending ${response.payload.movies.length} movies from session.movieList (total session movies: ${session.movieList.length})`)
-                log.info(`DEBUG: Sending ${ratedItems.length} rated items to ${user.name}`)
+                log.debug(`Login response sending ${response.payload.movies.length} movies to ${user.name} (${ratedItems.length} rated)`)
 
           ws.send(JSON.stringify(response))
 
