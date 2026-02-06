@@ -1677,13 +1677,80 @@ class Session {
 
           return true;
         });
+
+        let prioritizedBatch = filteredBatch;
+        if (roomUserCount > 1 && filteredBatch.length > 1) {
+          const likedByOtherGuids = new Set<string>();
+          const likedByOtherTmdbIds = new Set<number>();
+          const seenByOtherGuids = new Set<string>();
+          const seenByOtherTmdbIds = new Set<number>();
+
+          for (const otherUser of roomUsers) {
+            if (otherUser === user) continue;
+            for (const response of otherUser.responses) {
+              const tmdbId =
+                response.tmdbId ??
+                this.tmdbIdForGuid(response.guid) ??
+                extractTmdbIdFromGuid(response.guid);
+              if (response.wantsToWatch === true) {
+                likedByOtherGuids.add(response.guid);
+                if (tmdbId != null) {
+                  likedByOtherTmdbIds.add(tmdbId);
+                }
+                continue;
+              }
+              if (response.wantsToWatch !== null) continue;
+              seenByOtherGuids.add(response.guid);
+              if (tmdbId != null) {
+                seenByOtherTmdbIds.add(tmdbId);
+              }
+            }
+          }
+
+          if (
+            likedByOtherGuids.size > 0 ||
+            likedByOtherTmdbIds.size > 0 ||
+            seenByOtherGuids.size > 0 ||
+            seenByOtherTmdbIds.size > 0
+          ) {
+            const matchesLikedByOthers: MediaItem[] = [];
+            const matchesSeenByOthers: MediaItem[] = [];
+            const remaining: MediaItem[] = [];
+
+            for (const movie of filteredBatch) {
+              const candidateTmdbId = movie.tmdbId ?? extractTmdbIdFromGuid(movie.guid);
+              const isLikedByOthers =
+                likedByOtherGuids.has(movie.guid) ||
+                (candidateTmdbId != null && likedByOtherTmdbIds.has(candidateTmdbId));
+              const isSeenByOthers =
+                seenByOtherGuids.has(movie.guid) ||
+                (candidateTmdbId != null && seenByOtherTmdbIds.has(candidateTmdbId));
+
+              if (isLikedByOthers) {
+                matchesLikedByOthers.push(movie);
+              } else if (isSeenByOthers) {
+                matchesSeenByOthers.push(movie);
+              } else {
+                remaining.push(movie);
+              }
+            }
+
+            prioritizedBatch = [...matchesLikedByOthers, ...matchesSeenByOthers, ...remaining];
+
+            if (matchesLikedByOthers.length > 0 || matchesSeenByOthers.length > 0) {
+              log.info(
+                `🎯 Prioritized ${matchesLikedByOthers.length} movies liked by other users and ${matchesSeenByOthers.length} seen by other users for ${user.name} (filters preserved)`
+              );
+            }
+          }
+        }
         
         // Enhanced logging to track filtering effectiveness
         const filteredCount = validMovies.length - filteredBatch.length;
         if (filteredCount > 0) {
-          log.info(`🎤 Sending ${filteredBatch.length} movies to user ${user.name} (filtered out ${filteredCount} already rated)`);
+          log.info(`🎤 Sending ${prioritizedBatch.length} movies to user ${user.name} (filtered out ${filteredCount} already rated)`);
         } else {
-          log.info(`🎤 Sending ${filteredBatch.length} movies to user ${user.name}`);
+          log.info(`🎤 Sending ${prioritizedBatch.length} movies to user ${user.name}`);
         }
         
         // === Normalize poster paths and strip Plex thumb IDs before sending ===
@@ -1721,7 +1788,7 @@ class Session {
         };
 
         // Build the sanitized batch
-        const normalizedBatch = filteredBatch.map((m: any) => ({
+        const normalizedBatch = prioritizedBatch.map((m: any) => ({
           ...m,
           art:   norm(m, m.art),
           thumb: norm(m, m.thumb),
