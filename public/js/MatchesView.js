@@ -56,12 +56,7 @@ export class MatchesView {
     }
     
     this.matchesCountEl.dataset.count = this.matches.length
-    this.matches.sort((a, b) => b.users.length - a.users.length)
-    
-    // Debug: Log first match to see data structure
-    if (this.matches.length > 0) {
-      console.log('📊 Sample match data:', JSON.parse(JSON.stringify(this.matches[0])))
-    }
+    this.matches.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
     
     this.matchesListEl.innerHTML = this.matches
       .map(({ users, movie }) => {

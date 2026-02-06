@@ -392,7 +392,7 @@ interface WebSocketLoginMessage {
 
 interface WebSocketMatchMessage {
   type: 'match'
-  payload: { movie: MediaItem; users: string[] }
+  payload: { movie: MediaItem; users: string[]; createdAt: number }
 }
 
 interface WebSocketLoginResponseMessage {
@@ -838,7 +838,7 @@ class Session {
 
   // Matches keyed by movie (object identity). We'll keep guid->movie lookup to unify objects.
   likedMovies: Map<MediaItem, User[]> = new Map()
-  matches: { movie: MediaItem; users: string[] }[] = []
+  matches: { movie: MediaItem; users: string[]; createdAt: number }[] = []
 
   private discoverQueues: Map<string, DiscoverQueue> = new Map()
   private tmdbFormatCache: Map<number, any> = new Map()
@@ -2008,12 +2008,23 @@ class Session {
     // Ensure movie has Comparr score calculated (backfill for existing movies)
     ensureComparrScore(movie)
 
+    const existingMatch = this.matches.find(match => match.movie.guid === movie.guid)
+    const createdAt = existingMatch?.createdAt ?? Date.now()
+    const matchUsers = users.map(_ => _.name)
+
+    if (existingMatch) {
+      existingMatch.users = matchUsers
+    } else {
+      this.matches.push({ movie, users: matchUsers, createdAt })
+    }
+
     for (const ws of this.users.values()) {
       const match: WebSocketMatchMessage = {
         type: 'match',
         payload: {
           movie,
-          users: users.map(_ => _.name),
+          users: matchUsers,
+          createdAt,
         },
       }
       if (ws && !ws.isClosed) {
@@ -2024,13 +2035,21 @@ class Session {
 
   getExistingMatches(user: User) {
     // now uses rebuilt likedMovies; returns any movie liked by user + at least one other
-    return [...this.likedMovies.entries()]
+    const matches = [...this.likedMovies.entries()]
       .filter(([, users]) => users.includes(user) && users.length > 1)
       .map(([movie, users]) => {
         // Ensure movie has Comparr score calculated (backfill for existing movies)
         ensureComparrScore(movie)
-        return { movie, users: users.map(_ => _.name) }
+        const existingMatch = this.matches.find(match => match.movie.guid === movie.guid)
+        return {
+          movie,
+          users: users.map(_ => _.name),
+          createdAt: existingMatch?.createdAt ?? 0,
+        }
       })
+      .sort((a, b) => b.createdAt - a.createdAt)
+
+    return matches
   }
 
   destroy() {
@@ -2044,6 +2063,16 @@ class Session {
 // Session registry
 // -------------------------
 const activeSessions: Map<string, Session> = new Map()
+
+export function getMatchesForUser(roomCode: string, userName: string) {
+  const session = activeSessions.get(roomCode)
+  if (!session) return null
+
+  const user = [...session.users.keys()].find(u => u.name === userName)
+  if (!user) return []
+
+  return session.getExistingMatches(user)
+}
 
 let plexHydrationPromise: Promise<void> | null = null
 
