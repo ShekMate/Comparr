@@ -225,6 +225,16 @@ export class ComparrAPI extends EventTarget {
     )
   }
 
+  async getMatches(roomCode, userName) {
+    const base = this._getBasePath();
+    const url = `${base}/api/matches?code=${encodeURIComponent(roomCode)}&user=${encodeURIComponent(userName)}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`GET ${url} failed: ${res.status}`);
+    }
+    return res.json();
+  }
+
   async requestNextBatch() {
     await this._waitOpen();
 	

@@ -273,6 +273,10 @@ function initTabs() {
       if (typeof resetExpandCollapseButton === 'function') {
         resetExpandCollapseButton();
       }
+    } else if (tabId === 'tab-matches') {
+      if (typeof window.refreshMatchesList === 'function') {
+        window.refreshMatchesList();
+      }
     } else {
       stopWatchListAutoRefresh();
     }
@@ -1282,6 +1286,16 @@ async function moveMovieBetweenLists(guid, fromList, toList) {
     console.log('🗂️ Sending response to API...');
     await api.respond({ guid, wantsToWatch: newValue });
     console.log('✅ API response sent');
+
+    if (toList === 'watch' && typeof window.refreshMatchesList === 'function') {
+      const refreshedMatches = await window.refreshMatchesList();
+      const matchedEntry = refreshedMatches?.find(match => match.movie?.guid === guid);
+      const shownGuids = window.shownMatchGuids;
+      if (matchedEntry && matchedEntry.users?.length > 1 && (!shownGuids || !shownGuids.has(guid))) {
+        showMatchPopup(matchedEntry);
+        shownGuids?.add?.(guid);
+      }
+    }
     
     // Get the card to extract movie data from it
     const oldCard = document.querySelector(`.watch-card[data-guid="${guid}"]`);
@@ -1922,6 +1936,9 @@ const main = async () => {
   const { matches, rated, user: userName, roomCode } = loginData
 
   document.body.classList.add('is-logged-in')
+
+  sessionStorage.setItem('userName', userName)
+  sessionStorage.setItem('roomCode', roomCode)
   
   // Track movies this user has already rated (to prevent showing them again)
   const normalizeGuid = (value) => {
@@ -1978,12 +1995,31 @@ const main = async () => {
   window.PLEX_LIBRARY_NAME = 'AllVids';
   
   const matchesView = new MatchesView(matches)
+  const shownMatchGuids = new Set()
+  window.shownMatchGuids = shownMatchGuids
+
+  const refreshMatchesList = async () => {
+    try {
+      const result = await api.getMatches(roomCode, userName)
+      matchesView.matches = result.matches || []
+      matchesView.render()
+      return matchesView.matches
+    } catch (error) {
+      console.error('Failed to refresh matches:', error)
+      return matchesView.matches
+    }
+  }
+
+  window.refreshMatchesList = refreshMatchesList
   
   // Match event listener - show popup and add to matches view
   api.addEventListener('match', e => {
     const matchData = e.data
     matchesView.add(matchData)
-    showMatchPopup(matchData)
+    if (matchData?.movie?.guid && !shownMatchGuids.has(matchData.movie.guid)) {
+      showMatchPopup(matchData)
+      shownMatchGuids.add(matchData.movie.guid)
+    }
   })
   
   api.addEventListener('message', e => {
@@ -4351,14 +4387,20 @@ function showMatchPopup(matchData) {
   }
   
   // Format the users list
+  const currentUser = sessionStorage.getItem('userName');
   const users = matchData.users || [];
+  const displayUsers = currentUser
+    ? users.filter(user => user !== currentUser)
+    : users;
+  const userList = displayUsers.length > 0 ? displayUsers : users;
+
   let usersText = '';
-  if (users.length === 1) {
-    usersText = users[0];
-  } else if (users.length === 2) {
-    usersText = `${users[0]} and ${users[1]}`;
-  } else if (users.length > 2) {
-    usersText = `${users.slice(0, -1).join(', ')}, and ${users[users.length - 1]}`;
+  if (userList.length === 1) {
+    usersText = userList[0];
+  } else if (userList.length === 2) {
+    usersText = `${userList[0]} and ${userList[1]}`;
+  } else if (userList.length > 2) {
+    usersText = `${userList.slice(0, -1).join(', ')}, and ${userList[userList.length - 1]}`;
   }
   
   // Update popup content
