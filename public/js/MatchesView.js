@@ -58,11 +58,14 @@ export class MatchesView {
     this.matchesCountEl.dataset.count = this.matches.length
     this.matches.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
     
+    const currentUser = sessionStorage.getItem('userName')
     this.matchesListEl.innerHTML = this.matches
       .map(({ users, movie }) => {
         const basePath = document.body.dataset.basePath
         const posterUrl = movie.art || movie.thumb || ''
-        
+        const otherUsers = currentUser ? users.filter(u => u !== currentUser) : users
+        const displayUsers = otherUsers.length > 0 ? otherUsers : users
+
         return `
       <div class="watch-card" data-guid="${movie.guid}">
         <!-- Header with title and matched users -->
@@ -75,7 +78,7 @@ export class MatchesView {
           </div>
           <div class="watch-card-metadata">
             <i class="fas fa-users"></i>
-            Matched with ${this.formatList(users)}
+            Matched with ${this.formatList(displayUsers)}
           </div>
         </div>
         
