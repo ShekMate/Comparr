@@ -1024,7 +1024,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   width: 100%;
   padding: 0 2rem;
   margin: 0 auto;
-  max-width: 1200px;
+  max-width: none;
 }
 
 /* Disable collapse behavior on matches */
@@ -2254,7 +2254,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
    ========================================================= */
 .watch-list-layout {
   width: 100%;
-  max-width: 1200px;
+  max-width: none;
   margin: 0 auto;
   padding: 0 2rem 2rem;
 }
@@ -2269,7 +2269,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .watch-list-header,
 .seen-list-header,
 #tab-dislikes > h3 {
-  max-width: 1200px;
+  max-width: none;
   margin-left: auto;
   margin-right: auto;
 }
