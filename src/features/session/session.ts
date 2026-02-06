@@ -2008,7 +2008,15 @@ class Session {
     // Ensure movie has Comparr score calculated (backfill for existing movies)
     ensureComparrScore(movie)
 
-    const { matchUsers, createdAt } = this.upsertMatchRecord(movie, users)
+    const existingMatch = this.matches.find(match => match.movie.guid === movie.guid)
+    const createdAt = existingMatch?.createdAt ?? Date.now()
+    const matchUsers = users.map(_ => _.name)
+
+    if (existingMatch) {
+      existingMatch.users = matchUsers
+    } else {
+      this.matches.push({ movie, users: matchUsers, createdAt })
+    }
 
     for (const ws of this.users.values()) {
       const match: WebSocketMatchMessage = {
@@ -2046,10 +2054,11 @@ class Session {
       .map(([movie, users]) => {
         // Ensure movie has Comparr score calculated (backfill for existing movies)
         ensureComparrScore(movie)
+        const existingMatch = this.matches.find(match => match.movie.guid === movie.guid)
         return {
           movie,
           users: users.map(_ => _.name),
-          createdAt: this.upsertMatchRecord(movie, users).createdAt,
+          createdAt: existingMatch?.createdAt ?? 0,
         }
       })
       .sort((a, b) => b.createdAt - a.createdAt)
