@@ -1152,35 +1152,51 @@ class Session {
                         break
                   }
 
-                  // Look up existing entry *by object identity*
-                  let movieObj = this.movieList.find(m => m.guid === movie.guid) ||
+                  // Look up the canonical movie object for this guid
+                  const movieObj = this.movieList.find(m => m.guid === movie.guid) ||
                         persistedState.movieIndex[movie.guid] ||
-			movie
+                        movie
 
-		  const existingUsers = this.likedMovies.get(movieObj) ?? []
+                  // Look up likedMovies by guid (not object identity) to avoid
+                  // stale Map keys after movieIndex objects are replaced
+                  let existingUsers: User[] = []
+                  let existingMovieKey: MediaItem | undefined
+                  for (const [m, users] of this.likedMovies.entries()) {
+                    if (m.guid === movieObj.guid) {
+                      existingUsers = users
+                      existingMovieKey = m
+                      break
+                    }
+                  }
 
-		  if (wantsToWatch) {
-			// User likes this movie - add them if not already in the list
-			if (!existingUsers.includes(user)) {
-			  const nextUsers = [...existingUsers, user]
-			  this.likedMovies.set(movieObj, nextUsers)
-			  
-			  // If multiple users like it, broadcast a match
-			  if (nextUsers.length > 1) {
-				this.handleMatch(movieObj, nextUsers)
-			  }
-			}
-		  } else {
-			// User doesn't like this movie (pass or seen) - remove them if they were in the list
-			if (existingUsers.includes(user)) {
-			  const nextUsers = existingUsers.filter(u => u !== user)
-			  if (nextUsers.length > 0) {
-				this.likedMovies.set(movieObj, nextUsers)
-			  } else {
-				this.likedMovies.delete(movieObj)
-			  }
-			}
-		  }
+                  if (wantsToWatch) {
+                    // User likes this movie - add them if not already in the list
+                    if (!existingUsers.includes(user)) {
+                      const nextUsers = [...existingUsers, user]
+                      // Remove stale key if the object reference changed
+                      if (existingMovieKey && existingMovieKey !== movieObj) {
+                        this.likedMovies.delete(existingMovieKey)
+                      }
+                      this.likedMovies.set(movieObj, nextUsers)
+
+                      // If multiple users like it, broadcast a match
+                      if (nextUsers.length > 1) {
+                        this.handleMatch(movieObj, nextUsers)
+                      }
+                    }
+                  } else {
+                    // User doesn't like this movie (pass or seen) - remove them
+                    if (existingUsers.includes(user)) {
+                      const nextUsers = existingUsers.filter(u => u !== user)
+                      // Always remove old key first
+                      if (existingMovieKey) {
+                        this.likedMovies.delete(existingMovieKey)
+                      }
+                      if (nextUsers.length > 0) {
+                        this.likedMovies.set(movieObj, nextUsers)
+                      }
+                    }
+                  }
 
 		  // Persist: user responses + (optionally) liked state can be derived, so we just save users + movieIndex
 		  upsertRoomUser(this.roomCode, user)
