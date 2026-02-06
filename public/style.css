@@ -4378,29 +4378,31 @@ footer {
 /* =========================================================
    IMDb Import - Seen List Header
    ========================================================= */
-.seen-list-header {
+#tab-seen .watch-list-layout {
   position: relative;
-  display: flex;
-  justify-content: center;
+}
+
+.seen-list-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   padding: 0;
   margin-bottom: 1rem;
 }
 
 .seen-list-header h3 {
+  grid-column: 2;
   margin: 0;
   text-align: center;
 }
 
 .seen-header-actions {
-  /* Keep action out of normal flow so header width matches other list headers. */
   position: absolute;
-  top: 50%;
-  right: 0;
-  transform: translateY(-50%);
-  z-index: 2;
+  top: 0;
+  right: 2rem;
   display: flex;
   align-items: center;
+  justify-self: end;
   gap: 0.5rem;
 }
 
