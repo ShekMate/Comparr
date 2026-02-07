@@ -3932,8 +3932,8 @@ footer {
   }
 
   .watch-card.expanded .watch-card-poster img {
-    width: 168.75px !important;
-    height: 253.125px !important;
+    width: 172px !important;
+    height: 258px !important;
     object-fit: cover;
   }
 
