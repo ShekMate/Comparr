@@ -2629,8 +2629,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .watch-card-poster img {
-  width: 100px;
-  height: 150px;
+  width: 75px;
+  height: 112.5px;
   border-radius: var(--radius-md);
   object-fit: cover;
   box-shadow: var(--shadow-sm);
@@ -3034,8 +3034,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
   }
   
   .watch-card-poster img {
-    width: 80px;
-    height: 120px;
+    width: 60px;
+    height: 90px;
   }
   
   .watch-card-actions {
@@ -3932,8 +3932,8 @@ footer {
   }
 
   .watch-card.expanded .watch-card-poster img {
-    width: 300px !important;
-    height: 450px !important;
+    width: 225px !important;
+    height: 337.5px !important;
     object-fit: cover;
   }
 
