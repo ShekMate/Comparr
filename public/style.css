@@ -2629,8 +2629,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .watch-card-poster img {
-  width: 100px;
-  height: 150px;
+  width: 56.25px;
+  height: 84.375px;
   border-radius: var(--radius-md);
   object-fit: cover;
   box-shadow: var(--shadow-sm);
@@ -3932,8 +3932,8 @@ footer {
   }
 
   .watch-card.expanded .watch-card-poster img {
-    width: 300px !important;
-    height: 450px !important;
+    width: 168.75px !important;
+    height: 253.125px !important;
     object-fit: cover;
   }
 
