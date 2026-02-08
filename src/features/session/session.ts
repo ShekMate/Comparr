@@ -1,13 +1,19 @@
 // deno-lint-ignore-file
 import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
 import { assert } from 'https://deno.land/std@0.79.0/_util/assert.ts'
-import { allMovies, getRandomMovie, getFilteredRandomMovie, NoMoreMoviesError } from '../../api/plex.ts'
+import { getAllMovies, getRandomMovie, getFilteredRandomMovie, NoMoreMoviesError } from '../../api/plex.ts'
 import { WebSocket } from '../../infra/ws/websocketServer.ts'
 import { enrich } from '../catalog/enrich.ts'
 import { discoverMovies } from '../catalog/discover.ts'
 import { isMovieInRadarr } from '../../api/radarr.ts'
 import { isMovieInPlex, waitForPlexCacheReady } from '../../integrations/plex/cache.ts'
-import { MOVIE_BATCH_SIZE, ACCESS_PASSWORD } from '../../core/config.ts'
+import {
+  getAccessPassword,
+  getMovieBatchSize,
+  getPlexLibraryName,
+  getRootPath,
+  getTmdbApiKey,
+} from '../../core/config.ts'
 import { validateTMDbPoster, getBestPosterPath, isMovieValid } from '../media/poster-validation.ts'
 import { getBestPosterUrl, prefetchPoster } from '../../services/cache/poster-cache.ts'
 import { tmdbRateLimiter, omdbRateLimiter } from '../../core/rate-limiter.ts'
@@ -75,7 +81,7 @@ function ensureComparrScore(movie: any): void {
 
     // Rebuild rating HTML string if we have a Comparr score
     if (movie.rating_comparr !== null && movie.rating_comparr !== undefined) {
-      const basePath = Deno.env.get('ROOT_PATH') || '';
+      const basePath = getRootPath() || '';
       const parts: string[] = [];
 
       parts.push(`<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> ${movie.rating_comparr}`);
@@ -468,7 +474,6 @@ interface PersistedState {
 const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
 const STATE_FILE = `${DATA_DIR}/session-state.json`
 const BACKUP_FILE = `${DATA_DIR}/session-state.backup.json`
-const PLEX_LIBRARY_NAME = Deno.env.get('PLEX_LIBRARY_NAME') || 'My Plex Library'
 
 async function ensureDataDir() {
   try {
@@ -1235,7 +1240,7 @@ class Session {
   }) {
 	  
   const showMyPlexOnly = filters?.showPlexOnly ?? false;
-  const tmdbConfigured = Boolean(Deno.env.get('TMDB_API_KEY'));
+  const tmdbConfigured = Boolean(getTmdbApiKey());
 
   if (!tmdbConfigured && !showMyPlexOnly) {
     log.warning(
@@ -1246,8 +1251,8 @@ class Session {
   try {
     // Increase batch size to account for movies we'll skip
     const attemptBatchSize = Math.min(
-      showMyPlexOnly ? (await allMovies).length : 40, // Try more movies to get enough valid ones
-      Number(MOVIE_BATCH_SIZE) * 2 // Double the normal batch size
+      showMyPlexOnly ? (await getAllMovies()).length : 40, // Try more movies to get enough valid ones
+      Number(getMovieBatchSize()) * 2 // Double the normal batch size
     );
 
     const validMovies: MediaItem[] = [];
@@ -1313,7 +1318,7 @@ class Session {
 
         try {
           const response = await fetch(
-            `https://api.themoviedb.org/3/person/${person.id}/movie_credits?api_key=${Deno.env.get('TMDB_API_KEY')}`
+            `https://api.themoviedb.org/3/person/${person.id}/movie_credits?api_key=${getTmdbApiKey()}`
           );
 
           if (response.ok) {
@@ -1383,7 +1388,7 @@ class Session {
 
     queueNextCandidate();
 
-    while (validMovies.length < Number(MOVIE_BATCH_SIZE) && pendingCandidate) {
+    while (validMovies.length < Number(getMovieBatchSize()) && pendingCandidate) {
       const { promise, attemptNumber } = pendingCandidate;
       let plexMovie: any | null = null;
 
@@ -1481,7 +1486,7 @@ class Session {
         }
 
         const parts: string[] = [];
-        const basePath = Deno.env.get('ROOT_PATH') || '';
+        const basePath = getRootPath() || '';
 
         if (extra?.rating_comparr != null) {
           parts.push(`<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> ${extra.rating_comparr}`);
@@ -1600,7 +1605,7 @@ class Session {
           streamingServices = {
             subscription: [
               ...streamingServices.subscription,
-              { id: 0, name: PLEX_LIBRARY_NAME, logo_path: '/assets/logos/allvids.svg', type: 'subscription' }
+              { id: 0, name: getPlexLibraryName(), logo_path: '/assets/logos/allvids.svg', type: 'subscription' }
             ],
             free: streamingServices.free
           };
@@ -1611,7 +1616,7 @@ class Session {
             streamingServices = {
               subscription: [
                 ...streamingServices.subscription,
-                { id: 0, name: PLEX_LIBRARY_NAME, logo_path: '/assets/logos/allvids.svg', type: 'subscription' }
+                { id: 0, name: getPlexLibraryName(), logo_path: '/assets/logos/allvids.svg', type: 'subscription' }
               ],
               free: streamingServices.free
             };
@@ -1649,7 +1654,7 @@ class Session {
         if (movie.tmdbId != null) {
           seenTmdbIds.add(movie.tmdbId);
         }
-        log.debug(`✅ Added valid movie: ${movie.title} (${validMovies.length}/${MOVIE_BATCH_SIZE})`);
+        log.debug(`✅ Added valid movie: ${movie.title} (${validMovies.length}/${getMovieBatchSize()})`);
 
       } catch (err) {
         if (err instanceof NoMoreMoviesError) {
@@ -1928,7 +1933,7 @@ class Session {
     
     const page = Math.floor(index / 20) + 1; // Get different pages based on index
     const response = await fetch(
-      `https://api.themoviedb.org/3/person/${person.id}/movie_credits?api_key=${Deno.env.get('TMDB_API_KEY')}`
+      `https://api.themoviedb.org/3/person/${person.id}/movie_credits?api_key=${getTmdbApiKey()}`
     );
     
     if (!response.ok) throw new Error("Failed to get person movies");
@@ -1957,7 +1962,7 @@ class Session {
       // Get IMDb ID from TMDb for more reliable enrichment
       let imdbId = null;
       try {
-        const detailsResponse = await fetch(`https://api.themoviedb.org/3/movie/${tmdbId}?api_key=${Deno.env.get('TMDB_API_KEY')}&append_to_response=external_ids`);
+        const detailsResponse = await fetch(`https://api.themoviedb.org/3/movie/${tmdbId}?api_key=${getTmdbApiKey()}&append_to_response=external_ids`);
         if (detailsResponse.ok) {
           const details = await detailsResponse.json();
           imdbId = details.external_ids?.imdb_id;
@@ -2146,11 +2151,11 @@ async function hydratePersistedMoviesWithPlexAvailability(): Promise<number> {
     })
 
     if (inPlex) {
-      const alreadyTagged = normalized.subscription.some(service => service?.name === PLEX_LIBRARY_NAME)
+      const alreadyTagged = normalized.subscription.some(service => service?.name === getPlexLibraryName())
       if (!alreadyTagged) {
         normalized.subscription.unshift({
           id: 0,
-          name: PLEX_LIBRARY_NAME,
+          name: getPlexLibraryName(),
           logo_path: '/assets/logos/allvids.svg',
           type: 'subscription',
         })
@@ -2228,7 +2233,8 @@ export const handleLogin = (ws: WebSocket): Promise<User> => {
           log.info(`Got a login attempt from ${data.payload.name}`)
 
           // Check access password
-          if (!ACCESS_PASSWORD || data.payload.accessPassword !== ACCESS_PASSWORD) {
+          const accessPassword = getAccessPassword()
+          if (!accessPassword || data.payload.accessPassword !== accessPassword) {
             log.warning(`Invalid access password from ${data.payload.name}`)
             const response: WebSocketLoginResponseMessage = {
               type: 'loginResponse',
@@ -2580,7 +2586,7 @@ export async function processImdbImportBackground(job: ImdbImportJob): Promise<v
   let imported = 0
   let skipped = 0
 
-  const TMDB_KEY = Deno.env.get('TMDB_API_KEY')
+  const TMDB_KEY = getTmdbApiKey()
 
   for (const row of imdbRows) {
     processed++

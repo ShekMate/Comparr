@@ -101,6 +101,10 @@
 		    </div>
 		  </div>
 	    </div>
+	    <button class="tab-button" data-tab="tab-settings">
+	      <i class="fas fa-cog"></i>
+	      Settings
+	    </button>
 	  </div>
 
       <!-- ===== Desktop Sidebar Navigation (visible on desktop only) ===== -->
@@ -129,6 +133,20 @@
 		    <i class="fas fa-eye"></i>
 		    <span>Seen</span>
 		  </button>
+		  <div class="sidebar-settings">
+		    <button class="sidebar-item sidebar-settings-toggle" data-tab="tab-settings" aria-expanded="false" aria-controls="sidebar-settings-menu">
+		      <i class="fas fa-cog"></i>
+		      <span>Settings</span>
+		      <i class="fas fa-chevron-right sidebar-settings-caret" aria-hidden="true"></i>
+		    </button>
+		    <div class="sidebar-settings-menu" id="sidebar-settings-menu">
+		      <button class="sidebar-subitem" data-tab="tab-settings" data-settings-target="settings-core">Core</button>
+		      <button class="sidebar-subitem" data-tab="tab-settings" data-settings-target="settings-plex">Plex</button>
+		      <button class="sidebar-subitem" data-tab="tab-settings" data-settings-target="settings-metadata">Metadata</button>
+		      <button class="sidebar-subitem" data-tab="tab-settings" data-settings-target="settings-request-services">Request Services</button>
+		      <button class="sidebar-subitem" data-tab="tab-settings" data-settings-target="settings-security">Security</button>
+		    </div>
+		  </div>
 	    </div>
 	  </nav>
 
@@ -1158,6 +1176,159 @@
               <!-- Movies will be inserted here as cards -->
             </div>
           </div>
+        </div>
+      </section>
+
+      <!-- ===== Settings panel ===== -->
+      <section class="tab-panel" id="tab-settings" hidden>
+        <div class="settings-layout">
+          <div class="settings-header">
+            <div>
+              <h3>
+                <i class="fas fa-cog" style="color: var(--color-primary); margin-right: 0.5rem;"></i>
+                Settings
+              </h3>
+              <p class="settings-subtitle">Manage Comparr configuration directly in the UI. Changes apply immediately unless marked otherwise.</p>
+            </div>
+            <button class="settings-save-btn" type="button">
+              <i class="fas fa-save"></i>
+              Save Changes
+            </button>
+          </div>
+
+          <div class="settings-section" id="settings-core">
+            <h4>Core</h4>
+            <div class="settings-field">
+              <label for="setting-port">Port <span class="settings-badge">Restart required</span></label>
+              <input id="setting-port" type="text" data-setting-key="PORT" placeholder="8000">
+              <p>Internal web server port.</p>
+            </div>
+            <div class="settings-field">
+              <label for="setting-root-path">Root Path <span class="settings-badge">Restart required</span></label>
+              <input id="setting-root-path" type="text" data-setting-key="ROOT_PATH" placeholder="/comparr">
+              <p>Base path when running behind a reverse proxy.</p>
+            </div>
+            <div class="settings-field">
+              <label for="setting-log-level">Log Level <span class="settings-badge">Restart required</span></label>
+              <select id="setting-log-level" data-setting-key="LOG_LEVEL">
+                <option value="DEBUG">DEBUG</option>
+                <option value="INFO">INFO</option>
+                <option value="WARNING">WARNING</option>
+                <option value="ERROR">ERROR</option>
+              </select>
+              <p>Controls logging verbosity.</p>
+            </div>
+            <div class="settings-field">
+              <label for="setting-link-type">Link Type</label>
+              <select id="setting-link-type" data-setting-key="LINK_TYPE">
+                <option value="app">app (mobile deep links)</option>
+                <option value="http">http</option>
+                <option value="plex.tv">plex.tv</option>
+              </select>
+              <p>Preferred link target for Plex deep links.</p>
+            </div>
+          </div>
+
+          <div class="settings-section" id="settings-plex">
+            <h4>Plex</h4>
+            <div class="settings-field">
+              <label for="setting-plex-url">Plex URL</label>
+              <input id="setting-plex-url" type="text" data-setting-key="PLEX_URL" placeholder="http://192.168.1.100:32400">
+              <p>Your Plex server URL.</p>
+            </div>
+            <div class="settings-field">
+              <label for="setting-plex-token">Plex Token</label>
+              <input id="setting-plex-token" type="password" data-setting-key="PLEX_TOKEN" placeholder="••••••••">
+              <p>Your Plex auth token.</p>
+            </div>
+            <div class="settings-field">
+              <label for="setting-plex-library-name">Plex Library Name</label>
+              <input id="setting-plex-library-name" type="text" data-setting-key="PLEX_LIBRARY_NAME" placeholder="My Plex Library">
+              <p>Label shown for Plex availability in the UI.</p>
+            </div>
+            <div class="settings-field">
+              <label for="setting-default-section">Default Section Type</label>
+              <select id="setting-default-section" data-setting-key="DEFAULT_SECTION_TYPE_FILTER">
+                <option value="movie">movie</option>
+                <option value="show">show</option>
+              </select>
+              <p>Default media type to load from Plex.</p>
+            </div>
+            <div class="settings-field">
+              <label for="setting-library-filter">Library Filter</label>
+              <input id="setting-library-filter" type="text" data-setting-key="LIBRARY_FILTER" placeholder="Movies,4K Movies">
+              <p>Comma-separated library names to include.</p>
+            </div>
+            <div class="settings-field">
+              <label for="setting-collection-filter">Collection Filter</label>
+              <input id="setting-collection-filter" type="text" data-setting-key="COLLECTION_FILTER" placeholder="Marvel,Pixar">
+              <p>Comma-separated collection names to include.</p>
+            </div>
+          </div>
+
+          <div class="settings-section" id="settings-metadata">
+            <h4>Metadata</h4>
+            <div class="settings-field">
+              <label for="setting-tmdb-key">TMDb API Key</label>
+              <input id="setting-tmdb-key" type="password" data-setting-key="TMDB_API_KEY" placeholder="••••••••">
+              <p>The Movie Database API key.</p>
+            </div>
+            <div class="settings-field">
+              <label for="setting-omdb-key">OMDb API Key</label>
+              <input id="setting-omdb-key" type="password" data-setting-key="OMDB_API_KEY" placeholder="••••••••">
+              <p>OMDb API key for extra ratings.</p>
+            </div>
+            <div class="settings-field">
+              <label for="setting-movie-batch-size">Movie Batch Size</label>
+              <input id="setting-movie-batch-size" type="number" data-setting-key="MOVIE_BATCH_SIZE" placeholder="20">
+              <p>Number of movies to load at once.</p>
+            </div>
+          </div>
+
+          <div class="settings-section" id="settings-request-services">
+            <h4>Request Services</h4>
+            <div class="settings-field">
+              <label for="setting-radarr-url">Radarr URL</label>
+              <input id="setting-radarr-url" type="text" data-setting-key="RADARR_URL" placeholder="http://192.168.1.100:7878">
+              <p>Radarr server URL.</p>
+            </div>
+            <div class="settings-field">
+              <label for="setting-radarr-api-key">Radarr API Key</label>
+              <input id="setting-radarr-api-key" type="password" data-setting-key="RADARR_API_KEY" placeholder="••••••••">
+              <p>Radarr API key.</p>
+            </div>
+            <div class="settings-field">
+              <label for="setting-jellyseerr-url">Jellyseerr URL</label>
+              <input id="setting-jellyseerr-url" type="text" data-setting-key="JELLYSEERR_URL" placeholder="http://192.168.1.100:5055">
+              <p>Jellyseerr server URL (preferred if both are set).</p>
+            </div>
+            <div class="settings-field">
+              <label for="setting-jellyseerr-api-key">Jellyseerr API Key</label>
+              <input id="setting-jellyseerr-api-key" type="password" data-setting-key="JELLYSEERR_API_KEY" placeholder="••••••••">
+              <p>Jellyseerr API key.</p>
+            </div>
+            <div class="settings-field">
+              <label for="setting-overseerr-url">Overseerr URL</label>
+              <input id="setting-overseerr-url" type="text" data-setting-key="OVERSEERR_URL" placeholder="http://192.168.1.100:5055">
+              <p>Overseerr server URL.</p>
+            </div>
+            <div class="settings-field">
+              <label for="setting-overseerr-api-key">Overseerr API Key</label>
+              <input id="setting-overseerr-api-key" type="password" data-setting-key="OVERSEERR_API_KEY" placeholder="••••••••">
+              <p>Overseerr API key.</p>
+            </div>
+          </div>
+
+          <div class="settings-section" id="settings-security">
+            <h4>Security</h4>
+            <div class="settings-field">
+              <label for="setting-access-password">Access Password</label>
+              <input id="setting-access-password" type="password" data-setting-key="ACCESS_PASSWORD" placeholder="(optional)">
+              <p>Password required before users can log in.</p>
+            </div>
+          </div>
+
+          <div class="settings-status" role="status" aria-live="polite"></div>
         </div>
       </section>
     </main>
