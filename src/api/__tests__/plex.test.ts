@@ -86,7 +86,7 @@ Deno.test({
 })
 
 Deno.test({
-  name: 'Plex API - allMovies - loads movies from selected library',
+  name: 'Plex API - getAllMovies - loads movies from selected library',
   async fn() {
     // Create a comprehensive mock that handles both requests
     globalThis.fetch = async (url: string | URL | Request) => {
@@ -104,8 +104,8 @@ Deno.test({
     }
 
     // Clear module cache and reimport
-    const { allMovies } = await import('../plex.ts')
-    const movies = await allMovies
+    const { getAllMovies } = await import('../plex.ts')
+    const movies = await getAllMovies()
 
     assertExists(movies)
     assertEquals(movies.length, 3)
@@ -137,8 +137,8 @@ Deno.test({
       return createMockResponse({ status: 404, body: 'Not Found' })
     }
 
-    const { getRandomMovie, allMovies, NoMoreMoviesError } = await import('../plex.ts')
-    const movies = await allMovies
+    const { getRandomMovie, getAllMovies, NoMoreMoviesError } = await import('../plex.ts')
+    const movies = await getAllMovies()
 
     // Get random movies - should not repeat
     const drawnMovies = new Set()
@@ -196,8 +196,8 @@ Deno.test({
       return createMockResponse({ status: 404, body: 'Not Found' })
     }
 
-    const { allMovies } = await import('../plex.ts')
-    const movies = await allMovies
+    const { getAllMovies } = await import('../plex.ts')
+    const movies = await getAllMovies()
 
     assertExists(movies)
     // Should only load from Animation library

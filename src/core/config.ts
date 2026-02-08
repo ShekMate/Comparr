@@ -1,36 +1,40 @@
-import { config } from 'https://deno.land/x/dotenv@v1.0.1/mod.ts'
 import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import { getSetting } from './settings.ts'
 
-const conf = config()
-
-const getEnvTrimmed = (name: string) => {
-  const value = Deno.env.get(name)
+const getSettingTrimmed = (name: Parameters<typeof getSetting>[0]) => {
+  const value = getSetting(name)
   if (typeof value === 'string') {
     return value.trim()
   }
 
-  return conf[name]
+  return value
 }
 
-export const PLEX_URL = getEnvTrimmed('PLEX_URL')?.replace(/\/$/, '')
-export const PLEX_TOKEN = getEnvTrimmed('PLEX_TOKEN')
-export const PORT = getEnvTrimmed('PORT') ?? '8000'
-export const LOG_LEVEL = getEnvTrimmed('LOG_LEVEL') ?? 'INFO'
-export const MOVIE_BATCH_SIZE = getEnvTrimmed('MOVIE_BATCH_SIZE') ?? '20'
-export const LINK_TYPE = getEnvTrimmed('LINK_TYPE') ?? 'app'
-export const DEFAULT_SECTION_TYPE_FILTER =
-  getEnvTrimmed('DEFAULT_SECTION_TYPE_FILTER') ?? 'movie'
-export const LIBRARY_FILTER = getEnvTrimmed('LIBRARY_FILTER') ?? ''
-export const COLLECTION_FILTER = getEnvTrimmed('COLLECTION_FILTER') ?? ''
-export const ROOT_PATH = getEnvTrimmed('ROOT_PATH') ?? ''
-export const PLEX_LIBRARY_NAME = getEnvTrimmed('PLEX_LIBRARY_NAME') ?? 'My Plex Library'
-export const RADARR_URL = getEnvTrimmed('RADARR_URL')?.replace(/\/$/, '')
-export const RADARR_API_KEY = getEnvTrimmed('RADARR_API_KEY')
-export const ACCESS_PASSWORD = getEnvTrimmed('ACCESS_PASSWORD') ?? ''
-export const JELLYSEERR_URL = getEnvTrimmed('JELLYSEERR_URL')?.replace(/\/$/, '')
-export const JELLYSEERR_API_KEY = getEnvTrimmed('JELLYSEERR_API_KEY')
-export const OVERSEERR_URL = getEnvTrimmed('OVERSEERR_URL')?.replace(/\/$/, '')
-export const OVERSEERR_API_KEY = getEnvTrimmed('OVERSEERR_API_KEY')
+const normalizeUrl = (value?: string) =>
+  typeof value === 'string' && value !== '' ? value.replace(/\/$/, '') : ''
+
+export const getPlexUrl = () => normalizeUrl(getSettingTrimmed('PLEX_URL'))
+export const getPlexToken = () => getSettingTrimmed('PLEX_TOKEN')
+export const getPort = () => getSettingTrimmed('PORT') ?? '8000'
+export const LOG_LEVEL = getSettingTrimmed('LOG_LEVEL') ?? 'INFO'
+export const getMovieBatchSize = () => getSettingTrimmed('MOVIE_BATCH_SIZE') ?? '20'
+export const getLinkType = () => getSettingTrimmed('LINK_TYPE') ?? 'app'
+export const getDefaultSectionTypeFilter = () =>
+  getSettingTrimmed('DEFAULT_SECTION_TYPE_FILTER') ?? 'movie'
+export const getLibraryFilter = () => getSettingTrimmed('LIBRARY_FILTER') ?? ''
+export const getCollectionFilter = () => getSettingTrimmed('COLLECTION_FILTER') ?? ''
+export const getRootPath = () => getSettingTrimmed('ROOT_PATH') ?? ''
+export const getPlexLibraryName = () =>
+  getSettingTrimmed('PLEX_LIBRARY_NAME') ?? 'My Plex Library'
+export const getRadarrUrl = () => normalizeUrl(getSettingTrimmed('RADARR_URL'))
+export const getRadarrApiKey = () => getSettingTrimmed('RADARR_API_KEY')
+export const getAccessPassword = () => getSettingTrimmed('ACCESS_PASSWORD') ?? ''
+export const getJellyseerrUrl = () => normalizeUrl(getSettingTrimmed('JELLYSEERR_URL'))
+export const getJellyseerrApiKey = () => getSettingTrimmed('JELLYSEERR_API_KEY')
+export const getOverseerrUrl = () => normalizeUrl(getSettingTrimmed('OVERSEERR_URL'))
+export const getOverseerrApiKey = () => getSettingTrimmed('OVERSEERR_API_KEY')
+export const getTmdbApiKey = () => getSettingTrimmed('TMDB_API_KEY')
+export const getOmdbApiKey = () => getSettingTrimmed('OMDB_API_KEY')
 export const getVersion = async () => {
   const pkgText = await Deno.readTextFile(Deno.cwd() + '/package.json')
   const pkg: { version: string } = JSON.parse(pkgText)

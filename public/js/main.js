@@ -437,6 +437,127 @@ function sortWatchList(sortBy) {
   console.log('✅ Sort complete!');
 }
 
+/* --------------------- settings --------------------- */
+async function fetchSettingsAccess() {
+  try {
+    const res = await fetch('/api/settings-access')
+    if (!res.ok) return false
+    const data = await res.json()
+    return Boolean(data?.canAccess)
+  } catch (err) {
+    console.warn('Settings access check failed:', err)
+    return false
+  }
+}
+
+async function loadClientConfig() {
+  try {
+    const res = await fetch('/api/client-config')
+    if (!res.ok) return
+    const data = await res.json()
+    if (data?.plexLibraryName) {
+      window.PLEX_LIBRARY_NAME = data.plexLibraryName
+    }
+  } catch (err) {
+    console.warn('Client config fetch failed:', err)
+  }
+}
+
+function toggleSettingsVisibility(canAccess) {
+  const settingsButtons = document.querySelectorAll('[data-tab="tab-settings"]')
+  settingsButtons.forEach(btn => {
+    btn.style.display = canAccess ? '' : 'none'
+  })
+
+  const settingsPanel = document.getElementById('tab-settings')
+  if (!canAccess) {
+    settingsPanel?.setAttribute('hidden', '')
+    settingsPanel?.classList.remove('is-active')
+    const activeSettings = document.querySelector('[data-tab="tab-settings"].is-active')
+    if (activeSettings) {
+      document.querySelector('[data-tab="tab-swipe"]')?.click()
+    }
+  }
+}
+
+function collectSettingsForm() {
+  const settings = {}
+  document.querySelectorAll('[data-setting-key]').forEach(el => {
+    const key = el.dataset.settingKey
+    if (!key) return
+    if (el.type === 'checkbox') {
+      settings[key] = el.checked ? 'true' : 'false'
+      return
+    }
+    settings[key] = el.value
+  })
+  return settings
+}
+
+async function hydrateSettingsForm() {
+  try {
+    const res = await fetch('/api/settings')
+    if (!res.ok) {
+      throw new Error(`Settings fetch failed: ${res.status}`)
+    }
+    const data = await res.json()
+    const settings = data?.settings || {}
+    document.querySelectorAll('[data-setting-key]').forEach(el => {
+      const key = el.dataset.settingKey
+      if (!key) return
+      const value = settings[key]
+      if (value === undefined || value === null) return
+      if (el.type === 'checkbox') {
+        el.checked = value === 'true'
+      } else {
+        el.value = value
+      }
+    })
+  } catch (err) {
+    console.warn('Failed to hydrate settings form:', err)
+  }
+}
+
+async function saveSettingsForm() {
+  const status = document.querySelector('.settings-status')
+  if (status) {
+    status.textContent = 'Saving settings...'
+  }
+  try {
+    const settings = collectSettingsForm()
+    const res = await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ settings }),
+    })
+    if (!res.ok) {
+      throw new Error(`Settings save failed: ${res.status}`)
+    }
+    const data = await res.json()
+    if (data?.settings?.PLEX_LIBRARY_NAME) {
+      window.PLEX_LIBRARY_NAME = data.settings.PLEX_LIBRARY_NAME
+    }
+    if (status) {
+      status.textContent = 'Settings saved.'
+    }
+  } catch (err) {
+    console.error('Failed to save settings:', err)
+    if (status) {
+      status.textContent = 'Failed to save settings.'
+    }
+  }
+}
+
+async function setupSettingsUI() {
+  const canAccess = await fetchSettingsAccess()
+  toggleSettingsVisibility(canAccess)
+  if (!canAccess) {
+    return
+  }
+  await hydrateSettingsForm()
+  document.querySelector('.settings-save-btn')?.addEventListener('click', saveSettingsForm)
+}
+
 // Make it globally available
 window.sortWatchList = sortWatchList;
 
@@ -1991,8 +2112,10 @@ const main = async () => {
   }
   console.log(`🎬 Tracking ${ratedTmdbIds.size} unique TMDb IDs from rated movies`);
   
-  // Get Plex library name from environment or use default
-  window.PLEX_LIBRARY_NAME = 'AllVids';
+  // Get Plex library name from server config (fallback to default)
+  window.PLEX_LIBRARY_NAME = 'My Plex Library'
+  await loadClientConfig()
+  await setupSettingsUI()
   
   const matchesView = new MatchesView(matches)
   const shownMatchGuids = new Set()
