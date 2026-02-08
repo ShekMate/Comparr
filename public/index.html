@@ -140,11 +140,11 @@
 		      <i class="fas fa-chevron-right sidebar-settings-caret" aria-hidden="true"></i>
 		    </button>
 		    <div class="sidebar-settings-menu" id="sidebar-settings-menu">
-		      <button class="sidebar-subitem" data-tab="tab-settings" data-settings-target="settings-core">Core</button>
-		      <button class="sidebar-subitem" data-tab="tab-settings" data-settings-target="settings-plex">Plex</button>
-		      <button class="sidebar-subitem" data-tab="tab-settings" data-settings-target="settings-metadata">Metadata</button>
-		      <button class="sidebar-subitem" data-tab="tab-settings" data-settings-target="settings-request-services">Request Services</button>
-		      <button class="sidebar-subitem" data-tab="tab-settings" data-settings-target="settings-security">Security</button>
+		      <button class="sidebar-subitem" data-tab="tab-settings" data-settings-target="settings-core" data-settings-title="Core">Core</button>
+		      <button class="sidebar-subitem" data-tab="tab-settings" data-settings-target="settings-plex" data-settings-title="Plex">Plex</button>
+		      <button class="sidebar-subitem" data-tab="tab-settings" data-settings-target="settings-metadata" data-settings-title="Metadata">Metadata</button>
+		      <button class="sidebar-subitem" data-tab="tab-settings" data-settings-target="settings-request-services" data-settings-title="Request Services">Request Services</button>
+		      <button class="sidebar-subitem" data-tab="tab-settings" data-settings-target="settings-security" data-settings-title="Security">Security</button>
 		    </div>
 		  </div>
 	    </div>
@@ -1186,7 +1186,7 @@
             <div>
               <h3>
                 <i class="fas fa-cog" style="color: var(--color-primary); margin-right: 0.5rem;"></i>
-                Settings
+                <span id="settings-title">Settings</span>
               </h3>
               <p class="settings-subtitle">Manage Comparr configuration directly in the UI. Changes apply immediately unless marked otherwise.</p>
             </div>

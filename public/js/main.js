@@ -293,13 +293,26 @@ function initTabs() {
     }
   })
 
+  const settingsTitle = document.getElementById('settings-title')
+  const settingsSections = document.querySelectorAll('.settings-section')
+
+  const setActiveSettingsSection = (targetId, titleText) => {
+    settingsSections.forEach(section => {
+      const isActive = section.id === targetId
+      section.toggleAttribute('hidden', !isActive)
+    })
+    settingsSubitems.forEach(el => el.classList.toggle('is-active', el.dataset.settingsTarget === targetId))
+    if (settingsTitle && titleText) {
+      settingsTitle.textContent = titleText
+    }
+  }
+
   settingsSubitems.forEach(item => {
     item.addEventListener('click', () => {
       const targetId = item.dataset.settingsTarget
-      if (targetId) {
-        document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        settingsSubitems.forEach(el => el.classList.toggle('is-active', el === item))
-      }
+      const titleText = item.dataset.settingsTitle
+      if (!targetId) return
+      setActiveSettingsSection(targetId, titleText)
     })
   })
 
@@ -327,6 +340,13 @@ function initTabs() {
 
   // Activate first tab by default
   if (allButtons[0]) activate(allButtons[0].dataset.tab)
+  if (settingsSubitems[0]) {
+    const firstTarget = settingsSubitems[0].dataset.settingsTarget
+    const firstTitle = settingsSubitems[0].dataset.settingsTitle
+    if (firstTarget) {
+      setActiveSettingsSection(firstTarget, firstTitle)
+    }
+  }
   
   // Handle refresh button click
   const refreshBtn = document.getElementById('refresh-watch-btn');
