@@ -1,8 +1,24 @@
 // src/index.ts
 import { serve } from 'https://deno.land/std@0.79.0/http/server.ts'
 import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
-import { getServerId, proxyPoster } from './api/plex.ts'
-import { PLEX_URL, PORT, LINK_TYPE, RADARR_URL, RADARR_API_KEY, JELLYSEERR_URL, JELLYSEERR_API_KEY, OVERSEERR_URL, OVERSEERR_API_KEY } from './core/config.ts'
+import { clearAllMoviesCache, getServerId, proxyPoster } from './api/plex.ts'
+import {
+  getJellyseerrApiKey,
+  getJellyseerrUrl,
+  getLinkType,
+  getOverseerrApiKey,
+  getOverseerrUrl,
+  getPlexLibraryName,
+  getPlexToken,
+  getPlexUrl,
+  getPort,
+  getRadarrApiKey,
+  getRadarrUrl,
+  getRootPath,
+  getTmdbApiKey,
+  getOmdbApiKey,
+} from './core/config.ts'
+import { getSettings, updateSettings } from './core/settings.ts'
 import { getLinkTypeForRequest } from './core/i18n.ts'
 import { handleLogin, ensurePlexHydrationReady, processImdbImportBackground, getMatchesForUser } from './features/session/session.ts'
 import { parseImdbCsv } from './features/session/imdb-import.ts'
@@ -12,6 +28,7 @@ import { initializeRadarrCache, isMovieInRadarr, refreshRadarrCache } from './ap
 import { requestMovie, isRequestServiceConfigured, getMediaStatus } from './api/jellyseerr.ts'
 import { serveCachedPoster } from './services/cache/poster-cache.ts';
 import { initIMDbDatabase, startBackgroundUpdateJob } from './features/catalog/imdb-datasets.ts';
+import { buildPlexCache } from './integrations/plex/cache.ts'
 
 // ---- DIAGNOSTIC HELPERS (add once near top) --------------------------------
 function newReqId() {
@@ -36,7 +53,7 @@ function ms(start: number) { return `${Date.now() - start}ms`; }
 
 // Helper: fetch & persist TMDb providers for a TMDb ID, returning the same shape your UI expects
 async function updateStreamingForTmdbId(tmdbId: number) {
-  const TMDB_KEY = Deno.env.get("TMDB_API_KEY");
+  const TMDB_KEY = getTmdbApiKey();
   if (!TMDB_KEY || !tmdbId || Number.isNaN(tmdbId)) {
     return {
       ok: false,
@@ -176,7 +193,7 @@ async function respondFile(req: any, filePath: string, contentType?: string) {
   }
 }
 
-const server = serve({ port: Number(PORT) })
+const server = serve({ port: Number(getPort()) })
 
 const wss = new WebSocketServer({
   onConnection: handleLogin,
@@ -193,7 +210,7 @@ if (Deno.build.os !== 'windows') {
   Deno.addSignalListener("SIGINT", sigintHandler)
 }
 
-log.info(`Listening on port ${PORT}`)
+log.info(`Listening on port ${getPort()}`)
 
 // Initialize Radarr cache in background
 initializeRadarrCache().catch(err =>
@@ -222,10 +239,33 @@ initPosterCache().catch(err =>
 
 // DEBUG: Log environment check on startup
 log.info(`🔍 Config check:`)
-log.info(`  TMDB_API_KEY: ${Deno.env.get('TMDB_API_KEY') ? '✅ Set' : '❌ Missing'}`)
-log.info(`  OMDB_API_KEY: ${Deno.env.get('OMDB_API_KEY') ? '✅ Set' : '❌ Missing'}`)
-log.info(`  PLEX_URL: ${Deno.env.get('PLEX_URL') ? '✅ Set' : '❌ Missing'}`)
-log.info(`  PLEX_TOKEN: ${Deno.env.get('PLEX_TOKEN') ? '✅ Set' : '❌ Missing'}`)
+log.info(`  TMDB_API_KEY: ${getTmdbApiKey() ? '✅ Set' : '❌ Missing'}`)
+log.info(`  OMDB_API_KEY: ${getOmdbApiKey() ? '✅ Set' : '❌ Missing'}`)
+log.info(`  PLEX_URL: ${getPlexUrl() ? '✅ Set' : '❌ Missing'}`)
+log.info(`  PLEX_TOKEN: ${getPlexToken() ? '✅ Set' : '❌ Missing'}`)
+
+const isPrivateNetwork = (hostname: string) => {
+  if (!hostname) return false
+  if (hostname.startsWith('::ffff:')) {
+    hostname = hostname.replace('::ffff:', '')
+  }
+  if (hostname === '127.0.0.1' || hostname === '::1' || hostname === '0:0:0:0:0:0:0:1') {
+    return true
+  }
+  if (hostname.startsWith('10.')) return true
+  if (hostname.startsWith('192.168.')) return true
+  if (hostname.startsWith('172.')) {
+    const octet = Number(hostname.split('.')[1] ?? '0')
+    return octet >= 16 && octet <= 31
+  }
+  return false
+}
+
+const isLocalRequest = (req: typeof server extends AsyncIterable<infer R> ? R : any) => {
+  const remote = req?.conn?.remoteAddr as Deno.NetAddr | undefined
+  const hostname = remote?.hostname ?? ''
+  return isPrivateNetwork(hostname)
+}
 
 for await (const req of server) {
   try {
@@ -237,15 +277,81 @@ for await (const req of server) {
       await req.respond({
         status: 200,
         body: JSON.stringify({
-          tmdb_configured: !!Deno.env.get('TMDB_API_KEY'),
-          omdb_configured: !!Deno.env.get('OMDB_API_KEY'),
-          plex_configured: !!(Deno.env.get('PLEX_URL') && Deno.env.get('PLEX_TOKEN')),
-          radarr_configured: !!(RADARR_URL && RADARR_API_KEY),
-          jellyseerr_configured: !!(JELLYSEERR_URL && JELLYSEERR_API_KEY),
-          overseerr_configured: !!(OVERSEERR_URL && OVERSEERR_API_KEY),
+          tmdb_configured: !!getTmdbApiKey(),
+          omdb_configured: !!getOmdbApiKey(),
+          plex_configured: !!(getPlexUrl() && getPlexToken()),
+          radarr_configured: !!(getRadarrUrl() && getRadarrApiKey()),
+          jellyseerr_configured: !!(getJellyseerrUrl() && getJellyseerrApiKey()),
+          overseerr_configured: !!(getOverseerrUrl() && getOverseerrApiKey()),
         }, null, 2),
         headers: new Headers({ 'content-type': 'application/json' }),
       })
+      continue
+    }
+
+    if (p === '/api/settings-access') {
+      await req.respond({
+        status: 200,
+        body: JSON.stringify({ canAccess: isLocalRequest(req) }),
+        headers: new Headers({ 'content-type': 'application/json' }),
+      })
+      continue
+    }
+
+    if (p === '/api/client-config') {
+      await req.respond({
+        status: 200,
+        body: JSON.stringify({
+          plexLibraryName: getPlexLibraryName(),
+        }),
+        headers: new Headers({ 'content-type': 'application/json' }),
+      })
+      continue
+    }
+
+    if (p === '/api/settings' && req.method === 'GET') {
+      if (!isLocalRequest(req)) {
+        await req.respond({ status: 403, body: 'Forbidden' })
+        continue
+      }
+      await req.respond({
+        status: 200,
+        body: JSON.stringify({ settings: getSettings() }),
+        headers: new Headers({ 'content-type': 'application/json' }),
+      })
+      continue
+    }
+
+    if (p === '/api/settings' && req.method === 'POST') {
+      if (!isLocalRequest(req)) {
+        await req.respond({ status: 403, body: 'Forbidden' })
+        continue
+      }
+      try {
+        const decoder = new TextDecoder()
+        const body = decoder.decode(await Deno.readAll(req.body))
+        const { settings } = JSON.parse(body)
+        const updated = await updateSettings(settings ?? {})
+        clearAllMoviesCache()
+        await refreshRadarrCache().catch(err =>
+          log.error(`Failed to refresh Radarr cache after settings update: ${err}`)
+        )
+        await buildPlexCache().catch(err =>
+          log.error(`Failed to refresh Plex cache after settings update: ${err}`)
+        )
+        await req.respond({
+          status: 200,
+          body: JSON.stringify({ settings: updated }),
+          headers: new Headers({ 'content-type': 'application/json' }),
+        })
+      } catch (err) {
+        log.error(`Settings update failed: ${err}`)
+        await req.respond({
+          status: 500,
+          body: JSON.stringify({ error: 'Failed to update settings' }),
+          headers: new Headers({ 'content-type': 'application/json' }),
+        })
+      }
       continue
     }
     
@@ -625,7 +731,7 @@ for await (const req of server) {
 		}
 
 		// Format rating string with logos (matching session.ts format)
-		const basePath = Deno.env.get('ROOT_PATH') || '';
+		const basePath = getRootPath() || '';
 		const ratingParts: string[] = [];
 		if (enriched.rating_comparr) ratingParts.push(`<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> ${enriched.rating_comparr}`);
 		if (enriched.rating_imdb) ratingParts.push(`<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> ${enriched.rating_imdb}`);
@@ -634,9 +740,9 @@ for await (const req of server) {
 		const rating = ratingParts.length > 0 ? ratingParts.join(' <span class="rating-separator">&bull;</span> ') : '';
 
 		// Check if movie is in Plex from streamingServices (already computed during enrich)
-		const PLEX_LIBRARY_NAME = Deno.env.get('PLEX_LIBRARY_NAME') || 'Plex';
+		const plexLibraryName = getPlexLibraryName() || 'Plex';
 		const inPlex = enriched.streamingServices?.subscription?.some(
-		  (s: any) => s.name === PLEX_LIBRARY_NAME
+		  (s: any) => s.name === plexLibraryName
 		) || false;
 
 		// Persist updates if we have state
@@ -711,7 +817,7 @@ for await (const req of server) {
     // --- API: Import IMDb watched movies as "seen" (background processing)
     if (p === '/api/imdb-import' && req.method === 'POST') {
       try {
-        const TMDB_KEY = Deno.env.get('TMDB_API_KEY')
+        const TMDB_KEY = getTmdbApiKey()
         if (!TMDB_KEY) {
           await req.respond({
             status: 400,
@@ -784,7 +890,7 @@ for await (const req of server) {
     // --- API: Import from a public IMDb list URL (background processing)
     if (p === '/api/imdb-import-url' && req.method === 'POST') {
       try {
-        const TMDB_KEY = Deno.env.get('TMDB_API_KEY')
+        const TMDB_KEY = getTmdbApiKey()
         if (!TMDB_KEY) {
           await req.respond({
             status: 400,
@@ -931,12 +1037,12 @@ for await (const req of server) {
         location = `plex://preplay/?metadataKey=${encodeURIComponent(
           key
         )}&metadataType=1&server=${serverId}`
-      } else if (LINK_TYPE == 'plex.tv') {
+      } else if (getLinkType() == 'plex.tv') {
         location = `https://app.plex.tv/desktop#!/server/${serverId}/details?key=${encodeURIComponent(
           key
         )}`
       } else {
-        location = `${PLEX_URL}/web/index.html#!/server/${serverId}/details?key=${encodeURIComponent(
+        location = `${getPlexUrl()}/web/index.html#!/server/${serverId}/details?key=${encodeURIComponent(
           key
         )}`
       }

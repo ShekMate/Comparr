@@ -1,7 +1,5 @@
 // Add this utility to a new file: src/features/media/poster-validation.ts
 
-const TMDB_API_KEY = Deno.env.get("TMDB_API_KEY");
-
 // Cache for poster validation results to avoid repeated checks
 const posterValidationCache = new Map<string, boolean>();
 const MAX_POSTER_CACHE_SIZE = 5000; // Limit cache to 5000 entries (suitable for large libraries)

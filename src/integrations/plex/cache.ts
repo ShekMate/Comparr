@@ -1,6 +1,6 @@
 // cache/plexCache.ts - Fast Plex availability checking
 import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
-import { allMovies } from '../../api/plex.ts'
+import { getAllMovies } from '../../api/plex.ts'
 
 interface PlexMovieEntry {
   title: string
@@ -77,7 +77,7 @@ export async function buildPlexCache(): Promise<void> {
     log.info('🔄 Building Plex availability cache...')
     const startTime = Date.now()
     
-    const movies = await allMovies
+    const movies = await getAllMovies()
     
     // Clear existing cache
     cache.byTitleYear.clear()
