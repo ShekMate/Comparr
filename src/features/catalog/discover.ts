@@ -1,9 +1,11 @@
 import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
 
-const TMDB = Deno.env.get("TMDB_API_KEY");
-const DEFAULT_DISCOVER_REGION = 'US';
-const DEFAULT_DISCOVER_LANGUAGES = ['en'];
-const DEFAULT_DISCOVER_YEAR_MIN = 1970;
+import { getTmdbApiKey } from '../../core/config.ts'
+
+const getTmdbKey = () => getTmdbApiKey()
+const DEFAULT_DISCOVER_REGION = 'US'
+const DEFAULT_DISCOVER_LANGUAGES = ['en']
+const DEFAULT_DISCOVER_YEAR_MIN = 1970
 
 // Type definitions
 interface DiscoverFilters {
@@ -36,9 +38,9 @@ interface TMDbDiscoverResult {
 }
 
 async function j(url: string) {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(`HTTP ${r.status} for ${url}`);
-  return r.json();
+  const r = await fetch(url)
+  if (!r.ok) throw new Error(`HTTP ${r.status} for ${url}`)
+  return r.json()
 }
 
 // Map UI streaming service names to TMDb provider IDs (US region)
@@ -51,9 +53,10 @@ const STREAMING_PROVIDER_MAP: Record<string, number> = {
   'paramount-plus': 531,
   'peacock': 387,
   'apple-tv-plus': 350
-};
+}
 
 export async function discoverMovies(filters: DiscoverFilters): Promise<TMDbDiscoverResult> {
+  const TMDB = getTmdbKey()
   if (!TMDB) return { results: [] };
 
   const params = new URLSearchParams({

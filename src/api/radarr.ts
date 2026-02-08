@@ -1,4 +1,4 @@
-import { RADARR_URL, RADARR_API_KEY } from '../core/config.ts'
+import { getRadarrApiKey, getRadarrUrl } from '../core/config.ts'
 import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
 
 interface RadarrMovie {
@@ -16,16 +16,18 @@ const CACHE_DURATION = 24 * 60 * 60 * 1000 // 24 hours in milliseconds
 const MAX_RADARR_CACHE_SIZE = 10000 // Supports libraries up to 10,000 movies
 
 async function fetchRadarrMovies(): Promise<RadarrMovie[]> {
-  if (!RADARR_URL || !RADARR_API_KEY) {
+  const radarrUrl = getRadarrUrl()
+  const radarrApiKey = getRadarrApiKey()
+  if (!radarrUrl || !radarrApiKey) {
     log.warning('Radarr URL or API key not configured')
     return []
   }
 
   try {
     log.info('Fetching movie library from Radarr...')
-    const response = await fetch(`${RADARR_URL}/api/v3/movie`, {
+    const response = await fetch(`${radarrUrl}/api/v3/movie`, {
       headers: {
-        'X-Api-Key': RADARR_API_KEY,
+        'X-Api-Key': radarrApiKey,
       },
     })
 
