@@ -220,6 +220,9 @@ function initTabs() {
   const dropdown = document.querySelector('.dropdown')
   const dropdownToggle = document.querySelector('.dropdown-toggle')
   const dropdownItems = document.querySelectorAll('.dropdown-item')
+  const settingsToggle = document.querySelector('.sidebar-settings-toggle')
+  const settingsWrapper = document.querySelector('.sidebar-settings')
+  const settingsSubitems = document.querySelectorAll('.sidebar-subitem')
 
   // PREVENT DUPLICATE EVENT LISTENERS
   const initMarker = sidebar || tabbar
@@ -282,9 +285,31 @@ function initTabs() {
     }
   }
 
+  settingsToggle?.addEventListener('click', () => {
+    settingsWrapper?.classList.toggle('is-open')
+    const expanded = settingsWrapper?.classList.contains('is-open')
+    if (settingsToggle) {
+      settingsToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false')
+    }
+  })
+
+  settingsSubitems.forEach(item => {
+    item.addEventListener('click', () => {
+      const targetId = item.dataset.settingsTarget
+      if (targetId) {
+        document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        settingsSubitems.forEach(el => el.classList.toggle('is-active', el === item))
+      }
+    })
+  })
+
   // Attach click handlers to all buttons (sidebar and tabbar)
   allButtons.forEach(btn => btn.addEventListener('click', () => {
     handleTabClick(btn.dataset.tab);
+    if (btn.dataset.tab !== 'tab-settings' && settingsWrapper?.classList.contains('is-open')) {
+      settingsWrapper?.classList.remove('is-open')
+      settingsToggle?.setAttribute('aria-expanded', 'false')
+    }
   }))
 
   // Dropdown item switching
@@ -468,6 +493,10 @@ function toggleSettingsVisibility(canAccess) {
   settingsButtons.forEach(btn => {
     btn.style.display = canAccess ? '' : 'none'
   })
+  const settingsWrapper = document.querySelector('.sidebar-settings')
+  if (settingsWrapper) {
+    settingsWrapper.style.display = canAccess ? '' : 'none'
+  }
 
   const settingsPanel = document.getElementById('tab-settings')
   if (!canAccess) {

@@ -133,12 +133,20 @@
 		    <i class="fas fa-eye"></i>
 		    <span>Seen</span>
 		  </button>
-          <div class="sidebar-nav-bottom">
-            <button class="sidebar-item sidebar-item-settings" data-tab="tab-settings">
-              <i class="fas fa-cog"></i>
-              <span>Settings</span>
-            </button>
-          </div>
+		  <div class="sidebar-settings">
+		    <button class="sidebar-item sidebar-settings-toggle" data-tab="tab-settings" aria-expanded="false" aria-controls="sidebar-settings-menu">
+		      <i class="fas fa-cog"></i>
+		      <span>Settings</span>
+		      <i class="fas fa-chevron-right sidebar-settings-caret" aria-hidden="true"></i>
+		    </button>
+		    <div class="sidebar-settings-menu" id="sidebar-settings-menu">
+		      <button class="sidebar-subitem" data-tab="tab-settings" data-settings-target="settings-core">Core</button>
+		      <button class="sidebar-subitem" data-tab="tab-settings" data-settings-target="settings-plex">Plex</button>
+		      <button class="sidebar-subitem" data-tab="tab-settings" data-settings-target="settings-metadata">Metadata</button>
+		      <button class="sidebar-subitem" data-tab="tab-settings" data-settings-target="settings-request-services">Request Services</button>
+		      <button class="sidebar-subitem" data-tab="tab-settings" data-settings-target="settings-security">Security</button>
+		    </div>
+		  </div>
 	    </div>
 	  </nav>
 
@@ -1188,7 +1196,7 @@
             </button>
           </div>
 
-          <div class="settings-section">
+          <div class="settings-section" id="settings-core">
             <h4>Core</h4>
             <div class="settings-field">
               <label for="setting-port">Port <span class="settings-badge">Restart required</span></label>
@@ -1221,7 +1229,7 @@
             </div>
           </div>
 
-          <div class="settings-section">
+          <div class="settings-section" id="settings-plex">
             <h4>Plex</h4>
             <div class="settings-field">
               <label for="setting-plex-url">Plex URL</label>
@@ -1258,7 +1266,7 @@
             </div>
           </div>
 
-          <div class="settings-section">
+          <div class="settings-section" id="settings-metadata">
             <h4>Metadata</h4>
             <div class="settings-field">
               <label for="setting-tmdb-key">TMDb API Key</label>
@@ -1277,7 +1285,7 @@
             </div>
           </div>
 
-          <div class="settings-section">
+          <div class="settings-section" id="settings-request-services">
             <h4>Request Services</h4>
             <div class="settings-field">
               <label for="setting-radarr-url">Radarr URL</label>
@@ -1311,7 +1319,7 @@
             </div>
           </div>
 
-          <div class="settings-section">
+          <div class="settings-section" id="settings-security">
             <h4>Security</h4>
             <div class="settings-field">
               <label for="setting-access-password">Access Password</label>
