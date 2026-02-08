@@ -1,4 +1,9 @@
-import { JELLYSEERR_URL, JELLYSEERR_API_KEY, OVERSEERR_URL, OVERSEERR_API_KEY } from '../core/config.ts'
+import {
+  getJellyseerrApiKey,
+  getJellyseerrUrl,
+  getOverseerrApiKey,
+  getOverseerrUrl,
+} from '../core/config.ts'
 import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
 
 interface RequestResponse {
@@ -16,8 +21,8 @@ interface MediaStatus {
 
 // Validate configuration on startup
 const validateConfiguration = () => {
-  const jellyseerrConfigured = !!(JELLYSEERR_URL && JELLYSEERR_API_KEY)
-  const overseerrConfigured = !!(OVERSEERR_URL && OVERSEERR_API_KEY)
+  const jellyseerrConfigured = !!(getJellyseerrUrl() && getJellyseerrApiKey())
+  const overseerrConfigured = !!(getOverseerrUrl() && getOverseerrApiKey())
   
   if (jellyseerrConfigured && overseerrConfigured) {
     log.warning('⚠️  Both Jellyseerr and Overseerr are configured! Only one should be set.')
@@ -35,8 +40,12 @@ const validateConfiguration = () => {
 
 // Determine which service is configured
 const getServiceConfig = () => {
-  const jellyseerrConfigured = !!(JELLYSEERR_URL && JELLYSEERR_API_KEY)
-  const overseerrConfigured = !!(OVERSEERR_URL && OVERSEERR_API_KEY)
+  const jellyseerrUrl = getJellyseerrUrl()
+  const jellyseerrApiKey = getJellyseerrApiKey()
+  const overseerrUrl = getOverseerrUrl()
+  const overseerrApiKey = getOverseerrApiKey()
+  const jellyseerrConfigured = !!(jellyseerrUrl && jellyseerrApiKey)
+  const overseerrConfigured = !!(overseerrUrl && overseerrApiKey)
   
   // Prioritize Jellyseerr if both are configured
   if (jellyseerrConfigured && overseerrConfigured) {
@@ -44,9 +53,9 @@ const getServiceConfig = () => {
   }
   
   if (jellyseerrConfigured) {
-    return { url: JELLYSEERR_URL, apiKey: JELLYSEERR_API_KEY, service: 'jellyseerr' }
+    return { url: jellyseerrUrl!, apiKey: jellyseerrApiKey!, service: 'jellyseerr' }
   } else if (overseerrConfigured) {
-    return { url: OVERSEERR_URL, apiKey: OVERSEERR_API_KEY, service: 'overseerr' }
+    return { url: overseerrUrl!, apiKey: overseerrApiKey!, service: 'overseerr' }
   }
   return null
 }

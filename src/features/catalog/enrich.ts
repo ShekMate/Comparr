@@ -4,10 +4,10 @@
 // The local IMDb database is sourced from daily IMDb dataset dumps.
 
 import { getIMDbRating } from "./imdb-datasets.ts";
+import { getOmdbApiKey, getPlexLibraryName, getTmdbApiKey } from '../../core/config.ts'
 
-const OMDB = Deno.env.get("OMDB_API_KEY");
-const TMDB = Deno.env.get("TMDB_API_KEY");
-const PLEX_LIBRARY_NAME = Deno.env.get('PLEX_LIBRARY_NAME') || 'Plex';
+const getOmdbKey = () => getOmdbApiKey()
+const getTmdbKey = () => getTmdbApiKey()
 const tmdbCache = new Map<string, any>()
 const tmdbSearchCache = new Map<string, any>()
 const redactUrl = (u: string) => u.replace(/(api_key|apikey|token|key)=([^&]+)/gi, '$1=***');
@@ -58,6 +58,7 @@ async function j(url: string, label = "fetch") {
 }
 
 async function omdbById(id: string) {
+  const OMDB = getOmdbKey()
   if (!OMDB || !id) {
     console.log(`[enrich] omdbById skip: api=${!!OMDB} id=${!!id}`);
     return null as any;
@@ -77,6 +78,7 @@ async function omdbById(id: string) {
 }
 
 async function omdbByTitle(t: string, y?: number | null) {
+  const OMDB = getOmdbKey()
   if (!OMDB || !t) {
     console.log(`[enrich] omdbByTitle skip: api=${!!OMDB} title=${!!t}`);
     return null as any;
@@ -93,6 +95,7 @@ async function omdbByTitle(t: string, y?: number | null) {
 }
 
 async function tmdbSearchMovie(title: string, year?: number | null) {
+  const TMDB = getTmdbKey()
   if (!TMDB || !title) {
     console.log(`[enrich] tmdbSearchMovie skip: api=${!!TMDB} title=${!!title}`);
     return null as any;
@@ -117,6 +120,7 @@ async function tmdbSearchMovie(title: string, year?: number | null) {
 }
 
 async function tmdbMovieDetails(id: number) {
+  const TMDB = getTmdbKey()
   if (!TMDB || !id) {
     console.log(`[enrich] tmdbMovieDetails skip: api=${!!TMDB} id=${!!id}`);
     return null as any;
@@ -294,10 +298,11 @@ export async function enrich({
         year
       });
       
-      if (inPlex && !streamingServices.subscription.some(s => s.name === PLEX_LIBRARY_NAME)) {
+      const plexLibraryName = getPlexLibraryName() || 'Plex'
+      if (inPlex && !streamingServices.subscription.some(s => s.name === plexLibraryName)) {
         streamingServices.subscription.unshift({
           id: 0,
-          name: PLEX_LIBRARY_NAME,
+          name: plexLibraryName,
           logo_path: '/assets/logos/allvids.svg',
           type: 'subscription'
         });
@@ -433,10 +438,11 @@ export async function enrich({
       year
     });
     
-    if (inPlex && !streamingServices.subscription.some(s => s.name === PLEX_LIBRARY_NAME)) {
+    const plexLibraryName = getPlexLibraryName() || 'Plex'
+    if (inPlex && !streamingServices.subscription.some(s => s.name === plexLibraryName)) {
       streamingServices.subscription.unshift({
         id: 0,
-        name: PLEX_LIBRARY_NAME,
+        name: plexLibraryName,
         logo_path: '/assets/logos/allvids.svg',
         type: 'subscription'
       });
