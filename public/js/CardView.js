@@ -96,20 +96,20 @@ export default class CardView {
           <div class="button-wrapper">
             <button type="button" class="rate-thumbs-down" aria-label="Thumbs down" onclick="this.closest('.card')._handleDown(event)">
               <i class="fas fa-thumbs-down"></i>
+              <span class="button-label">Pass</span>
             </button>
-            <span class="button-label">Pass</span>
           </div>
           <div class="button-wrapper">
             <button type="button" class="rate-seen" aria-label="Mark as seen" onclick="this.closest('.card')._handleSeen(event)">
               <i class="fas fa-eye"></i>
+              <span class="button-label">Seen</span>
             </button>
-            <span class="button-label">Seen</span>
           </div>
           <div class="button-wrapper">
             <button type="button" class="rate-thumbs-up" aria-label="Thumbs up" onclick="this.closest('.card')._handleUp(event)">
               <i class="fas fa-thumbs-up"></i>
+              <span class="button-label">Watch</span>
             </button>
-            <span class="button-label">Watch</span>
           </div>
         </div>
       </div>

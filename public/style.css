@@ -151,11 +151,6 @@ body:not(.is-logged-in) .card-stack:empty::after {
    3) SIDEBAR NAVIGATION - Sonarr-style
    ========================================================= */
 
-/* Main app layout with sidebar */
-body.is-logged-in .app {
-  flex-direction: row;
-}
-
 .sidebar {
   position: fixed;
   left: 0;
@@ -164,7 +159,7 @@ body.is-logged-in .app {
   width: 200px;
   background: var(--color-surface);
   border-right: 1px solid var(--color-line);
-  display: flex;
+  display: none;
   flex-direction: column;
   z-index: 1000;
   overflow-y: auto;
@@ -231,18 +226,13 @@ body.is-logged-in .app {
   font-size: 1rem;
 }
 
-/* Main content area offset for sidebar */
-body.is-logged-in .tab-panel,
-body.is-logged-in .login-section {
-  margin-left: 200px;
-}
-
-body.is-logged-in footer {
-  margin-left: 200px;
-}
-
 /* Desktop: Show sidebar, hide tabbar */
 @media (min-width: 769px) {
+  /* Main app layout with sidebar */
+  body.is-logged-in .app {
+    flex-direction: row;
+  }
+
   .tabbar {
     display: none !important;
   }
@@ -250,16 +240,41 @@ body.is-logged-in footer {
   .sidebar {
     display: flex;
   }
+
+  /* Main content area offset for sidebar */
+  body.is-logged-in .tab-panel,
+  body.is-logged-in .login-section {
+    margin-left: 200px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  body.is-logged-in footer {
+    margin-left: 200px;
+  }
 }
 
 /* Mobile: Show tabbar, hide sidebar */
 @media (max-width: 768px) {
-  .sidebar {
+  /* High specificity rule to absolutely ensure sidebar is hidden on mobile */
+  html body nav.sidebar,
+  html body .sidebar,
+  nav.sidebar,
+  .sidebar,
+  #sidebar {
     display: none !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    max-width: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    position: absolute !important;
+    left: -9999px !important;
   }
 
   .tabbar {
     display: flex !important;
+    visibility: visible !important;
   }
 
   body.is-logged-in .tab-panel,
@@ -568,17 +583,14 @@ body.is-logged-in footer {
 
 .rate-controls .button-wrapper {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.05rem !important;
+  justify-content: center;
 }
 
 .rate-controls button {
   all: unset;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  font-size: 1.5rem;
+  border-radius: 999px;
+  font-size: 0.95rem;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -586,19 +598,23 @@ body.is-logged-in footer {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.9rem;
   touch-action: manipulation;
   -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
 }
 
 .rate-controls .button-label {
-  font-size: 0.7rem;
-  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  color: inherit;
   text-align: center;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-top: 0 !important;
-  padding-top: 0 !important;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+.rate-controls button i {
+  font-size: 1rem;
 }
 
 .rate-thumbs-up {
@@ -1010,7 +1026,7 @@ body.is-logged-in footer {
   width: 100%;
   padding: 0 2rem;
   margin: 0 auto;
-  max-width: 1200px;
+  max-width: none;
 }
 
 /* Disable collapse behavior on matches */
@@ -2238,17 +2254,32 @@ body.is-logged-in footer {
 /* =========================================================
    10) WATCH LISTS - Dropdown Button Layout
    ========================================================= */
-.watch-list-container {
-  padding: 0 2rem 2rem;
-  max-width: 1200px;
+.watch-list-layout {
+  width: 100%;
+  max-width: none;
   margin: 0 auto;
+  padding: 0 2rem 2rem;
+}
+
+.watch-list-container {
+  padding: 0;
+  max-width: none;
+  margin: 0;
+  width: 100%;
+}
+
+.watch-list-header,
+.seen-list-header {
+  max-width: none;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .watch-list-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 2rem;
+  padding: 0;
   margin-bottom: 1rem;
   flex-wrap: wrap;
   gap: 0.25rem;
@@ -2368,6 +2399,7 @@ body.is-logged-in footer {
   display: flex;
   flex-direction: column;
   gap: 0.5rem; /* Tighter spacing */
+  width: 100%;
 }
 
 /* Pass List & Seen List */
@@ -2376,6 +2408,7 @@ body.is-logged-in footer {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  width: 100%;
 }
 
 /* List Action Buttons */
@@ -2481,6 +2514,7 @@ body.is-logged-in footer {
   z-index: 1;
   overflow: visible; /* CHANGED from hidden to visible */
   width: 100%; /* Ensure collapsed cards span full width */
+  align-self: stretch;
 }
 
 .watch-card:hover {
@@ -2500,6 +2534,9 @@ body.is-logged-in footer {
   cursor: pointer;
   padding: 0.75rem 1rem;
   transition: background 0.2s;
+  width: 100%;
+  display: block;
+  box-sizing: border-box;
 }
 
 .watch-card-collapsed:hover {
@@ -2551,6 +2588,16 @@ body.is-logged-in footer {
   font-weight: 400;
 }
 
+@media (min-width: 601px) {
+  .watch-card-title-compact {
+    font-size: 0.9rem;
+  }
+
+  .watch-card-year {
+    font-size: 0.85rem;
+  }
+}
+
 .expand-icon {
   color: var(--color-text-muted);
   font-size: 0.75rem;
@@ -2582,8 +2629,8 @@ body.is-logged-in footer {
 }
 
 .watch-card-poster img {
-  width: 100px;
-  height: 150px;
+  width: 56.25px;
+  height: 84.375px;
   border-radius: var(--radius-md);
   object-fit: cover;
   box-shadow: var(--shadow-sm);
@@ -2790,8 +2837,8 @@ body.is-logged-in footer {
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
-  background: transparent;
-  border: 1px solid transparent;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
   border-radius: var(--radius-md);
   min-width: 200px;
   max-height: 300px;
@@ -2827,7 +2874,7 @@ body.is-logged-in footer {
 }
 
 .service-item:hover {
-  background: transparent;
+  background: var(--color-surface-light);
   color: var(--color-text-primary);
 }
 
@@ -2966,7 +3013,7 @@ body.is-logged-in footer {
 
 /* Mobile: Compact collapsible cards */
 @media (max-width: 600px) {
-  .watch-list-container {
+  .watch-list-layout {
     padding: 0 1rem 1rem;
   }
   
@@ -2987,8 +3034,8 @@ body.is-logged-in footer {
   }
   
   .watch-card-poster img {
-    width: 80px;
-    height: 120px;
+    width: 60px;
+    height: 90px;
   }
   
   .watch-card-actions {
@@ -3372,50 +3419,47 @@ footer {
   
   .rate-controls {
     padding: 0 0.3rem !important;
-    gap: 3rem !important;
+    gap: 0.6rem !important;
     display: flex !important;
     justify-content: center !important;
-    align-items: flex-start !important;
+    align-items: center !important;
   }
   
   .rate-controls .button-wrapper {
     display: flex !important;
-    flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 0.05rem !important;
-    min-width: 60px !important;
+    gap: 0 !important;
+    min-width: auto !important;
 	position: relative !important;
     z-index: 999 !important;
     pointer-events: auto !important;
   }
   
   .rate-controls button {
-    width: 60px !important;
-    height: 32px !important;
-    font-size: 1.25rem !important;
-    min-width: 60px !important;
-    min-height: 32px !important;
-    padding: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    font-size: 0.85rem !important;
+    min-width: auto !important;
+    min-height: auto !important;
+    padding: 0.35rem 0.7rem !important;
     margin: 0 !important;
     position: relative !important;
     z-index: 999 !important;
   }
   
   .rate-controls .button-label {
-    font-size: 0.65rem !important;
-    color: #cbd5e1 !important;
-    display: block !important;
+    font-size: 0.75rem !important;
+    color: inherit !important;
+    display: inline-flex !important;
     visibility: visible !important;
-    font-weight: 500 !important;
+    font-weight: 600 !important;
     text-align: center !important;
-    width: 100% !important;
+    width: auto !important;
     margin: 0 !important;
-	margin-top: -0.5rem !important;
     padding: 0 !important;
-	padding-bottom: 0.3rem !important;
     line-height: 1.2 !important;
-    letter-spacing: 0 !important;
+    letter-spacing: 0.02em !important;
   }
    
   /* Matches Mobile */
@@ -3650,7 +3694,7 @@ footer {
     width: 100%;
     max-width: none;
     justify-content: flex-start !important;
-    gap: 9.75rem !important;
+    gap: 1.5rem !important;
     padding: 1.5rem 0 2rem 0 !important;
     margin-top: auto;
     border-radius: 0;
@@ -3711,21 +3755,22 @@ footer {
   }
 
   .rate-controls .button-wrapper {
-    gap: 0rem !important;
+    gap: 0 !important;
     align-items: center !important;
   }
 
   .rate-controls button {
-    width: 56px !important;
-    height: 56px !important;
-    font-size: 1.8rem !important;
+    width: auto !important;
+    height: auto !important;
+    font-size: 1rem !important;
     justify-content: center !important;
     border: 2px solid rgba(255, 255, 255, 0.2) !important;
+    padding: 0.5rem 1.1rem !important;
   }
 
   .rate-controls .button-label {
-    margin-top: -0.25rem !important;
-    font-size: 0.7rem !important;
+    margin-top: 0 !important;
+    font-size: 0.85rem !important;
     text-align: center !important;
   }
 
@@ -3887,8 +3932,8 @@ footer {
   }
 
   .watch-card.expanded .watch-card-poster img {
-    width: 300px !important;
-    height: 450px !important;
+    width: 172px !important;
+    height: 258px !important;
     object-fit: cover;
   }
 
@@ -3935,7 +3980,11 @@ footer {
   }
 
   .watch-card-title-compact {
-    font-size: 1.25rem !important;
+    font-size: 0.95rem !important;
+  }
+
+  .watch-card-year {
+    font-size: 0.85rem !important;
   }
 
   .watch-card-ratings {
@@ -4333,26 +4382,32 @@ footer {
 /* =========================================================
    IMDb Import - Seen List Header
    ========================================================= */
-.seen-list-header {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 0 2rem;
-  margin-bottom: 1rem;
+#tab-seen .watch-list-layout {
   position: relative;
 }
 
+.seen-list-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  padding: 0;
+  margin-bottom: 1rem;
+}
+
 .seen-list-header h3 {
+  grid-column: 2;
   margin: 0;
   text-align: center;
 }
 
 .seen-header-actions {
+  position: absolute;
+  top: 0;
+  right: 2rem;
   display: flex;
   align-items: center;
+  justify-self: end;
   gap: 0.5rem;
-  position: absolute;
-  right: 2rem;
 }
 
 .imdb-import-btn {
@@ -4547,7 +4602,8 @@ footer {
 /* Mobile responsive for seen list header & import panel */
 @media (max-width: 600px) {
   .seen-list-header {
-    padding: 0 1rem;
+    padding: 0;
+    display: flex;
     flex-direction: column;
     align-items: stretch;
     gap: 0.5rem;
@@ -4559,7 +4615,11 @@ footer {
 
   .seen-header-actions {
     position: static;
+    top: auto;
+    right: auto;
+    transform: none;
     justify-content: center;
+    margin-bottom: 0.5rem;
   }
 
   .imdb-import-panel {

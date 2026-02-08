@@ -7,7 +7,7 @@
     <title>Comparr</title>
 
     <!-- Load CSS from site root (/public is web root) -->
-    <link rel="stylesheet" href="${ROOT_PATH}/style.css?v=20250202c">
+    <link rel="stylesheet" href="${ROOT_PATH}/style.css?v=20250202d">
     <!-- Font Awesome Icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="icon" type="image/x-icon" href="${ROOT_PATH}/assets/icons/favicon.ico">
@@ -113,7 +113,6 @@
 		    <i class="fas fa-arrows-h"></i>
 		    <span>Swipe</span>
 		  </button>
-		  <div class="sidebar-section-label">Ratings</div>
 		  <button class="sidebar-item" data-tab="tab-matches">
 		    <i class="fas fa-heart"></i>
 		    <span>Matches</span>
@@ -588,41 +587,43 @@
 
       <!-- ===== Liked panel ===== -->
       <section class="tab-panel" id="tab-likes" hidden>
-        <div class="watch-list-header">
-		  <h3>
-			<i class="fas fa-thumbs-up" style="color: var(--color-success); margin-right: 0.5rem;"></i>
-			Watch List
-		  </h3>
-		  <div class="sort-controls">
-			<div class="sort-controls-wrapper">
-                          <select id="watch-sort" class="watch-sort-dropdown">
-                                <option value="date">Date Added</option>
-                                <option value="release_date">Release Date</option>
-                                <option value="title">Title</option>
-                                <option value="popularity">Popularity</option>
-                                <option value="vote_count">Votes</option>
-                                <option value="imdb">IMDb Rating</option>
-                                <option value="rt">Rotten Tomatoes Rating</option>
-                                <option value="tmdb">TMDb Rating</option>
-                          </select>
-			  <button id="watch-sort-direction" class="sort-direction-btn" type="button" title="Sort Direction">
-				↓
-			  </button>
-			</div>
-			<button id="toggle-expand-all-btn" class="expand-collapse-btn" title="Expand All">
-			  <i class="fas fa-chevron-down"></i>
-			</button>
-			<button id="watch-filter-btn" style="padding: 0.5rem; background: rgba(51, 65, 85, 0.5); color: white; border: 1px solid rgba(51, 65, 85, 0.5); border-radius: var(--radius-md); cursor: pointer; font-size: 0.85rem; transition: all 0.3s ease;">
-			  <i class="fas fa-filter"></i>
-			</button>
-			<button id="refresh-watch-btn" style="padding: 0.5rem 1rem; background: var(--gradient-primary); color: white; border: none; border-radius: var(--radius-md); cursor: pointer; font-size: 0.85rem;">
-			  <i class="fas fa-sync-alt"></i>
-			</button>
-		  </div>
-		</div>
-        <div class="watch-list-container">
-          <div class="watch-list likes-list">
-            <!-- Movies will be inserted here as cards -->
+        <div class="watch-list-layout">
+          <div class="watch-list-header">
+            <h3>
+              <i class="fas fa-thumbs-up" style="color: var(--color-success); margin-right: 0.5rem;"></i>
+              Watch List
+            </h3>
+            <div class="sort-controls">
+              <div class="sort-controls-wrapper">
+                <select id="watch-sort" class="watch-sort-dropdown">
+                  <option value="date">Date Added</option>
+                  <option value="release_date">Release Date</option>
+                  <option value="title">Title</option>
+                  <option value="popularity">Popularity</option>
+                  <option value="vote_count">Votes</option>
+                  <option value="imdb">IMDb Rating</option>
+                  <option value="rt">Rotten Tomatoes Rating</option>
+                  <option value="tmdb">TMDb Rating</option>
+                </select>
+                <button id="watch-sort-direction" class="sort-direction-btn" type="button" title="Sort Direction">
+                  ↓
+                </button>
+              </div>
+              <button id="toggle-expand-all-btn" class="expand-collapse-btn" title="Expand All">
+                <i class="fas fa-chevron-down"></i>
+              </button>
+              <button id="watch-filter-btn" style="padding: 0.5rem; background: rgba(51, 65, 85, 0.5); color: white; border: 1px solid rgba(51, 65, 85, 0.5); border-radius: var(--radius-md); cursor: pointer; font-size: 0.85rem; transition: all 0.3s ease;">
+                <i class="fas fa-filter"></i>
+              </button>
+              <button id="refresh-watch-btn" style="padding: 0.5rem 1rem; background: var(--gradient-primary); color: white; border: none; border-radius: var(--radius-md); cursor: pointer; font-size: 0.85rem;">
+                <i class="fas fa-sync-alt"></i>
+              </button>
+            </div>
+          </div>
+          <div class="watch-list-container">
+            <div class="watch-list likes-list">
+              <!-- Movies will be inserted here as cards -->
+            </div>
           </div>
         </div>
       </section>
@@ -1083,75 +1084,79 @@
 
       <!-- ===== Pass panel ===== -->
       <section class="tab-panel" id="tab-dislikes" hidden>
-        <h3>
-          <i class="fas fa-thumbs-down" style="color: var(--color-error); margin-right: 0.5rem;"></i>
-          Pass List
-        </h3>
-        <div class="watch-list-container">
-          <div class="watch-list dislikes-list">
-            <!-- Movies will be inserted here as cards -->
+        <div class="watch-list-layout">
+          <h3>
+            <i class="fas fa-thumbs-down" style="color: var(--color-error); margin-right: 0.5rem;"></i>
+            Pass List
+          </h3>
+          <div class="watch-list-container">
+            <div class="watch-list dislikes-list">
+              <!-- Movies will be inserted here as cards -->
+            </div>
           </div>
         </div>
       </section>
 	  
-	  <!-- ===== Seen panel ===== -->
+      <!-- ===== Seen panel ===== -->
       <section class="tab-panel" id="tab-seen" hidden>
-        <div class="seen-list-header">
-          <h3>
-            <i class="fas fa-eye" style="color: var(--color-warning); margin-right: 0.5rem;"></i>
-            Seen List
-          </h3>
+        <div class="watch-list-layout">
+          <div class="seen-list-header">
+            <h3>
+              <i class="fas fa-eye" style="color: var(--color-warning); margin-right: 0.5rem;"></i>
+              Seen List
+            </h3>
+          </div>
           <div class="seen-header-actions">
             <button id="imdb-import-btn" class="imdb-import-btn" title="Sync watched movies from IMDb">
               <img src="${ROOT_PATH}/assets/logos/imdb.svg" alt="IMDb" class="imdb-import-logo">
               Sync
             </button>
           </div>
-        </div>
-        <!-- IMDb import panel (toggled by Sync button) -->
-        <div id="imdb-import-panel" class="imdb-import-panel" style="display: none;">
-          <div class="imdb-import-panel-inner">
-            <div class="imdb-import-url-section">
-              <label for="imdb-url-input" class="imdb-import-label">Paste a public IMDb list or ratings URL</label>
-              <div class="imdb-url-row">
-                <input
-                  type="url"
-                  id="imdb-url-input"
-                  class="imdb-url-input"
-                  placeholder="https://www.imdb.com/list/ls012345678/"
-                >
-                <button id="imdb-url-sync-btn" class="imdb-url-sync-btn">
-                  <i class="fas fa-sync-alt"></i> Sync
-                </button>
+          <!-- IMDb import panel (toggled by Sync button) -->
+          <div id="imdb-import-panel" class="imdb-import-panel" style="display: none;">
+            <div class="imdb-import-panel-inner">
+              <div class="imdb-import-url-section">
+                <label for="imdb-url-input" class="imdb-import-label">Paste a public IMDb list or ratings URL</label>
+                <div class="imdb-url-row">
+                  <input
+                    type="url"
+                    id="imdb-url-input"
+                    class="imdb-url-input"
+                    placeholder="https://www.imdb.com/list/ls012345678/"
+                  >
+                  <button id="imdb-url-sync-btn" class="imdb-url-sync-btn">
+                    <i class="fas fa-sync-alt"></i> Sync
+                  </button>
+                </div>
+                <p class="imdb-import-hint">
+                  Supports list, ratings, or watchlist URLs.
+                  The list must be set to <strong>public</strong> on IMDb.
+                </p>
               </div>
-              <p class="imdb-import-hint">
-                Supports list, ratings, or watchlist URLs.
-                The list must be set to <strong>public</strong> on IMDb.
-              </p>
+              <div class="imdb-import-divider">
+                <span>or</span>
+              </div>
+              <div class="imdb-import-csv-section">
+                <button id="imdb-csv-upload-btn" class="imdb-csv-upload-btn">
+                  <i class="fas fa-file-upload"></i> Upload IMDb CSV export
+                </button>
+                <input type="file" id="imdb-csv-input" accept=".csv" style="display: none;">
+              </div>
             </div>
-            <div class="imdb-import-divider">
-              <span>or</span>
-            </div>
-            <div class="imdb-import-csv-section">
-              <button id="imdb-csv-upload-btn" class="imdb-csv-upload-btn">
-                <i class="fas fa-file-upload"></i> Upload IMDb CSV export
-              </button>
-              <input type="file" id="imdb-csv-input" accept=".csv" style="display: none;">
-            </div>
-          </div>
-          <!-- Progress bar -->
-          <div id="imdb-import-progress" class="imdb-import-progress" style="display: none;">
-            <div class="imdb-import-progress-text">
-              <span id="imdb-import-status">Importing...</span>
-            </div>
-            <div class="imdb-import-progress-bar">
-              <div id="imdb-import-bar" class="imdb-import-bar"></div>
+            <!-- Progress bar -->
+            <div id="imdb-import-progress" class="imdb-import-progress" style="display: none;">
+              <div class="imdb-import-progress-text">
+                <span id="imdb-import-status">Importing...</span>
+              </div>
+              <div class="imdb-import-progress-bar">
+                <div id="imdb-import-bar" class="imdb-import-bar"></div>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="watch-list-container">
-          <div class="watch-list seen-list">
-            <!-- Movies will be inserted here as cards -->
+          <div class="watch-list-container">
+            <div class="watch-list seen-list">
+              <!-- Movies will be inserted here as cards -->
+            </div>
           </div>
         </div>
       </section>

@@ -56,18 +56,16 @@ export class MatchesView {
     }
     
     this.matchesCountEl.dataset.count = this.matches.length
-    this.matches.sort((a, b) => b.users.length - a.users.length)
+    this.matches.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
     
-    // Debug: Log first match to see data structure
-    if (this.matches.length > 0) {
-      console.log('📊 Sample match data:', JSON.parse(JSON.stringify(this.matches[0])))
-    }
-    
+    const currentUser = sessionStorage.getItem('userName')
     this.matchesListEl.innerHTML = this.matches
       .map(({ users, movie }) => {
         const basePath = document.body.dataset.basePath
         const posterUrl = movie.art || movie.thumb || ''
-        
+        const otherUsers = currentUser ? users.filter(u => u !== currentUser) : users
+        const displayUsers = otherUsers.length > 0 ? otherUsers : users
+
         return `
       <div class="watch-card" data-guid="${movie.guid}">
         <!-- Header with title and matched users -->
@@ -80,7 +78,7 @@ export class MatchesView {
           </div>
           <div class="watch-card-metadata">
             <i class="fas fa-users"></i>
-            Matched with ${this.formatList(users)}
+            Matched with ${this.formatList(displayUsers)}
           </div>
         </div>
         
@@ -375,7 +373,7 @@ export class MatchesView {
       this.render()
     }
     
-    // Send action to server to remove match for all users
+    // Send action to server
     try {
       const response = await fetch('/api/match-action', {
         method: 'POST',
