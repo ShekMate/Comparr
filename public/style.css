@@ -4785,6 +4785,12 @@ footer {
   border-radius: var(--radius-md);
 }
 
+.settings-field select option,
+.settings-field select optgroup {
+  background: var(--color-surface);
+  color: #fff;
+}
+
 .settings-field input:focus,
 .settings-field select:focus {
   outline: 2px solid rgba(99, 102, 241, 0.35);
