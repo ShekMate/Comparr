@@ -244,15 +244,27 @@ log.info(`  OMDB_API_KEY: ${getOmdbApiKey() ? '✅ Set' : '❌ Missing'}`)
 log.info(`  PLEX_URL: ${getPlexUrl() ? '✅ Set' : '❌ Missing'}`)
 log.info(`  PLEX_TOKEN: ${getPlexToken() ? '✅ Set' : '❌ Missing'}`)
 
+const isPrivateNetwork = (hostname: string) => {
+  if (!hostname) return false
+  if (hostname.startsWith('::ffff:')) {
+    hostname = hostname.replace('::ffff:', '')
+  }
+  if (hostname === '127.0.0.1' || hostname === '::1' || hostname === '0:0:0:0:0:0:0:1') {
+    return true
+  }
+  if (hostname.startsWith('10.')) return true
+  if (hostname.startsWith('192.168.')) return true
+  if (hostname.startsWith('172.')) {
+    const octet = Number(hostname.split('.')[1] ?? '0')
+    return octet >= 16 && octet <= 31
+  }
+  return false
+}
+
 const isLocalRequest = (req: typeof server extends AsyncIterable<infer R> ? R : any) => {
   const remote = req?.conn?.remoteAddr as Deno.NetAddr | undefined
   const hostname = remote?.hostname ?? ''
-  return (
-    hostname === '127.0.0.1' ||
-    hostname === '::1' ||
-    hostname === '0:0:0:0:0:0:0:1' ||
-    hostname === '::ffff:127.0.0.1'
-  )
+  return isPrivateNetwork(hostname)
 }
 
 for await (const req of server) {
