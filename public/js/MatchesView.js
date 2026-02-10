@@ -68,22 +68,19 @@ export class MatchesView {
 
         return `
       <div class="watch-card" data-guid="${movie.guid}">
-        <!-- Header with title and matched users -->
-        <div class="watch-card-collapsed" style="cursor: default;">
+        <!-- Collapsed header (always visible) -->
+        <div class="watch-card-collapsed" onclick="this.closest('.watch-card').classList.toggle('expanded')">
           <div class="watch-card-header-compact">
             <div class="watch-card-title-compact">
               ${movie.title}
               ${movie.year ? `<span class="watch-card-year">(${movie.year})</span>` : ''}
             </div>
-          </div>
-          <div class="watch-card-metadata">
-            <i class="fas fa-users"></i>
-            Matched with ${this.formatList(displayUsers)}
+            <div class="expand-icon"><i class="fas fa-chevron-down"></i></div>
           </div>
         </div>
         
-        <!-- Details (always visible, not collapsible) -->
-        <div class="watch-card-details" style="display: block;">
+        <!-- Expandable details (hidden by default) -->
+        <div class="watch-card-details">
           ${posterUrl ? `
           <div class="watch-card-poster">
             <img src="${posterUrl.startsWith('http') ? posterUrl : basePath + posterUrl}" alt="${movie.title} poster" />
@@ -95,25 +92,31 @@ export class MatchesView {
             <p class="watch-card-summary">${movie.summary}</p>
             ` : ''}
 
+            <div class="watch-card-metadata">
+              <i class="fas fa-users"></i>
+              Matched with ${this.formatList(displayUsers)}
+            </div>
+
             ${this.renderWatchCardMetadata(movie)}
 
             <div class="watch-card-actions">
               ${this.renderWatchCardStreamingButton(movie)}
               ${this.renderWatchCardPlexButton(movie)}
-              <div class="list-actions inline-actions">
-                <button class="list-action-btn move-to-seen" title="Mark as Watched" data-guid="${movie.guid}">
-                  <i class="fas fa-eye"></i>
-                </button>
-                <button class="list-action-btn move-to-pass" title="Pass" data-guid="${movie.guid}">
-                  <i class="fas fa-times"></i>
-                </button>
-                <button class="list-action-btn refresh-movie-btn" title="Refresh" data-guid="${movie.guid}">
-                  <i class="fas fa-sync-alt"></i>
-                </button>
-              </div>
               ${movie.rating ? `
               <div class="watch-card-ratings">${movie.rating}</div>
               ` : ''}
+            </div>
+
+            <div class="list-actions">
+              <button class="list-action-btn move-to-seen" title="Mark as Watched" data-guid="${movie.guid}">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button class="list-action-btn move-to-pass" title="Pass" data-guid="${movie.guid}">
+                <i class="fas fa-times"></i>
+              </button>
+              <button class="list-action-btn refresh-movie-btn" title="Refresh" data-guid="${movie.guid}">
+                <i class="fas fa-sync-alt"></i>
+              </button>
             </div>
           </div>
         </div>
