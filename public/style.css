@@ -1008,7 +1008,10 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .matches-section .watch-card-summary,
 .matches-section .watch-card-content,
-.matches-section .watch-card-metadata {
+.matches-section .watch-card-metadata,
+.matches-section .watch-card-collapsed,
+.matches-section .watch-card-header-compact,
+.matches-section .watch-card-title-compact {
   text-align: left;
 }
 
