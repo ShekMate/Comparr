@@ -35,7 +35,6 @@ jobs:
 
       - name: Run Backend Tests (Deno)
         run: npm run test:backend
-        continue-on-error: true
         env:
           PLEX_URL: http://localhost:32400
           PLEX_TOKEN: test-token
@@ -47,7 +46,6 @@ jobs:
 
       - name: Run Frontend Tests (Vitest)
         run: npm run test:frontend
-        continue-on-error: true
 
       - name: Generate Backend Coverage
         run: npm run coverage:backend
@@ -139,4 +137,3 @@ jobs:
 
       - name: Run linters
         run: npm run lint
-        continue-on-error: true
