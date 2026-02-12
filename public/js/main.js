@@ -335,6 +335,7 @@ function initTabs() {
       if (!targetId) return
       handleTabClick('tab-settings')
       setActiveSettingsSection(targetId, titleText)
+      mobileSettingsItems.forEach(el => el.classList.toggle('active', el.dataset.settingsTarget === targetId))
       mobileSettingsDropdown?.classList.remove('show')
     })
   })
