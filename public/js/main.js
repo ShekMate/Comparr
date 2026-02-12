@@ -313,6 +313,7 @@ function initTabs() {
       section.toggleAttribute('hidden', !isActive)
     })
     settingsSubitems.forEach(el => el.classList.toggle('is-active', el.dataset.settingsTarget === targetId))
+    mobileSettingsItems.forEach(el => el.classList.toggle('active', el.dataset.settingsTarget === targetId))
     if (settingsTitle && titleText) {
       settingsTitle.textContent = titleText
     }
