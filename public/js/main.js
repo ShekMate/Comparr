@@ -2,72 +2,87 @@
 // deno-lint-ignore-file
 
 import { ComparrAPI } from './ComparrAPI.js'
-import CardView from './CardView.js?v=3';
+import CardView from './CardView.js?v=3'
 import { MatchesView } from './MatchesView.js'
 
 // Global API reference so functions outside main() can access it
-let api;
+let api
 
 // ===== ADD THESE HELPER FUNCTIONS HERE =====
 
 // --- Normalize any legacy poster paths to our canonical local proxy
 function normalizePoster(u) {
-  if (!u) return '';
+  if (!u) return ''
   // Strip known local prefixes so we can inspect the core path
-  let core = u;
-  if (core.startsWith('/tmdb-poster/')) core = core.slice('/tmdb-poster'.length);
-  if (core.startsWith('/poster/'))      core = core.slice('/poster'.length);
+  let core = u
+  if (core.startsWith('/tmdb-poster/')) core = core.slice('/tmdb-poster'.length)
+  if (core.startsWith('/poster/')) core = core.slice('/poster'.length)
 
   // Detect raw Plex thumb IDs like "/74101/thumb/1760426051" and avoid proxying them as TMDb posters
-  if (/^\/\d+\/thumb\/\d+/.test(core)) return '';
-  
-  if (u.startsWith('/cached-poster/') || u.startsWith('/tmdb-poster/')) return u;   // already good
-  if (u.startsWith('/poster/')) return '/tmdb-poster/' + u.slice('/poster/'.length); // legacy -> canonical
-  if (u.startsWith('http://') || u.startsWith('https://')) return u;                // full CDN URL
-  return '/tmdb-poster' + (u.startsWith('/') ? u : '/' + u);                        // raw TMDB path
+  if (/^\/\d+\/thumb\/\d+/.test(core)) return ''
+
+  if (u.startsWith('/cached-poster/') || u.startsWith('/tmdb-poster/')) return u // already good
+  if (u.startsWith('/poster/'))
+    return '/tmdb-poster/' + u.slice('/poster/'.length) // legacy -> canonical
+  if (u.startsWith('http://') || u.startsWith('https://')) return u // full CDN URL
+  return '/tmdb-poster' + (u.startsWith('/') ? u : '/' + u) // raw TMDB path
 }
 
 // Helper function to get genre names from IDs
 function getGenreNames(genreIds) {
   const genreMap = {
-    28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy',
-    80: 'Crime', 99: 'Documentary', 18: 'Drama', 10751: 'Family',
-    14: 'Fantasy', 36: 'History', 27: 'Horror', 10402: 'Music',
-    9648: 'Mystery', 10749: 'Romance', 878: 'Sci-Fi', 10770: 'TV Movie',
-    53: 'Thriller', 10752: 'War', 37: 'Western'
-  };
-  return (genreIds || []).map(id => genreMap[id]).filter(Boolean);
+    28: 'Action',
+    12: 'Adventure',
+    16: 'Animation',
+    35: 'Comedy',
+    80: 'Crime',
+    99: 'Documentary',
+    18: 'Drama',
+    10751: 'Family',
+    14: 'Fantasy',
+    36: 'History',
+    27: 'Horror',
+    10402: 'Music',
+    9648: 'Mystery',
+    10749: 'Romance',
+    878: 'Sci-Fi',
+    10770: 'TV Movie',
+    53: 'Thriller',
+    10752: 'War',
+    37: 'Western',
+  }
+  return (genreIds || []).map(id => genreMap[id]).filter(Boolean)
 }
 
 // Helper function to format runtime
 function formatRuntime(minutes) {
-  if (!minutes) return null;
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
+  if (!minutes) return null
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
   if (hours > 0) {
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
   }
-  return `${mins}m`;
+  return `${mins}m`
 }
 // ===== END OF HELPER FUNCTIONS =====
 
 // ===== FUNNY LOADING MESSAGES =====
 const funnyLoadingMessages = [
-  "Reticulating popcorn kernels...",
+  'Reticulating popcorn kernels...',
   "Checking if it's better than the book...",
   "Convincing directors to release the director's cut...",
-  "Asking Michael Bay to add more explosions...",
-  "Waiting for post-credits scene...",
-  "Rewinding VHS tapes...",
-  "Adjusting the tracking on the VCR...",
-  "Pretending to understand avant-garde cinema...",
-  "Counting plot holes..."
-];
+  'Asking Michael Bay to add more explosions...',
+  'Waiting for post-credits scene...',
+  'Rewinding VHS tapes...',
+  'Adjusting the tracking on the VCR...',
+  'Pretending to understand avant-garde cinema...',
+  'Counting plot holes...',
+]
 
 // Get a random loading message
 function getRandomLoadingMessage() {
-  const randomIndex = Math.floor(Math.random() * funnyLoadingMessages.length);
-  return funnyLoadingMessages[randomIndex];
+  const randomIndex = Math.floor(Math.random() * funnyLoadingMessages.length)
+  return funnyLoadingMessages[randomIndex]
 }
 // ===== END OF FUNNY LOADING MESSAGES =====
 
@@ -75,51 +90,96 @@ function getRandomLoadingMessage() {
 // Helper function to get display names for various filter types
 const filterDisplayNames = {
   // Genres
-  28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy',
-  80: 'Crime', 99: 'Documentary', 18: 'Drama', 10751: 'Family',
-  14: 'Fantasy', 36: 'History', 27: 'Horror', 10402: 'Music',
-  9648: 'Mystery', 10749: 'Romance', 878: 'Science Fiction', 10770: 'TV Movie',
-  53: 'Thriller', 10752: 'War', 37: 'Western',
-  
-  // Languages
-  'en': 'English', 'es': 'Spanish', 'fr': 'French', 'de': 'German',
-  'it': 'Italian', 'pt': 'Portuguese', 'ja': 'Japanese', 'ko': 'Korean',
-  'zh': 'Chinese', 'hi': 'Hindi', 'ar': 'Arabic', 'ru': 'Russian',
-  'nl': 'Dutch', 'sv': 'Swedish', 'no': 'Norwegian',
-  
-  // Countries
-  'US': 'United States', 'GB': 'United Kingdom', 'CA': 'Canada',
-  'AU': 'Australia', 'FR': 'France', 'DE': 'Germany', 'ES': 'Spain',
-  'IT': 'Italy', 'JP': 'Japan', 'KR': 'South Korea', 'CN': 'China',
-  'IN': 'India', 'BR': 'Brazil', 'MX': 'Mexico', 'NL': 'Netherlands',
-  'SE': 'Sweden', 'NO': 'Norway', 'DK': 'Denmark'
-};
+  28: 'Action',
+  12: 'Adventure',
+  16: 'Animation',
+  35: 'Comedy',
+  80: 'Crime',
+  99: 'Documentary',
+  18: 'Drama',
+  10751: 'Family',
+  14: 'Fantasy',
+  36: 'History',
+  27: 'Horror',
+  10402: 'Music',
+  9648: 'Mystery',
+  10749: 'Romance',
+  878: 'Science Fiction',
+  10770: 'TV Movie',
+  53: 'Thriller',
+  10752: 'War',
+  37: 'Western',
 
-const DEFAULT_YEAR_MIN = 2000;
-const DEFAULT_VOTE_COUNT = 25;
-const DEFAULT_LANGUAGES = []; // Start with no language filter to show all movies
+  // Languages
+  en: 'English',
+  es: 'Spanish',
+  fr: 'French',
+  de: 'German',
+  it: 'Italian',
+  pt: 'Portuguese',
+  ja: 'Japanese',
+  ko: 'Korean',
+  zh: 'Chinese',
+  hi: 'Hindi',
+  ar: 'Arabic',
+  ru: 'Russian',
+  nl: 'Dutch',
+  sv: 'Swedish',
+  no: 'Norwegian',
+
+  // Countries
+  US: 'United States',
+  GB: 'United Kingdom',
+  CA: 'Canada',
+  AU: 'Australia',
+  FR: 'France',
+  DE: 'Germany',
+  ES: 'Spain',
+  IT: 'Italy',
+  JP: 'Japan',
+  KR: 'South Korea',
+  CN: 'China',
+  IN: 'India',
+  BR: 'Brazil',
+  MX: 'Mexico',
+  NL: 'Netherlands',
+  SE: 'Sweden',
+  NO: 'Norway',
+  DK: 'Denmark',
+}
+
+const DEFAULT_YEAR_MIN = 2000
+const DEFAULT_VOTE_COUNT = 25
+const DEFAULT_LANGUAGES = [] // Start with no language filter to show all movies
 
 // Update dropdown button text based on selected items
-function updateDropdownButtonText(buttonId, selectedItems, placeholderText, mapFunction = null) {
-  const button = document.getElementById(buttonId);
-  if (!button) return;
-  
-  const arrow = '<span class="dropdown-arrow">&#9660;</span>';
-  
+function updateDropdownButtonText(
+  buttonId,
+  selectedItems,
+  placeholderText,
+  mapFunction = null
+) {
+  const button = document.getElementById(buttonId)
+  if (!button) return
+
+  const arrow = '<span class="dropdown-arrow">&#9660;</span>'
+
   if (!selectedItems || selectedItems.length === 0) {
-    button.innerHTML = `${placeholderText} ${arrow}`;
-    return;
+    button.innerHTML = `${placeholderText} ${arrow}`
+    return
   }
-  
+
   // Map items to display names if provided
-  const displayItems = mapFunction ? selectedItems.map(mapFunction) : selectedItems;
-  
+  const displayItems = mapFunction
+    ? selectedItems.map(mapFunction)
+    : selectedItems
+
   if (displayItems.length === 1) {
-    button.innerHTML = `${displayItems[0]} ${arrow}`;
+    button.innerHTML = `${displayItems[0]} ${arrow}`
   } else if (displayItems.length === 2) {
-    button.innerHTML = `${displayItems[0]}, ${displayItems[1]} ${arrow}`;
+    button.innerHTML = `${displayItems[0]}, ${displayItems[1]} ${arrow}`
   } else {
-    button.innerHTML = `${displayItems.length} selected ${arrow}`;
+    button.innerHTML = `${displayItems.length} selected ${arrow}`
   }
 }
 
@@ -129,8 +189,8 @@ function updateGenreButton(selectedGenres) {
     'genre-dropdown-toggle',
     selectedGenres,
     'Select Genres',
-    (genreId) => filterDisplayNames[genreId] || 'Unknown'
-  );
+    genreId => filterDisplayNames[genreId] || 'Unknown'
+  )
 }
 
 // Update language dropdown button
@@ -139,8 +199,8 @@ function updateLanguageButton(selectedLanguages) {
     'language-dropdown-toggle',
     selectedLanguages,
     'Select Languages',
-    (langCode) => filterDisplayNames[langCode] || langCode.toUpperCase()
-  );
+    langCode => filterDisplayNames[langCode] || langCode.toUpperCase()
+  )
 }
 
 // Update country dropdown button
@@ -149,8 +209,8 @@ function updateCountryButton(selectedCountries) {
     'country-dropdown-toggle',
     selectedCountries,
     'Select Countries',
-    (countryCode) => filterDisplayNames[countryCode] || countryCode
-  );
+    countryCode => filterDisplayNames[countryCode] || countryCode
+  )
 }
 
 // Watch filter modal button updates
@@ -159,8 +219,8 @@ function updateWatchGenreButton(selectedGenres) {
     'watch-genre-toggle',
     selectedGenres,
     'Select Genres',
-    (genreId) => filterDisplayNames[genreId] || 'Unknown'
-  );
+    genreId => filterDisplayNames[genreId] || 'Unknown'
+  )
 }
 
 function updateWatchLanguageButton(selectedLanguages) {
@@ -168,8 +228,8 @@ function updateWatchLanguageButton(selectedLanguages) {
     'watch-language-toggle',
     selectedLanguages,
     'Select Languages',
-    (langCode) => filterDisplayNames[langCode] || langCode.toUpperCase()
-  );
+    langCode => filterDisplayNames[langCode] || langCode.toUpperCase()
+  )
 }
 
 function updateWatchCountryButton(selectedCountries) {
@@ -177,8 +237,8 @@ function updateWatchCountryButton(selectedCountries) {
     'watch-country-toggle',
     selectedCountries,
     'Select Countries',
-    (countryCode) => filterDisplayNames[countryCode] || countryCode
-  );
+    countryCode => filterDisplayNames[countryCode] || countryCode
+  )
 }
 
 // Update content rating dropdown button
@@ -187,8 +247,8 @@ function updateContentRatingButton(selectedRatings) {
     'rating-dropdown-toggle',
     selectedRatings,
     'Select Ratings',
-    (rating) => rating
-  );
+    rating => rating
+  )
 }
 
 // Watch filter modal content rating button update
@@ -197,8 +257,8 @@ function updateWatchContentRatingButton(selectedRatings) {
     'watch-rating-toggle',
     selectedRatings,
     'Select Ratings',
-    (rating) => rating
-  );
+    rating => rating
+  )
 }
 // ===== END DROPDOWN BUTTON TEXT UPDATE FUNCTIONS =====
 
@@ -217,10 +277,18 @@ function initTabs() {
   const allButtons = [...sidebarButtons, ...tabbarButtons]
 
   // Dropdown support (for mobile tabbar)
-  const dropdown = document.querySelector('.tabbar .dropdown:not(.mobile-settings-dropdown)')
-  const dropdownToggle = document.querySelector('.tabbar .dropdown:not(.mobile-settings-dropdown) .dropdown-toggle')
-  const dropdownItems = document.querySelectorAll('.tabbar .dropdown:not(.mobile-settings-dropdown) .dropdown-item')
-  const mobileSettingsDropdown = document.querySelector('.mobile-settings-dropdown')
+  const dropdown = document.querySelector(
+    '.tabbar .dropdown:not(.mobile-settings-dropdown)'
+  )
+  const dropdownToggle = document.querySelector(
+    '.tabbar .dropdown:not(.mobile-settings-dropdown) .dropdown-toggle'
+  )
+  const dropdownItems = document.querySelectorAll(
+    '.tabbar .dropdown:not(.mobile-settings-dropdown) .dropdown-item'
+  )
+  const mobileSettingsDropdown = document.querySelector(
+    '.mobile-settings-dropdown'
+  )
   const mobileSettingsToggle = document.querySelector('.mobile-settings-toggle')
   const mobileSettingsItems = document.querySelectorAll('.mobile-settings-item')
   const settingsToggle = document.querySelector('.sidebar-settings-toggle')
@@ -235,15 +303,23 @@ function initTabs() {
 
   const activate = id => {
     // Update all buttons in both sidebar and tabbar
-    allButtons.forEach(b => b.classList.toggle('is-active', b.dataset.tab === id))
+    allButtons.forEach(b =>
+      b.classList.toggle('is-active', b.dataset.tab === id)
+    )
     if (dropdownItems) {
-      dropdownItems.forEach(item => item.classList.toggle('active', item.dataset.tab === id))
+      dropdownItems.forEach(item =>
+        item.classList.toggle('active', item.dataset.tab === id)
+      )
     }
-    panels.forEach(p => { p.hidden = (p.id !== id) })
+    panels.forEach(p => {
+      p.hidden = p.id !== id
+    })
 
     // Update dropdown toggle text if a dropdown item is active
     if (dropdownToggle && dropdownItems) {
-      const activeDropdownItem = Array.from(dropdownItems).find(item => item.dataset.tab === id)
+      const activeDropdownItem = Array.from(dropdownItems).find(
+        item => item.dataset.tab === id
+      )
       if (activeDropdownItem) {
         dropdownToggle.innerHTML = `<i class="fas fa-star"></i> ${activeDropdownItem.textContent}`
         dropdownToggle.classList.add('is-active')
@@ -259,7 +335,7 @@ function initTabs() {
   }
 
   // Handle dropdown toggle
-  dropdownToggle?.addEventListener('click', (e) => {
+  dropdownToggle?.addEventListener('click', e => {
     e.stopPropagation()
     dropdown.classList.toggle('show')
     mobileSettingsDropdown?.classList.remove('show')
@@ -280,23 +356,23 @@ function initTabs() {
   }
 
   // Tab switching handler
-  const handleTabClick = (tabId) => {
-    activate(tabId);
+  const handleTabClick = tabId => {
+    activate(tabId)
 
     // Handle Watch list auto-refresh
     if (tabId === 'tab-likes') {
-      startWatchListAutoRefresh();
-      setTimeout(refreshWatchListStatus, 500);
+      startWatchListAutoRefresh()
+      setTimeout(refreshWatchListStatus, 500)
       // Reset expand/collapse button state
       if (typeof resetExpandCollapseButton === 'function') {
-        resetExpandCollapseButton();
+        resetExpandCollapseButton()
       }
     } else if (tabId === 'tab-matches') {
       if (typeof window.refreshMatchesList === 'function') {
-        window.refreshMatchesList();
+        window.refreshMatchesList()
       }
     } else {
-      stopWatchListAutoRefresh();
+      stopWatchListAutoRefresh()
     }
   }
 
@@ -317,9 +393,14 @@ function initTabs() {
       const isActive = section.id === targetId
       section.toggleAttribute('hidden', !isActive)
     })
-    settingsSubitems.forEach(el => el.classList.toggle('is-active', el.dataset.settingsTarget === targetId))
+    settingsSubitems.forEach(el =>
+      el.classList.toggle('is-active', el.dataset.settingsTarget === targetId)
+    )
     mobileSettingsItems.forEach(el => {
-      el.classList.toggle('active', highlightMobileItem && el.dataset.settingsTarget === targetId)
+      el.classList.toggle(
+        'active',
+        highlightMobileItem && el.dataset.settingsTarget === targetId
+      )
     })
     if (settingsTitle && titleText) {
       settingsTitle.textContent = titleText
@@ -342,26 +423,33 @@ function initTabs() {
       if (!targetId) return
       handleTabClick('tab-settings')
       setActiveSettingsSection(targetId, titleText)
-      mobileSettingsItems.forEach(el => el.classList.toggle('active', el.dataset.settingsTarget === targetId))
+      mobileSettingsItems.forEach(el =>
+        el.classList.toggle('active', el.dataset.settingsTarget === targetId)
+      )
       mobileSettingsDropdown?.classList.remove('show')
     })
   })
 
   // Attach click handlers to all buttons (sidebar and tabbar)
-  allButtons.forEach(btn => btn.addEventListener('click', () => {
-    handleTabClick(btn.dataset.tab);
-    if (btn.dataset.tab !== 'tab-settings' && settingsWrapper?.classList.contains('is-open')) {
-      settingsWrapper?.classList.remove('is-open')
-      settingsToggle?.setAttribute('aria-expanded', 'false')
-    }
-  }))
+  allButtons.forEach(btn =>
+    btn.addEventListener('click', () => {
+      handleTabClick(btn.dataset.tab)
+      if (
+        btn.dataset.tab !== 'tab-settings' &&
+        settingsWrapper?.classList.contains('is-open')
+      ) {
+        settingsWrapper?.classList.remove('is-open')
+        settingsToggle?.setAttribute('aria-expanded', 'false')
+      }
+    })
+  )
 
   // Dropdown item switching
   if (dropdownItems) {
     dropdownItems.forEach(item => {
       item.addEventListener('click', () => {
-        handleTabClick(item.dataset.tab);
-        dropdown?.classList.remove('show');
+        handleTabClick(item.dataset.tab)
+        dropdown?.classList.remove('show')
       })
     })
   }
@@ -375,142 +463,152 @@ function initTabs() {
     const firstTarget = settingsSubitems[0].dataset.settingsTarget
     const firstTitle = settingsSubitems[0].dataset.settingsTitle
     if (firstTarget) {
-      setActiveSettingsSection(firstTarget, firstTitle, { highlightMobileItem: false })
+      setActiveSettingsSection(firstTarget, firstTitle, {
+        highlightMobileItem: false,
+      })
     }
   }
-  
+
   // Handle refresh button click
-  const refreshBtn = document.getElementById('refresh-watch-btn');
+  const refreshBtn = document.getElementById('refresh-watch-btn')
   if (refreshBtn && !refreshBtn.dataset.initialized) {
     refreshBtn.addEventListener('click', async () => {
-      refreshBtn.disabled = true;
-      const icon = refreshBtn.querySelector('i');
-      icon.classList.add('fa-spin');
-      
-      await refreshWatchListStatus();
-      
-      icon.classList.remove('fa-spin');
-      refreshBtn.disabled = false;
-    });
-    
-    refreshBtn.dataset.initialized = 'true';
+      refreshBtn.disabled = true
+      const icon = refreshBtn.querySelector('i')
+      icon.classList.add('fa-spin')
+
+      await refreshWatchListStatus()
+
+      icon.classList.remove('fa-spin')
+      refreshBtn.disabled = false
+    })
+
+    refreshBtn.dataset.initialized = 'true'
   }
-} 
+}
 
 function sortWatchList(sortBy) {
-  console.log('🔧 sortWatchList called with:', sortBy);
-  
-  const likesList = document.querySelector('.likes-list');
+  console.log('🔧 sortWatchList called with:', sortBy)
+
+  const likesList = document.querySelector('.likes-list')
   if (!likesList) {
-    console.warn('⚠️ .likes-list not found!');
-    return;
+    console.warn('⚠️ .likes-list not found!')
+    return
   }
-  
-  const cards = Array.from(likesList.querySelectorAll('.watch-card'));
-  console.log('🔍 Found cards:', cards.length);
-  
+
+  const cards = Array.from(likesList.querySelectorAll('.watch-card'))
+  console.log('🔍 Found cards:', cards.length)
+
   // Store original order for date sorting
   if (!likesList.dataset.originalOrder) {
-    likesList.dataset.originalOrder = cards.map(c => c.dataset.guid).join(',');
+    likesList.dataset.originalOrder = cards.map(c => c.dataset.guid).join(',')
   }
-  
+
   // Parse sortBy into field and direction
-  let sortField, sortDirection;
+  let sortField, sortDirection
   if (sortBy.includes('-')) {
     // New format: "field-direction"
-    const parts = sortBy.split('-');
-    sortField = parts[0];
-    sortDirection = parts[1];
+    const parts = sortBy.split('-')
+    sortField = parts[0]
+    sortDirection = parts[1]
   } else {
     // Old format: keep for backwards compatibility
-    sortField = sortBy;
-    sortDirection = 'desc';
+    sortField = sortBy
+    sortDirection = 'desc'
   }
-  
+
   cards.sort((a, b) => {
-    const titleA = a.querySelector('.watch-card-title-compact').textContent.trim();
-    const titleB = b.querySelector('.watch-card-title-compact').textContent.trim();
-    
-    const yearA = parseInt(a.querySelector('.watch-card-year').textContent.match(/\d+/)?.[0] || 0);
-    const yearB = parseInt(b.querySelector('.watch-card-year').textContent.match(/\d+/)?.[0] || 0);
-    
+    const titleA = a
+      .querySelector('.watch-card-title-compact')
+      .textContent.trim()
+    const titleB = b
+      .querySelector('.watch-card-title-compact')
+      .textContent.trim()
+
+    const yearA = parseInt(
+      a.querySelector('.watch-card-year').textContent.match(/\d+/)?.[0] || 0
+    )
+    const yearB = parseInt(
+      b.querySelector('.watch-card-year').textContent.match(/\d+/)?.[0] || 0
+    )
+
     // Extract all three ratings
-    const getRatings = (card) => {
-      const ratingEl = card.querySelector('.watch-card-ratings');
-      if (!ratingEl) return { imdb: 0, rt: 0, tmdb: 0 };
-      
-      const innerHTML = ratingEl.innerHTML;
-      
+    const getRatings = card => {
+      const ratingEl = card.querySelector('.watch-card-ratings')
+      if (!ratingEl) return { imdb: 0, rt: 0, tmdb: 0 }
+
+      const innerHTML = ratingEl.innerHTML
+
       // Extract IMDb rating: <img src="..." alt="IMDb"> 7.5
-      const imdbMatch = innerHTML.match(/imdb\.svg[^>]*>\s*([\d.]+)/i);
-      const imdb = imdbMatch ? parseFloat(imdbMatch[1]) : 0;
-      
+      const imdbMatch = innerHTML.match(/imdb\.svg[^>]*>\s*([\d.]+)/i)
+      const imdb = imdbMatch ? parseFloat(imdbMatch[1]) : 0
+
       // Extract RT rating: <img src="..." alt="RT"> 85%
-      const rtMatch = innerHTML.match(/rottentomatoes\.svg[^>]*>\s*([\d.]+)%/i);
-      const rt = rtMatch ? parseFloat(rtMatch[1]) : 0;
-      
+      const rtMatch = innerHTML.match(/rottentomatoes\.svg[^>]*>\s*([\d.]+)%/i)
+      const rt = rtMatch ? parseFloat(rtMatch[1]) : 0
+
       // Extract TMDb rating: <img src="..." alt="TMDb"> 7.5
-      const tmdbMatch = innerHTML.match(/tmdb\.svg[^>]*>\s*([\d.]+)/i);
-      const tmdb = tmdbMatch ? parseFloat(tmdbMatch[1]) : 0;
-      
-      return { imdb, rt, tmdb };
-    };
-    
-    const ratingsA = getRatings(a);
-    const ratingsB = getRatings(b);
-    
+      const tmdbMatch = innerHTML.match(/tmdb\.svg[^>]*>\s*([\d.]+)/i)
+      const tmdb = tmdbMatch ? parseFloat(tmdbMatch[1]) : 0
+
+      return { imdb, rt, tmdb }
+    }
+
+    const ratingsA = getRatings(a)
+    const ratingsB = getRatings(b)
+
     // Get popularity and vote count from data attributes
-    const popularityA = parseFloat(a.dataset.popularity || 0);
-    const popularityB = parseFloat(b.dataset.popularity || 0);
-    const votesA = parseInt(a.dataset.voteCount || 0);
-    const votesB = parseInt(b.dataset.voteCount || 0);
-    
-    let result = 0;
-    
+    const popularityA = parseFloat(a.dataset.popularity || 0)
+    const popularityB = parseFloat(b.dataset.popularity || 0)
+    const votesA = parseInt(a.dataset.voteCount || 0)
+    const votesB = parseInt(b.dataset.voteCount || 0)
+
+    let result = 0
+
     // Determine sort based on field
-    switch(sortField) {
+    switch (sortField) {
       case 'title':
-        result = titleA.localeCompare(titleB);
-        break;
+        result = titleA.localeCompare(titleB)
+        break
       case 'year':
       case 'release_date':
-        result = yearA - yearB;
-        break;
+        result = yearA - yearB
+        break
       case 'imdb':
-        result = ratingsA.imdb - ratingsB.imdb;
-        break;
+        result = ratingsA.imdb - ratingsB.imdb
+        break
       case 'rt':
-        result = ratingsA.rt - ratingsB.rt;
-        break;
+        result = ratingsA.rt - ratingsB.rt
+        break
       case 'tmdb':
-        result = ratingsA.tmdb - ratingsB.tmdb;
-        break;
+        result = ratingsA.tmdb - ratingsB.tmdb
+        break
       case 'popularity':
-        result = popularityA - popularityB;
-        break;
+        result = popularityA - popularityB
+        break
       case 'vote_count':
-        result = votesA - votesB;
-        break;
+        result = votesA - votesB
+        break
       case 'date':
         // Use original insertion order
-        const originalOrder = likesList.dataset.originalOrder.split(',');
-        const indexA = originalOrder.indexOf(a.dataset.guid);
-        const indexB = originalOrder.indexOf(b.dataset.guid);
-        result = indexA - indexB;
-        break;
+        const originalOrder = likesList.dataset.originalOrder.split(',')
+        const indexA = originalOrder.indexOf(a.dataset.guid)
+        const indexB = originalOrder.indexOf(b.dataset.guid)
+        result = indexA - indexB
+        break
       default:
-        result = 0;
+        result = 0
     }
-    
+
     // Apply direction (asc = normal, desc = reverse)
-    return sortDirection === 'asc' ? result : -result;
-  });
-  
+    return sortDirection === 'asc' ? result : -result
+  })
+
   // CRITICAL FIX: Remove all cards first, then re-add in sorted order
-  cards.forEach(card => card.remove());
-  cards.forEach(card => likesList.appendChild(card));
-  
-  console.log('✅ Sort complete!');
+  cards.forEach(card => card.remove())
+  cards.forEach(card => likesList.appendChild(card))
+
+  console.log('✅ Sort complete!')
 }
 
 /* --------------------- settings --------------------- */
@@ -553,7 +651,9 @@ function toggleSettingsVisibility(canAccess) {
   if (!canAccess) {
     settingsPanel?.setAttribute('hidden', '')
     settingsPanel?.classList.remove('is-active')
-    const activeSettings = document.querySelector('[data-tab="tab-settings"].is-active')
+    const activeSettings = document.querySelector(
+      '[data-tab="tab-settings"].is-active'
+    )
     if (activeSettings) {
       document.querySelector('[data-tab="tab-swipe"]')?.click()
     }
@@ -635,11 +735,13 @@ async function setupSettingsUI() {
     return
   }
   await hydrateSettingsForm()
-  document.querySelector('.settings-save-btn')?.addEventListener('click', saveSettingsForm)
+  document
+    .querySelector('.settings-save-btn')
+    ?.addEventListener('click', saveSettingsForm)
 }
 
 // Make it globally available
-window.sortWatchList = sortWatchList;
+window.sortWatchList = sortWatchList
 
 /* ------------- login (prevents page nav) -------- */
 async function login(api) {
@@ -663,10 +765,10 @@ async function login(api) {
       verifiedPassword = accessPassword
       passwordForm.style.display = 'none'
       loginForm.style.display = 'block'
-      
+
       // Scroll to top of page
       window.scrollTo({ top: 0, behavior: 'smooth' })
-      
+
       // restore cached values
       const savedUser = localStorage.getItem('user')
       const savedCode = localStorage.getItem('roomCode')
@@ -681,7 +783,10 @@ async function login(api) {
   // Generate code
   generateBtn?.addEventListener('click', () => {
     const map = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789'
-    const code = Array.from({ length: 4 }, () => map[Math.floor(Math.random() * map.length)]).join('')
+    const code = Array.from(
+      { length: 4 },
+      () => map[Math.floor(Math.random() * map.length)]
+    ).join('')
     loginForm.elements.roomCode.value = code
   })
 
@@ -699,7 +804,10 @@ async function login(api) {
         loginForm.removeEventListener('submit', handleSubmit)
 
         // hide login
-        await loginSection.animate({ opacity: ['1','0'] }, { duration: 250, easing: 'ease-in-out', fill: 'both' }).finished
+        await loginSection.animate(
+          { opacity: ['1', '0'] },
+          { duration: 250, easing: 'ease-in-out', fill: 'both' }
+        ).finished
         loginSection.hidden = true
 
         // remember
@@ -711,11 +819,17 @@ async function login(api) {
 
         // reveal app sections
         await Promise.all(
-          [...document.querySelectorAll('.rate-section, .matches-section, #tab-likes, #tab-dislikes')]
-            .map(node => {
-              node.hidden = false
-              return node.animate({ opacity: ['0','1'] }, { duration: 250, easing: 'ease-in-out', fill: 'both' }).finished
-            })
+          [
+            ...document.querySelectorAll(
+              '.rate-section, .matches-section, #tab-likes, #tab-dislikes'
+            ),
+          ].map(node => {
+            node.hidden = false
+            return node.animate(
+              { opacity: ['0', '1'] },
+              { duration: 250, easing: 'ease-in-out', fill: 'both' }
+            ).finished
+          })
         )
 
         initTabs()
@@ -736,234 +850,284 @@ async function login(api) {
 // Given server history, append rows to Watch/Pass tab UIs.
 // Replace the appendRatedRow function in main.js with this updated version
 
-async function appendRatedRow({ basePath, likesList, dislikesList, seenList }, movie, wantsToWatch) {
-  if (!movie) return;
-  
+async function appendRatedRow(
+  { basePath, likesList, dislikesList, seenList },
+  movie,
+  wantsToWatch
+) {
+  if (!movie) return
+
   if (wantsToWatch === true) {
-    const cardId = `movie-${movie.guid.replace(/[^a-zA-Z0-9]/g, '-')}`;
-    
+    const cardId = `movie-${movie.guid.replace(/[^a-zA-Z0-9]/g, '-')}`
+
     // Extract TMDb ID or IMDb ID from guid if available
-    let movieId = null;
-    let tmdbId = null; // Separate variable for numeric TMDb ID
-    
+    let movieId = null
+    let tmdbId = null // Separate variable for numeric TMDb ID
+
     if (movie.guid?.startsWith('tmdb://')) {
-      movieId = movie.guid.replace('tmdb://', '');
-      tmdbId = movieId; // TMDb ID is the same as movieId for tmdb:// guids
+      movieId = movie.guid.replace('tmdb://', '')
+      tmdbId = movieId // TMDb ID is the same as movieId for tmdb:// guids
     } else if (movie.guid?.includes('themoviedb://')) {
-      const match = movie.guid.match(/themoviedb:\/\/(\d+)/);
+      const match = movie.guid.match(/themoviedb:\/\/(\d+)/)
       if (match) {
-        movieId = match[1];
-        tmdbId = match[1];
+        movieId = match[1]
+        tmdbId = match[1]
       }
     } else if (movie.guid?.includes('imdb://')) {
-      const match = movie.guid.match(/imdb:\/\/(tt\d+)/);
-      if (match) movieId = match[1]; // This will be like "tt1234567"
+      const match = movie.guid.match(/imdb:\/\/(tt\d+)/)
+      if (match) movieId = match[1] // This will be like "tt1234567"
     } else if (movie.imdbId) {
-      movieId = movie.imdbId; // Use stored IMDb ID
+      movieId = movie.imdbId // Use stored IMDb ID
     }
-    
+
     // Also check for TMDb ID stored directly on the movie object (from enrichment)
     if (!tmdbId && (movie.tmdbId || movie.tmdb_id)) {
-      tmdbId = String(movie.tmdbId || movie.tmdb_id);
+      tmdbId = String(movie.tmdbId || movie.tmdb_id)
     }
-    
+
     // FALLBACK: Extract TMDb ID from streamingLink if available
     if (!tmdbId && movie.streamingLink) {
-      const match = movie.streamingLink.match(/themoviedb\.org\/movie\/(\d+)/);
+      const match = movie.streamingLink.match(/themoviedb\.org\/movie\/(\d+)/)
       if (match) {
-        tmdbId = match[1];
-        console.log(`  Extracted TMDb ID ${tmdbId} from streamingLink for ${movie.title}`);
+        tmdbId = match[1]
+        console.log(
+          `  Extracted TMDb ID ${tmdbId} from streamingLink for ${movie.title}`
+        )
       }
     }
-    
-    // Create card for Watch tab
-    const card = document.createElement('div');
-    card.className = 'watch-card';
-    card.dataset.movieId = movieId;
-    card.dataset.guid = movie.guid;
 
-    const normalizedTmdbId = tmdbId ? String(tmdbId) : '';
-    const normalizedTitleKey = `${(movie.title || '').trim().toLowerCase()}::${movie.year || ''}`;
+    // Create card for Watch tab
+    const card = document.createElement('div')
+    card.className = 'watch-card'
+    card.dataset.movieId = movieId
+    card.dataset.guid = movie.guid
+
+    const normalizedTmdbId = tmdbId ? String(tmdbId) : ''
+    const normalizedTitleKey = `${(movie.title || '').trim().toLowerCase()}::${
+      movie.year || ''
+    }`
 
     if (likesList) {
-      const removedGuids = [];
+      const removedGuids = []
       likesList.querySelectorAll('.watch-card').forEach(existing => {
-        const existingTmdb = existing.dataset.tmdbId || '';
-        const existingGuid = existing.dataset.guid || '';
-        const existingTitleKey = existing.dataset.titleKey || '';
+        const existingTmdb = existing.dataset.tmdbId || ''
+        const existingGuid = existing.dataset.guid || ''
+        const existingTitleKey = existing.dataset.titleKey || ''
 
         if (
-          (normalizedTmdbId && existingTmdb && existingTmdb === normalizedTmdbId) ||
+          (normalizedTmdbId &&
+            existingTmdb &&
+            existingTmdb === normalizedTmdbId) ||
           (movie.guid && existingGuid && existingGuid === movie.guid) ||
-          (normalizedTitleKey && existingTitleKey && existingTitleKey === normalizedTitleKey)
+          (normalizedTitleKey &&
+            existingTitleKey &&
+            existingTitleKey === normalizedTitleKey)
         ) {
-          removedGuids.push(existingGuid);
-          existing.remove();
+          removedGuids.push(existingGuid)
+          existing.remove()
         }
-      });
+      })
 
       if (removedGuids.length > 0 && likesList.dataset.originalOrder) {
-        const order = likesList.dataset.originalOrder.split(',').filter(Boolean);
-        likesList.dataset.originalOrder = order.filter(g => !removedGuids.includes(g)).join(',');
+        const order = likesList.dataset.originalOrder.split(',').filter(Boolean)
+        likesList.dataset.originalOrder = order
+          .filter(g => !removedGuids.includes(g))
+          .join(',')
       }
     }
 
     // Extract numeric TMDb ID for API calls
     if (movie.guid?.startsWith('tmdb://')) {
-      card.dataset.tmdbId = movie.guid.replace('tmdb://', '');
+      card.dataset.tmdbId = movie.guid.replace('tmdb://', '')
     } else if (movie.guid?.includes('themoviedb://')) {
-      const match = movie.guid.match(/themoviedb:\/\/(\d+)/);
-      if (match) card.dataset.tmdbId = match[1];
+      const match = movie.guid.match(/themoviedb:\/\/(\d+)/)
+      if (match) card.dataset.tmdbId = match[1]
     } else if (movie.tmdbId || movie.tmdb_id) {
       // Use TMDb ID from enrichment if available
-      card.dataset.tmdbId = String(movie.tmdbId || movie.tmdb_id);
+      card.dataset.tmdbId = String(movie.tmdbId || movie.tmdb_id)
     } else if (movie.streamingLink) {
       // FALLBACK: Extract from streaming link
-      const match = movie.streamingLink.match(/themoviedb\.org\/movie\/(\d+)/);
-      if (match) card.dataset.tmdbId = match[1];
+      const match = movie.streamingLink.match(/themoviedb\.org\/movie\/(\d+)/)
+      if (match) card.dataset.tmdbId = match[1]
     }
-    
+
     // Store filterable data on the card
-    card.dataset.genres = JSON.stringify(movie.genre_ids || []);
-    card.dataset.languages = JSON.stringify(movie.original_language ? [movie.original_language] : []);
-    card.dataset.countries = JSON.stringify(movie.production_countries?.map(c => c.iso_3166_1) || []);
-    card.dataset.contentRating = movie.contentRating || '';
-    card.dataset.runtime = movie.runtime || '';
-    card.dataset.voteCount = movie.vote_count || 0;
-    card.dataset.popularity = movie.popularity || 0;
-    card.dataset.titleKey = normalizedTitleKey;
+    card.dataset.genres = JSON.stringify(movie.genre_ids || [])
+    card.dataset.languages = JSON.stringify(
+      movie.original_language ? [movie.original_language] : []
+    )
+    card.dataset.countries = JSON.stringify(
+      movie.production_countries?.map(c => c.iso_3166_1) || []
+    )
+    card.dataset.contentRating = movie.contentRating || ''
+    card.dataset.runtime = movie.runtime || ''
+    card.dataset.voteCount = movie.vote_count || 0
+    card.dataset.popularity = movie.popularity || 0
+    card.dataset.titleKey = normalizedTitleKey
 
     if (normalizedTmdbId && !card.dataset.tmdbId) {
-      card.dataset.tmdbId = normalizedTmdbId;
+      card.dataset.tmdbId = normalizedTmdbId
     }
-    
-    const streamingServices = getStreamingServices(movie);
-    const allServices = [...(streamingServices.subscription || []), ...(streamingServices.free || [])];
-    const isInPlex = allServices.some(s => s.name === window.PLEX_LIBRARY_NAME);
-       
+
+    const streamingServices = getStreamingServices(movie)
+    const allServices = [
+      ...(streamingServices.subscription || []),
+      ...(streamingServices.free || []),
+    ]
+    const isInPlex = allServices.some(s => s.name === window.PLEX_LIBRARY_NAME)
+
     // Check if request service is configured
-    const requestServiceConfigured = await checkRequestServiceStatus();
-    
+    const requestServiceConfigured = await checkRequestServiceStatus()
+
     // Get the streaming link (TMDb watch page with JustWatch deep links)
-    const streamingLink = movie.streamingLink || null;
-    
+    const streamingLink = movie.streamingLink || null
+
     // DEBUG: Check if link exists
-    console.log('🧩 DEBUG streamingLink:', streamingLink);
-    console.log('🧩 DEBUG movie:', movie.title, movie.guid);
-    
+    console.log('🧩 DEBUG streamingLink:', streamingLink)
+    console.log('🧩 DEBUG movie:', movie.title, movie.guid)
+
     // Helper to render service list items - NOW WITH CLICKABLE LINKS
-    const renderServiceItems = (services) => {
-      if (!services || services.length === 0) return '<div class="service-item">None available</div>';
-      
+    const renderServiceItems = services => {
+      if (!services || services.length === 0)
+        return '<div class="service-item">None available</div>'
+
       // If we have a streamingLink, wrap the entire list in a link container
       if (streamingLink) {
         return `
           <a href="${streamingLink}" target="_blank" rel="noopener noreferrer" class="service-link-wrapper">
-            ${services.map(s => {
-              const logoUrl = s.logo_path 
-                ? (s.logo_path.startsWith('/assets/') 
-                    ? `${basePath}${s.logo_path}` 
-                    : `https://image.tmdb.org/t/p/original${s.logo_path}`)
-                : null;
-              
-              return `<div class="service-item">
-                ${logoUrl ? `<img src="${logoUrl}" alt="${s.name}" class="service-logo-small">` : ''}
+            ${services
+              .map(s => {
+                const logoUrl = s.logo_path
+                  ? s.logo_path.startsWith('/assets/')
+                    ? `${basePath}${s.logo_path}`
+                    : `https://image.tmdb.org/t/p/original${s.logo_path}`
+                  : null
+
+                return `<div class="service-item">
+                ${
+                  logoUrl
+                    ? `<img src="${logoUrl}" alt="${s.name}" class="service-logo-small">`
+                    : ''
+                }
                 <span>${s.name}</span>
-              </div>`;
-            }).join('')}
+              </div>`
+              })
+              .join('')}
             <div class="service-footer">
               <i class="fas fa-external-link-alt"></i> View on JustWatch
             </div>
           </a>
-        `;
+        `
       }
-      
+
       // Fallback if no link available
-      return services.map(s => {
-        const logoUrl = s.logo_path 
-          ? (s.logo_path.startsWith('/assets/') 
-              ? `${basePath}${s.logo_path}` 
-              : `https://image.tmdb.org/t/p/original${s.logo_path}`)
-          : null;
-        
-        return `<div class="service-item">
-          ${logoUrl ? `<img src="${logoUrl}" alt="${s.name}" class="service-logo-small">` : ''}
+      return services
+        .map(s => {
+          const logoUrl = s.logo_path
+            ? s.logo_path.startsWith('/assets/')
+              ? `${basePath}${s.logo_path}`
+              : `https://image.tmdb.org/t/p/original${s.logo_path}`
+            : null
+
+          return `<div class="service-item">
+          ${
+            logoUrl
+              ? `<img src="${logoUrl}" alt="${s.name}" class="service-logo-small">`
+              : ''
+          }
           <span>${s.name}</span>
-        </div>`;
-      }).join('');
-    };
-    
-    const hasSubscription = streamingServices.subscription && 
-                           streamingServices.subscription.filter(s => s.name !== window.PLEX_LIBRARY_NAME).length > 0;
-    const hasFree = streamingServices.free && streamingServices.free.length > 0;
-    
+        </div>`
+        })
+        .join('')
+    }
+
+    const hasSubscription =
+      streamingServices.subscription &&
+      streamingServices.subscription.filter(
+        s => s.name !== window.PLEX_LIBRARY_NAME
+      ).length > 0
+    const hasFree = streamingServices.free && streamingServices.free.length > 0
+
     // DEBUG: Log button rendering conditions
-    console.log('🧩 Button rendering debug for', movie.title);
-    console.log('  isInPlex:', isInPlex);
-    console.log('  movieId:', movieId);
-    console.log('  requestServiceConfigured:', requestServiceConfigured);
-    console.log('  Will show:', isInPlex ? 'AllVids badge' : (movieId && requestServiceConfigured) ? 'Add to Plex button' : 'Nothing');
-    
+    console.log('🧩 Button rendering debug for', movie.title)
+    console.log('  isInPlex:', isInPlex)
+    console.log('  movieId:', movieId)
+    console.log('  requestServiceConfigured:', requestServiceConfigured)
+    console.log(
+      '  Will show:',
+      isInPlex
+        ? 'AllVids badge'
+        : movieId && requestServiceConfigured
+        ? 'Add to Plex button'
+        : 'Nothing'
+    )
+
     // Get metadata for badges - use the same field names as CardView
-    const genres = movie.genres || [];  // Array of genre names like ["Comedy", "Horror"]
-    const genreDisplay = genres.length > 0 ? genres.slice(0, 2).join(', ') : null;
-    
+    const genres = movie.genres || [] // Array of genre names like ["Comedy", "Horror"]
+    const genreDisplay =
+      genres.length > 0 ? genres.slice(0, 2).join(', ') : null
+
     // DEBUG: Log all possible runtime fields
-    console.log('🧩 Runtime debug for', movie.title);
-    console.log('  movie.runtime:', movie.runtime);
-    console.log('  movie.tmdbRuntime:', movie.tmdbRuntime);
-    console.log('  movie.runtimeMinutes:', movie.runtimeMinutes);
-    console.log('  movie.duration:', movie.duration);
-    
+    console.log('🧩 Runtime debug for', movie.title)
+    console.log('  movie.runtime:', movie.runtime)
+    console.log('  movie.tmdbRuntime:', movie.tmdbRuntime)
+    console.log('  movie.runtimeMinutes:', movie.runtimeMinutes)
+    console.log('  movie.duration:', movie.duration)
+
     // Try multiple runtime fields like CardView does
     const runtimeMin = (() => {
       const minuteCandidates = [
         Number(movie.runtime),
         Number(movie.tmdbRuntime),
-        Number(movie.runtimeMinutes)
-      ].filter(v => Number.isFinite(v) && v > 0);
-      if (minuteCandidates.length && minuteCandidates[0] < 1000) return Math.round(minuteCandidates[0]);
-      if (Number.isFinite(movie.duration) && movie.duration > 0) return Math.round(movie.duration / 60000);
-      return null;
-    })();
-    const runtimeDisplay = runtimeMin ? formatRuntime(runtimeMin) : null;
-    
-    console.log('  🧠 runtimeMin calculated:', runtimeMin);
-    console.log('  🧠 runtimeDisplay:', runtimeDisplay);
-    
-    const contentRating = movie.contentRating;
-    
+        Number(movie.runtimeMinutes),
+      ].filter(v => Number.isFinite(v) && v > 0)
+      if (minuteCandidates.length && minuteCandidates[0] < 1000)
+        return Math.round(minuteCandidates[0])
+      if (Number.isFinite(movie.duration) && movie.duration > 0)
+        return Math.round(movie.duration / 60000)
+      return null
+    })()
+    const runtimeDisplay = runtimeMin ? formatRuntime(runtimeMin) : null
+
+    console.log('  🧠 runtimeMin calculated:', runtimeMin)
+    console.log('  🧠 runtimeDisplay:', runtimeDisplay)
+
+    const contentRating = movie.contentRating
+
     // Build the metadata badges section - only show if data exists
-    const metadataBadges = [];
-    
+    const metadataBadges = []
+
     if (contentRating) {
       metadataBadges.push(`<span class="metadata-badge badge-rating">
         <i class="fas fa-tag"></i> ${contentRating}
-      </span>`);
+      </span>`)
     }
-    
+
     if (genreDisplay) {
       metadataBadges.push(`<span class="metadata-badge badge-genre">
         <i class="fas fa-film"></i> ${genreDisplay}
-      </span>`);
+      </span>`)
     }
-    
+
     if (runtimeDisplay) {
       metadataBadges.push(`<span class="metadata-badge badge-runtime">
         <i class="fas fa-clock"></i> ${runtimeDisplay}
-      </span>`);
+      </span>`)
     }
-    
-    const metadataBadgesHTML = metadataBadges.length > 0 
-      ? `<div class="watch-card-metadata">${metadataBadges.join('')}</div>`
-      : '';
+
+    const metadataBadgesHTML =
+      metadataBadges.length > 0
+        ? `<div class="watch-card-metadata">${metadataBadges.join('')}</div>`
+        : ''
 
     card.innerHTML = `
       <!-- Collapsed header (always visible) -->
       <div class="watch-card-collapsed" onclick="this.closest('.watch-card').classList.toggle('expanded')">
         <div class="watch-card-header-compact">
           <div class="watch-card-title-compact">
-            ${movie.title} <span class="watch-card-year">(${movie.year || 'N/A'})</span>
+            ${movie.title} <span class="watch-card-year">(${
+      movie.year || 'N/A'
+    })</span>
           </div>
           <div class="expand-icon"><i class="fas fa-chevron-down"></i></div>
         </div>
@@ -972,197 +1136,267 @@ async function appendRatedRow({ basePath, likesList, dislikesList, seenList }, m
       <!-- Expandable details (hidden by default) -->
       <div class="watch-card-details">
         <div class="watch-card-poster">
-          <img src="${(() => { const p = normalizePoster(movie.art || movie.thumb || ''); return p.startsWith('http') ? p : (basePath + p); })()}" alt="${movie.title}">
+          <img src="${(() => {
+            const p = normalizePoster(movie.art || movie.thumb || '')
+            return p.startsWith('http') ? p : basePath + p
+          })()}" alt="${movie.title}">
         </div>
         <div class="watch-card-content">
-          ${movie.summary ? `<p class="watch-card-summary">${movie.summary}</p>` : ''}
+          ${
+            movie.summary
+              ? `<p class="watch-card-summary">${movie.summary}</p>`
+              : ''
+          }
           ${metadataBadgesHTML}
-          ${movie.rating ? `<div class="watch-card-ratings">${movie.rating}</div>` : ''}
+          ${
+            movie.rating
+              ? `<div class="watch-card-ratings">${movie.rating}</div>`
+              : ''
+          }
     
         <div class="watch-card-actions">
           <div class="service-dropdown">
-            <button class="service-dropdown-btn ${!hasSubscription ? 'disabled' : ''}" type="button" ${!hasSubscription ? 'disabled' : ''}>
+            <button class="service-dropdown-btn ${
+              !hasSubscription ? 'disabled' : ''
+            }" type="button" ${!hasSubscription ? 'disabled' : ''}>
               SUBSCRIPTION
             </button>
-            ${hasSubscription ? `
+            ${
+              hasSubscription
+                ? `
               <div class="service-dropdown-menu">
-                ${renderServiceItems(streamingServices.subscription.filter(s => s.name !== window.PLEX_LIBRARY_NAME))}
+                ${renderServiceItems(
+                  streamingServices.subscription.filter(
+                    s => s.name !== window.PLEX_LIBRARY_NAME
+                  )
+                )}
               </div>
-            ` : ''}
+            `
+                : ''
+            }
           </div>
           
           <div class="service-dropdown">
-            <button class="service-dropdown-btn ${!hasFree ? 'disabled' : ''}" type="button" ${!hasFree ? 'disabled' : ''}>
+            <button class="service-dropdown-btn ${
+              !hasFree ? 'disabled' : ''
+            }" type="button" ${!hasFree ? 'disabled' : ''}>
               FREE
             </button>
-            ${hasFree ? `
+            ${
+              hasFree
+                ? `
               <div class="service-dropdown-menu">
                 ${renderServiceItems(streamingServices.free)}
               </div>
-            ` : ''}
+            `
+                : ''
+            }
           </div>
           
-          ${isInPlex ? `
+          ${
+            isInPlex
+              ? `
             <div class="plex-status">
               <i class="fas fa-check-circle"></i> ${window.PLEX_LIBRARY_NAME}
             </div>
-          ` : tmdbId && requestServiceConfigured ? `
+          `
+              : tmdbId && requestServiceConfigured
+              ? `
             <button class="add-to-plex-btn" data-movie-id="${movieId}">
               <i class="fas fa-plus"></i> ADD TO PLEX
             </button>
-          ` : ``}
+          `
+              : ``
+          }
         </div>
         
         <!-- Move to other lists buttons -->
         <div class="list-actions">
-          <button class="list-action-btn move-to-seen" data-guid="${movie.guid}" title="Mark as Seen">
+          <button class="list-action-btn move-to-seen" data-guid="${
+            movie.guid
+          }" title="Mark as Seen">
             <i class="fas fa-eye"></i>
           </button>
-          <button class="list-action-btn move-to-pass" data-guid="${movie.guid}" title="Move to Pass">
+          <button class="list-action-btn move-to-pass" data-guid="${
+            movie.guid
+          }" title="Move to Pass">
             <i class="fas fa-thumbs-down"></i>
           </button>
-          <button class="list-action-btn refresh-movie-btn" data-movie-id="${tmdbId || movieId || ''}" title="Refresh ratings and status">
+          <button class="list-action-btn refresh-movie-btn" data-movie-id="${
+            tmdbId || movieId || ''
+          }" title="Refresh ratings and status">
             <i class="fas fa-sync-alt"></i>
           </button>
         </div>
       </div>
     </div>
-  `;
-    
-    likesList?.appendChild(card);
+  `
+
+    likesList?.appendChild(card)
 
     if (likesList) {
       const currentOrder = likesList.dataset.originalOrder
         ? likesList.dataset.originalOrder.split(',').filter(Boolean)
-        : [];
-      const filteredOrder = currentOrder.filter(g => g !== movie.guid);
-      filteredOrder.push(movie.guid);
-      likesList.dataset.originalOrder = filteredOrder.join(',');
+        : []
+      const filteredOrder = currentOrder.filter(g => g !== movie.guid)
+      filteredOrder.push(movie.guid)
+      likesList.dataset.originalOrder = filteredOrder.join(',')
     }
-    
+
     // Add dropdown toggle handlers (only for enabled buttons)
-    const dropdownBtns = card.querySelectorAll('.service-dropdown-btn:not(.disabled)');
+    const dropdownBtns = card.querySelectorAll(
+      '.service-dropdown-btn:not(.disabled)'
+    )
     dropdownBtns.forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const dropdown = btn.nextElementSibling;
-        if (!dropdown) return;
-        
-        const isOpen = dropdown.classList.contains('show');
-        
+      btn.addEventListener('click', e => {
+        const dropdown = btn.nextElementSibling
+        if (!dropdown) return
+
+        const isOpen = dropdown.classList.contains('show')
+
         // Close all other dropdowns
-        document.querySelectorAll('.service-dropdown-menu.show').forEach(menu => {
-          if (menu !== dropdown) {
-            menu.classList.remove('show');
-            menu.previousElementSibling.classList.remove('open');
-          }
-        });
-        
+        document
+          .querySelectorAll('.service-dropdown-menu.show')
+          .forEach(menu => {
+            if (menu !== dropdown) {
+              menu.classList.remove('show')
+              menu.previousElementSibling.classList.remove('open')
+            }
+          })
+
         // Toggle this dropdown
-        dropdown.classList.toggle('show');
-        btn.classList.toggle('open');
-        
+        dropdown.classList.toggle('show')
+        btn.classList.toggle('open')
+
         // Stop propagation so outside click handler doesn't immediately close it
-        e.stopPropagation();
-      });
-    });
-    
+        e.stopPropagation()
+      })
+    })
+
     // CRITICAL FIX: Allow links inside dropdown to work
-    const dropdowns = card.querySelectorAll('.service-dropdown-menu');
+    const dropdowns = card.querySelectorAll('.service-dropdown-menu')
     dropdowns.forEach(dropdown => {
-      dropdown.addEventListener('click', (e) => {
+      dropdown.addEventListener('click', e => {
         // If clicking on a link, let it navigate naturally
         // Just stop propagation so outside click handler doesn't close dropdown
         if (!e.target.closest('a')) {
-          e.stopPropagation();
+          e.stopPropagation()
         }
-      });
-    });
-    
+      })
+    })
+
     // Close dropdowns when clicking outside
-    const closeHandler = (e) => {
+    const closeHandler = e => {
       if (!card.contains(e.target)) {
         card.querySelectorAll('.service-dropdown-menu.show').forEach(menu => {
-          menu.classList.remove('show');
-          menu.previousElementSibling.classList.remove('open');
-        });
+          menu.classList.remove('show')
+          menu.previousElementSibling.classList.remove('open')
+        })
       }
-    };
-    document.addEventListener('click', closeHandler);
-    
+    }
+    document.addEventListener('click', closeHandler)
+
     // Add click handler for Add to Plex button
     if (!isInPlex && tmdbId && requestServiceConfigured) {
-      const addBtn = card.querySelector('.add-to-plex-btn');
-      addBtn?.addEventListener('click', () => handleMovieRequest(parseInt(tmdbId), movie.title, addBtn));
+      const addBtn = card.querySelector('.add-to-plex-btn')
+      addBtn?.addEventListener('click', () =>
+        handleMovieRequest(parseInt(tmdbId), movie.title, addBtn)
+      )
     }
-    
+
     // Add click handler for Refresh button - always works now, uses guid fallback
-    const refreshBtn = card.querySelector('.refresh-movie-btn');
+    const refreshBtn = card.querySelector('.refresh-movie-btn')
     if (refreshBtn) {
       refreshBtn.addEventListener('click', async () => {
-        const icon = refreshBtn.querySelector('i');
-        
+        const icon = refreshBtn.querySelector('i')
+
         // Show loading state
-        refreshBtn.disabled = true;
-        icon.classList.add('fa-spin');
-        
+        refreshBtn.disabled = true
+        icon.classList.add('fa-spin')
+
         try {
           // Get identifier - prefer tmdbId from card, fallback to guid
-          const guid = card.dataset.guid;
-          const cardTmdbId = card.dataset.tmdbId;
-          const idOrGuid = cardTmdbId || guid;
-          
+          const guid = card.dataset.guid
+          const cardTmdbId = card.dataset.tmdbId
+          const idOrGuid = cardTmdbId || guid
+
           if (!idOrGuid) {
-            throw new Error('No ID available for refresh');
+            throw new Error('No ID available for refresh')
           }
 
-          const response = await fetch(`/api/refresh-movie/${encodeURIComponent(idOrGuid)}`);
-          let data = null;
-          try { data = await response.json(); } catch {}
+          const response = await fetch(
+            `/api/refresh-movie/${encodeURIComponent(idOrGuid)}`
+          )
+          let data = null
+          try {
+            data = await response.json()
+          } catch {}
           if (!response.ok) {
             console.error('❌Refresh failed', {
               status: response.status,
               rid: data?.rid,
               stage: data?.stage,
-              error: data?.error
-            });
-            const detail = data?.error ? `: ${data.error}` : '';
-            throw new Error('Failed to refresh' + detail);
+              error: data?.error,
+            })
+            const detail = data?.error ? `: ${data.error}` : ''
+            throw new Error('Failed to refresh' + detail)
           } else {
             if (data?.rid) {
-              console.debug('Refresh ok', { rid: data.rid });
+              console.debug('Refresh ok', { rid: data.rid })
             }
           }
 
           // If we didn't have a tmdbId before but got one from enrichment, update the card
           if (!cardTmdbId && data.tmdbId) {
-            card.dataset.tmdbId = data.tmdbId;
-            console.log('✅ Updated card with tmdbId:', data.tmdbId);
+            card.dataset.tmdbId = data.tmdbId
+            console.log('✅ Updated card with tmdbId:', data.tmdbId)
           }
 
-          
           // Update the rating display - always update even if empty to show that refresh completed
-          const ratingEl = card.querySelector('.watch-card-ratings');
+          const ratingEl = card.querySelector('.watch-card-ratings')
           if (ratingEl) {
             // If we have ratings, update them. If not but rating exists in response, use it
             if (data.rating) {
-              ratingEl.innerHTML = data.rating;
-            } else if (data.rating_imdb || data.rating_rt || data.rating_tmdb || data.rating_comparr) {
+              ratingEl.innerHTML = data.rating
+            } else if (
+              data.rating_imdb ||
+              data.rating_rt ||
+              data.rating_tmdb ||
+              data.rating_comparr
+            ) {
               // Build rating HTML from individual ratings if rating string not provided
-              const basePath = document.body.dataset.basePath || '';
-              const ratingParts = [];
-              if (data.rating_comparr) ratingParts.push(`<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> ${data.rating_comparr}`);
-              if (data.rating_imdb) ratingParts.push(`<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> ${data.rating_imdb}`);
-              if (data.rating_rt) ratingParts.push(`<img src="${basePath}/assets/logos/rottentomatoes.svg" alt="RT" class="rating-logo"> ${data.rating_rt}%`);
-              if (data.rating_tmdb) ratingParts.push(`<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> ${data.rating_tmdb}`);
-              ratingEl.innerHTML = ratingParts.length > 0 ? ratingParts.join(' <span class="rating-separator">&bull;</span> ') : '';
+              const basePath = document.body.dataset.basePath || ''
+              const ratingParts = []
+              if (data.rating_comparr)
+                ratingParts.push(
+                  `<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> ${data.rating_comparr}`
+                )
+              if (data.rating_imdb)
+                ratingParts.push(
+                  `<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> ${data.rating_imdb}`
+                )
+              if (data.rating_rt)
+                ratingParts.push(
+                  `<img src="${basePath}/assets/logos/rottentomatoes.svg" alt="RT" class="rating-logo"> ${data.rating_rt}%`
+                )
+              if (data.rating_tmdb)
+                ratingParts.push(
+                  `<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> ${data.rating_tmdb}`
+                )
+              ratingEl.innerHTML =
+                ratingParts.length > 0
+                  ? ratingParts.join(
+                      ' <span class="rating-separator">&bull;</span> '
+                    )
+                  : ''
             }
           }
-          
+
           // Update Plex status / Add to Plex button
-          const actionsContainer = card.querySelector('.watch-card-actions');
-          const existingBtn = actionsContainer.querySelector('.add-to-plex-btn');
-          const existingStatus = actionsContainer.querySelector('.plex-status');
-          
+          const actionsContainer = card.querySelector('.watch-card-actions')
+          const existingBtn = actionsContainer.querySelector('.add-to-plex-btn')
+          const existingStatus = actionsContainer.querySelector('.plex-status')
+
           if (data.inPlex) {
             // Replace button with Plex status badge
             if (existingBtn) {
@@ -1170,141 +1404,168 @@ async function appendRatedRow({ basePath, likesList, dislikesList, seenList }, m
                 <div class="plex-status">
                   <i class="fas fa-check-circle"></i> ${window.PLEX_LIBRARY_NAME}
                 </div>
-              `;
+              `
             }
-          } else if (!existingBtn && !existingStatus && requestServiceConfigured) {
+          } else if (
+            !existingBtn &&
+            !existingStatus &&
+            requestServiceConfigured
+          ) {
             // Add the button if it wasn't there before (use potentially updated tmdbId from card dataset)
-            const refreshBtnElement = actionsContainer.querySelector('.refresh-movie-btn');
+            const refreshBtnElement = actionsContainer.querySelector(
+              '.refresh-movie-btn'
+            )
             if (refreshBtnElement) {
-              const finalTmdbId = parseInt(card.dataset.tmdbId);
+              const finalTmdbId = parseInt(card.dataset.tmdbId)
               if (finalTmdbId) {
-                refreshBtnElement.insertAdjacentHTML('beforebegin', `
+                refreshBtnElement.insertAdjacentHTML(
+                  'beforebegin',
+                  `
                   <button class="add-to-plex-btn" data-movie-id="${finalTmdbId}">
                     <i class="fas fa-plus"></i> ADD TO PLEX
                   </button>
-                `);
+                `
+                )
                 // Add handler to the new button
-                const newAddBtn = actionsContainer.querySelector('.add-to-plex-btn');
-                newAddBtn?.addEventListener('click', () => handleMovieRequest(finalTmdbId, movie.title, newAddBtn));
+                const newAddBtn = actionsContainer.querySelector(
+                  '.add-to-plex-btn'
+                )
+                newAddBtn?.addEventListener('click', () =>
+                  handleMovieRequest(finalTmdbId, movie.title, newAddBtn)
+                )
               }
             }
           }
-          
+
           // Update streaming services (match Watch-card dropdowns)
           if (data.streamingServices) {
-            const dropdowns = card.querySelectorAll('.service-dropdown');
-            const subMenu = dropdowns[0]?.querySelector('.service-dropdown-menu');
-            const freeMenu = dropdowns[1]?.querySelector('.service-dropdown-menu');
+            const dropdowns = card.querySelectorAll('.service-dropdown')
+            const subMenu = dropdowns[0]?.querySelector(
+              '.service-dropdown-menu'
+            )
+            const freeMenu = dropdowns[1]?.querySelector(
+              '.service-dropdown-menu'
+            )
 
             // SUBSCRIPTION
             if (subMenu) {
-              const services = (data.streamingServices.subscription || [])
-                .filter(s => s.name !== window.PLEX_LIBRARY_NAME);
-              subMenu.innerHTML = renderServiceItems(services, data.streamingLink);
+              const services = (
+                data.streamingServices.subscription || []
+              ).filter(s => s.name !== window.PLEX_LIBRARY_NAME)
+              subMenu.innerHTML = renderServiceItems(
+                services,
+                data.streamingLink
+              )
             }
 
             // FREE
             if (freeMenu) {
-              const services = data.streamingServices.free || [];
-              freeMenu.innerHTML = renderServiceItems(services, data.streamingLink);
+              const services = data.streamingServices.free || []
+              freeMenu.innerHTML = renderServiceItems(
+                services,
+                data.streamingLink
+              )
             }
           }
 
-          
           // Show success feedback - just change icon
-          icon.classList.remove('fa-sync-alt', 'fa-spin');
-          icon.classList.add('fa-check');
-          
+          icon.classList.remove('fa-sync-alt', 'fa-spin')
+          icon.classList.add('fa-check')
+
           setTimeout(() => {
-            icon.classList.remove('fa-check');
-            icon.classList.add('fa-sync-alt');
-            refreshBtn.disabled = false;
-          }, 2000);
-          
+            icon.classList.remove('fa-check')
+            icon.classList.add('fa-sync-alt')
+            refreshBtn.disabled = false
+          }, 2000)
         } catch (err) {
-          console.error('❌Failed to refresh movie:', err);
+          console.error('❌Failed to refresh movie:', err)
           try {
-            const txt = await err?.response?.text?.();
-            console.error('❌Server said:', txt);
+            const txt = await err?.response?.text?.()
+            console.error('❌Server said:', txt)
           } catch {}
 
-          
           // Show error feedback - just change icon
-          icon.classList.remove('fa-spin', 'fa-sync-alt');
-          icon.classList.add('fa-exclamation-triangle');
-          
+          icon.classList.remove('fa-spin', 'fa-sync-alt')
+          icon.classList.add('fa-exclamation-triangle')
+
           setTimeout(() => {
-            icon.classList.remove('fa-exclamation-triangle');
-            icon.classList.add('fa-sync-alt');
-            refreshBtn.disabled = false;
-          }, 2000);
+            icon.classList.remove('fa-exclamation-triangle')
+            icon.classList.add('fa-sync-alt')
+            refreshBtn.disabled = false
+          }, 2000)
         }
-      });
+      })
     }
-    
+
     // Add event listeners for list action buttons
-    const moveToSeenBtn = card.querySelector('.move-to-seen');
-    const moveToPassBtn = card.querySelector('.move-to-pass');
-    
+    const moveToSeenBtn = card.querySelector('.move-to-seen')
+    const moveToPassBtn = card.querySelector('.move-to-pass')
+
     if (moveToSeenBtn) {
-      console.log('🧠 Attaching Watch->Seen button handler for:', movie.title);
-      moveToSeenBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const guid = moveToSeenBtn.dataset.guid;
-        console.log('🧠 Watch->Seen button clicked! GUID:', guid);
-        await moveMovieBetweenLists(guid, 'watch', 'seen');
-      });
+      console.log('🧠 Attaching Watch->Seen button handler for:', movie.title)
+      moveToSeenBtn.addEventListener('click', async e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const guid = moveToSeenBtn.dataset.guid
+        console.log('🧠 Watch->Seen button clicked! GUID:', guid)
+        await moveMovieBetweenLists(guid, 'watch', 'seen')
+      })
     } else {
-      console.warn('⚠️ No move-to-seen button found for:', movie.title);
+      console.warn('⚠️ No move-to-seen button found for:', movie.title)
     }
-    
+
     if (moveToPassBtn) {
-      console.log('🧠 Attaching Watch->Pass button handler for:', movie.title);
-      moveToPassBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const guid = moveToPassBtn.dataset.guid;
-        console.log('🧠 Watch->Pass button clicked! GUID:', guid);
-        await moveMovieBetweenLists(guid, 'watch', 'pass');
-      });
+      console.log('🧠 Attaching Watch->Pass button handler for:', movie.title)
+      moveToPassBtn.addEventListener('click', async e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const guid = moveToPassBtn.dataset.guid
+        console.log('🧠 Watch->Pass button clicked! GUID:', guid)
+        await moveMovieBetweenLists(guid, 'watch', 'pass')
+      })
     } else {
-      console.warn('⚠️ No move-to-pass button found for:', movie.title);
+      console.warn('⚠️ No move-to-pass button found for:', movie.title)
     }
   } else if (wantsToWatch === false) {
     // Create card for Pass tab (same format as Watch tab but no streaming)
-    const card = document.createElement('div');
-    card.className = 'watch-card';
-    card.dataset.guid = movie.guid;
-    
+    const card = document.createElement('div')
+    card.className = 'watch-card'
+    card.dataset.guid = movie.guid
+
     // Extract TMDb ID from various possible sources
     if (movie.guid && movie.guid.startsWith('tmdb://')) {
-      card.dataset.tmdbId = movie.guid.replace('tmdb://', '');
+      card.dataset.tmdbId = movie.guid.replace('tmdb://', '')
     } else if (movie.guid && /\/(\d+)$/.test(movie.guid)) {
-      const match = movie.guid.match(/\/(\d+)$/);
-      if (match) card.dataset.tmdbId = match[1];
+      const match = movie.guid.match(/\/(\d+)$/)
+      if (match) card.dataset.tmdbId = match[1]
     } else if (movie.tmdbId || movie.tmdb_id) {
-      card.dataset.tmdbId = String(movie.tmdbId || movie.tmdb_id);
+      card.dataset.tmdbId = String(movie.tmdbId || movie.tmdb_id)
     } else if (movie.guid && /movie\/(\d+)/.test(movie.guid)) {
-      const match = movie.guid.match(/movie\/(\d+)/);
-      if (match) card.dataset.tmdbId = match[1];
+      const match = movie.guid.match(/movie\/(\d+)/)
+      if (match) card.dataset.tmdbId = match[1]
     }
-    
+
     // Store filterable data on the card
-    card.dataset.genres = JSON.stringify(movie.genre_ids || []);
-    card.dataset.languages = JSON.stringify(movie.original_language ? [movie.original_language] : []);
-    card.dataset.countries = JSON.stringify(movie.production_countries?.map(c => c.iso_3166_1) || []);
-    card.dataset.contentRating = movie.contentRating || '';
-    card.dataset.runtime = movie.runtime || '';
-    card.dataset.voteCount = movie.vote_count || 0;
-    card.dataset.popularity = movie.popularity || 0;
-    
+    card.dataset.genres = JSON.stringify(movie.genre_ids || [])
+    card.dataset.languages = JSON.stringify(
+      movie.original_language ? [movie.original_language] : []
+    )
+    card.dataset.countries = JSON.stringify(
+      movie.production_countries?.map(c => c.iso_3166_1) || []
+    )
+    card.dataset.contentRating = movie.contentRating || ''
+    card.dataset.runtime = movie.runtime || ''
+    card.dataset.voteCount = movie.vote_count || 0
+    card.dataset.popularity = movie.popularity || 0
+
     card.innerHTML = `
       <!-- Collapsed header (always visible) -->
       <div class="watch-card-collapsed" onclick="this.closest('.watch-card').classList.toggle('expanded')">
         <div class="watch-card-header-compact">
           <div class="watch-card-title-compact">
-            ${movie.title} <span class="watch-card-year">(${movie.year || 'N/A'})</span>
+            ${movie.title} <span class="watch-card-year">(${
+      movie.year || 'N/A'
+    })</span>
           </div>
           <div class="expand-icon"><i class="fas fa-chevron-down"></i></div>
         </div>
@@ -1313,92 +1574,112 @@ async function appendRatedRow({ basePath, likesList, dislikesList, seenList }, m
       <!-- Expandable details (hidden by default) -->
       <div class="watch-card-details">
         <div class="watch-card-poster">
-          <img src="${(() => { const p = normalizePoster(movie.art || movie.thumb || ''); return p.startsWith('http') ? p : (basePath + p); })()}" alt="${movie.title}">
+          <img src="${(() => {
+            const p = normalizePoster(movie.art || movie.thumb || '')
+            return p.startsWith('http') ? p : basePath + p
+          })()}" alt="${movie.title}">
         </div>
   
         <div class="watch-card-content">
-          ${movie.summary ? `<p class="watch-card-summary">${movie.summary}</p>` : ''}
-          ${movie.rating ? `<div class="watch-card-ratings">${movie.rating}</div>` : ''}
+          ${
+            movie.summary
+              ? `<p class="watch-card-summary">${movie.summary}</p>`
+              : ''
+          }
+          ${
+            movie.rating
+              ? `<div class="watch-card-ratings">${movie.rating}</div>`
+              : ''
+          }
         
           <!-- Move to other lists buttons -->
           <div class="list-actions">
-            <button class="list-action-btn move-to-watch" data-guid="${movie.guid}" title="Move to Watch">
+            <button class="list-action-btn move-to-watch" data-guid="${
+              movie.guid
+            }" title="Move to Watch">
               <i class="fas fa-thumbs-up"></i>
             </button>
-            <button class="list-action-btn move-to-seen" data-guid="${movie.guid}" title="Mark as Seen">
+            <button class="list-action-btn move-to-seen" data-guid="${
+              movie.guid
+            }" title="Mark as Seen">
               <i class="fas fa-eye"></i>
             </button>
           </div>
         </div>
       </div>
-    `;
-    
+    `
+
     // Add event listeners for pass list actions
-    const moveToWatchBtn = card.querySelector('.move-to-watch');
-    const moveToSeenBtn = card.querySelector('.move-to-seen');
-    
+    const moveToWatchBtn = card.querySelector('.move-to-watch')
+    const moveToSeenBtn = card.querySelector('.move-to-seen')
+
     if (moveToWatchBtn) {
-      console.log('🧠 Attaching Pass->Watch button handler for:', movie.title);
-      moveToWatchBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const guid = moveToWatchBtn.dataset.guid;
-        console.log('🧠 Pass->Watch button clicked! GUID:', guid);
-        await moveMovieBetweenLists(guid, 'pass', 'watch');
-      });
+      console.log('🧠 Attaching Pass->Watch button handler for:', movie.title)
+      moveToWatchBtn.addEventListener('click', async e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const guid = moveToWatchBtn.dataset.guid
+        console.log('🧠 Pass->Watch button clicked! GUID:', guid)
+        await moveMovieBetweenLists(guid, 'pass', 'watch')
+      })
     } else {
-      console.warn('⚠️ No move-to-watch button found for:', movie.title);
+      console.warn('⚠️ No move-to-watch button found for:', movie.title)
     }
-    
+
     if (moveToSeenBtn) {
-      console.log('🧠 Attaching Pass->Seen button handler for:', movie.title);
-      moveToSeenBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const guid = moveToSeenBtn.dataset.guid;
-        console.log('🧠 Pass->Seen button clicked! GUID:', guid);
-        await moveMovieBetweenLists(guid, 'pass', 'seen');
-      });
+      console.log('🧠 Attaching Pass->Seen button handler for:', movie.title)
+      moveToSeenBtn.addEventListener('click', async e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const guid = moveToSeenBtn.dataset.guid
+        console.log('🧠 Pass->Seen button clicked! GUID:', guid)
+        await moveMovieBetweenLists(guid, 'pass', 'seen')
+      })
     } else {
-      console.warn('⚠️ No move-to-seen button found for:', movie.title);
+      console.warn('⚠️ No move-to-seen button found for:', movie.title)
     }
-    
-    dislikesList?.appendChild(card);
-    
+
+    dislikesList?.appendChild(card)
   } else if (wantsToWatch === null) {
     // Create card for Seen tab (same format as Watch tab but no streaming)
-    const card = document.createElement('div');
-    card.className = 'watch-card';
-    card.dataset.guid = movie.guid;
-    
+    const card = document.createElement('div')
+    card.className = 'watch-card'
+    card.dataset.guid = movie.guid
+
     // Extract TMDb ID from various possible sources
     if (movie.guid && movie.guid.startsWith('tmdb://')) {
-      card.dataset.tmdbId = movie.guid.replace('tmdb://', '');
+      card.dataset.tmdbId = movie.guid.replace('tmdb://', '')
     } else if (movie.guid && /\/(\d+)$/.test(movie.guid)) {
-      const match = movie.guid.match(/\/(\d+)$/);
-      if (match) card.dataset.tmdbId = match[1];
+      const match = movie.guid.match(/\/(\d+)$/)
+      if (match) card.dataset.tmdbId = match[1]
     } else if (movie.tmdbId || movie.tmdb_id) {
-      card.dataset.tmdbId = String(movie.tmdbId || movie.tmdb_id);
+      card.dataset.tmdbId = String(movie.tmdbId || movie.tmdb_id)
     } else if (movie.guid && /movie\/(\d+)/.test(movie.guid)) {
-      const match = movie.guid.match(/movie\/(\d+)/);
-      if (match) card.dataset.tmdbId = match[1];
+      const match = movie.guid.match(/movie\/(\d+)/)
+      if (match) card.dataset.tmdbId = match[1]
     }
-    
+
     // Store filterable data on the card
-    card.dataset.genres = JSON.stringify(movie.genre_ids || []);
-    card.dataset.languages = JSON.stringify(movie.original_language ? [movie.original_language] : []);
-    card.dataset.countries = JSON.stringify(movie.production_countries?.map(c => c.iso_3166_1) || []);
-    card.dataset.contentRating = movie.contentRating || '';
-    card.dataset.runtime = movie.runtime || '';
-    card.dataset.voteCount = movie.vote_count || 0;
-    card.dataset.popularity = movie.popularity || 0;
-    
+    card.dataset.genres = JSON.stringify(movie.genre_ids || [])
+    card.dataset.languages = JSON.stringify(
+      movie.original_language ? [movie.original_language] : []
+    )
+    card.dataset.countries = JSON.stringify(
+      movie.production_countries?.map(c => c.iso_3166_1) || []
+    )
+    card.dataset.contentRating = movie.contentRating || ''
+    card.dataset.runtime = movie.runtime || ''
+    card.dataset.voteCount = movie.vote_count || 0
+    card.dataset.popularity = movie.popularity || 0
+
     card.innerHTML = `
       <!-- Collapsed header (always visible) -->
       <div class="watch-card-collapsed" onclick="this.closest('.watch-card').classList.toggle('expanded')">
         <div class="watch-card-header-compact">
           <div class="watch-card-title-compact">
-            ${movie.title} <span class="watch-card-year">(${movie.year || 'N/A'})</span>
+            ${movie.title} <span class="watch-card-year">(${
+      movie.year || 'N/A'
+    })</span>
           </div>
           <div class="expand-icon"><i class="fas fa-chevron-down"></i></div>
         </div>
@@ -1407,122 +1688,148 @@ async function appendRatedRow({ basePath, likesList, dislikesList, seenList }, m
       <!-- Expandable details (hidden by default) -->
       <div class="watch-card-details">
         <div class="watch-card-poster">
-          <img src="${(() => { const p = normalizePoster(movie.art || movie.thumb || ''); return p.startsWith('http') ? p : (basePath + p); })()}" alt="${movie.title}">
+          <img src="${(() => {
+            const p = normalizePoster(movie.art || movie.thumb || '')
+            return p.startsWith('http') ? p : basePath + p
+          })()}" alt="${movie.title}">
         </div>
   
         <div class="watch-card-content">
-          ${movie.summary ? `<p class="watch-card-summary">${movie.summary}</p>` : ''}
-          ${movie.rating ? `<div class="watch-card-ratings">${movie.rating}</div>` : ''}
+          ${
+            movie.summary
+              ? `<p class="watch-card-summary">${movie.summary}</p>`
+              : ''
+          }
+          ${
+            movie.rating
+              ? `<div class="watch-card-ratings">${movie.rating}</div>`
+              : ''
+          }
         
           <!-- Move to other lists buttons -->
           <div class="list-actions">
-            <button class="list-action-btn move-to-watch" data-guid="${movie.guid}" title="Move to Watch">
+            <button class="list-action-btn move-to-watch" data-guid="${
+              movie.guid
+            }" title="Move to Watch">
               <i class="fas fa-thumbs-up"></i>
             </button>
-            <button class="list-action-btn move-to-pass" data-guid="${movie.guid}" title="Move to Pass">
+            <button class="list-action-btn move-to-pass" data-guid="${
+              movie.guid
+            }" title="Move to Pass">
               <i class="fas fa-thumbs-down"></i>
             </button>
           </div>
         </div>
       </div>
-    `;
-    
+    `
+
     // Add event listeners for seen list actions
-    const moveToWatchBtn = card.querySelector('.move-to-watch');
-    const moveToPassBtn = card.querySelector('.move-to-pass');
-    
+    const moveToWatchBtn = card.querySelector('.move-to-watch')
+    const moveToPassBtn = card.querySelector('.move-to-pass')
+
     if (moveToWatchBtn) {
-      console.log('🧠 Attaching Seen->Watch button handler for:', movie.title);
-      moveToWatchBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const guid = moveToWatchBtn.dataset.guid;
-        console.log('🧠 Seen->Watch button clicked! GUID:', guid);
-        await moveMovieBetweenLists(guid, 'seen', 'watch');
-      });
+      console.log('🧠 Attaching Seen->Watch button handler for:', movie.title)
+      moveToWatchBtn.addEventListener('click', async e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const guid = moveToWatchBtn.dataset.guid
+        console.log('🧠 Seen->Watch button clicked! GUID:', guid)
+        await moveMovieBetweenLists(guid, 'seen', 'watch')
+      })
     } else {
-      console.warn('⚠️ No move-to-watch button found for:', movie.title);
+      console.warn('⚠️ No move-to-watch button found for:', movie.title)
     }
-    
+
     if (moveToPassBtn) {
-      console.log('🧠 Attaching Seen->Pass button handler for:', movie.title);
-      moveToPassBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const guid = moveToPassBtn.dataset.guid;
-        console.log('🧠 Seen->Pass button clicked! GUID:', guid);
-        await moveMovieBetweenLists(guid, 'seen', 'pass');
-      });
+      console.log('🧠 Attaching Seen->Pass button handler for:', movie.title)
+      moveToPassBtn.addEventListener('click', async e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const guid = moveToPassBtn.dataset.guid
+        console.log('🧠 Seen->Pass button clicked! GUID:', guid)
+        await moveMovieBetweenLists(guid, 'seen', 'pass')
+      })
     } else {
-      console.warn('⚠️ No move-to-pass button found for:', movie.title);
+      console.warn('⚠️ No move-to-pass button found for:', movie.title)
     }
-    
-    seenList?.appendChild(card);
+
+    seenList?.appendChild(card)
   }
 }
 
 // Function to move movies between lists
 async function moveMovieBetweenLists(guid, fromList, toList) {
-  console.log('🔧 moveMovieBetweenLists called:', { guid, fromList, toList });
-  
+  console.log('🔧 moveMovieBetweenLists called:', { guid, fromList, toList })
+
   try {
     // Check if api is available
     if (!api) {
-      console.error('❌ API not available!');
-      showNotification('Error: API not initialized');
-      return;
+      console.error('❌ API not available!')
+      showNotification('Error: API not initialized')
+      return
     }
-    
+
     // Map list names to wantsToWatch values
     const listToValue = {
-      'watch': true,
-      'pass': false,
-      'seen': null
-    };
-    
-    const newValue = listToValue[toList];
-    console.log('🧠 New value for wantsToWatch:', newValue);
-    
+      watch: true,
+      pass: false,
+      seen: null,
+    }
+
+    const newValue = listToValue[toList]
+    console.log('🧠 New value for wantsToWatch:', newValue)
+
     // Send the response to update the movie's status
-    console.log('🗂️ Sending response to API...');
-    await api.respond({ guid, wantsToWatch: newValue });
-    console.log('✅ API response sent');
+    console.log('🗂️ Sending response to API...')
+    await api.respond({ guid, wantsToWatch: newValue })
+    console.log('✅ API response sent')
 
     if (toList === 'watch' && typeof window.refreshMatchesList === 'function') {
-      const refreshedMatches = await window.refreshMatchesList();
-      const matchedEntry = refreshedMatches?.find(match => match.movie?.guid === guid);
-      const shownGuids = window.shownMatchGuids;
-      if (matchedEntry && matchedEntry.users?.length > 1 && (!shownGuids || !shownGuids.has(guid))) {
-        showMatchPopup(matchedEntry);
-        shownGuids?.add?.(guid);
+      const refreshedMatches = await window.refreshMatchesList()
+      const matchedEntry = refreshedMatches?.find(
+        match => match.movie?.guid === guid
+      )
+      const shownGuids = window.shownMatchGuids
+      if (
+        matchedEntry &&
+        matchedEntry.users?.length > 1 &&
+        (!shownGuids || !shownGuids.has(guid))
+      ) {
+        showMatchPopup(matchedEntry)
+        shownGuids?.add?.(guid)
       }
     }
-    
+
     // Get the card to extract movie data from it
-    const oldCard = document.querySelector(`.watch-card[data-guid="${guid}"]`);
+    const oldCard = document.querySelector(`.watch-card[data-guid="${guid}"]`)
     if (!oldCard) {
-      console.error('❌ Card not found with guid:', guid);
-      showNotification('Error: Card not found');
-      return;
+      console.error('❌ Card not found with guid:', guid)
+      showNotification('Error: Card not found')
+      return
     }
-    console.log('🧠 Found old card in DOM');
-    
+    console.log('🧠 Found old card in DOM')
+
     // Extract movie data from the card's DOM elements and dataset
-    const titleEl = oldCard.querySelector('.watch-card-title-compact');
-    const titleText = titleEl ? titleEl.textContent.trim() : '';
-    const yearMatch = titleText.match(/\((\d{4})\)/);
-    const title = titleText.replace(/\s*\(\d{4}\)\s*$/, '').trim();
-    const year = yearMatch ? yearMatch[1] : '';
-    
-    const posterImg = oldCard.querySelector('.watch-card-poster img');
-    const art = posterImg ? posterImg.src.replace(/\?w=\d+$/, '').replace(window.location.origin, '').replace(document.body.dataset.basePath || '', '') : '';
-    
-    const summaryEl = oldCard.querySelector('.watch-card-summary');
-    const summary = summaryEl ? summaryEl.textContent.trim() : '';
-    
-    const ratingEl = oldCard.querySelector('.watch-card-ratings');
-    const rating = ratingEl ? ratingEl.innerHTML : '';
-    
+    const titleEl = oldCard.querySelector('.watch-card-title-compact')
+    const titleText = titleEl ? titleEl.textContent.trim() : ''
+    const yearMatch = titleText.match(/\((\d{4})\)/)
+    const title = titleText.replace(/\s*\(\d{4}\)\s*$/, '').trim()
+    const year = yearMatch ? yearMatch[1] : ''
+
+    const posterImg = oldCard.querySelector('.watch-card-poster img')
+    const art = posterImg
+      ? posterImg.src
+          .replace(/\?w=\d+$/, '')
+          .replace(window.location.origin, '')
+          .replace(document.body.dataset.basePath || '', '')
+      : ''
+
+    const summaryEl = oldCard.querySelector('.watch-card-summary')
+    const summary = summaryEl ? summaryEl.textContent.trim() : ''
+
+    const ratingEl = oldCard.querySelector('.watch-card-ratings')
+    const rating = ratingEl ? ratingEl.innerHTML : ''
+
     // Reconstruct movie object from card data
     const movie = {
       guid,
@@ -1532,53 +1839,58 @@ async function moveMovieBetweenLists(guid, fromList, toList) {
       summary,
       rating,
       // Get additional data from dataset
-      genre_ids: oldCard.dataset.genres ? JSON.parse(oldCard.dataset.genres) : [],
-      original_language: oldCard.dataset.languages ? JSON.parse(oldCard.dataset.languages)[0] : undefined,
-      production_countries: oldCard.dataset.countries ? JSON.parse(oldCard.dataset.countries).map(c => ({ iso_3166_1: c })) : [],
+      genre_ids: oldCard.dataset.genres
+        ? JSON.parse(oldCard.dataset.genres)
+        : [],
+      original_language: oldCard.dataset.languages
+        ? JSON.parse(oldCard.dataset.languages)[0]
+        : undefined,
+      production_countries: oldCard.dataset.countries
+        ? JSON.parse(oldCard.dataset.countries).map(c => ({ iso_3166_1: c }))
+        : [],
       contentRating: oldCard.dataset.contentRating || '',
       runtime: oldCard.dataset.runtime || '',
       vote_count: parseInt(oldCard.dataset.voteCount) || 0,
       tmdb_id: oldCard.dataset.tmdbId || '',
-    };
-    
-    console.log('🧠 Reconstructed movie data:', movie.title);
-    
+    }
+
+    console.log('🧠 Reconstructed movie data:', movie.title)
+
     // Remove from old list
-    console.log('🧠 Removing card from old list');
-    oldCard.remove();
-    
+    console.log('🧠 Removing card from old list')
+    oldCard.remove()
+
     // Add to new list
-    const basePath = '';
-    const likesList = document.querySelector('.watch-list.likes-list');
-    const dislikesList = document.querySelector('.dislikes-list');
-    const seenList = document.querySelector('.seen-list');
-    
-    console.log('🧠 Found lists:', { 
-      likesList: !!likesList, 
-      dislikesList: !!dislikesList, 
-      seenList: !!seenList 
-    });
-    
-    console.log('🧩 Calling appendRatedRow...');
+    const basePath = ''
+    const likesList = document.querySelector('.watch-list.likes-list')
+    const dislikesList = document.querySelector('.dislikes-list')
+    const seenList = document.querySelector('.seen-list')
+
+    console.log('🧠 Found lists:', {
+      likesList: !!likesList,
+      dislikesList: !!dislikesList,
+      seenList: !!seenList,
+    })
+
+    console.log('🧩 Calling appendRatedRow...')
     await appendRatedRow(
       { basePath, likesList, dislikesList, seenList },
       movie,
       newValue
-    );
-    console.log('✅ appendRatedRow complete');
-    
+    )
+    console.log('✅ appendRatedRow complete')
+
     // Show notification
     const listNames = {
-      'watch': 'Watch List',
-      'pass': 'Pass List',
-      'seen': 'Seen List'
-    };
-    showNotification(`Moved "${movie.title}" to ${listNames[toList]}`);
-    
+      watch: 'Watch List',
+      pass: 'Pass List',
+      seen: 'Seen List',
+    }
+    showNotification(`Moved "${movie.title}" to ${listNames[toList]}`)
   } catch (error) {
-    console.error('❌Error moving movie between lists:', error);
-    console.error('Stack trace:', error.stack);
-    showNotification('Failed to move movie. Please try again.');
+    console.error('❌Error moving movie between lists:', error)
+    console.error('Stack trace:', error.stack)
+    showNotification('Failed to move movie. Please try again.')
   }
 }
 
@@ -1586,68 +1898,81 @@ function getStreamingServices(movie) {
   if (movie.streamingServices) {
     // Handle new format { subscription: [], free: [] }
     if (movie.streamingServices.subscription || movie.streamingServices.free) {
-      return movie.streamingServices;
+      return movie.streamingServices
     }
-    
+
     // Handle old array format - treat as subscription
-    if (Array.isArray(movie.streamingServices) && movie.streamingServices.length > 0) {
+    if (
+      Array.isArray(movie.streamingServices) &&
+      movie.streamingServices.length > 0
+    ) {
       return {
-        subscription: movie.streamingServices.map(s => 
-          typeof s === 'string' ? { id: 0, name: s, logo_path: null, type: 'subscription' } : s
+        subscription: movie.streamingServices.map(s =>
+          typeof s === 'string'
+            ? { id: 0, name: s, logo_path: null, type: 'subscription' }
+            : s
         ),
-        free: []
-      };
+        free: [],
+      }
     }
   }
-  
+
   // Fallback for Plex-only (no legacy /poster/ check)
-  const isInPlex = !!movie.guid && (
-    movie.guid.includes('plex://') ||
-    (!movie.guid.includes('tmdb://') && !movie.guid.includes('imdb://'))
-  );
-  
+  const isInPlex =
+    !!movie.guid &&
+    (movie.guid.includes('plex://') ||
+      (!movie.guid.includes('tmdb://') && !movie.guid.includes('imdb://')))
+
   if (isInPlex) {
     return {
-      subscription: [{ id: 0, name: window.PLEX_LIBRARY_NAME, logo_path: '/assets/logos/allvids.svg', type: 'subscription' }],
-      free: []
-    };
+      subscription: [
+        {
+          id: 0,
+          name: window.PLEX_LIBRARY_NAME,
+          logo_path: '/assets/logos/allvids.svg',
+          type: 'subscription',
+        },
+      ],
+      free: [],
+    }
   }
-  
-  return { subscription: [], free: [] };
+
+  return { subscription: [], free: [] }
 }
 
 // Check if request service is configured (with caching)
-let requestServiceConfiguredCache = null;
+let requestServiceConfiguredCache = null
 async function checkRequestServiceStatus() {
   // Return cached value if available
   if (requestServiceConfiguredCache !== null) {
-    return requestServiceConfiguredCache;
+    return requestServiceConfiguredCache
   }
-  
+
   try {
-    const response = await fetch('/api/request-service-status');
+    const response = await fetch('/api/request-service-status')
     if (response.ok) {
-      const data = await response.json();
-      requestServiceConfiguredCache = data.configured;
-      return requestServiceConfiguredCache;
+      const data = await response.json()
+      requestServiceConfiguredCache = data.configured
+      return requestServiceConfiguredCache
     }
   } catch (err) {
-    console.warn('⚠️ Failed to check request service status:', err);
+    console.warn('⚠️ Failed to check request service status:', err)
   }
-  requestServiceConfiguredCache = false;
-  return false;
+  requestServiceConfiguredCache = false
+  return false
 }
 
 // Handle movie request
 async function handleMovieRequest(tmdbId, movieTitle, buttonElement) {
   if (!tmdbId) {
-    alert('Cannot request this movie: No TMDb ID available');
-    return;
+    alert('Cannot request this movie: No TMDb ID available')
+    return
   }
-  
-  buttonElement.disabled = true;
-  buttonElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Requesting...';
-  
+
+  buttonElement.disabled = true
+  buttonElement.innerHTML =
+    '<i class="fas fa-spinner fa-spin"></i> Requesting...'
+
   try {
     const response = await fetch('/api/request-movie', {
       method: 'POST',
@@ -1655,38 +1980,42 @@ async function handleMovieRequest(tmdbId, movieTitle, buttonElement) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ tmdbId }),
-    });
-    
-    const result = await response.json();
-    
+    })
+
+    const result = await response.json()
+
     if (result.success) {
-      buttonElement.innerHTML = '<i class="fas fa-check"></i> Requested';
-      buttonElement.classList.add('requested');
-      
-      showNotification(`"${movieTitle}" has been requested!`);
-      
+      buttonElement.innerHTML = '<i class="fas fa-check"></i> Requested'
+      buttonElement.classList.add('requested')
+
+      showNotification(`"${movieTitle}" has been requested!`)
+
       // Trigger immediate Radarr cache refresh
-      fetch('/api/refresh-radarr-cache', { method: 'POST' }).catch(err => 
+      fetch('/api/refresh-radarr-cache', { method: 'POST' }).catch(err =>
         console.error('❌Failed to trigger cache refresh:', err)
-      );
-      
+      )
+
       // Check status again in 30 seconds
-      setTimeout(refreshWatchListStatus, 30000);
+      setTimeout(refreshWatchListStatus, 30000)
     } else {
-      buttonElement.innerHTML = '<i class="fas fa-download"></i> ADD TO PLEX';
-      buttonElement.disabled = false;
-      alert(`Failed to request "${movieTitle}": ${result.message || 'Unknown error'}`);
+      buttonElement.innerHTML = '<i class="fas fa-download"></i> ADD TO PLEX'
+      buttonElement.disabled = false
+      alert(
+        `Failed to request "${movieTitle}": ${
+          result.message || 'Unknown error'
+        }`
+      )
     }
   } catch (err) {
-    console.error('❌Error requesting movie:', err);
-    buttonElement.innerHTML = '<i class="fas fa-download"></i> ADD TO PLEX';
-    buttonElement.disabled = false;
-    alert(`Error requesting "${movieTitle}".`);
+    console.error('❌Error requesting movie:', err)
+    buttonElement.innerHTML = '<i class="fas fa-download"></i> ADD TO PLEX'
+    buttonElement.disabled = false
+    alert(`Error requesting "${movieTitle}".`)
   }
 }
 
 // Watch List Auto-Refresh System
-let watchListRefreshInterval = null;
+let watchListRefreshInterval = null
 
 /**
  * Process a list of items with a concurrency limit to avoid blocking the main thread.
@@ -1697,56 +2026,60 @@ let watchListRefreshInterval = null;
  * @returns {Promise<R[]>}
  */
 async function processWithConcurrency(items, limit, handler) {
-  const results = new Array(items.length);
-  let index = 0;
+  const results = new Array(items.length)
+  let index = 0
 
-  const workerCount = Math.min(limit, items.length);
-  if (workerCount === 0) return results;
+  const workerCount = Math.min(limit, items.length)
+  if (workerCount === 0) return results
 
   async function runNext() {
     while (index < items.length) {
-      const currentIndex = index++;
-      results[currentIndex] = await handler(items[currentIndex], currentIndex);
+      const currentIndex = index++
+      results[currentIndex] = await handler(items[currentIndex], currentIndex)
     }
   }
 
-  await Promise.all(Array.from({ length: workerCount }, runNext));
-  return results;
+  await Promise.all(Array.from({ length: workerCount }, runNext))
+  return results
 }
 
 async function refreshWatchListStatus() {
-  console.log('🔧 Refreshing Watch list (Plex + Streaming)...');
+  console.log('🔧 Refreshing Watch list (Plex + Streaming)...')
 
-  const watchCards = Array.from(document.querySelectorAll('.watch-card'));
-  const results = await processWithConcurrency(watchCards, 6, async (card) => {
-    const addBtn = card.querySelector('.add-to-plex-btn');
-    const tmdbId = parseInt(card.dataset.tmdbId);
+  const watchCards = Array.from(document.querySelectorAll('.watch-card'))
+  const results = await processWithConcurrency(watchCards, 6, async card => {
+    const addBtn = card.querySelector('.add-to-plex-btn')
+    const tmdbId = parseInt(card.dataset.tmdbId)
 
     if (!tmdbId) {
-      return { plexUpdated: 0, streamingUpdated: 0 };
+      return { plexUpdated: 0, streamingUpdated: 0 }
     }
 
-    let plexUpdated = 0;
-    let streamingUpdated = 0;
+    let plexUpdated = 0
+    let streamingUpdated = 0
 
     try {
       // 1. Check Plex status (if button exists)
       if (addBtn) {
-        const plexResponse = await fetch(`/api/check-movie-status?tmdbId=${tmdbId}`);
+        const plexResponse = await fetch(
+          `/api/check-movie-status?tmdbId=${tmdbId}`
+        )
         if (plexResponse.ok) {
-          const plexData = await plexResponse.json();
+          const plexData = await plexResponse.json()
 
           if (plexData.inPlex) {
-            const actionsContainer = card.querySelector('.watch-card-actions');
-            const btnToReplace = actionsContainer.querySelector('.add-to-plex-btn');
+            const actionsContainer = card.querySelector('.watch-card-actions')
+            const btnToReplace = actionsContainer.querySelector(
+              '.add-to-plex-btn'
+            )
 
             if (btnToReplace) {
               btnToReplace.outerHTML = `
                 <div class="plex-status">
                   <i class="fas fa-check-circle"></i> ${window.PLEX_LIBRARY_NAME}
                 </div>
-              `;
-              plexUpdated++;
+              `
+              plexUpdated++
             }
           }
         }
@@ -1754,23 +2087,25 @@ async function refreshWatchListStatus() {
 
       // 2. Check if "ADD TO PLEX" button should show "Requested" instead
       if (addBtn && !addBtn.classList.contains('requested')) {
-        const requestResponse = await fetch(`/api/check-request-status?tmdbId=${tmdbId}`);
+        const requestResponse = await fetch(
+          `/api/check-request-status?tmdbId=${tmdbId}`
+        )
         if (requestResponse.ok) {
-          const requestData = await requestResponse.json();
+          const requestData = await requestResponse.json()
 
           // If movie is pending/processing in Jellyseerr/Overseerr, update button
           if (requestData.pending || requestData.processing) {
-            addBtn.innerHTML = '<i class="fas fa-check"></i> Requested';
-            addBtn.classList.add('requested');
-            addBtn.disabled = true;
+            addBtn.innerHTML = '<i class="fas fa-check"></i> Requested'
+            addBtn.classList.add('requested')
+            addBtn.disabled = true
           }
         }
       }
 
       // 3. Refresh streaming data (for ALL movies, even if in Plex)
-      const streamingResponse = await fetch(`/api/refresh-streaming/${tmdbId}`);
+      const streamingResponse = await fetch(`/api/refresh-streaming/${tmdbId}`)
       if (streamingResponse.ok) {
-        const streamingData = await streamingResponse.json();
+        const streamingData = await streamingResponse.json()
 
         // **NEW: Also update the persisted data**
         await fetch(`/api/update-persisted-movie/${tmdbId}`, {
@@ -1778,185 +2113,212 @@ async function refreshWatchListStatus() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             streamingServices: streamingData.streamingServices,
-            streamingLink: streamingData.streamingLink
-          })
-        });
+            streamingLink: streamingData.streamingLink,
+          }),
+        })
 
         // Update SUBSCRIPTION and FREE dropdown menus (current Watch-card markup)
-        const dropdowns = card.querySelectorAll('.service-dropdown');
-        const subMenu = dropdowns[0]?.querySelector('.service-dropdown-menu');
-        const freeMenu = dropdowns[1]?.querySelector('.service-dropdown-menu');
+        const dropdowns = card.querySelectorAll('.service-dropdown')
+        const subMenu = dropdowns[0]?.querySelector('.service-dropdown-menu')
+        const freeMenu = dropdowns[1]?.querySelector('.service-dropdown-menu')
 
         // SUBSCRIPTION
         if (subMenu) {
-          const services = (streamingData.streamingServices?.subscription || [])
-            .filter(s => s.name !== window.PLEX_LIBRARY_NAME);
-          subMenu.innerHTML = renderServiceItems(services, streamingData.streamingLink);
-          streamingUpdated++;
+          const services = (
+            streamingData.streamingServices?.subscription || []
+          ).filter(s => s.name !== window.PLEX_LIBRARY_NAME)
+          subMenu.innerHTML = renderServiceItems(
+            services,
+            streamingData.streamingLink
+          )
+          streamingUpdated++
         }
 
         // FREE
         if (freeMenu) {
-          const services = streamingData.streamingServices?.free || [];
-          freeMenu.innerHTML = renderServiceItems(services, streamingData.streamingLink);
+          const services = streamingData.streamingServices?.free || []
+          freeMenu.innerHTML = renderServiceItems(
+            services,
+            streamingData.streamingLink
+          )
         }
       }
-
     } catch (err) {
-      console.error(`❌Failed to refresh TMDb ID ${tmdbId}:`, err);
+      console.error(`❌Failed to refresh TMDb ID ${tmdbId}:`, err)
     }
 
-    return { plexUpdated, streamingUpdated };
-  });
+    return { plexUpdated, streamingUpdated }
+  })
 
-  const { plexUpdatedCount, streamingUpdatedCount } = results.reduce((acc, result = {}) => {
-    acc.plexUpdatedCount += result.plexUpdated || 0;
-    acc.streamingUpdatedCount += result.streamingUpdated || 0;
-    return acc;
-  }, { plexUpdatedCount: 0, streamingUpdatedCount: 0 });
+  const { plexUpdatedCount, streamingUpdatedCount } = results.reduce(
+    (acc, result = {}) => {
+      acc.plexUpdatedCount += result.plexUpdated || 0
+      acc.streamingUpdatedCount += result.streamingUpdated || 0
+      return acc
+    },
+    { plexUpdatedCount: 0, streamingUpdatedCount: 0 }
+  )
 
   // Show notification with results
-  const messages = [];
+  const messages = []
   if (plexUpdatedCount > 0) {
-    messages.push(`${plexUpdatedCount} now in Plex`);
+    messages.push(`${plexUpdatedCount} now in Plex`)
   }
   if (streamingUpdatedCount > 0) {
-    messages.push(`${streamingUpdatedCount} streaming updated`);
+    messages.push(`${streamingUpdatedCount} streaming updated`)
   }
 
   if (messages.length > 0) {
-    console.log(`✅ ${messages.join(', ')}`);
-    showNotification(messages.join(' • '));
+    console.log(`✅ ${messages.join(', ')}`)
+    showNotification(messages.join(' • '))
   } else {
-    showNotification('Everything up to date!');
+    showNotification('Everything up to date!')
   }
 
   // Reset expand/collapse button state after refresh
   if (typeof resetExpandCollapseButton === 'function') {
-    resetExpandCollapseButton();
+    resetExpandCollapseButton()
   }
 }
 
 // Helper to render service items
 function renderServiceItems(services, streamingLink) {
   if (!services || services.length === 0) {
-    return '<div class="service-item">None available</div>';
+    return '<div class="service-item">None available</div>'
   }
-  
-  const basePath = document.body.dataset.basePath || '';
-  
+
+  const basePath = document.body.dataset.basePath || ''
+
   if (streamingLink) {
     return `
       <a href="${streamingLink}" target="_blank" rel="noopener noreferrer" class="service-link-wrapper">
-        ${services.map(s => {
-          const logoUrl = s.logo_path 
-            ? (s.logo_path.startsWith('/assets/') 
-                ? `${basePath}${s.logo_path}` 
-                : `https://image.tmdb.org/t/p/original${s.logo_path}`)
-            : null;
-          
-          return `<div class="service-item">
-            ${logoUrl ? `<img src="${logoUrl}" alt="${s.name}" class="service-logo-small">` : ''}
+        ${services
+          .map(s => {
+            const logoUrl = s.logo_path
+              ? s.logo_path.startsWith('/assets/')
+                ? `${basePath}${s.logo_path}`
+                : `https://image.tmdb.org/t/p/original${s.logo_path}`
+              : null
+
+            return `<div class="service-item">
+            ${
+              logoUrl
+                ? `<img src="${logoUrl}" alt="${s.name}" class="service-logo-small">`
+                : ''
+            }
             <span>${s.name}</span>
-          </div>`;
-        }).join('')}
+          </div>`
+          })
+          .join('')}
         <div class="service-footer">
           <i class="fas fa-external-link-alt"></i> View on JustWatch
         </div>
       </a>
-    `;
+    `
   }
-  
-  return services.map(s => {
-    const logoUrl = s.logo_path 
-      ? (s.logo_path.startsWith('/assets/') 
-          ? `${basePath}${s.logo_path}` 
-          : `https://image.tmdb.org/t/p/original${s.logo_path}`)
-      : null;
-    
-    return `<div class="service-item">
-      ${logoUrl ? `<img src="${logoUrl}" alt="${s.name}" class="service-logo-small">` : ''}
+
+  return services
+    .map(s => {
+      const logoUrl = s.logo_path
+        ? s.logo_path.startsWith('/assets/')
+          ? `${basePath}${s.logo_path}`
+          : `https://image.tmdb.org/t/p/original${s.logo_path}`
+        : null
+
+      return `<div class="service-item">
+      ${
+        logoUrl
+          ? `<img src="${logoUrl}" alt="${s.name}" class="service-logo-small">`
+          : ''
+      }
       <span>${s.name}</span>
-    </div>`;
-  }).join('');
+    </div>`
+    })
+    .join('')
 }
 
 function startWatchListAutoRefresh() {
   if (watchListRefreshInterval) {
-    clearInterval(watchListRefreshInterval);
+    clearInterval(watchListRefreshInterval)
   }
-  
+
   // Check once daily for both Plex and JustWatch
-  watchListRefreshInterval = setInterval(checkDailyRefresh, 60 * 60 * 1000); // Check every hour
-  console.log('🔧 Started daily auto-refresh check (hourly)');
-  
+  watchListRefreshInterval = setInterval(checkDailyRefresh, 60 * 60 * 1000) // Check every hour
+  console.log('🔧 Started daily auto-refresh check (hourly)')
+
   // Run initial check when tab opens
-  checkDailyRefresh();
+  checkDailyRefresh()
 }
 
 // Daily refresh tracking
-const LAST_PLEX_REFRESH_KEY = 'lastPlexRefresh';
-const LAST_JUSTWATCH_REFRESH_KEY = 'lastJustWatchRefresh';
-const ONE_DAY = 24 * 60 * 60 * 1000;
+const LAST_PLEX_REFRESH_KEY = 'lastPlexRefresh'
+const LAST_JUSTWATCH_REFRESH_KEY = 'lastJustWatchRefresh'
+const ONE_DAY = 24 * 60 * 60 * 1000
 
 function shouldRefreshPlex() {
-  const lastRefresh = localStorage.getItem(LAST_PLEX_REFRESH_KEY);
-  if (!lastRefresh) return true;
-  
-  const timeSinceRefresh = Date.now() - parseInt(lastRefresh);
-  return timeSinceRefresh > ONE_DAY;
+  const lastRefresh = localStorage.getItem(LAST_PLEX_REFRESH_KEY)
+  if (!lastRefresh) return true
+
+  const timeSinceRefresh = Date.now() - parseInt(lastRefresh)
+  return timeSinceRefresh > ONE_DAY
 }
 
 function shouldRefreshJustWatch() {
-  const lastRefresh = localStorage.getItem(LAST_JUSTWATCH_REFRESH_KEY);
-  if (!lastRefresh) return true;
-  
-  const timeSinceRefresh = Date.now() - parseInt(lastRefresh);
-  return timeSinceRefresh > ONE_DAY;
+  const lastRefresh = localStorage.getItem(LAST_JUSTWATCH_REFRESH_KEY)
+  if (!lastRefresh) return true
+
+  const timeSinceRefresh = Date.now() - parseInt(lastRefresh)
+  return timeSinceRefresh > ONE_DAY
 }
 
 async function checkDailyRefresh() {
-  const needsPlex = shouldRefreshPlex();
-  const needsJustWatch = shouldRefreshJustWatch();
-  
-  if (!needsPlex && !needsJustWatch) {
-    console.log('✅ Daily refreshes already completed');
-    return;
-  }
-  
-  console.log(`🗂️ Daily auto-refresh: Plex=${needsPlex}, JustWatch=${needsJustWatch}`);
-  
-  const watchCards = Array.from(document.querySelectorAll('.watch-card'));
+  const needsPlex = shouldRefreshPlex()
+  const needsJustWatch = shouldRefreshJustWatch()
 
-  const results = await processWithConcurrency(watchCards, 6, async (card) => {
-    const addBtn = card.querySelector('.add-to-plex-btn');
-    const tmdbId = parseInt(card.dataset.tmdbId);
+  if (!needsPlex && !needsJustWatch) {
+    console.log('✅ Daily refreshes already completed')
+    return
+  }
+
+  console.log(
+    `🗂️ Daily auto-refresh: Plex=${needsPlex}, JustWatch=${needsJustWatch}`
+  )
+
+  const watchCards = Array.from(document.querySelectorAll('.watch-card'))
+
+  const results = await processWithConcurrency(watchCards, 6, async card => {
+    const addBtn = card.querySelector('.add-to-plex-btn')
+    const tmdbId = parseInt(card.dataset.tmdbId)
 
     if (!tmdbId) {
-      return { plexUpdated: 0, streamingUpdated: 0 };
+      return { plexUpdated: 0, streamingUpdated: 0 }
     }
 
-    let plexUpdated = 0;
-    let streamingUpdated = 0;
+    let plexUpdated = 0
+    let streamingUpdated = 0
 
     try {
       // 1. Check Plex status (if needed)
       if (needsPlex && addBtn) {
-        const plexResponse = await fetch(`/api/check-movie-status?tmdbId=${tmdbId}`);
+        const plexResponse = await fetch(
+          `/api/check-movie-status?tmdbId=${tmdbId}`
+        )
         if (plexResponse.ok) {
-          const plexData = await plexResponse.json();
+          const plexData = await plexResponse.json()
 
           if (plexData.inPlex) {
-            const actionsContainer = card.querySelector('.watch-card-actions');
-            const btnToReplace = actionsContainer.querySelector('.add-to-plex-btn');
+            const actionsContainer = card.querySelector('.watch-card-actions')
+            const btnToReplace = actionsContainer.querySelector(
+              '.add-to-plex-btn'
+            )
 
             if (btnToReplace) {
               btnToReplace.outerHTML = `
                 <div class="plex-status">
                   <i class="fas fa-check-circle"></i> ${window.PLEX_LIBRARY_NAME}
                 </div>
-              `;
-              plexUpdated++;
+              `
+              plexUpdated++
             }
           }
         }
@@ -1964,82 +2326,100 @@ async function checkDailyRefresh() {
 
       // 2. Refresh streaming data (if needed)
       if (needsJustWatch) {
-        const streamingResponse = await fetch(`/api/refresh-streaming/${tmdbId}`);
+        const streamingResponse = await fetch(
+          `/api/refresh-streaming/${tmdbId}`
+        )
         if (streamingResponse.ok) {
-          const streamingData = await streamingResponse.json();
+          const streamingData = await streamingResponse.json()
 
           // Update subscription services
-          const subContainer = card.querySelector('.streaming-subscription .service-list');
+          const subContainer = card.querySelector(
+            '.streaming-subscription .service-list'
+          )
           if (subContainer) {
-            const services = streamingData.streamingServices.subscription || [];
-            subContainer.innerHTML = renderServiceItems(services, streamingData.streamingLink);
-            streamingUpdated++;
+            const services = streamingData.streamingServices.subscription || []
+            subContainer.innerHTML = renderServiceItems(
+              services,
+              streamingData.streamingLink
+            )
+            streamingUpdated++
           }
 
           // Update free services
-          const freeContainer = card.querySelector('.streaming-free .service-list');
+          const freeContainer = card.querySelector(
+            '.streaming-free .service-list'
+          )
           if (freeContainer) {
-            const services = streamingData.streamingServices.free || [];
-            freeContainer.innerHTML = renderServiceItems(services, streamingData.streamingLink);
+            const services = streamingData.streamingServices.free || []
+            freeContainer.innerHTML = renderServiceItems(
+              services,
+              streamingData.streamingLink
+            )
           }
         }
       }
-
     } catch (err) {
-      console.error(`❌Failed to refresh TMDb ID ${tmdbId}:`, err);
+      console.error(`❌Failed to refresh TMDb ID ${tmdbId}:`, err)
     }
 
-    return { plexUpdated, streamingUpdated };
-  });
+    return { plexUpdated, streamingUpdated }
+  })
 
-  const { plexUpdatedCount, streamingUpdatedCount } = results.reduce((acc, result = {}) => {
-    acc.plexUpdatedCount += result.plexUpdated || 0;
-    acc.streamingUpdatedCount += result.streamingUpdated || 0;
-    return acc;
-  }, { plexUpdatedCount: 0, streamingUpdatedCount: 0 });
+  const { plexUpdatedCount, streamingUpdatedCount } = results.reduce(
+    (acc, result = {}) => {
+      acc.plexUpdatedCount += result.plexUpdated || 0
+      acc.streamingUpdatedCount += result.streamingUpdated || 0
+      return acc
+    },
+    { plexUpdatedCount: 0, streamingUpdatedCount: 0 }
+  )
 
   // Update timestamps
   if (needsPlex) {
-    localStorage.setItem(LAST_PLEX_REFRESH_KEY, Date.now().toString());
+    localStorage.setItem(LAST_PLEX_REFRESH_KEY, Date.now().toString())
     if (plexUpdatedCount > 0) {
-      console.log(`✅ Daily Plex refresh: ${plexUpdatedCount} movie(s) now in Plex`);
+      console.log(
+        `✅ Daily Plex refresh: ${plexUpdatedCount} movie(s) now in Plex`
+      )
     }
   }
-  
+
   if (needsJustWatch) {
-    localStorage.setItem(LAST_JUSTWATCH_REFRESH_KEY, Date.now().toString());
+    localStorage.setItem(LAST_JUSTWATCH_REFRESH_KEY, Date.now().toString())
     if (streamingUpdatedCount > 0) {
-      console.log(`✅ Daily JustWatch refresh: ${streamingUpdatedCount} movie(s) updated`);
+      console.log(
+        `✅ Daily JustWatch refresh: ${streamingUpdatedCount} movie(s) updated`
+      )
     }
   }
-  
+
   // Show notification if anything updated
-  const messages = [];
+  const messages = []
   if (plexUpdatedCount > 0) {
-    messages.push(`${plexUpdatedCount} now in Plex`);
+    messages.push(`${plexUpdatedCount} now in Plex`)
   }
   if (streamingUpdatedCount > 0) {
-    messages.push(`${streamingUpdatedCount} streaming updated`);
+    messages.push(`${streamingUpdatedCount} streaming updated`)
   }
-  
+
   if (messages.length > 0) {
-    showNotification('Daily refresh: ' + messages.join(' • '));
+    showNotification('Daily refresh: ' + messages.join(' • '))
   }
 }
 
 function stopWatchListAutoRefresh() {
   if (watchListRefreshInterval) {
-    clearInterval(watchListRefreshInterval);
-    watchListRefreshInterval = null;
-    console.log('🔧 Stopped Watch list auto-refresh');
+    clearInterval(watchListRefreshInterval)
+    watchListRefreshInterval = null
+    console.log('🔧 Stopped Watch list auto-refresh')
   }
 }
 
 function showNotification(message) {
-  let notification = document.getElementById('watch-notification');
+  let notification = document.getElementById('watch-notification')
   if (!notification) {
-    notification = document.createElement('div');
-    notification.id = 'watch-notification';
+    notification = document.createElement('div')
+    notification.id = 'watch-notification'
     notification.style.cssText = `
       position: fixed;
       top: 20px;
@@ -2053,32 +2433,32 @@ function showNotification(message) {
       font-weight: 600;
       display: none;
       animation: slideIn 0.3s ease;
-    `;
-    document.body.appendChild(notification);
-    
-    const style = document.createElement('style');
+    `
+    document.body.appendChild(notification)
+
+    const style = document.createElement('style')
     style.textContent = `
       @keyframes slideIn {
         from { transform: translateX(400px); opacity: 0; }
         to { transform: translateX(0); opacity: 1; }
       }
-    `;
-    document.head.appendChild(style);
+    `
+    document.head.appendChild(style)
   }
-  
-  notification.textContent = message;
-  notification.style.display = 'block';
-  
+
+  notification.textContent = message
+  notification.style.display = 'block'
+
   setTimeout(() => {
-    notification.style.display = 'none';
-  }, 3000);
+    notification.style.display = 'none'
+  }, 3000)
 }
 
 function showNoMoviesNotification() {
-  let notification = document.getElementById('no-movies-notification');
+  let notification = document.getElementById('no-movies-notification')
   if (!notification) {
-    notification = document.createElement('div');
-    notification.id = 'no-movies-notification';
+    notification = document.createElement('div')
+    notification.id = 'no-movies-notification'
     notification.style.cssText = `
       position: fixed;
       top: 20px;
@@ -2095,108 +2475,111 @@ function showNoMoviesNotification() {
       animation: slideDown 0.3s ease;
       text-align: center;
       max-width: 400px;
-    `;
-    document.body.appendChild(notification);
-    
-    const style = document.createElement('style');
+    `
+    document.body.appendChild(notification)
+
+    const style = document.createElement('style')
     style.textContent = `
       @keyframes slideDown {
         from { transform: translate(-50%, -100px); opacity: 0; }
         to { transform: translate(-50%, 0); opacity: 1; }
       }
-    `;
-    document.head.appendChild(style);
+    `
+    document.head.appendChild(style)
   }
-  
+
   notification.innerHTML = `
     <i class="fas fa-exclamation-triangle"></i> 
     No more movies found with current filters.<br>
     <small style="font-weight: 400; opacity: 0.9;">Try adjusting your filters or resetting them.</small>
-  `;
-  notification.style.display = 'block';
-  
+  `
+  notification.style.display = 'block'
+
   setTimeout(() => {
-    notification.style.opacity = '0';
-    notification.style.transition = 'opacity 0.3s';
+    notification.style.opacity = '0'
+    notification.style.transition = 'opacity 0.3s'
     setTimeout(() => {
-      notification.style.display = 'none';
-      notification.style.opacity = '1';
-    }, 300);
-  }, 5000);
+      notification.style.display = 'none'
+      notification.style.opacity = '1'
+    }, 300)
+  }, 5000)
 }
 
 /* -------------------- main ---------------------- */
 const main = async () => {
-  console.log('🚀 Comparr main() starting');
+  console.log('🚀 Comparr main() starting')
   const CARD_STACK_SIZE = 4
 
   api = new ComparrAPI()
-  console.log('⏳ Waiting for login...');
+  console.log('⏳ Waiting for login...')
   const loginData = await login(api)
-  console.log('✅ Login successful:', loginData);
+  console.log('✅ Login successful:', loginData)
   const { matches, rated, user: userName, roomCode } = loginData
 
   document.body.classList.add('is-logged-in')
 
   sessionStorage.setItem('userName', userName)
   sessionStorage.setItem('roomCode', roomCode)
-  
+
   // Track movies this user has already rated (to prevent showing them again)
-  const normalizeGuid = (value) => {
-    if (value == null) return '';
-    return String(value).trim();
-  };
+  const normalizeGuid = value => {
+    if (value == null) return ''
+    return String(value).trim()
+  }
 
   const ratedGuids = new Set(
-    rated
-      .map(r => normalizeGuid(r.movie?.guid ?? r.guid))
-      .filter(Boolean)
-  );
-  console.log(`⚠️ User has already rated ${ratedGuids.size} movies`);
+    rated.map(r => normalizeGuid(r.movie?.guid ?? r.guid)).filter(Boolean)
+  )
+  console.log(`⚠️ User has already rated ${ratedGuids.size} movies`)
 
-  const getNormalizedTmdbId = (movie) => {
-    if (!movie) return null;
+  const getNormalizedTmdbId = movie => {
+    if (!movie) return null
 
-    const directId = movie.tmdbId ?? movie.tmdb_id ?? movie.tmdbID ?? movie.tmdbid;
+    const directId =
+      movie.tmdbId ?? movie.tmdb_id ?? movie.tmdbID ?? movie.tmdbid
     if (directId) {
-      return String(directId).trim();
+      return String(directId).trim()
     }
 
     if (typeof movie.guid === 'string') {
       const guidMatch =
         movie.guid.match(/tmdb:\/\/(\d+)/i) ||
-        movie.guid.match(/themoviedb:\/\/(\d+)/i);
-      if (guidMatch) return guidMatch[1];
+        movie.guid.match(/themoviedb:\/\/(\d+)/i)
+      if (guidMatch) return guidMatch[1]
     }
 
     if (typeof movie.streamingLink === 'string') {
-      const linkMatch = movie.streamingLink.match(/themoviedb\.org\/movie\/(\d+)/i);
-      if (linkMatch) return linkMatch[1];
+      const linkMatch = movie.streamingLink.match(
+        /themoviedb\.org\/movie\/(\d+)/i
+      )
+      if (linkMatch) return linkMatch[1]
     }
 
     if (movie.ids?.tmdb) {
-      return String(movie.ids.tmdb).trim();
+      return String(movie.ids.tmdb).trim()
     }
 
-    return null;
-  };
+    return null
+  }
 
   // ALSO track rated TMDb IDs for cross-format matching (Plex GUID vs TMDb GUID)
-  const ratedTmdbIds = new Set();
+  const ratedTmdbIds = new Set()
   for (const r of rated) {
-    const normalizedGuid = normalizeGuid(r.movie?.guid ?? r.guid);
-    if (normalizedGuid) ratedGuids.add(normalizedGuid);
+    const normalizedGuid = normalizeGuid(r.movie?.guid ?? r.guid)
+    if (normalizedGuid) ratedGuids.add(normalizedGuid)
 
-    const normalized = getNormalizedTmdbId(r.movie);
-    if (normalized) ratedTmdbIds.add(normalized);
+    const normalized = getNormalizedTmdbId(r.movie)
+    if (normalized) ratedTmdbIds.add(normalized)
   }
-  console.log(`🎬 Tracking ${ratedTmdbIds.size} unique TMDb IDs from rated movies`);
-  
+  console.log(
+    `🎬 Tracking ${ratedTmdbIds.size} unique TMDb IDs from rated movies`
+  )
+
   // Get Plex library name from server config (fallback to default)
   window.PLEX_LIBRARY_NAME = 'My Plex Library'
   await loadClientConfig()
   await setupSettingsUI()
-  
+
   const matchesView = new MatchesView(matches)
   const shownMatchGuids = new Set()
   window.shownMatchGuids = shownMatchGuids
@@ -2214,7 +2597,7 @@ const main = async () => {
   }
 
   window.refreshMatchesList = refreshMatchesList
-  
+
   // Match event listener - show popup and add to matches view
   api.addEventListener('match', e => {
     const matchData = e.data
@@ -2224,12 +2607,14 @@ const main = async () => {
       shownMatchGuids.add(matchData.movie.guid)
     }
   })
-  
+
   api.addEventListener('message', e => {
     const data = e.data
     if (data.type === 'matchRemoved') {
       const { guid } = data.payload
-      const matchIndex = matchesView.matches.findIndex(m => m.movie.guid === guid)
+      const matchIndex = matchesView.matches.findIndex(
+        m => m.movie.guid === guid
+      )
       if (matchIndex !== -1) {
         matchesView.matches.splice(matchIndex, 1)
         matchesView.render()
@@ -2252,19 +2637,24 @@ const main = async () => {
       if (imdbImportProgress) imdbImportProgress.style.display = 'block'
 
       if (status === 'started') {
-        if (imdbImportStatus) imdbImportStatus.textContent = `Starting import of ${total} movies...`
+        if (imdbImportStatus)
+          imdbImportStatus.textContent = `Starting import of ${total} movies...`
         if (imdbImportBar) {
           imdbImportBar.style.width = '5%'
           imdbImportBar.classList.remove('error')
         }
       } else if (status === 'processing') {
         const pct = total > 0 ? Math.round((processed / total) * 100) : 0
-        if (imdbImportStatus) imdbImportStatus.textContent = `Processing: ${processed}/${total} (${imported} added, ${skipped} skipped)`
+        if (imdbImportStatus)
+          imdbImportStatus.textContent = `Processing: ${processed}/${total} (${imported} added, ${skipped} skipped)`
         if (imdbImportBar) imdbImportBar.style.width = `${pct}%`
       } else if (status === 'completed') {
-        if (imdbImportStatus) imdbImportStatus.textContent = `Done! ${imported} imported, ${skipped} skipped.`
+        if (imdbImportStatus)
+          imdbImportStatus.textContent = `Done! ${imported} imported, ${skipped} skipped.`
         if (imdbImportBar) imdbImportBar.style.width = '100%'
-        showNotification(`IMDb sync complete: ${imported} movies added to Seen list.`)
+        showNotification(
+          `IMDb sync complete: ${imported} movies added to Seen list.`
+        )
 
         // Re-enable buttons
         const imdbUrlSyncBtn = document.getElementById('imdb-url-sync-btn')
@@ -2288,17 +2678,21 @@ const main = async () => {
       const dislikesList = document.querySelector('.dislikes-list')
 
       if (movie && seenList) {
-        appendRatedRow({ basePath, likesList, dislikesList, seenList }, movie, null)
+        appendRatedRow(
+          { basePath, likesList, dislikesList, seenList },
+          movie,
+          null
+        )
       }
     }
   })
 
-  const likesList    = document.querySelector('.likes-list')
+  const likesList = document.querySelector('.likes-list')
   const dislikesList = document.querySelector('.dislikes-list')
-  const seenList     = document.querySelector('.seen-list')
-  const basePath     = document.body.dataset.basePath || ''
-  const movieByGuid  = new Map()
-  
+  const seenList = document.querySelector('.seen-list')
+  const basePath = document.body.dataset.basePath || ''
+  const movieByGuid = new Map()
+
   // Filter state - consolidated into one declaration
   const filterState = {
     yearRange: { min: DEFAULT_YEAR_MIN, max: new Date().getFullYear() },
@@ -2359,8 +2753,10 @@ const main = async () => {
 
     const voteCountSliderEl = document.getElementById('vote-count')
     const voteCountValueEl = document.getElementById('vote-count-value')
-    if (voteCountSliderEl) voteCountSliderEl.value = String(filterState.voteCount)
-    if (voteCountValueEl) voteCountValueEl.textContent = filterState.voteCount.toLocaleString()
+    if (voteCountSliderEl)
+      voteCountSliderEl.value = String(filterState.voteCount)
+    if (voteCountValueEl)
+      voteCountValueEl.textContent = filterState.voteCount.toLocaleString()
   }
 
   if (yearMinInput && yearMaxInput) {
@@ -2371,7 +2767,7 @@ const main = async () => {
   }
 
   syncFilterUIWithState()
-  
+
   /* COMMENTED OUT - Streaming services handlers (replaced with Where to Watch toggle)
   streamingCheckboxes.forEach(checkbox => {
     checkbox.addEventListener('change', (e) => {
@@ -2386,25 +2782,30 @@ const main = async () => {
     })
   })
   */
-  
+
   // Where to Watch toggle handler (proper switch style)
   const plexOnlyToggle = document.getElementById('plex-only-toggle')
   const toggleLabels = document.querySelectorAll('.toggle-label-text')
 
-  const handlePlexToggle = (e) => {
+  const handlePlexToggle = e => {
     filterState.showPlexOnly = e.target.checked
-    
+
     // Update label styling
     toggleLabels.forEach((label, index) => {
-      if (index === 0) { // "All Movies"
+      if (index === 0) {
+        // "All Movies"
         label.classList.toggle('active', !e.target.checked)
-      } else { // "My Plex Only"
+      } else {
+        // "My Plex Only"
         label.classList.toggle('active', e.target.checked)
       }
     })
-    
-    console.log('Where to Watch:', filterState.showPlexOnly ? 'My Plex Only' : 'All Movies')
-    
+
+    console.log(
+      'Where to Watch:',
+      filterState.showPlexOnly ? 'My Plex Only' : 'All Movies'
+    )
+
     // Immediately clear any buffered movies fetched with the previous filter state
     // so the swipe stack doesn't continue to show non-Plex results.
     window.__resetMovies = true
@@ -2423,20 +2824,24 @@ const main = async () => {
 
   plexOnlyToggle?.addEventListener('change', handlePlexToggle)
   // Add touchend for better mobile responsiveness
-  plexOnlyToggle?.addEventListener('touchend', (e) => {
-    // Let the change event handle the logic
-    e.stopPropagation()
-  }, { passive: false })
+  plexOnlyToggle?.addEventListener(
+    'touchend',
+    e => {
+      // Let the change event handle the logic
+      e.stopPropagation()
+    },
+    { passive: false }
+  )
 
   // FIXED DROPDOWN SETUP
   function setupAllDropdowns() {
-    console.log('🔧 Setting up dropdowns...');
-    
+    console.log('🔧 Setting up dropdowns...')
+
     // Create overlay container for dropdowns
-    let overlay = document.getElementById('filter-dropdown-overlay');
+    let overlay = document.getElementById('filter-dropdown-overlay')
     if (!overlay) {
-      overlay = document.createElement('div');
-      overlay.id = 'filter-dropdown-overlay';
+      overlay = document.createElement('div')
+      overlay.id = 'filter-dropdown-overlay'
       overlay.style.cssText = `
         position: fixed;
         top: 0;
@@ -2445,68 +2850,76 @@ const main = async () => {
         height: 100%;
         pointer-events: none;
         z-index: 10000;
-      `;
-      document.body.appendChild(overlay);
+      `
+      document.body.appendChild(overlay)
     }
 
     const pairs = [
-    {
-      type: 'genre',
-      toggle: document.getElementById('genre-dropdown-toggle'),
-      list: document.getElementById('genre-dropdown-list'),
-      checkboxes: document.querySelectorAll('.genre-checkbox input[type="checkbox"]')
-    },
-    {
-      type: 'language',
-      toggle: document.getElementById('language-dropdown-toggle'),
-      list: document.getElementById('language-dropdown-list'),
-      checkboxes: document.querySelectorAll('.language-checkbox input[type="checkbox"]')
-    },
-    {
-      type: 'country',
-      toggle: document.getElementById('country-dropdown-toggle'),
-      list: document.getElementById('country-dropdown-list'),
-      checkboxes: document.querySelectorAll('.country-checkbox input[type="checkbox"]')
-    },
-    {
-      type: 'sort',
-      toggle: document.getElementById('sort-dropdown-toggle'),
-      list: document.getElementById('sort-dropdown-list'),
-      radios: document.querySelectorAll('input[name="sort"]')
-    },
-    {
-      type: 'rating',
-      toggle: document.getElementById('rating-dropdown-toggle'),
-      list: document.getElementById('rating-dropdown-list'),
-      checkboxes: document.querySelectorAll('.rating-checkbox input[type="checkbox"]')
-    }
-  ];
+      {
+        type: 'genre',
+        toggle: document.getElementById('genre-dropdown-toggle'),
+        list: document.getElementById('genre-dropdown-list'),
+        checkboxes: document.querySelectorAll(
+          '.genre-checkbox input[type="checkbox"]'
+        ),
+      },
+      {
+        type: 'language',
+        toggle: document.getElementById('language-dropdown-toggle'),
+        list: document.getElementById('language-dropdown-list'),
+        checkboxes: document.querySelectorAll(
+          '.language-checkbox input[type="checkbox"]'
+        ),
+      },
+      {
+        type: 'country',
+        toggle: document.getElementById('country-dropdown-toggle'),
+        list: document.getElementById('country-dropdown-list'),
+        checkboxes: document.querySelectorAll(
+          '.country-checkbox input[type="checkbox"]'
+        ),
+      },
+      {
+        type: 'sort',
+        toggle: document.getElementById('sort-dropdown-toggle'),
+        list: document.getElementById('sort-dropdown-list'),
+        radios: document.querySelectorAll('input[name="sort"]'),
+      },
+      {
+        type: 'rating',
+        toggle: document.getElementById('rating-dropdown-toggle'),
+        list: document.getElementById('rating-dropdown-list'),
+        checkboxes: document.querySelectorAll(
+          '.rating-checkbox input[type="checkbox"]'
+        ),
+      },
+    ]
 
-    let currentOpen = null;
+    let currentOpen = null
 
     function closeAllDropdowns() {
       pairs.forEach(p => {
         if (p.list) {
-          p.list.style.display = 'none';
-          p.list.style.pointerEvents = 'none';
+          p.list.style.display = 'none'
+          p.list.style.pointerEvents = 'none'
         }
         if (p.toggle) {
-          p.toggle.classList.remove('open');
+          p.toggle.classList.remove('open')
         }
-      });
-      currentOpen = null;
+      })
+      currentOpen = null
     }
 
     function openDropdown(pair) {
-      if (!pair.toggle || !pair.list) return;
+      if (!pair.toggle || !pair.list) return
 
-      console.log(`🧠 Opening ${pair.type} dropdown`);
-      
-      const rect = pair.toggle.getBoundingClientRect();
-      
+      console.log(`🧠 Opening ${pair.type} dropdown`)
+
+      const rect = pair.toggle.getBoundingClientRect()
+
       // Move to overlay and position
-      overlay.appendChild(pair.list);
-      
+      overlay.appendChild(pair.list)
+
       // Force styles to override CSS
       pair.list.style.cssText = `
         position: fixed !important;
@@ -2525,208 +2938,216 @@ const main = async () => {
         overflow-y: auto !important;
         backdrop-filter: blur(20px) !important;
         box-shadow: var(--shadow-xl) !important;
-      `;
+      `
 
-      pair.toggle.classList.add('open');
-      currentOpen = pair.type;
-      
+      pair.toggle.classList.add('open')
+      currentOpen = pair.type
+
       console.log(`🧠 ${pair.type} dropdown visible at`, {
         top: pair.list.style.top,
         left: pair.list.style.left,
-        display: pair.list.style.display
-      });
+        display: pair.list.style.display,
+      })
     }
 
     // Attach click handlers
     pairs.forEach(pair => {
       if (!pair.toggle || !pair.list) {
-        console.warn(`⚠️ Missing elements for ${pair.type}`);
-        return;
+        console.warn(`⚠️ Missing elements for ${pair.type}`)
+        return
       }
 
       // Toggle button handlers - both touch and click
-      const handleToggle = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        console.log(`🧠 ${pair.type} toggle activated`);
-        
+      const handleToggle = e => {
+        e.preventDefault()
+        e.stopPropagation()
+
+        console.log(`🧠 ${pair.type} toggle activated`)
+
         if (currentOpen === pair.type) {
-          closeAllDropdowns();
+          closeAllDropdowns()
         } else {
-          closeAllDropdowns();
-          setTimeout(() => openDropdown(pair), 10);
+          closeAllDropdowns()
+          setTimeout(() => openDropdown(pair), 10)
         }
-      };
+      }
 
       // Add both touch and click handlers for mobile support
-      pair.toggle.addEventListener('touchend', handleToggle, { passive: false });
-      pair.toggle.addEventListener('click', handleToggle);
+      pair.toggle.addEventListener('touchend', handleToggle, { passive: false })
+      pair.toggle.addEventListener('click', handleToggle)
 
       // Prevent clicks inside dropdown from closing it
-      pair.list.addEventListener('click', (e) => {
-        e.stopPropagation();
-      });
+      pair.list.addEventListener('click', e => {
+        e.stopPropagation()
+      })
 
       // Genre checkboxes
       if (pair.type === 'genre' && pair.checkboxes) {
         pair.checkboxes.forEach(cb => {
-          cb.addEventListener('change', (e) => {
-            const val = parseInt(e.target.value);
+          cb.addEventListener('change', e => {
+            const val = parseInt(e.target.value)
             if (e.target.checked) {
               if (!filterState.genres.includes(val)) {
-                filterState.genres.push(val);
+                filterState.genres.push(val)
               }
             } else {
-              filterState.genres = filterState.genres.filter(id => id !== val);
+              filterState.genres = filterState.genres.filter(id => id !== val)
             }
-            console.log('Genres:', filterState.genres);
-            updateGenreButton(filterState.genres);
-          });
-        });
+            console.log('Genres:', filterState.genres)
+            updateGenreButton(filterState.genres)
+          })
+        })
       }
 
       // Language checkboxes
       if (pair.type === 'language' && pair.checkboxes) {
         pair.checkboxes.forEach(cb => {
-          cb.addEventListener('change', (e) => {
-            const val = e.target.value;
+          cb.addEventListener('change', e => {
+            const val = e.target.value
             if (e.target.checked) {
               if (!filterState.languages.includes(val)) {
-                filterState.languages.push(val);
+                filterState.languages.push(val)
               }
             } else {
-              filterState.languages = filterState.languages.filter(l => l !== val);
+              filterState.languages = filterState.languages.filter(
+                l => l !== val
+              )
             }
-            console.log('Languages:', filterState.languages);
-            updateLanguageButton(filterState.languages);
-          });
-        });
+            console.log('Languages:', filterState.languages)
+            updateLanguageButton(filterState.languages)
+          })
+        })
       }
 
       // Country checkboxes
       if (pair.type === 'country' && pair.checkboxes) {
         pair.checkboxes.forEach(cb => {
-          cb.addEventListener('change', (e) => {
-            const val = e.target.value;
+          cb.addEventListener('change', e => {
+            const val = e.target.value
             if (e.target.checked) {
               if (!filterState.countries.includes(val)) {
-                filterState.countries.push(val);
+                filterState.countries.push(val)
               }
             } else {
-              filterState.countries = filterState.countries.filter(c => c !== val);
+              filterState.countries = filterState.countries.filter(
+                c => c !== val
+              )
             }
-            console.log('Countries:', filterState.countries);
-            updateCountryButton(filterState.countries);
-          });
-        });
+            console.log('Countries:', filterState.countries)
+            updateCountryButton(filterState.countries)
+          })
+        })
       }
 
       // Sort radios
       if (pair.type === 'sort' && pair.radios) {
         pair.radios.forEach(radio => {
-          radio.addEventListener('change', (e) => {
+          radio.addEventListener('change', e => {
             if (e.target.checked) {
-              filterState.sortBy = e.target.value;
-              const text = e.target.parentElement.textContent.trim();
-              pair.toggle.innerHTML = `${text} <span class="dropdown-arrow">▼</span>`;
-              console.log('Sort:', filterState.sortBy);
-              setTimeout(closeAllDropdowns, 100);
+              filterState.sortBy = e.target.value
+              const text = e.target.parentElement.textContent.trim()
+              pair.toggle.innerHTML = `${text} <span class="dropdown-arrow">▼</span>`
+              console.log('Sort:', filterState.sortBy)
+              setTimeout(closeAllDropdowns, 100)
             }
-          });
-        });
+          })
+        })
       }
-      
+
       // Content Rating checkboxes
       if (pair.type === 'rating' && pair.checkboxes) {
         pair.checkboxes.forEach(cb => {
-          cb.addEventListener('change', (e) => {
-            const rating = e.target.value;
+          cb.addEventListener('change', e => {
+            const rating = e.target.value
             if (e.target.checked) {
               if (!filterState.contentRatings.includes(rating)) {
-                filterState.contentRatings.push(rating);
+                filterState.contentRatings.push(rating)
               }
             } else {
-              filterState.contentRatings = filterState.contentRatings.filter(r => r !== rating);
+              filterState.contentRatings = filterState.contentRatings.filter(
+                r => r !== rating
+              )
             }
-            console.log('Content Ratings:', filterState.contentRatings);
-            updateContentRatingButton(filterState.contentRatings);
-          });
-        });
+            console.log('Content Ratings:', filterState.contentRatings)
+            updateContentRatingButton(filterState.contentRatings)
+          })
+        })
       }
-    });
-    
+    })
+
     // Close on outside click
-    document.addEventListener('click', (e) => {
+    document.addEventListener('click', e => {
       if (currentOpen) {
-        const clickedInside = pairs.some(p => 
-          p.toggle?.contains(e.target) || p.list?.contains(e.target)
-        );
+        const clickedInside = pairs.some(
+          p => p.toggle?.contains(e.target) || p.list?.contains(e.target)
+        )
         if (!clickedInside) {
-          closeAllDropdowns();
+          closeAllDropdowns()
         }
       }
-    });
+    })
 
     // Close on scroll/resize
-    window.addEventListener('scroll', closeAllDropdowns, { passive: true });
-    window.addEventListener('resize', closeAllDropdowns);
+    window.addEventListener('scroll', closeAllDropdowns, { passive: true })
+    window.addEventListener('resize', closeAllDropdowns)
 
-    console.log('✅ Dropdown setup complete');
+    console.log('✅ Dropdown setup complete')
   }
 
-  setupAllDropdowns();
-  syncFilterUIWithState();
-  
+  setupAllDropdowns()
+  syncFilterUIWithState()
+
   // =========================================================
   // Filter Sort Direction Button
   // =========================================================
-  const sortDirectionBtn = document.getElementById('sort-direction-btn');
-  
+  const sortDirectionBtn = document.getElementById('sort-direction-btn')
+
   // Handle direction button click
   sortDirectionBtn?.addEventListener('click', () => {
     // Get currently selected radio button
-    const selectedRadio = document.querySelector('input[name="sort"]:checked');
-    if (!selectedRadio) return;
-    
-    const currentValue = selectedRadio.value; // e.g., "popularity.desc"
-    
+    const selectedRadio = document.querySelector('input[name="sort"]:checked')
+    if (!selectedRadio) return
+
+    const currentValue = selectedRadio.value // e.g., "popularity.desc"
+
     // Parse current value
-    const parts = currentValue.split('.');
-    const field = parts[0];
-    const currentDirection = parts[1];
-    
+    const parts = currentValue.split('.')
+    const field = parts[0]
+    const currentDirection = parts[1]
+
     // Toggle direction
-    const newDirection = currentDirection === 'desc' ? 'asc' : 'desc';
-    const newValue = `${field}.${newDirection}`;
-    
+    const newDirection = currentDirection === 'desc' ? 'asc' : 'desc'
+    const newValue = `${field}.${newDirection}`
+
     // Update filterState
-    filterState.sortBy = newValue;
-    
+    filterState.sortBy = newValue
+
     // Update the selected radio (find or create it)
-    let newRadio = document.querySelector(`input[name="sort"][value="${newValue}"]`);
+    let newRadio = document.querySelector(
+      `input[name="sort"][value="${newValue}"]`
+    )
     if (newRadio) {
-      newRadio.checked = true;
+      newRadio.checked = true
     } else {
       // Radio doesn't exist, just update the current one's value
-      selectedRadio.value = newValue;
-      selectedRadio.checked = true;
+      selectedRadio.value = newValue
+      selectedRadio.checked = true
     }
-    
+
     // Update button arrow
-    sortDirectionBtn.textContent = newDirection === 'desc' ? '↓' : '↑';
-    
+    sortDirectionBtn.textContent = newDirection === 'desc' ? '↓' : '↑'
+
     // Update dropdown button text to show direction
-    const sortDropdownToggle = document.getElementById('sort-dropdown-toggle');
+    const sortDropdownToggle = document.getElementById('sort-dropdown-toggle')
     if (sortDropdownToggle) {
-      const fieldName = selectedRadio.parentElement.textContent.trim();
-      const directionText = newDirection === 'desc' ? ' ↓' : ' ↑';
-      sortDropdownToggle.innerHTML = `${fieldName}${directionText} <span class="dropdown-arrow">▼</span>`;
+      const fieldName = selectedRadio.parentElement.textContent.trim()
+      const directionText = newDirection === 'desc' ? ' ↓' : ' ↑'
+      sortDropdownToggle.innerHTML = `${fieldName}${directionText} <span class="dropdown-arrow">▼</span>`
     }
-    
-    console.log('Filter sort direction changed:', newValue);
-  });  
-    
+
+    console.log('Filter sort direction changed:', newValue)
+  })
+
   /* COMMENTED OUT - Old rating checkboxes handler (now in dropdown setup)
   const ratingCheckboxes = document.querySelectorAll('#rating-checkboxes input[type="checkbox"]')
   ratingCheckboxes.forEach(checkbox => {
@@ -2745,7 +3166,7 @@ const main = async () => {
 
   const imdbRatingSlider = document.getElementById('imdb-rating')
   const imdbRatingValue = document.getElementById('imdb-rating-value')
-  imdbRatingSlider?.addEventListener('input', (e) => {
+  imdbRatingSlider?.addEventListener('input', e => {
     const rating = parseFloat(e.target.value)
     filterState.imdbRating = rating
     imdbRatingValue.textContent = rating.toFixed(1)
@@ -2753,43 +3174,43 @@ const main = async () => {
 
   const tmdbRatingSlider = document.getElementById('tmdb-rating')
   const tmdbRatingValue = document.getElementById('tmdb-rating-value')
-  tmdbRatingSlider?.addEventListener('input', (e) => {
+  tmdbRatingSlider?.addEventListener('input', e => {
     const rating = parseFloat(e.target.value)
     filterState.tmdbRating = rating
     tmdbRatingValue.textContent = rating.toFixed(1)
   })
-  
-  yearMinInput?.addEventListener('change', (e) => {
+
+  yearMinInput?.addEventListener('change', e => {
     const value = parseInt(e.target.value) || 1895
     filterState.yearRange.min = value
   })
-  
-  yearMaxInput?.addEventListener('change', (e) => {
+
+  yearMaxInput?.addEventListener('change', e => {
     const value = parseInt(e.target.value) || currentYear
     filterState.yearRange.max = value
   })
 
   const runtimeMinInput = document.getElementById('runtime-min')
   const runtimeMaxInput = document.getElementById('runtime-max')
-  
-  runtimeMinInput?.addEventListener('change', (e) => {
+
+  runtimeMinInput?.addEventListener('change', e => {
     const value = parseInt(e.target.value) || 0
     filterState.runtimeRange.min = value
   })
-  
-  runtimeMaxInput?.addEventListener('change', (e) => {
+
+  runtimeMaxInput?.addEventListener('change', e => {
     const value = parseInt(e.target.value) || 300
     filterState.runtimeRange.max = value
   })
-  
+
   const voteCountSlider = document.getElementById('vote-count')
   const voteCountValue = document.getElementById('vote-count-value')
-  voteCountSlider?.addEventListener('input', (e) => {
+  voteCountSlider?.addEventListener('input', e => {
     const count = parseInt(e.target.value)
     filterState.voteCount = count
     voteCountValue.textContent = count.toLocaleString()
   })
-  
+
   /* COMMENTED OUT - RT Rating Filter
   const rtRatingSlider = document.getElementById('rt-rating')
   const rtRatingValue = document.getElementById('rt-rating-value')
@@ -2799,22 +3220,27 @@ const main = async () => {
     rtRatingValue.textContent = rating
   })
   */
-  
+
   // Apply filters button
   const applyFiltersBtn = document.getElementById('apply-filters')
-  const handleApplyFilters = (e) => {
+  const handleApplyFilters = e => {
     e.preventDefault()
     e.stopPropagation()
-    
-    window.__resetMovies = true  // Invalidate old buffer
-    console.log('🧩 FILTER DEBUG - Applying filters:', JSON.stringify(filterState, null, 2))
+
+    window.__resetMovies = true // Invalidate old buffer
+    console.log(
+      '🧩 FILTER DEBUG - Applying filters:',
+      JSON.stringify(filterState, null, 2)
+    )
     triggerNewBatch()
     const swipeButton = document.querySelector('[data-tab="tab-swipe"]')
     swipeButton?.click()
   }
 
   // Add both touch and click handlers for mobile support
-  applyFiltersBtn?.addEventListener('touchend', handleApplyFilters, { passive: false })
+  applyFiltersBtn?.addEventListener('touchend', handleApplyFilters, {
+    passive: false,
+  })
   applyFiltersBtn?.addEventListener('click', handleApplyFilters)
 
   // Fix 4: Add swipe tab buffer check OUTSIDE of handleApplyFilters
@@ -2825,12 +3251,20 @@ const main = async () => {
     if (movieBuffer.length < BUFFER_MIN_SIZE) {
       console.log('⚠️ Buffer low on tab switch, refilling...')
       await ensureMovieBuffer()
-      
+
       // If cards are empty, load some
       const cardStack = document.querySelector('.js-card-stack')
-      if (cardStack && cardStack.children.length === 0 && movieBuffer.length > 0) {
+      if (
+        cardStack &&
+        cardStack.children.length === 0 &&
+        movieBuffer.length > 0
+      ) {
         console.log('📋 No cards visible, loading from buffer...')
-        for (let i = 0; i < Math.min(CARD_STACK_SIZE, movieBuffer.length); i++) {
+        for (
+          let i = 0;
+          i < Math.min(CARD_STACK_SIZE, movieBuffer.length);
+          i++
+        ) {
           const movie = getNextMovie()
           if (movie) {
             new CardView(movie, cardStackEventTarget)
@@ -2843,10 +3277,10 @@ const main = async () => {
   // Reset filters button
   const resetFiltersBtn = document.getElementById('reset-filters')
 
-  const handleResetFilters = (e) => {
+  const handleResetFilters = e => {
     e.preventDefault()
     e.stopPropagation()
-    
+
     // Reset filterState to defaults
     filterState.yearRange = { min: DEFAULT_YEAR_MIN, max: currentYear }
     filterState.genres = []
@@ -2865,9 +3299,9 @@ const main = async () => {
 
     // Streaming checkboxes
     //streamingCheckboxes.forEach(checkbox => {
-      //checkbox.checked = false
+    //checkbox.checked = false
     //})
-    
+
     // Reset Where to Watch toggle
     const plexOnlyToggle = document.getElementById('plex-only-toggle')
     if (plexOnlyToggle) {
@@ -2882,7 +3316,7 @@ const main = async () => {
         }
       })
     }
-    
+
     // Sliders
     if (tmdbRatingSlider) {
       tmdbRatingSlider.value = '0'
@@ -2895,55 +3329,59 @@ const main = async () => {
     // Reset sort radio buttons
     const resetSortRadios = document.querySelectorAll('input[name="sort"]')
     resetSortRadios.forEach(radio => {
-      radio.checked = (radio.value === 'popularity.desc')
+      radio.checked = radio.value === 'popularity.desc'
     })
-    
+
     // Reset sort direction button
-    const resetSortBtn = document.getElementById('sort-direction-btn');
+    const resetSortBtn = document.getElementById('sort-direction-btn')
     if (resetSortBtn) {
-      resetSortBtn.textContent = '↓';
+      resetSortBtn.textContent = '↓'
     }
-    
+
     // Reset sort dropdown toggle text
-    const resetSortToggle = document.getElementById('sort-dropdown-toggle');
+    const resetSortToggle = document.getElementById('sort-dropdown-toggle')
     if (resetSortToggle) {
-      resetSortToggle.innerHTML = 'Popularity <span class="dropdown-arrow">▼</span>';
+      resetSortToggle.innerHTML =
+        'Popularity <span class="dropdown-arrow">▼</span>'
     }
-    
+
     // Reset dropdown button texts
-    updateGenreButton(filterState.genres);
-    
+    updateGenreButton(filterState.genres)
+
     // Reset sort radio buttons
     const sortRadios = document.querySelectorAll('input[name="sort"]')
     sortRadios.forEach(radio => {
-      radio.checked = (radio.value === 'popularity.desc')
+      radio.checked = radio.value === 'popularity.desc'
     })
-    
+
     // Reset sort direction button
-    const sortDirectionBtn = document.getElementById('sort-direction-btn');
+    const sortDirectionBtn = document.getElementById('sort-direction-btn')
     if (sortDirectionBtn) {
-      sortDirectionBtn.textContent = '↓';
+      sortDirectionBtn.textContent = '↓'
     }
-    
+
     // Reset sort dropdown toggle text
-    const sortDropdownToggle = document.getElementById('sort-dropdown-toggle');
+    const sortDropdownToggle = document.getElementById('sort-dropdown-toggle')
     if (sortDropdownToggle) {
-      sortDropdownToggle.innerHTML = 'Popularity <span class="dropdown-arrow">▼</span>';
+      sortDropdownToggle.innerHTML =
+        'Popularity <span class="dropdown-arrow">▼</span>'
     }
-    
+
     // Reset dropdown button texts
-    updateGenreButton(filterState.genres);
-    updateLanguageButton(filterState.languages);
-    updateCountryButton(filterState.countries);
-    updateContentRatingButton(filterState.contentRatings);
-    
+    updateGenreButton(filterState.genres)
+    updateLanguageButton(filterState.languages)
+    updateCountryButton(filterState.countries)
+    updateContentRatingButton(filterState.contentRatings)
+
     console.log('Filters reset to default')
   }
 
   // Add both touch and click handlers for mobile support
-  resetFiltersBtn?.addEventListener('touchend', handleResetFilters, { passive: false })
+  resetFiltersBtn?.addEventListener('touchend', handleResetFilters, {
+    passive: false,
+  })
   resetFiltersBtn?.addEventListener('click', handleResetFilters)
-  
+
   let topCardEl = null
   const cardStackEventTarget = new EventTarget()
 
@@ -2958,7 +3396,10 @@ const main = async () => {
     topCardEl = topCardEl?.nextSibling || null
     if (!topCardEl) {
       const cardStackEl = document.querySelector('.js-card-stack')
-      cardStackEl?.style.setProperty('--empty-text', `var(--i18n-exhausted-cards)`)
+      cardStackEl?.style.setProperty(
+        '--empty-text',
+        `var(--i18n-exhausted-cards)`
+      )
     }
   })
 
@@ -2980,12 +3421,12 @@ const main = async () => {
   window.isLoadingBatch = isLoadingBatch
 
   // Prime request-service status and the initial swipe buffer in parallel
-  console.log('🧊 Priming request status and initial movie batch...');
+  console.log('🧊 Priming request status and initial movie batch...')
   const requestServiceStatusPromise = checkRequestServiceStatus()
   const initialBufferWarmPromise = ensureMovieBuffer()
 
   await requestServiceStatusPromise
-  console.log('📦 Request service status cached');
+  console.log('📦 Request service status cached')
 
   initialBufferWarmPromise?.catch(err => {
     console.warn('⚠️ Initial movie buffer warm failed:', err)
@@ -2994,7 +3435,11 @@ const main = async () => {
   if (rated && rated.length > 0) {
     for (const item of rated) {
       if (item.movie) {
-        appendRatedRow({ basePath, likesList, dislikesList, seenList }, item.movie, item.wantsToWatch)
+        appendRatedRow(
+          { basePath, likesList, dislikesList, seenList },
+          item.movie,
+          item.wantsToWatch
+        )
       }
     }
   }
@@ -3002,20 +3447,10 @@ const main = async () => {
   // =========================================================
   // IMDb Import Handler (URL sync + CSV upload)
   // =========================================================
-  const imdbImportBtn = document.getElementById('imdb-import-btn')
-  const imdbImportPanel = document.getElementById('imdb-import-panel')
-  const imdbUrlInput = document.getElementById('imdb-url-input')
+  const imdbUrlInput = document.getElementById('setting-imdb-sync-url')
   const imdbUrlSyncBtn = document.getElementById('imdb-url-sync-btn')
   const imdbCsvUploadBtn = document.getElementById('imdb-csv-upload-btn')
   const imdbCsvInput = document.getElementById('imdb-csv-input')
-
-  // Toggle the import panel
-  if (imdbImportBtn && imdbImportPanel) {
-    imdbImportBtn.addEventListener('click', () => {
-      const isVisible = imdbImportPanel.style.display !== 'none'
-      imdbImportPanel.style.display = isVisible ? 'none' : 'block'
-    })
-  }
 
   function showImdbProgress(text) {
     if (imdbImportProgress) imdbImportProgress.style.display = 'block'
@@ -3028,7 +3463,8 @@ const main = async () => {
 
   function showImdbError(err) {
     console.error('IMDb import error:', err)
-    if (imdbImportStatus) imdbImportStatus.textContent = `Import failed: ${err.message}`
+    if (imdbImportStatus)
+      imdbImportStatus.textContent = `Import failed: ${err.message}`
     if (imdbImportBar) {
       imdbImportBar.style.width = '100%'
       imdbImportBar.classList.add('error')
@@ -3037,11 +3473,13 @@ const main = async () => {
   }
 
   // --- URL Sync handler ---
-  if (imdbUrlSyncBtn && imdbUrlInput) {
+  if (imdbUrlSyncBtn) {
     imdbUrlSyncBtn.addEventListener('click', async () => {
-      const imdbUrl = imdbUrlInput.value.trim()
+      const imdbUrl = imdbUrlInput?.value?.trim() || ''
       if (!imdbUrl) {
-        showNotification('Please paste an IMDb list URL.')
+        showNotification(
+          'Please set an IMDb list URL in Settings → Sync first.'
+        )
         return
       }
 
@@ -3072,7 +3510,8 @@ const main = async () => {
 
         // Handle immediate completion (0 movies) or started status
         if (result.status === 'completed' && result.total === 0) {
-          if (imdbImportStatus) imdbImportStatus.textContent = 'No movies found in the IMDb list.'
+          if (imdbImportStatus)
+            imdbImportStatus.textContent = 'No movies found in the IMDb list.'
           if (imdbImportBar) imdbImportBar.style.width = '100%'
           imdbUrlSyncBtn.disabled = false
           if (imdbCsvUploadBtn) imdbCsvUploadBtn.disabled = false
@@ -3081,7 +3520,8 @@ const main = async () => {
           }, 3000)
         } else if (result.status === 'started') {
           // Background processing started - progress updates will come via WebSocket
-          if (imdbImportStatus) imdbImportStatus.textContent = `Processing ${result.total} movies in background...`
+          if (imdbImportStatus)
+            imdbImportStatus.textContent = `Processing ${result.total} movies in background...`
           if (imdbImportBar) imdbImportBar.style.width = '10%'
           // Buttons stay disabled - will be re-enabled by WebSocket completion handler
         }
@@ -3093,7 +3533,7 @@ const main = async () => {
     })
 
     // Allow pressing Enter in the URL input
-    imdbUrlInput.addEventListener('keydown', (e) => {
+    imdbUrlInput?.addEventListener('keydown', e => {
       if (e.key === 'Enter') {
         e.preventDefault()
         imdbUrlSyncBtn.click()
@@ -3107,7 +3547,7 @@ const main = async () => {
       imdbCsvInput.click()
     })
 
-    imdbCsvInput.addEventListener('change', async (e) => {
+    imdbCsvInput.addEventListener('change', async e => {
       const file = e.target.files?.[0]
       if (!file) return
 
@@ -3144,7 +3584,8 @@ const main = async () => {
 
         // Handle immediate completion (0 movies) or started status
         if (result.status === 'completed' && result.total === 0) {
-          if (imdbImportStatus) imdbImportStatus.textContent = 'No movies found in the CSV file.'
+          if (imdbImportStatus)
+            imdbImportStatus.textContent = 'No movies found in the CSV file.'
           if (imdbImportBar) imdbImportBar.style.width = '100%'
           imdbCsvUploadBtn.disabled = false
           if (imdbUrlSyncBtn) imdbUrlSyncBtn.disabled = false
@@ -3153,14 +3594,19 @@ const main = async () => {
           }, 3000)
         } else if (result.status === 'started') {
           // Background processing started - progress updates will come via WebSocket
-          if (imdbImportStatus) imdbImportStatus.textContent = `Processing ${result.total} movies... (updates via WebSocket)`
+          if (imdbImportStatus)
+            imdbImportStatus.textContent = `Processing ${result.total} movies... (updates via WebSocket)`
           if (imdbImportBar) imdbImportBar.style.width = '25%'
 
           // Set a fallback timeout - if no WebSocket updates after 30s, show a note
           setTimeout(() => {
             const currentStatus = imdbImportStatus?.textContent || ''
-            if (currentStatus.includes('Processing') && currentStatus.includes('WebSocket')) {
-              if (imdbImportStatus) imdbImportStatus.textContent = `Processing ${result.total} movies... (check Seen list, refresh if needed)`
+            if (
+              currentStatus.includes('Processing') &&
+              currentStatus.includes('WebSocket')
+            ) {
+              if (imdbImportStatus)
+                imdbImportStatus.textContent = `Processing ${result.total} movies... (check Seen list, refresh if needed)`
               // Re-enable buttons so user isn't stuck
               imdbCsvUploadBtn.disabled = false
               if (imdbUrlSyncBtn) imdbUrlSyncBtn.disabled = false
@@ -3177,194 +3623,214 @@ const main = async () => {
     })
   }
 
-
-async function ensureMovieBuffer() {
-  // If already loading, return the existing promise with timeout
-  if (ensureMovieBufferPromise) {
-    console.log('⏳ Already ensuring buffer, waiting...')
-    try {
-      await Promise.race([
-        ensureMovieBufferPromise,
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Buffer promise timeout')), 10000)
-        )
-      ])
-    } catch (e) {
-      if (e.message === 'Buffer promise timeout') {
-        console.warn('⚠️ Buffer promise timed out, resetting')
-        ensureMovieBufferPromise = null
-        window.ensureMovieBufferPromise = ensureMovieBufferPromise
-        isLoadingBatch = false
-        window.isLoadingBatch = isLoadingBatch
-        // Retry the buffer load
-        return ensureMovieBuffer()
+  async function ensureMovieBuffer() {
+    // If already loading, return the existing promise with timeout
+    if (ensureMovieBufferPromise) {
+      console.log('⏳ Already ensuring buffer, waiting...')
+      try {
+        await Promise.race([
+          ensureMovieBufferPromise,
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Buffer promise timeout')), 10000)
+          ),
+        ])
+      } catch (e) {
+        if (e.message === 'Buffer promise timeout') {
+          console.warn('⚠️ Buffer promise timed out, resetting')
+          ensureMovieBufferPromise = null
+          window.ensureMovieBufferPromise = ensureMovieBufferPromise
+          isLoadingBatch = false
+          window.isLoadingBatch = isLoadingBatch
+          // Retry the buffer load
+          return ensureMovieBuffer()
+        }
+        throw e
       }
-      throw e
+      return ensureMovieBufferPromise
     }
+
+    // Clear buffer if filters changed
+    if (window.__resetMovies) {
+      console.log('🧹 Clearing buffer due to filter change')
+      movieBuffer = []
+      pendingGuids = new Set()
+      pendingTmdbIds = new Set()
+      isLoadingBatch = false
+      window.isLoadingBatch = isLoadingBatch
+      window.__resetMovies = false
+    }
+
+    if (isLoadingBatch || movieBuffer.length >= BUFFER_MIN_SIZE) {
+      return
+    }
+
+    isLoadingBatch = true
+    window.isLoadingBatch = isLoadingBatch
+
+    // Set a random funny loading message
+    const cardStack = document.querySelector('.js-card-stack')
+    if (cardStack) {
+      const randomMessage = getRandomLoadingMessage()
+      cardStack.style.setProperty('--empty-text', `"${randomMessage}"`)
+    }
+
+    //FIX: Create and store the promise immediately
+    ensureMovieBufferPromise = (async () => {
+      try {
+        const MAX_BATCH_ATTEMPTS = 4
+        let attempts = 0
+        let addedMovies = 0
+        const bufferWasEmpty = movieBuffer.length === 0
+
+        while (
+          attempts < MAX_BATCH_ATTEMPTS &&
+          movieBuffer.length < BUFFER_MIN_SIZE
+        ) {
+          attempts += 1
+          console.log(
+            `🗂️ Requesting new batch (attempt ${attempts}) with filters:`,
+            filterState
+          )
+          const newBatch = await api.requestNextBatchWithFilters({
+            ...filterState,
+            runtimeMin: filterState.runtimeRange.min || undefined,
+            runtimeMax: filterState.runtimeRange.max || undefined,
+            voteCount: filterState.voteCount,
+            sortBy: filterState.sortBy,
+            imdbRating: filterState.imdbRating,
+            rtRating: filterState.rtRating,
+            batchSize: BATCH_SIZE,
+          })
+
+          if (!Array.isArray(newBatch) || newBatch.length === 0) {
+            console.warn('⚠️ No more movies available from service')
+            break
+          }
+
+          console.log(`📦 Received ${newBatch.length} movies from server`)
+
+          const batchGuids = new Set()
+          const batchTmdbIds = new Set()
+
+          const unseenMovies = newBatch.filter(movie => {
+            const normalizedGuid = normalizeGuid(movie.guid)
+            const normalizedTmdbId = getNormalizedTmdbId(movie)
+
+            if (normalizedGuid && ratedGuids.has(normalizedGuid)) {
+              console.log(`Filtering ${movie.title} - exact GUID match`)
+              return false
+            }
+
+            if (normalizedTmdbId && ratedTmdbIds.has(normalizedTmdbId)) {
+              console.log(
+                `Filtering ${movie.title} - TMDb ID ${normalizedTmdbId} already rated`
+              )
+              return false
+            }
+
+            if (normalizedGuid && pendingGuids.has(normalizedGuid)) {
+              console.log(
+                `Skipping ${movie.title} - GUID already pending in swipe stack`
+              )
+              return false
+            }
+
+            if (normalizedTmdbId && pendingTmdbIds.has(normalizedTmdbId)) {
+              console.log(
+                `Skipping ${movie.title} - TMDb ID ${normalizedTmdbId} already pending`
+              )
+              return false
+            }
+
+            if (normalizedGuid && batchGuids.has(normalizedGuid)) {
+              console.log(
+                `Skipping ${movie.title} - duplicate GUID within batch`
+              )
+              return false
+            }
+            if (normalizedTmdbId && batchTmdbIds.has(normalizedTmdbId)) {
+              console.log(
+                `Skipping ${movie.title} - duplicate TMDb ID within batch`
+              )
+              return false
+            }
+
+            if (normalizedGuid) batchGuids.add(normalizedGuid)
+            if (normalizedTmdbId) batchTmdbIds.add(normalizedTmdbId)
+            return true
+          })
+
+          console.log(
+            `🧠 Filtered to ${unseenMovies.length} unseen movies (${
+              newBatch.length - unseenMovies.length
+            } removed as rated/duplicates)`
+          )
+
+          if (unseenMovies.length === 0) {
+            console.log(
+              '🔁 Batch yielded no new unseen movies, requesting another batch'
+            )
+            continue
+          }
+
+          addedMovies += unseenMovies.length
+          movieBuffer.push(...unseenMovies)
+
+          unseenMovies.forEach(movie => {
+            const normalizedGuid = normalizeGuid(movie.guid)
+            if (normalizedGuid) pendingGuids.add(normalizedGuid)
+            const normalizedTmdbId = getNormalizedTmdbId(movie)
+            if (normalizedTmdbId) pendingTmdbIds.add(normalizedTmdbId)
+            const guidKey = normalizedGuid || movie.guid
+            if (guidKey) movieByGuid.set(guidKey, movie)
+          })
+        }
+
+        if (bufferWasEmpty && addedMovies === 0 && movieBuffer.length === 0) {
+          console.warn('⚠️ No unseen movies available after multiple attempts')
+
+          const cardStack = document.querySelector('.js-card-stack')
+          const hasVisibleMovies = cardStack && cardStack.children.length > 0
+
+          // Only show "no movies with filters" notification if initial load has completed
+          // This prevents the confusing message on app startup before user has set any filters
+          if (!hasVisibleMovies && isInitialLoadComplete) {
+            if (cardStack) {
+              cardStack.style.setProperty(
+                '--empty-text',
+                '"No more movies found. Try adjusting your filters!"'
+              )
+            }
+
+            showNoMoviesNotification()
+          }
+
+          isLoadingBatch = false
+          return
+        }
+      } catch (error) {
+        console.error('❌Error loading movie batch:', error)
+
+        // Show error message to user
+        const cardStack = document.querySelector('.js-card-stack')
+        if (cardStack) {
+          cardStack.style.setProperty(
+            '--empty-text',
+            '"Error loading movies. Please try again or adjust filters."'
+          )
+        }
+      } finally {
+        isLoadingBatch = false
+        ensureMovieBufferPromise = null
+        window.isLoadingBatch = isLoadingBatch
+        window.ensureMovieBufferPromise = ensureMovieBufferPromise
+      }
+    })()
+    window.ensureMovieBufferPromise = ensureMovieBufferPromise
+
+    // FIX: Return the promise so callers can await it
     return ensureMovieBufferPromise
   }
-  
-  // Clear buffer if filters changed
-  if (window.__resetMovies) {
-    console.log('🧹 Clearing buffer due to filter change')
-    movieBuffer = []
-    pendingGuids = new Set()
-    pendingTmdbIds = new Set()
-    isLoadingBatch = false
-    window.isLoadingBatch = isLoadingBatch
-    window.__resetMovies = false
-  }
-
-  if (isLoadingBatch || movieBuffer.length >= BUFFER_MIN_SIZE) {
-    return
-  }
-
-  isLoadingBatch = true
-  window.isLoadingBatch = isLoadingBatch
-
-  // Set a random funny loading message
-  const cardStack = document.querySelector('.js-card-stack')
-  if (cardStack) {
-    const randomMessage = getRandomLoadingMessage()
-    cardStack.style.setProperty('--empty-text', `"${randomMessage}"`)
-  }
-
-  //FIX: Create and store the promise immediately
-  ensureMovieBufferPromise = (async () => {
-    try {
-      const MAX_BATCH_ATTEMPTS = 4
-      let attempts = 0
-      let addedMovies = 0
-      const bufferWasEmpty = movieBuffer.length === 0
-
-      while (attempts < MAX_BATCH_ATTEMPTS && movieBuffer.length < BUFFER_MIN_SIZE) {
-        attempts += 1
-        console.log(`🗂️ Requesting new batch (attempt ${attempts}) with filters:`, filterState)
-        const newBatch = await api.requestNextBatchWithFilters({
-          ...filterState,
-          runtimeMin: filterState.runtimeRange.min || undefined,
-          runtimeMax: filterState.runtimeRange.max || undefined,
-          voteCount: filterState.voteCount,
-          sortBy: filterState.sortBy,
-          imdbRating: filterState.imdbRating,
-          rtRating: filterState.rtRating,
-          batchSize: BATCH_SIZE
-        })
-
-        if (!Array.isArray(newBatch) || newBatch.length === 0) {
-          console.warn('⚠️ No more movies available from service')
-          break
-        }
-
-        console.log(`📦 Received ${newBatch.length} movies from server`)
-
-        const batchGuids = new Set()
-        const batchTmdbIds = new Set()
-
-        const unseenMovies = newBatch.filter(movie => {
-          const normalizedGuid = normalizeGuid(movie.guid)
-          const normalizedTmdbId = getNormalizedTmdbId(movie)
-
-          if (normalizedGuid && ratedGuids.has(normalizedGuid)) {
-            console.log(`Filtering ${movie.title} - exact GUID match`)
-            return false
-          }
-
-          if (normalizedTmdbId && ratedTmdbIds.has(normalizedTmdbId)) {
-            console.log(`Filtering ${movie.title} - TMDb ID ${normalizedTmdbId} already rated`)
-            return false
-          }
-
-          if (normalizedGuid && pendingGuids.has(normalizedGuid)) {
-            console.log(`Skipping ${movie.title} - GUID already pending in swipe stack`)
-            return false
-          }
-
-          if (normalizedTmdbId && pendingTmdbIds.has(normalizedTmdbId)) {
-            console.log(`Skipping ${movie.title} - TMDb ID ${normalizedTmdbId} already pending`)
-            return false
-          }
-
-          if (normalizedGuid && batchGuids.has(normalizedGuid)) {
-            console.log(`Skipping ${movie.title} - duplicate GUID within batch`)
-            return false
-          }
-          if (normalizedTmdbId && batchTmdbIds.has(normalizedTmdbId)) {
-            console.log(`Skipping ${movie.title} - duplicate TMDb ID within batch`)
-            return false
-          }
-
-          if (normalizedGuid) batchGuids.add(normalizedGuid)
-          if (normalizedTmdbId) batchTmdbIds.add(normalizedTmdbId)
-          return true
-        })
-
-        console.log(`🧠 Filtered to ${unseenMovies.length} unseen movies (${newBatch.length - unseenMovies.length} removed as rated/duplicates)`)
-
-        if (unseenMovies.length === 0) {
-          console.log('🔁 Batch yielded no new unseen movies, requesting another batch')
-          continue
-        }
-
-        addedMovies += unseenMovies.length
-        movieBuffer.push(...unseenMovies)
-
-        unseenMovies.forEach(movie => {
-          const normalizedGuid = normalizeGuid(movie.guid)
-          if (normalizedGuid) pendingGuids.add(normalizedGuid)
-          const normalizedTmdbId = getNormalizedTmdbId(movie)
-          if (normalizedTmdbId) pendingTmdbIds.add(normalizedTmdbId)
-          const guidKey = normalizedGuid || movie.guid
-          if (guidKey) movieByGuid.set(guidKey, movie)
-        })
-      }
-
-      if (bufferWasEmpty && addedMovies === 0 && movieBuffer.length === 0) {
-        console.warn('⚠️ No unseen movies available after multiple attempts')
-
-        const cardStack = document.querySelector('.js-card-stack')
-        const hasVisibleMovies = cardStack && cardStack.children.length > 0
-
-        // Only show "no movies with filters" notification if initial load has completed
-        // This prevents the confusing message on app startup before user has set any filters
-        if (!hasVisibleMovies && isInitialLoadComplete) {
-          if (cardStack) {
-            cardStack.style.setProperty(
-              '--empty-text',
-              '"No more movies found. Try adjusting your filters!"'
-            )
-          }
-
-          showNoMoviesNotification()
-        }
-
-        isLoadingBatch = false
-        return
-      }
-
-    } catch (error) {
-      console.error('❌Error loading movie batch:', error)
-      
-      // Show error message to user
-      const cardStack = document.querySelector('.js-card-stack')
-      if (cardStack) {
-        cardStack.style.setProperty(
-          '--empty-text',
-          '"Error loading movies. Please try again or adjust filters."'
-        )
-      }
-    } finally {
-      isLoadingBatch = false
-      ensureMovieBufferPromise = null
-      window.isLoadingBatch = isLoadingBatch
-      window.ensureMovieBufferPromise = ensureMovieBufferPromise
-    }
-  })()
-  window.ensureMovieBufferPromise = ensureMovieBufferPromise
-
-  // FIX: Return the promise so callers can await it
-  return ensureMovieBufferPromise
-}
 
   function getNextMovie() {
     return movieBuffer.shift()
@@ -3382,7 +3848,7 @@ async function ensureMovieBuffer() {
 
     window.__resetMovies = true
     await ensureMovieBuffer()
-  
+
     for (let i = 0; i < CARD_STACK_SIZE && movieBuffer.length > 0; i++) {
       const movie = getNextMovie()
       if (movie) {
@@ -3398,7 +3864,7 @@ async function ensureMovieBuffer() {
         }
       }
     }
-  
+
     ensureMovieBuffer()
   }
 
@@ -3484,14 +3950,15 @@ async function ensureMovieBuffer() {
           }
           if (i === 0) {
             setTimeout(() => {
-              topCardEl = document.querySelector('.js-card-stack > :first-child')
+              topCardEl = document.querySelector(
+                '.js-card-stack > :first-child'
+              )
             }, 100)
           }
         }
       }
 
       await ensureMovieBuffer()
-
     } catch (error) {
       console.error('❌Error in initial movie loading:', error)
     }
@@ -3501,7 +3968,11 @@ async function ensureMovieBuffer() {
 
     while (true) {
       const { guid, wantsToWatch, isUndo } = await new Promise(resolve => {
-        cardStackEventTarget.addEventListener('response', e => resolve(e.data), { once: true })
+        cardStackEventTarget.addEventListener(
+          'response',
+          e => resolve(e.data),
+          { once: true }
+        )
       })
 
       // IMPORTANT: Add this movie to the rated set so we don't show it again
@@ -3527,10 +3998,14 @@ async function ensureMovieBuffer() {
           movie: m,
           guid: normalizedGuid || guid,
           wantsToWatch,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         }
 
-        appendRatedRow({ basePath, likesList, dislikesList, seenList }, m, wantsToWatch)
+        appendRatedRow(
+          { basePath, likesList, dislikesList, seenList },
+          m,
+          wantsToWatch
+        )
       } else {
         // Best effort cleanup when we don't have the movie handy (should be rare)
         const fallbackTmdbId = getNormalizedTmdbId({ guid })
@@ -3539,19 +4014,19 @@ async function ensureMovieBuffer() {
           pendingTmdbIds.delete(fallbackTmdbId)
         }
       }
-    
+
       api.respond({ guid, wantsToWatch })
-    
+
       // ✅ First, try to get next movie from buffer
       let nextMovie = getNextMovie()
-      
+
       // If buffer was empty, refill it and try again
       if (!nextMovie) {
         console.log('⚠️ Buffer empty, triggering immediate refill')
         await ensureMovieBuffer()
         nextMovie = getNextMovie() // Try to get a movie after refill
       }
-      
+
       // Create card if we have a movie
       if (nextMovie) {
         new CardView(nextMovie, cardStackEventTarget)
@@ -3562,7 +4037,7 @@ async function ensureMovieBuffer() {
       } else {
         console.warn('⚠️ No movies available even after refill attempt')
       }
-      
+
       // Always ensure buffer stays topped up
       if (movieBuffer.length < BUFFER_MIN_SIZE) {
         ensureMovieBuffer() // Trigger background refill (non-blocking)
@@ -3570,102 +4045,103 @@ async function ensureMovieBuffer() {
     }
   }
   await loadMoviesWithFilters()
-}  
+}
 
 // =========================================================
 // Watch List Filter Modal
 // =========================================================
-const watchFilterBtn = document.getElementById('watch-filter-btn');
-const watchFilterModal = document.getElementById('watch-filter-modal');
-const watchFilterOverlay = document.getElementById('watch-filter-overlay');
-const watchFilterClose = document.getElementById('watch-filter-close');
-const watchFilterApply = document.getElementById('watch-filter-apply');
-const watchFilterReset = document.getElementById('watch-filter-reset');
+const watchFilterBtn = document.getElementById('watch-filter-btn')
+const watchFilterModal = document.getElementById('watch-filter-modal')
+const watchFilterOverlay = document.getElementById('watch-filter-overlay')
+const watchFilterClose = document.getElementById('watch-filter-close')
+const watchFilterApply = document.getElementById('watch-filter-apply')
+const watchFilterReset = document.getElementById('watch-filter-reset')
 
 function openWatchFilterModal() {
-  watchFilterModal?.classList.add('active');
-  watchFilterOverlay?.classList.add('active');
+  watchFilterModal?.classList.add('active')
+  watchFilterOverlay?.classList.add('active')
 }
 
 function closeWatchFilterModal() {
-  watchFilterModal?.classList.remove('active');
-  watchFilterOverlay?.classList.remove('active');
+  watchFilterModal?.classList.remove('active')
+  watchFilterOverlay?.classList.remove('active')
 }
 
-watchFilterBtn?.addEventListener('click', openWatchFilterModal);
-watchFilterClose?.addEventListener('click', closeWatchFilterModal);
-watchFilterOverlay?.addEventListener('click', closeWatchFilterModal);
+watchFilterBtn?.addEventListener('click', openWatchFilterModal)
+watchFilterClose?.addEventListener('click', closeWatchFilterModal)
+watchFilterOverlay?.addEventListener('click', closeWatchFilterModal)
 
 // =========================================================
 // Watch List Sort Controls
 // =========================================================
-const watchSortDropdown = document.getElementById('watch-sort');
-const watchSortDirectionBtn = document.getElementById('watch-sort-direction');
+const watchSortDropdown = document.getElementById('watch-sort')
+const watchSortDirectionBtn = document.getElementById('watch-sort-direction')
 
 if (watchSortDirectionBtn && !watchSortDirectionBtn.dataset.direction) {
-  watchSortDirectionBtn.dataset.direction = 'desc';
+  watchSortDirectionBtn.dataset.direction = 'desc'
 }
 
 // Handle sort dropdown change with separate direction control
 watchSortDropdown?.addEventListener('change', () => {
-  const sortField = watchSortDropdown.value;
-  const direction = watchSortDirectionBtn?.dataset.direction || 'desc';
-  window.sortWatchList(`${sortField}-${direction}`);
-});
+  const sortField = watchSortDropdown.value
+  const direction = watchSortDirectionBtn?.dataset.direction || 'desc'
+  window.sortWatchList(`${sortField}-${direction}`)
+})
 
 // Handle direction button click - toggle between asc/desc
-watchSortDirectionBtn?.addEventListener('click', (e) => {
-  e.preventDefault();
-  e.stopPropagation();
+watchSortDirectionBtn?.addEventListener('click', e => {
+  e.preventDefault()
+  e.stopPropagation()
 
-  const currentDirection = watchSortDirectionBtn.dataset.direction === 'asc' ? 'asc' : 'desc';
-  const newDirection = currentDirection === 'desc' ? 'asc' : 'desc';
-  watchSortDirectionBtn.dataset.direction = newDirection;
-  watchSortDirectionBtn.textContent = newDirection === 'desc' ? '↓' : '↑';
+  const currentDirection =
+    watchSortDirectionBtn.dataset.direction === 'asc' ? 'asc' : 'desc'
+  const newDirection = currentDirection === 'desc' ? 'asc' : 'desc'
+  watchSortDirectionBtn.dataset.direction = newDirection
+  watchSortDirectionBtn.textContent = newDirection === 'desc' ? '↓' : '↑'
 
-  const sortField = watchSortDropdown?.value || 'date';
-  window.sortWatchList(`${sortField}-${newDirection}`);
-});
+  const sortField = watchSortDropdown?.value || 'date'
+  window.sortWatchList(`${sortField}-${newDirection}`)
+})
 
 // =========================================================
 // Expand/Collapse All Button
 // =========================================================
-const toggleExpandAllBtn = document.getElementById('toggle-expand-all-btn');
-let allExpanded = false;
+const toggleExpandAllBtn = document.getElementById('toggle-expand-all-btn')
+let allExpanded = false
 
 // Function to reset the expand/collapse button state
 function resetExpandCollapseButton() {
-  allExpanded = false;
+  allExpanded = false
   if (toggleExpandAllBtn) {
-    toggleExpandAllBtn.classList.remove('all-expanded');
-    toggleExpandAllBtn.title = 'Expand All';
+    toggleExpandAllBtn.classList.remove('all-expanded')
+    toggleExpandAllBtn.title = 'Expand All'
   }
 }
 
 toggleExpandAllBtn?.addEventListener('click', () => {
-  const likesList = document.querySelector('.likes-list');
-  if (!likesList) return;
-  
-  const cards = likesList.querySelectorAll('.watch-card');
-  
+  const likesList = document.querySelector('.likes-list')
+  if (!likesList) return
+
+  const cards = likesList.querySelectorAll('.watch-card')
+
   if (allExpanded) {
     // Collapse all
-    cards.forEach(card => card.classList.remove('expanded'));
-    toggleExpandAllBtn.classList.remove('all-expanded');
-    toggleExpandAllBtn.title = 'Expand All';
-    allExpanded = false;
+    cards.forEach(card => card.classList.remove('expanded'))
+    toggleExpandAllBtn.classList.remove('all-expanded')
+    toggleExpandAllBtn.title = 'Expand All'
+    allExpanded = false
   } else {
     // Expand all
-    cards.forEach(card => card.classList.add('expanded'));
-    toggleExpandAllBtn.classList.add('all-expanded');
-    toggleExpandAllBtn.title = 'Collapse All';
-    allExpanded = true;
+    cards.forEach(card => card.classList.add('expanded'))
+    toggleExpandAllBtn.classList.add('all-expanded')
+    toggleExpandAllBtn.title = 'Collapse All'
+    allExpanded = true
   }
-});
+})
 
 watchFilterApply?.addEventListener('click', () => {
-  console.log('🧠 Apply button clicked');
-  
+  console.log('🧠 Apply button clicked')
+
   // Collect filter values
   const filters = {
     genres: [],
@@ -3674,183 +4150,207 @@ watchFilterApply?.addEventListener('click', () => {
     contentRatings: [],
     yearMin: parseInt(document.getElementById('watch-year-min')?.value) || null,
     yearMax: parseInt(document.getElementById('watch-year-max')?.value) || null,
-    tmdbRating: parseFloat(document.getElementById('watch-tmdb-rating')?.value) || 0,
-    voteCount: parseInt(document.getElementById('watch-vote-count')?.value) || 0,
-    runtimeMin: parseInt(document.getElementById('watch-runtime-min')?.value) || null,
-    runtimeMax: parseInt(document.getElementById('watch-runtime-max')?.value) || null,
+    tmdbRating:
+      parseFloat(document.getElementById('watch-tmdb-rating')?.value) || 0,
+    voteCount:
+      parseInt(document.getElementById('watch-vote-count')?.value) || 0,
+    runtimeMin:
+      parseInt(document.getElementById('watch-runtime-min')?.value) || null,
+    runtimeMax:
+      parseInt(document.getElementById('watch-runtime-max')?.value) || null,
     showPlexOnly: filterState.showPlexOnly,
-  };
-  
+  }
+
   // Collect checked genres
-  document.querySelectorAll('#watch-genre-list input[type="checkbox"]:checked').forEach(cb => {
-    filters.genres.push(cb.value);
-  });
-  
+  document
+    .querySelectorAll('#watch-genre-list input[type="checkbox"]:checked')
+    .forEach(cb => {
+      filters.genres.push(cb.value)
+    })
+
   // Collect checked languages
-  document.querySelectorAll('#watch-language-list input[type="checkbox"]:checked').forEach(cb => {
-    filters.languages.push(cb.value);
-  });
-  
+  document
+    .querySelectorAll('#watch-language-list input[type="checkbox"]:checked')
+    .forEach(cb => {
+      filters.languages.push(cb.value)
+    })
+
   // Collect checked countries
-  document.querySelectorAll('#watch-country-list input[type="checkbox"]:checked').forEach(cb => {
-    filters.countries.push(cb.value);
-  });
-  
+  document
+    .querySelectorAll('#watch-country-list input[type="checkbox"]:checked')
+    .forEach(cb => {
+      filters.countries.push(cb.value)
+    })
+
   // Collect checked content ratings
-  document.querySelectorAll('#watch-rating-list input[type="checkbox"]:checked').forEach(cb => {
-    filters.contentRatings.push(cb.value);
-  });
-  
-  console.log('🧩 Filters to apply:', filters);
-  
+  document
+    .querySelectorAll('#watch-rating-list input[type="checkbox"]:checked')
+    .forEach(cb => {
+      filters.contentRatings.push(cb.value)
+    })
+
+  console.log('🧩 Filters to apply:', filters)
+
   // Apply filters to watch list
-  applyWatchListFilters(filters);
-  
-  closeWatchFilterModal();
-});
+  applyWatchListFilters(filters)
+
+  closeWatchFilterModal()
+})
 
 // Function to apply filters to the watch list - MOVED OUTSIDE
 function applyWatchListFilters(filters) {
-  console.log('🧩 applyWatchListFilters called with:', filters);
-  
-  const likesList = document.querySelector('.likes-list');
+  console.log('🧩 applyWatchListFilters called with:', filters)
+
+  const likesList = document.querySelector('.likes-list')
   if (!likesList) {
-    console.warn('⚠️ .likes-list not found!');
-    return;
+    console.warn('⚠️ .likes-list not found!')
+    return
   }
-  
-  const cards = Array.from(likesList.querySelectorAll('.watch-card'));
-  console.log(`🔍 Found ${cards.length} cards to filter`);
-  
-  let hiddenCount = 0;
-  
+
+  const cards = Array.from(likesList.querySelectorAll('.watch-card'))
+  console.log(`🔍 Found ${cards.length} cards to filter`)
+
+  let hiddenCount = 0
+
   cards.forEach(card => {
-    let shouldShow = true;
-    
+    let shouldShow = true
+
     // Get movie data from the card
-    const yearText = card.querySelector('.watch-card-year')?.textContent;
-    const year = yearText ? parseInt(yearText.match(/\d+/)?.[0]) : null;
-    
+    const yearText = card.querySelector('.watch-card-year')?.textContent
+    const year = yearText ? parseInt(yearText.match(/\d+/)?.[0]) : null
+
     // Get TMDB rating
-    const ratingEl = card.querySelector('.watch-card-ratings');
-    let tmdbRating = 0;
+    const ratingEl = card.querySelector('.watch-card-ratings')
+    let tmdbRating = 0
     if (ratingEl) {
-      const innerHTML = ratingEl.innerHTML;
-      const tmdbMatch = innerHTML.match(/tmdb\.svg[^>]*>\s*([\d.]+)/i);
-      tmdbRating = tmdbMatch ? parseFloat(tmdbMatch[1]) : 0;
+      const innerHTML = ratingEl.innerHTML
+      const tmdbMatch = innerHTML.match(/tmdb\.svg[^>]*>\s*([\d.]+)/i)
+      tmdbRating = tmdbMatch ? parseFloat(tmdbMatch[1]) : 0
     }
-    
+
     // Get stored filter data from card dataset
-    const cardGenres = card.dataset.genres ? JSON.parse(card.dataset.genres) : [];
-    const cardLanguages = card.dataset.languages ? JSON.parse(card.dataset.languages) : [];
-    const cardCountries = card.dataset.countries ? JSON.parse(card.dataset.countries) : [];
-    const cardRating = card.dataset.contentRating || '';
-    const cardRuntime = parseInt(card.dataset.runtime) || 0;
-    const cardVoteCount = parseInt(card.dataset.voteCount) || 0;
-    
-    console.log(`Checking card: year=${year}, genres=${cardGenres}`);
-    
+    const cardGenres = card.dataset.genres
+      ? JSON.parse(card.dataset.genres)
+      : []
+    const cardLanguages = card.dataset.languages
+      ? JSON.parse(card.dataset.languages)
+      : []
+    const cardCountries = card.dataset.countries
+      ? JSON.parse(card.dataset.countries)
+      : []
+    const cardRating = card.dataset.contentRating || ''
+    const cardRuntime = parseInt(card.dataset.runtime) || 0
+    const cardVoteCount = parseInt(card.dataset.voteCount) || 0
+
+    console.log(`Checking card: year=${year}, genres=${cardGenres}`)
+
     // Genre filter - if genres selected, card must have at least one matching genre
     if (filters.genres.length > 0) {
-      const hasMatchingGenre = filters.genres.some(filterGenre => 
+      const hasMatchingGenre = filters.genres.some(filterGenre =>
         cardGenres.includes(parseInt(filterGenre))
-      );
+      )
       if (!hasMatchingGenre) {
-        console.log(`  🧩 Failed genre check`);
-        shouldShow = false;
+        console.log(`  🧩 Failed genre check`)
+        shouldShow = false
       }
     }
-    
+
     // Language filter
     if (filters.languages.length > 0) {
-      const hasMatchingLanguage = filters.languages.some(lang => 
+      const hasMatchingLanguage = filters.languages.some(lang =>
         cardLanguages.includes(lang)
-      );
+      )
       if (!hasMatchingLanguage) {
-        console.log(`  🧩 Failed language check`);
-        shouldShow = false;
+        console.log(`  🧩 Failed language check`)
+        shouldShow = false
       }
     }
-    
+
     // Country filter
     if (filters.countries.length > 0) {
-      const hasMatchingCountry = filters.countries.some(country => 
+      const hasMatchingCountry = filters.countries.some(country =>
         cardCountries.includes(country)
-      );
+      )
       if (!hasMatchingCountry) {
-        console.log(`  🧩 Failed country check`);
-        shouldShow = false;
+        console.log(`  🧩 Failed country check`)
+        shouldShow = false
       }
     }
-    
+
     // Content rating filter
     if (filters.contentRatings.length > 0) {
       if (!filters.contentRatings.includes(cardRating)) {
-        console.log(`  🧩 Failed content rating check`);
-        shouldShow = false;
+        console.log(`  🧩 Failed content rating check`)
+        shouldShow = false
       }
     }
-    
+
     // Year filter
     if (filters.yearMin && year && year < filters.yearMin) {
-      console.log(`  🧩 Failed yearMin: ${year} < ${filters.yearMin}`);
-      shouldShow = false;
+      console.log(`  🧩 Failed yearMin: ${year} < ${filters.yearMin}`)
+      shouldShow = false
     }
     if (filters.yearMax && year && year > filters.yearMax) {
-      console.log(`  🧩 Failed yearMax: ${year} > ${filters.yearMax}`);
-      shouldShow = false;
+      console.log(`  🧩 Failed yearMax: ${year} > ${filters.yearMax}`)
+      shouldShow = false
     }
-    
+
     // TMDB Rating filter
     if (filters.tmdbRating > 0 && tmdbRating < filters.tmdbRating) {
-      console.log(`  🧩 Failed tmdbRating: ${tmdbRating} < ${filters.tmdbRating}`);
-      shouldShow = false;
+      console.log(
+        `  🧩 Failed tmdbRating: ${tmdbRating} < ${filters.tmdbRating}`
+      )
+      shouldShow = false
     }
-    
+
     // Runtime filter
     if (filters.runtimeMin && cardRuntime && cardRuntime < filters.runtimeMin) {
-      console.log(`  🧩 Failed runtimeMin`);
-      shouldShow = false;
+      console.log(`  🧩 Failed runtimeMin`)
+      shouldShow = false
     }
     if (filters.runtimeMax && cardRuntime && cardRuntime > filters.runtimeMax) {
-      console.log(`  🧩 Failed runtimeMax`);
-      shouldShow = false;
+      console.log(`  🧩 Failed runtimeMax`)
+      shouldShow = false
     }
-    
+
     // Vote count filter
     if (filters.voteCount > 0 && cardVoteCount < filters.voteCount) {
-      console.log(`  🧩 Failed voteCount`);
-      shouldShow = false;
+      console.log(`  🧩 Failed voteCount`)
+      shouldShow = false
     }
-    
+
     // Show Plex Only filter - only show movies that are in Plex
     if (filters.showPlexOnly) {
       // Check if the card has the plex-status element (indicates movie is in Plex)
-      const hasPlexStatus = card.querySelector('.plex-status') !== null;
+      const hasPlexStatus = card.querySelector('.plex-status') !== null
       if (!hasPlexStatus) {
-        console.log(`  🧩 Failed showPlexOnly check - not in Plex`);
-        shouldShow = false;
+        console.log(`  🧩 Failed showPlexOnly check - not in Plex`)
+        shouldShow = false
       }
     }
-    
+
     // Show/hide card
     if (shouldShow) {
-      card.style.display = '';
-      console.log('🧠 Showing card');
+      card.style.display = ''
+      console.log('🧠 Showing card')
     } else {
-      card.style.display = 'none';
-      hiddenCount++;
-      console.log('🧠 Hiding card');
+      card.style.display = 'none'
+      hiddenCount++
+      console.log('🧠 Hiding card')
     }
-  });
-  
+  })
+
   // Show notification
-  const visibleCards = cards.length - hiddenCount;
-  console.log(`✅ Showing ${visibleCards} of ${cards.length} movies after filtering`);
-  
+  const visibleCards = cards.length - hiddenCount
+  console.log(
+    `✅ Showing ${visibleCards} of ${cards.length} movies after filtering`
+  )
+
   // Optional: Show a user-facing notification
   if (hiddenCount > 0) {
-    showNotification(`Filtered: showing ${visibleCards} of ${cards.length} movies`);
+    showNotification(
+      `Filtered: showing ${visibleCards} of ${cards.length} movies`
+    )
   }
 }
 
@@ -3859,185 +4359,224 @@ const watchDropdowns = [
   { toggle: 'watch-genre-toggle', list: 'watch-genre-list' },
   { toggle: 'watch-language-toggle', list: 'watch-language-list' },
   { toggle: 'watch-country-toggle', list: 'watch-country-list' },
-  { toggle: 'watch-rating-toggle', list: 'watch-rating-list' }
-];
+  { toggle: 'watch-rating-toggle', list: 'watch-rating-list' },
+]
 
 watchDropdowns.forEach(({ toggle, list }) => {
-  const toggleBtn = document.getElementById(toggle);
-  const listEl = document.getElementById(list);
+  const toggleBtn = document.getElementById(toggle)
+  const listEl = document.getElementById(list)
 
-  toggleBtn?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    
-    console.log('Dropdown clicked:', toggle);
-    console.log('List element:', listEl);
-    console.log('Has active class before toggle:', listEl?.classList.contains('active'));
-    
+  toggleBtn?.addEventListener('click', e => {
+    e.stopPropagation()
+
+    console.log('Dropdown clicked:', toggle)
+    console.log('List element:', listEl)
+    console.log(
+      'Has active class before toggle:',
+      listEl?.classList.contains('active')
+    )
+
     // Close other dropdowns
     watchDropdowns.forEach(({ toggle: otherToggle, list: otherList }) => {
       if (otherToggle !== toggle) {
-        document.getElementById(otherToggle)?.classList.remove('open');
-        document.getElementById(otherList)?.classList.remove('active');
+        document.getElementById(otherToggle)?.classList.remove('open')
+        document.getElementById(otherList)?.classList.remove('active')
       }
-    });
+    })
 
     // Toggle current dropdown
-    toggleBtn.classList.toggle('open');
-    listEl?.classList.toggle('active');
-    
-    console.log('Has active class after toggle:', listEl?.classList.contains('active'));
-  });
-});
+    toggleBtn.classList.toggle('open')
+    listEl?.classList.toggle('active')
+
+    console.log(
+      'Has active class after toggle:',
+      listEl?.classList.contains('active')
+    )
+  })
+})
 
 // Watch filter modal - Genre checkboxes
-document.querySelectorAll('#watch-genre-list input[type="checkbox"]').forEach(cb => {
-  cb.addEventListener('change', () => {
-    const selectedGenres = Array.from(
-      document.querySelectorAll('#watch-genre-list input[type="checkbox"]:checked')
-    ).map(checkbox => parseInt(checkbox.value));
-    updateWatchGenreButton(selectedGenres);
-  });
-});
+document
+  .querySelectorAll('#watch-genre-list input[type="checkbox"]')
+  .forEach(cb => {
+    cb.addEventListener('change', () => {
+      const selectedGenres = Array.from(
+        document.querySelectorAll(
+          '#watch-genre-list input[type="checkbox"]:checked'
+        )
+      ).map(checkbox => parseInt(checkbox.value))
+      updateWatchGenreButton(selectedGenres)
+    })
+  })
 
 // Watch filter modal - Language checkboxes
-document.querySelectorAll('#watch-language-list input[type="checkbox"]').forEach(cb => {
-  cb.addEventListener('change', () => {
-    const selectedLanguages = Array.from(
-      document.querySelectorAll('#watch-language-list input[type="checkbox"]:checked')
-    ).map(checkbox => checkbox.value);
-    updateWatchLanguageButton(selectedLanguages);
-  });
-});
+document
+  .querySelectorAll('#watch-language-list input[type="checkbox"]')
+  .forEach(cb => {
+    cb.addEventListener('change', () => {
+      const selectedLanguages = Array.from(
+        document.querySelectorAll(
+          '#watch-language-list input[type="checkbox"]:checked'
+        )
+      ).map(checkbox => checkbox.value)
+      updateWatchLanguageButton(selectedLanguages)
+    })
+  })
 
 // Watch filter modal - Country checkboxes
-document.querySelectorAll('#watch-country-list input[type="checkbox"]').forEach(cb => {
-  cb.addEventListener('change', () => {
-    const selectedCountries = Array.from(
-      document.querySelectorAll('#watch-country-list input[type="checkbox"]:checked')
-    ).map(checkbox => checkbox.value);
-    updateWatchCountryButton(selectedCountries);
-  });
-});
+document
+  .querySelectorAll('#watch-country-list input[type="checkbox"]')
+  .forEach(cb => {
+    cb.addEventListener('change', () => {
+      const selectedCountries = Array.from(
+        document.querySelectorAll(
+          '#watch-country-list input[type="checkbox"]:checked'
+        )
+      ).map(checkbox => checkbox.value)
+      updateWatchCountryButton(selectedCountries)
+    })
+  })
 
 // Watch filter modal - Content Rating checkboxes
-document.querySelectorAll('#watch-rating-list input[type="checkbox"]').forEach(cb => {
-  cb.addEventListener('change', () => {
-    const selectedRatings = Array.from(
-      document.querySelectorAll('#watch-rating-list input[type="checkbox"]:checked')
-    ).map(checkbox => checkbox.value);
-    updateWatchContentRatingButton(selectedRatings);
-  });
-});
+document
+  .querySelectorAll('#watch-rating-list input[type="checkbox"]')
+  .forEach(cb => {
+    cb.addEventListener('change', () => {
+      const selectedRatings = Array.from(
+        document.querySelectorAll(
+          '#watch-rating-list input[type="checkbox"]:checked'
+        )
+      ).map(checkbox => checkbox.value)
+      updateWatchContentRatingButton(selectedRatings)
+    })
+  })
 
 // Close dropdowns when clicking outside
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('.dropdown-button') && !e.target.closest('.dropdown-list')) {
+document.addEventListener('click', e => {
+  if (
+    !e.target.closest('.dropdown-button') &&
+    !e.target.closest('.dropdown-list')
+  ) {
     watchDropdowns.forEach(({ toggle, list }) => {
-      document.getElementById(toggle)?.classList.remove('open');
-      document.getElementById(list)?.classList.remove('active');
-    });
+      document.getElementById(toggle)?.classList.remove('open')
+      document.getElementById(list)?.classList.remove('active')
+    })
   }
-});
+})
 
 // Slider Updates
-const watchTmdbRating = document.getElementById('watch-tmdb-rating');
-const watchTmdbValue = document.getElementById('watch-tmdb-rating-value');
-const watchVoteCount = document.getElementById('watch-vote-count');
-const watchVoteValue = document.getElementById('watch-vote-count-value');
+const watchTmdbRating = document.getElementById('watch-tmdb-rating')
+const watchTmdbValue = document.getElementById('watch-tmdb-rating-value')
+const watchVoteCount = document.getElementById('watch-vote-count')
+const watchVoteValue = document.getElementById('watch-vote-count-value')
 
-watchTmdbRating?.addEventListener('input', (e) => {
+watchTmdbRating?.addEventListener('input', e => {
   if (watchTmdbValue) {
-    watchTmdbValue.textContent = parseFloat(e.target.value).toFixed(1);
+    watchTmdbValue.textContent = parseFloat(e.target.value).toFixed(1)
   }
-});
+})
 
-watchVoteCount?.addEventListener('input', (e) => {
+watchVoteCount?.addEventListener('input', e => {
   if (watchVoteValue) {
-    watchVoteValue.textContent = parseInt(e.target.value).toLocaleString();
+    watchVoteValue.textContent = parseInt(e.target.value).toLocaleString()
   }
-});
+})
 
 watchFilterReset?.addEventListener('click', () => {
-  document.querySelectorAll('#watch-filter-modal input[type="checkbox"]').forEach(cb => cb.checked = false);
-  const yearMin = document.getElementById('watch-year-min');
-  const yearMax = document.getElementById('watch-year-max');
-  const runtimeMin = document.getElementById('watch-runtime-min');
-  const runtimeMax = document.getElementById('watch-runtime-max');
-  
-  if (yearMin) yearMin.value = '';
-  if (yearMax) yearMax.value = '';
-  if (runtimeMin) runtimeMin.value = '';
-  if (runtimeMax) runtimeMax.value = '';
-  if (watchTmdbRating) watchTmdbRating.value = 0;
-  if (watchTmdbValue) watchTmdbValue.textContent = '0.0';
-  if (watchVoteCount) watchVoteCount.value = 0;
-  if (watchVoteValue) watchVoteValue.textContent = '0';
-  
+  document
+    .querySelectorAll('#watch-filter-modal input[type="checkbox"]')
+    .forEach(cb => (cb.checked = false))
+  const yearMin = document.getElementById('watch-year-min')
+  const yearMax = document.getElementById('watch-year-max')
+  const runtimeMin = document.getElementById('watch-runtime-min')
+  const runtimeMax = document.getElementById('watch-runtime-max')
+
+  if (yearMin) yearMin.value = ''
+  if (yearMax) yearMax.value = ''
+  if (runtimeMin) runtimeMin.value = ''
+  if (runtimeMax) runtimeMax.value = ''
+  if (watchTmdbRating) watchTmdbRating.value = 0
+  if (watchTmdbValue) watchTmdbValue.textContent = '0.0'
+  if (watchVoteCount) watchVoteCount.value = 0
+  if (watchVoteValue) watchVoteValue.textContent = '0'
+
   // Reset dropdown button texts
-  updateWatchGenreButton([]);
-  updateWatchLanguageButton([]);
-  updateWatchCountryButton([]);
-  updateWatchContentRatingButton([]);
-});
+  updateWatchGenreButton([])
+  updateWatchLanguageButton([])
+  updateWatchCountryButton([])
+  updateWatchContentRatingButton([])
+})
 
 // =========================================================
 // Swipe Filter Modal
 // =========================================================
-const swipeFilterBtn = document.getElementById('swipe-filter-btn');
-const swipeFilterModal = document.getElementById('swipe-filter-modal');
-const swipeFilterOverlay = document.getElementById('swipe-filter-overlay');
-const swipeFilterClose = document.getElementById('swipe-filter-close');
-const swipeFilterApply = document.getElementById('swipe-filter-apply');
-const swipeFilterReset = document.getElementById('swipe-filter-reset');
+const swipeFilterBtn = document.getElementById('swipe-filter-btn')
+const swipeFilterModal = document.getElementById('swipe-filter-modal')
+const swipeFilterOverlay = document.getElementById('swipe-filter-overlay')
+const swipeFilterClose = document.getElementById('swipe-filter-close')
+const swipeFilterApply = document.getElementById('swipe-filter-apply')
+const swipeFilterReset = document.getElementById('swipe-filter-reset')
 
 // Swipe filter modal sliders
-const swipeImdbRating = document.getElementById('swipe-imdb-rating');
-const swipeImdbValue = document.getElementById('swipe-imdb-rating-value');
-const swipeTmdbRating = document.getElementById('swipe-tmdb-rating');
-const swipeTmdbValue = document.getElementById('swipe-tmdb-rating-value');
-const swipeVoteCount = document.getElementById('swipe-vote-count');
-const swipeVoteValue = document.getElementById('swipe-vote-count-value');
+const swipeImdbRating = document.getElementById('swipe-imdb-rating')
+const swipeImdbValue = document.getElementById('swipe-imdb-rating-value')
+const swipeTmdbRating = document.getElementById('swipe-tmdb-rating')
+const swipeTmdbValue = document.getElementById('swipe-tmdb-rating-value')
+const swipeVoteCount = document.getElementById('swipe-vote-count')
+const swipeVoteValue = document.getElementById('swipe-vote-count-value')
 
 // Swipe filter dropdown button update functions
 function updateSwipeGenreButton(selected) {
-  const btn = document.getElementById('swipe-genre-toggle');
-  if (!btn) return;
-  const count = selected.length;
-  btn.innerHTML = count === 0 ? 'Select Genres <span class="dropdown-arrow">▼</span>' :
-                  count === 1 ? `1 genre <span class="dropdown-arrow">▼</span>` :
-                  `${count} genres <span class="dropdown-arrow">▼</span>`;
+  const btn = document.getElementById('swipe-genre-toggle')
+  if (!btn) return
+  const count = selected.length
+  btn.innerHTML =
+    count === 0
+      ? 'Select Genres <span class="dropdown-arrow">▼</span>'
+      : count === 1
+      ? `1 genre <span class="dropdown-arrow">▼</span>`
+      : `${count} genres <span class="dropdown-arrow">▼</span>`
 }
 
 function updateSwipeLanguageButton(selected) {
-  const btn = document.getElementById('swipe-language-toggle');
-  if (!btn) return;
-  const count = selected.length;
-  btn.innerHTML = count === 0 ? 'Select Languages <span class="dropdown-arrow">▼</span>' :
-                  count === 1 ? `1 language <span class="dropdown-arrow">▼</span>` :
-                  `${count} languages <span class="dropdown-arrow">▼</span>`;
+  const btn = document.getElementById('swipe-language-toggle')
+  if (!btn) return
+  const count = selected.length
+  btn.innerHTML =
+    count === 0
+      ? 'Select Languages <span class="dropdown-arrow">▼</span>'
+      : count === 1
+      ? `1 language <span class="dropdown-arrow">▼</span>`
+      : `${count} languages <span class="dropdown-arrow">▼</span>`
 }
 
 function updateSwipeCountryButton(selected) {
-  const btn = document.getElementById('swipe-country-toggle');
-  if (!btn) return;
-  const count = selected.length;
-  btn.innerHTML = count === 0 ? 'Select Countries <span class="dropdown-arrow">▼</span>' :
-                  count === 1 ? `1 country <span class="dropdown-arrow">▼</span>` :
-                  `${count} countries <span class="dropdown-arrow">▼</span>`;
+  const btn = document.getElementById('swipe-country-toggle')
+  if (!btn) return
+  const count = selected.length
+  btn.innerHTML =
+    count === 0
+      ? 'Select Countries <span class="dropdown-arrow">▼</span>'
+      : count === 1
+      ? `1 country <span class="dropdown-arrow">▼</span>`
+      : `${count} countries <span class="dropdown-arrow">▼</span>`
 }
 
 function updateSwipeContentRatingButton(selected) {
-  const btn = document.getElementById('swipe-rating-toggle');
-  if (!btn) return;
-  const count = selected.length;
-  btn.innerHTML = count === 0 ? 'Select Ratings <span class="dropdown-arrow">▼</span>' :
-                  count === 1 ? `1 rating <span class="dropdown-arrow">▼</span>` :
-                  `${count} ratings <span class="dropdown-arrow">▼</span>`;
+  const btn = document.getElementById('swipe-rating-toggle')
+  if (!btn) return
+  const count = selected.length
+  btn.innerHTML =
+    count === 0
+      ? 'Select Ratings <span class="dropdown-arrow">▼</span>'
+      : count === 1
+      ? `1 rating <span class="dropdown-arrow">▼</span>`
+      : `${count} ratings <span class="dropdown-arrow">▼</span>`
 }
 
 function updateSwipeSortButton(sortBy) {
-  const btn = document.getElementById('swipe-sort-dropdown-toggle');
-  if (!btn) return;
+  const btn = document.getElementById('swipe-sort-dropdown-toggle')
+  if (!btn) return
   const sortLabels = {
     'popularity.desc': 'Popularity',
     'popularity.asc': 'Popularity',
@@ -4046,109 +4585,134 @@ function updateSwipeSortButton(sortBy) {
     'vote_count.desc': 'Votes',
     'vote_count.asc': 'Votes',
     'vote_average.desc': 'Rating',
-    'vote_average.asc': 'Rating'
-  };
-  const baseSortBy = sortBy.replace('.asc', '.desc');
-  btn.innerHTML = `${sortLabels[baseSortBy] || 'Popularity'} <span class="dropdown-arrow">▼</span>`;
+    'vote_average.asc': 'Rating',
+  }
+  const baseSortBy = sortBy.replace('.asc', '.desc')
+  btn.innerHTML = `${
+    sortLabels[baseSortBy] || 'Popularity'
+  } <span class="dropdown-arrow">▼</span>`
 }
 
 // Sync swipe filter modal UI with filterState
 function syncSwipeFilterModalWithState() {
   // Year range
-  const yearMin = document.getElementById('swipe-year-min');
-  const yearMax = document.getElementById('swipe-year-max');
-  if (yearMin && window.filterState) yearMin.value = window.filterState.yearRange?.min || '';
-  if (yearMax && window.filterState) yearMax.value = window.filterState.yearRange?.max || '';
+  const yearMin = document.getElementById('swipe-year-min')
+  const yearMax = document.getElementById('swipe-year-max')
+  if (yearMin && window.filterState)
+    yearMin.value = window.filterState.yearRange?.min || ''
+  if (yearMax && window.filterState)
+    yearMax.value = window.filterState.yearRange?.max || ''
 
   // Runtime
-  const runtimeMin = document.getElementById('swipe-runtime-min');
-  const runtimeMax = document.getElementById('swipe-runtime-max');
-  if (runtimeMin && window.filterState) runtimeMin.value = window.filterState.runtimeRange?.min || '';
-  if (runtimeMax && window.filterState) runtimeMax.value = window.filterState.runtimeRange?.max || '';
+  const runtimeMin = document.getElementById('swipe-runtime-min')
+  const runtimeMax = document.getElementById('swipe-runtime-max')
+  if (runtimeMin && window.filterState)
+    runtimeMin.value = window.filterState.runtimeRange?.min || ''
+  if (runtimeMax && window.filterState)
+    runtimeMax.value = window.filterState.runtimeRange?.max || ''
 
   // Sliders
   if (swipeImdbRating && window.filterState) {
-    swipeImdbRating.value = window.filterState.imdbRating || 0;
-    if (swipeImdbValue) swipeImdbValue.textContent = (window.filterState.imdbRating || 0).toFixed(1);
+    swipeImdbRating.value = window.filterState.imdbRating || 0
+    if (swipeImdbValue)
+      swipeImdbValue.textContent = (window.filterState.imdbRating || 0).toFixed(
+        1
+      )
   }
   if (swipeTmdbRating && window.filterState) {
-    swipeTmdbRating.value = window.filterState.tmdbRating || 0;
-    if (swipeTmdbValue) swipeTmdbValue.textContent = (window.filterState.tmdbRating || 0).toFixed(1);
+    swipeTmdbRating.value = window.filterState.tmdbRating || 0
+    if (swipeTmdbValue)
+      swipeTmdbValue.textContent = (window.filterState.tmdbRating || 0).toFixed(
+        1
+      )
   }
   if (swipeVoteCount && window.filterState) {
-    swipeVoteCount.value = window.filterState.voteCount || 0;
-    if (swipeVoteValue) swipeVoteValue.textContent = (window.filterState.voteCount || 0).toLocaleString();
+    swipeVoteCount.value = window.filterState.voteCount || 0
+    if (swipeVoteValue)
+      swipeVoteValue.textContent = (
+        window.filterState.voteCount || 0
+      ).toLocaleString()
   }
 
   // Plex toggle
-  const plexToggle = document.getElementById('swipe-plex-only-toggle');
+  const plexToggle = document.getElementById('swipe-plex-only-toggle')
   if (plexToggle && window.filterState) {
-    plexToggle.checked = window.filterState.showPlexOnly || false;
+    plexToggle.checked = window.filterState.showPlexOnly || false
     // Update toggle labels
-    const container = plexToggle.closest('.toggle-switch-container');
+    const container = plexToggle.closest('.toggle-switch-container')
     if (container) {
-      const labels = container.querySelectorAll('.toggle-label-text');
+      const labels = container.querySelectorAll('.toggle-label-text')
       labels.forEach((label, index) => {
-        if (index === 0) label.classList.toggle('active', !plexToggle.checked);
-        else label.classList.toggle('active', plexToggle.checked);
-      });
+        if (index === 0) label.classList.toggle('active', !plexToggle.checked)
+        else label.classList.toggle('active', plexToggle.checked)
+      })
     }
   }
 
   // Sort
   if (window.filterState?.sortBy) {
-    const sortRadios = document.querySelectorAll('input[name="swipe-sort"]');
-    const baseSortBy = window.filterState.sortBy.replace('.asc', '.desc');
+    const sortRadios = document.querySelectorAll('input[name="swipe-sort"]')
+    const baseSortBy = window.filterState.sortBy.replace('.asc', '.desc')
     sortRadios.forEach(radio => {
-      radio.checked = radio.value === baseSortBy;
-    });
-    updateSwipeSortButton(window.filterState.sortBy);
+      radio.checked = radio.value === baseSortBy
+    })
+    updateSwipeSortButton(window.filterState.sortBy)
 
     // Update direction button
-    const dirBtn = document.getElementById('swipe-sort-direction-btn');
+    const dirBtn = document.getElementById('swipe-sort-direction-btn')
     if (dirBtn) {
-      const isAsc = window.filterState.sortBy.endsWith('.asc');
-      dirBtn.textContent = isAsc ? '↑' : '↓';
-      dirBtn.dataset.direction = isAsc ? 'asc' : 'desc';
+      const isAsc = window.filterState.sortBy.endsWith('.asc')
+      dirBtn.textContent = isAsc ? '↑' : '↓'
+      dirBtn.dataset.direction = isAsc ? 'asc' : 'desc'
     }
   }
 
   // Checkboxes - Genres
-  document.querySelectorAll('#swipe-genre-list input[type="checkbox"]').forEach(cb => {
-    const val = parseInt(cb.value);
-    cb.checked = window.filterState?.genres?.includes(val) || false;
-  });
-  updateSwipeGenreButton(window.filterState?.genres || []);
+  document
+    .querySelectorAll('#swipe-genre-list input[type="checkbox"]')
+    .forEach(cb => {
+      const val = parseInt(cb.value)
+      cb.checked = window.filterState?.genres?.includes(val) || false
+    })
+  updateSwipeGenreButton(window.filterState?.genres || [])
 
   // Checkboxes - Languages
-  document.querySelectorAll('#swipe-language-list input[type="checkbox"]').forEach(cb => {
-    cb.checked = window.filterState?.languages?.includes(cb.value) || false;
-  });
-  updateSwipeLanguageButton(window.filterState?.languages || []);
+  document
+    .querySelectorAll('#swipe-language-list input[type="checkbox"]')
+    .forEach(cb => {
+      cb.checked = window.filterState?.languages?.includes(cb.value) || false
+    })
+  updateSwipeLanguageButton(window.filterState?.languages || [])
 
   // Checkboxes - Countries
-  document.querySelectorAll('#swipe-country-list input[type="checkbox"]').forEach(cb => {
-    cb.checked = window.filterState?.countries?.includes(cb.value) || false;
-  });
-  updateSwipeCountryButton(window.filterState?.countries || []);
+  document
+    .querySelectorAll('#swipe-country-list input[type="checkbox"]')
+    .forEach(cb => {
+      cb.checked = window.filterState?.countries?.includes(cb.value) || false
+    })
+  updateSwipeCountryButton(window.filterState?.countries || [])
 
   // Checkboxes - Content Ratings
-  document.querySelectorAll('#swipe-rating-list input[type="checkbox"]').forEach(cb => {
-    cb.checked = window.filterState?.contentRatings?.includes(cb.value) || false;
-  });
-  updateSwipeContentRatingButton(window.filterState?.contentRatings || []);
+  document
+    .querySelectorAll('#swipe-rating-list input[type="checkbox"]')
+    .forEach(cb => {
+      cb.checked =
+        window.filterState?.contentRatings?.includes(cb.value) || false
+    })
+  updateSwipeContentRatingButton(window.filterState?.contentRatings || [])
 }
 
 // Check if any filters are active (for button styling)
 function hasActiveSwipeFilters() {
-  if (!window.filterState) return false;
-  const fs = window.filterState;
-  const currentYear = new Date().getFullYear();
+  if (!window.filterState) return false
+  const fs = window.filterState
+  const currentYear = new Date().getFullYear()
   return (
     fs.genres?.length > 0 ||
     fs.contentRatings?.length > 0 ||
     fs.countries?.length > 0 ||
-    (fs.languages?.length > 0 && !(fs.languages.length === 1 && fs.languages[0] === 'en')) ||
+    (fs.languages?.length > 0 &&
+      !(fs.languages.length === 1 && fs.languages[0] === 'en')) ||
     fs.showPlexOnly ||
     fs.imdbRating > 0 ||
     fs.tmdbRating > 0 ||
@@ -4157,90 +4721,101 @@ function hasActiveSwipeFilters() {
     (fs.yearRange?.max && fs.yearRange.max < currentYear) ||
     (fs.runtimeRange?.min && fs.runtimeRange.min > 0) ||
     (fs.runtimeRange?.max && fs.runtimeRange.max < 300)
-  );
+  )
 }
 
 function updateSwipeFilterButtonState() {
   if (swipeFilterBtn) {
-    swipeFilterBtn.classList.toggle('has-filters', hasActiveSwipeFilters());
+    swipeFilterBtn.classList.toggle('has-filters', hasActiveSwipeFilters())
   }
 }
 
 function openSwipeFilterModal() {
-  syncSwipeFilterModalWithState();
-  swipeFilterModal?.classList.add('active');
-  swipeFilterOverlay?.classList.add('active');
+  syncSwipeFilterModalWithState()
+  swipeFilterModal?.classList.add('active')
+  swipeFilterOverlay?.classList.add('active')
 }
 
 function closeSwipeFilterModal() {
-  swipeFilterModal?.classList.remove('active');
-  swipeFilterOverlay?.classList.remove('active');
+  swipeFilterModal?.classList.remove('active')
+  swipeFilterOverlay?.classList.remove('active')
 }
 
-swipeFilterBtn?.addEventListener('click', openSwipeFilterModal);
-swipeFilterClose?.addEventListener('click', closeSwipeFilterModal);
-swipeFilterOverlay?.addEventListener('click', closeSwipeFilterModal);
+swipeFilterBtn?.addEventListener('click', openSwipeFilterModal)
+swipeFilterClose?.addEventListener('click', closeSwipeFilterModal)
+swipeFilterOverlay?.addEventListener('click', closeSwipeFilterModal)
 
 // Setup swipe filter modal dropdowns
 function setupSwipeFilterDropdowns() {
-  const overlay = document.getElementById('filter-dropdown-overlay') || (() => {
-    const el = document.createElement('div');
-    el.id = 'filter-dropdown-overlay';
-    el.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10000;';
-    document.body.appendChild(el);
-    return el;
-  })();
+  const overlay =
+    document.getElementById('filter-dropdown-overlay') ||
+    (() => {
+      const el = document.createElement('div')
+      el.id = 'filter-dropdown-overlay'
+      el.style.cssText =
+        'position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10000;'
+      document.body.appendChild(el)
+      return el
+    })()
 
   const pairs = [
     {
       type: 'swipe-genre',
       toggle: document.getElementById('swipe-genre-toggle'),
       list: document.getElementById('swipe-genre-list'),
-      checkboxes: document.querySelectorAll('#swipe-genre-list input[type="checkbox"]')
+      checkboxes: document.querySelectorAll(
+        '#swipe-genre-list input[type="checkbox"]'
+      ),
     },
     {
       type: 'swipe-language',
       toggle: document.getElementById('swipe-language-toggle'),
       list: document.getElementById('swipe-language-list'),
-      checkboxes: document.querySelectorAll('#swipe-language-list input[type="checkbox"]')
+      checkboxes: document.querySelectorAll(
+        '#swipe-language-list input[type="checkbox"]'
+      ),
     },
     {
       type: 'swipe-country',
       toggle: document.getElementById('swipe-country-toggle'),
       list: document.getElementById('swipe-country-list'),
-      checkboxes: document.querySelectorAll('#swipe-country-list input[type="checkbox"]')
+      checkboxes: document.querySelectorAll(
+        '#swipe-country-list input[type="checkbox"]'
+      ),
     },
     {
       type: 'swipe-rating',
       toggle: document.getElementById('swipe-rating-toggle'),
       list: document.getElementById('swipe-rating-list'),
-      checkboxes: document.querySelectorAll('#swipe-rating-list input[type="checkbox"]')
+      checkboxes: document.querySelectorAll(
+        '#swipe-rating-list input[type="checkbox"]'
+      ),
     },
     {
       type: 'swipe-sort',
       toggle: document.getElementById('swipe-sort-dropdown-toggle'),
       list: document.getElementById('swipe-sort-dropdown-list'),
-      radios: document.querySelectorAll('input[name="swipe-sort"]')
-    }
-  ];
+      radios: document.querySelectorAll('input[name="swipe-sort"]'),
+    },
+  ]
 
-  let currentOpen = null;
+  let currentOpen = null
 
   function closeAllSwipeDropdowns() {
     pairs.forEach(p => {
       if (p.list) {
-        p.list.style.display = 'none';
-        p.list.style.pointerEvents = 'none';
+        p.list.style.display = 'none'
+        p.list.style.pointerEvents = 'none'
       }
-      if (p.toggle) p.toggle.classList.remove('open');
-    });
-    currentOpen = null;
+      if (p.toggle) p.toggle.classList.remove('open')
+    })
+    currentOpen = null
   }
 
   function openSwipeDropdown(pair) {
-    if (!pair.toggle || !pair.list) return;
-    const rect = pair.toggle.getBoundingClientRect();
-    overlay.appendChild(pair.list);
+    if (!pair.toggle || !pair.list) return
+    const rect = pair.toggle.getBoundingClientRect()
+    overlay.appendChild(pair.list)
     pair.list.style.cssText = `
       position: fixed !important;
       top: ${rect.bottom + 4}px !important;
@@ -4258,406 +4833,439 @@ function setupSwipeFilterDropdowns() {
       overflow-y: auto !important;
       backdrop-filter: blur(20px) !important;
       box-shadow: var(--shadow-xl) !important;
-    `;
-    pair.toggle.classList.add('open');
-    currentOpen = pair.type;
+    `
+    pair.toggle.classList.add('open')
+    currentOpen = pair.type
   }
 
   pairs.forEach(pair => {
-    if (!pair.toggle || !pair.list) return;
+    if (!pair.toggle || !pair.list) return
 
-    const handleToggle = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
+    const handleToggle = e => {
+      e.preventDefault()
+      e.stopPropagation()
       if (currentOpen === pair.type) {
-        closeAllSwipeDropdowns();
+        closeAllSwipeDropdowns()
       } else {
-        closeAllSwipeDropdowns();
-        setTimeout(() => openSwipeDropdown(pair), 10);
+        closeAllSwipeDropdowns()
+        setTimeout(() => openSwipeDropdown(pair), 10)
       }
-    };
+    }
 
-    pair.toggle.addEventListener('touchend', handleToggle, { passive: false });
-    pair.toggle.addEventListener('click', handleToggle);
-    pair.list.addEventListener('click', (e) => e.stopPropagation());
+    pair.toggle.addEventListener('touchend', handleToggle, { passive: false })
+    pair.toggle.addEventListener('click', handleToggle)
+    pair.list.addEventListener('click', e => e.stopPropagation())
 
     // Genre checkboxes
     if (pair.type === 'swipe-genre' && pair.checkboxes) {
       pair.checkboxes.forEach(cb => {
-        cb.addEventListener('change', (e) => {
-          const val = parseInt(e.target.value);
+        cb.addEventListener('change', e => {
+          const val = parseInt(e.target.value)
           if (e.target.checked) {
-            if (!window.filterState.genres.includes(val)) window.filterState.genres.push(val);
+            if (!window.filterState.genres.includes(val))
+              window.filterState.genres.push(val)
           } else {
-            window.filterState.genres = window.filterState.genres.filter(id => id !== val);
+            window.filterState.genres = window.filterState.genres.filter(
+              id => id !== val
+            )
           }
-          updateSwipeGenreButton(window.filterState.genres);
+          updateSwipeGenreButton(window.filterState.genres)
           // Also sync the old Filters tab
-          document.querySelectorAll('#genre-dropdown-list input[type="checkbox"]').forEach(oldCb => {
-            if (parseInt(oldCb.value) === val) oldCb.checked = e.target.checked;
-          });
-        });
-      });
+          document
+            .querySelectorAll('#genre-dropdown-list input[type="checkbox"]')
+            .forEach(oldCb => {
+              if (parseInt(oldCb.value) === val)
+                oldCb.checked = e.target.checked
+            })
+        })
+      })
     }
 
     // Language checkboxes
     if (pair.type === 'swipe-language' && pair.checkboxes) {
       pair.checkboxes.forEach(cb => {
-        cb.addEventListener('change', (e) => {
-          const val = e.target.value;
+        cb.addEventListener('change', e => {
+          const val = e.target.value
           if (e.target.checked) {
-            if (!window.filterState.languages.includes(val)) window.filterState.languages.push(val);
+            if (!window.filterState.languages.includes(val))
+              window.filterState.languages.push(val)
           } else {
-            window.filterState.languages = window.filterState.languages.filter(l => l !== val);
+            window.filterState.languages = window.filterState.languages.filter(
+              l => l !== val
+            )
           }
-          updateSwipeLanguageButton(window.filterState.languages);
-          document.querySelectorAll('#language-dropdown-list input[type="checkbox"]').forEach(oldCb => {
-            if (oldCb.value === val) oldCb.checked = e.target.checked;
-          });
-        });
-      });
+          updateSwipeLanguageButton(window.filterState.languages)
+          document
+            .querySelectorAll('#language-dropdown-list input[type="checkbox"]')
+            .forEach(oldCb => {
+              if (oldCb.value === val) oldCb.checked = e.target.checked
+            })
+        })
+      })
     }
 
     // Country checkboxes
     if (pair.type === 'swipe-country' && pair.checkboxes) {
       pair.checkboxes.forEach(cb => {
-        cb.addEventListener('change', (e) => {
-          const val = e.target.value;
+        cb.addEventListener('change', e => {
+          const val = e.target.value
           if (e.target.checked) {
-            if (!window.filterState.countries.includes(val)) window.filterState.countries.push(val);
+            if (!window.filterState.countries.includes(val))
+              window.filterState.countries.push(val)
           } else {
-            window.filterState.countries = window.filterState.countries.filter(c => c !== val);
+            window.filterState.countries = window.filterState.countries.filter(
+              c => c !== val
+            )
           }
-          updateSwipeCountryButton(window.filterState.countries);
-          document.querySelectorAll('#country-dropdown-list input[type="checkbox"]').forEach(oldCb => {
-            if (oldCb.value === val) oldCb.checked = e.target.checked;
-          });
-        });
-      });
+          updateSwipeCountryButton(window.filterState.countries)
+          document
+            .querySelectorAll('#country-dropdown-list input[type="checkbox"]')
+            .forEach(oldCb => {
+              if (oldCb.value === val) oldCb.checked = e.target.checked
+            })
+        })
+      })
     }
 
     // Content Rating checkboxes
     if (pair.type === 'swipe-rating' && pair.checkboxes) {
       pair.checkboxes.forEach(cb => {
-        cb.addEventListener('change', (e) => {
-          const val = e.target.value;
+        cb.addEventListener('change', e => {
+          const val = e.target.value
           if (e.target.checked) {
-            if (!window.filterState.contentRatings.includes(val)) window.filterState.contentRatings.push(val);
+            if (!window.filterState.contentRatings.includes(val))
+              window.filterState.contentRatings.push(val)
           } else {
-            window.filterState.contentRatings = window.filterState.contentRatings.filter(r => r !== val);
+            window.filterState.contentRatings = window.filterState.contentRatings.filter(
+              r => r !== val
+            )
           }
-          updateSwipeContentRatingButton(window.filterState.contentRatings);
-          document.querySelectorAll('#rating-dropdown-list input[type="checkbox"]').forEach(oldCb => {
-            if (oldCb.value === val) oldCb.checked = e.target.checked;
-          });
-        });
-      });
+          updateSwipeContentRatingButton(window.filterState.contentRatings)
+          document
+            .querySelectorAll('#rating-dropdown-list input[type="checkbox"]')
+            .forEach(oldCb => {
+              if (oldCb.value === val) oldCb.checked = e.target.checked
+            })
+        })
+      })
     }
 
     // Sort radios
     if (pair.type === 'swipe-sort' && pair.radios) {
       pair.radios.forEach(radio => {
-        radio.addEventListener('change', (e) => {
+        radio.addEventListener('change', e => {
           if (e.target.checked) {
-            const dirBtn = document.getElementById('swipe-sort-direction-btn');
-            const direction = dirBtn?.dataset.direction || 'desc';
-            const baseValue = e.target.value.replace(/\.(asc|desc)$/, '');
-            window.filterState.sortBy = `${baseValue}.${direction}`;
-            updateSwipeSortButton(window.filterState.sortBy);
+            const dirBtn = document.getElementById('swipe-sort-direction-btn')
+            const direction = dirBtn?.dataset.direction || 'desc'
+            const baseValue = e.target.value.replace(/\.(asc|desc)$/, '')
+            window.filterState.sortBy = `${baseValue}.${direction}`
+            updateSwipeSortButton(window.filterState.sortBy)
             // Also sync old Filters tab
-            document.querySelectorAll('input[name="sort"]').forEach(oldRadio => {
-              if (oldRadio.value === e.target.value) oldRadio.checked = true;
-            });
-            setTimeout(closeAllSwipeDropdowns, 100);
+            document
+              .querySelectorAll('input[name="sort"]')
+              .forEach(oldRadio => {
+                if (oldRadio.value === e.target.value) oldRadio.checked = true
+              })
+            setTimeout(closeAllSwipeDropdowns, 100)
           }
-        });
-      });
+        })
+      })
     }
-  });
+  })
 
   // Sort direction button
-  const swipeSortDirBtn = document.getElementById('swipe-sort-direction-btn');
-  swipeSortDirBtn?.addEventListener('click', (e) => {
-    e.preventDefault();
-    const currentDir = swipeSortDirBtn.dataset.direction || 'desc';
-    const newDir = currentDir === 'desc' ? 'asc' : 'desc';
-    swipeSortDirBtn.dataset.direction = newDir;
-    swipeSortDirBtn.textContent = newDir === 'asc' ? '↑' : '↓';
+  const swipeSortDirBtn = document.getElementById('swipe-sort-direction-btn')
+  swipeSortDirBtn?.addEventListener('click', e => {
+    e.preventDefault()
+    const currentDir = swipeSortDirBtn.dataset.direction || 'desc'
+    const newDir = currentDir === 'desc' ? 'asc' : 'desc'
+    swipeSortDirBtn.dataset.direction = newDir
+    swipeSortDirBtn.textContent = newDir === 'asc' ? '↑' : '↓'
 
     // Update filterState.sortBy
     if (window.filterState?.sortBy) {
-      const baseSort = window.filterState.sortBy.replace(/\.(asc|desc)$/, '');
-      window.filterState.sortBy = `${baseSort}.${newDir}`;
+      const baseSort = window.filterState.sortBy.replace(/\.(asc|desc)$/, '')
+      window.filterState.sortBy = `${baseSort}.${newDir}`
 
       // Sync old Filters tab direction button
-      const oldDirBtn = document.getElementById('sort-direction-btn');
+      const oldDirBtn = document.getElementById('sort-direction-btn')
       if (oldDirBtn) {
-        oldDirBtn.dataset.direction = newDir;
-        oldDirBtn.textContent = newDir === 'asc' ? '↑' : '↓';
+        oldDirBtn.dataset.direction = newDir
+        oldDirBtn.textContent = newDir === 'asc' ? '↑' : '↓'
       }
     }
-  });
+  })
 
   // Close dropdowns on outside click within modal
-  swipeFilterModal?.addEventListener('click', (e) => {
+  swipeFilterModal?.addEventListener('click', e => {
     if (currentOpen) {
-      const clickedInside = pairs.some(p => p.toggle?.contains(e.target) || p.list?.contains(e.target));
-      if (!clickedInside) closeAllSwipeDropdowns();
+      const clickedInside = pairs.some(
+        p => p.toggle?.contains(e.target) || p.list?.contains(e.target)
+      )
+      if (!clickedInside) closeAllSwipeDropdowns()
     }
-  });
+  })
 }
 
 // Slider event listeners
-swipeImdbRating?.addEventListener('input', (e) => {
-  const val = parseFloat(e.target.value);
-  if (swipeImdbValue) swipeImdbValue.textContent = val.toFixed(1);
-  if (window.filterState) window.filterState.imdbRating = val;
+swipeImdbRating?.addEventListener('input', e => {
+  const val = parseFloat(e.target.value)
+  if (swipeImdbValue) swipeImdbValue.textContent = val.toFixed(1)
+  if (window.filterState) window.filterState.imdbRating = val
   // Sync old slider
-  const oldSlider = document.getElementById('imdb-rating');
-  const oldValue = document.getElementById('imdb-rating-value');
-  if (oldSlider) oldSlider.value = val;
-  if (oldValue) oldValue.textContent = val.toFixed(1);
-});
+  const oldSlider = document.getElementById('imdb-rating')
+  const oldValue = document.getElementById('imdb-rating-value')
+  if (oldSlider) oldSlider.value = val
+  if (oldValue) oldValue.textContent = val.toFixed(1)
+})
 
-swipeTmdbRating?.addEventListener('input', (e) => {
-  const val = parseFloat(e.target.value);
-  if (swipeTmdbValue) swipeTmdbValue.textContent = val.toFixed(1);
-  if (window.filterState) window.filterState.tmdbRating = val;
-  const oldSlider = document.getElementById('tmdb-rating');
-  const oldValue = document.getElementById('tmdb-rating-value');
-  if (oldSlider) oldSlider.value = val;
-  if (oldValue) oldValue.textContent = val.toFixed(1);
-});
+swipeTmdbRating?.addEventListener('input', e => {
+  const val = parseFloat(e.target.value)
+  if (swipeTmdbValue) swipeTmdbValue.textContent = val.toFixed(1)
+  if (window.filterState) window.filterState.tmdbRating = val
+  const oldSlider = document.getElementById('tmdb-rating')
+  const oldValue = document.getElementById('tmdb-rating-value')
+  if (oldSlider) oldSlider.value = val
+  if (oldValue) oldValue.textContent = val.toFixed(1)
+})
 
-swipeVoteCount?.addEventListener('input', (e) => {
-  const val = parseInt(e.target.value);
-  if (swipeVoteValue) swipeVoteValue.textContent = val.toLocaleString();
-  if (window.filterState) window.filterState.voteCount = val;
-  const oldSlider = document.getElementById('vote-count');
-  const oldValue = document.getElementById('vote-count-value');
-  if (oldSlider) oldSlider.value = val;
-  if (oldValue) oldValue.textContent = val.toLocaleString();
-});
+swipeVoteCount?.addEventListener('input', e => {
+  const val = parseInt(e.target.value)
+  if (swipeVoteValue) swipeVoteValue.textContent = val.toLocaleString()
+  if (window.filterState) window.filterState.voteCount = val
+  const oldSlider = document.getElementById('vote-count')
+  const oldValue = document.getElementById('vote-count-value')
+  if (oldSlider) oldSlider.value = val
+  if (oldValue) oldValue.textContent = val.toLocaleString()
+})
 
 // Year range inputs
-document.getElementById('swipe-year-min')?.addEventListener('change', (e) => {
-  const val = parseInt(e.target.value) || 1895;
-  if (window.filterState) window.filterState.yearRange.min = val;
-  const oldInput = document.getElementById('year-min');
-  if (oldInput) oldInput.value = val;
-});
+document.getElementById('swipe-year-min')?.addEventListener('change', e => {
+  const val = parseInt(e.target.value) || 1895
+  if (window.filterState) window.filterState.yearRange.min = val
+  const oldInput = document.getElementById('year-min')
+  if (oldInput) oldInput.value = val
+})
 
-document.getElementById('swipe-year-max')?.addEventListener('change', (e) => {
-  const val = parseInt(e.target.value) || new Date().getFullYear();
-  if (window.filterState) window.filterState.yearRange.max = val;
-  const oldInput = document.getElementById('year-max');
-  if (oldInput) oldInput.value = val;
-});
+document.getElementById('swipe-year-max')?.addEventListener('change', e => {
+  const val = parseInt(e.target.value) || new Date().getFullYear()
+  if (window.filterState) window.filterState.yearRange.max = val
+  const oldInput = document.getElementById('year-max')
+  if (oldInput) oldInput.value = val
+})
 
 // Runtime range inputs
-document.getElementById('swipe-runtime-min')?.addEventListener('change', (e) => {
-  const val = parseInt(e.target.value) || 0;
-  if (window.filterState) window.filterState.runtimeRange.min = val;
-  const oldInput = document.getElementById('runtime-min');
-  if (oldInput) oldInput.value = val;
-});
+document.getElementById('swipe-runtime-min')?.addEventListener('change', e => {
+  const val = parseInt(e.target.value) || 0
+  if (window.filterState) window.filterState.runtimeRange.min = val
+  const oldInput = document.getElementById('runtime-min')
+  if (oldInput) oldInput.value = val
+})
 
-document.getElementById('swipe-runtime-max')?.addEventListener('change', (e) => {
-  const val = parseInt(e.target.value) || 300;
-  if (window.filterState) window.filterState.runtimeRange.max = val;
-  const oldInput = document.getElementById('runtime-max');
-  if (oldInput) oldInput.value = val;
-});
+document.getElementById('swipe-runtime-max')?.addEventListener('change', e => {
+  const val = parseInt(e.target.value) || 300
+  if (window.filterState) window.filterState.runtimeRange.max = val
+  const oldInput = document.getElementById('runtime-max')
+  if (oldInput) oldInput.value = val
+})
 
 // Plex toggle
-document.getElementById('swipe-plex-only-toggle')?.addEventListener('change', (e) => {
-  if (window.filterState) window.filterState.showPlexOnly = e.target.checked;
-  // Update toggle labels
-  const container = e.target.closest('.toggle-switch-container');
-  if (container) {
-    const labels = container.querySelectorAll('.toggle-label-text');
-    labels.forEach((label, index) => {
-      if (index === 0) label.classList.toggle('active', !e.target.checked);
-      else label.classList.toggle('active', e.target.checked);
-    });
-  }
-  // Sync old toggle
-  const oldToggle = document.getElementById('plex-only-toggle');
-  if (oldToggle) {
-    oldToggle.checked = e.target.checked;
-    oldToggle.dispatchEvent(new Event('change'));
-  }
-});
+document
+  .getElementById('swipe-plex-only-toggle')
+  ?.addEventListener('change', e => {
+    if (window.filterState) window.filterState.showPlexOnly = e.target.checked
+    // Update toggle labels
+    const container = e.target.closest('.toggle-switch-container')
+    if (container) {
+      const labels = container.querySelectorAll('.toggle-label-text')
+      labels.forEach((label, index) => {
+        if (index === 0) label.classList.toggle('active', !e.target.checked)
+        else label.classList.toggle('active', e.target.checked)
+      })
+    }
+    // Sync old toggle
+    const oldToggle = document.getElementById('plex-only-toggle')
+    if (oldToggle) {
+      oldToggle.checked = e.target.checked
+      oldToggle.dispatchEvent(new Event('change'))
+    }
+  })
 
 // Apply button
-swipeFilterApply?.addEventListener('click', (e) => {
-  e.preventDefault();
-  window.__resetMovies = true;
-  if (typeof triggerNewBatch === 'function') triggerNewBatch();
-  closeSwipeFilterModal();
-  updateSwipeFilterButtonState();
-});
+swipeFilterApply?.addEventListener('click', e => {
+  e.preventDefault()
+  window.__resetMovies = true
+  if (typeof triggerNewBatch === 'function') triggerNewBatch()
+  closeSwipeFilterModal()
+  updateSwipeFilterButtonState()
+})
 
 // Reset button
 swipeFilterReset?.addEventListener('click', () => {
-  const currentYear = new Date().getFullYear();
+  const currentYear = new Date().getFullYear()
 
   // Reset filterState
   if (window.filterState) {
-    window.filterState.yearRange = { min: 1895, max: currentYear };
-    window.filterState.genres = [];
-    window.filterState.contentRatings = [];
-    window.filterState.showPlexOnly = false;
-    window.filterState.languages = ['en'];
-    window.filterState.countries = [];
-    window.filterState.imdbRating = 0;
-    window.filterState.tmdbRating = 0;
-    window.filterState.runtimeRange = { min: 0, max: 300 };
-    window.filterState.voteCount = 0;
-    window.filterState.sortBy = 'popularity.desc';
+    window.filterState.yearRange = { min: 1895, max: currentYear }
+    window.filterState.genres = []
+    window.filterState.contentRatings = []
+    window.filterState.showPlexOnly = false
+    window.filterState.languages = ['en']
+    window.filterState.countries = []
+    window.filterState.imdbRating = 0
+    window.filterState.tmdbRating = 0
+    window.filterState.runtimeRange = { min: 0, max: 300 }
+    window.filterState.voteCount = 0
+    window.filterState.sortBy = 'popularity.desc'
   }
 
   // Reset UI
-  document.querySelectorAll('#swipe-filter-modal input[type="checkbox"]').forEach(cb => {
-    cb.checked = cb.value === 'en'; // Keep English selected by default for languages
-  });
-  document.querySelectorAll('#swipe-filter-modal input[type="radio"]').forEach(radio => {
-    radio.checked = radio.value === 'popularity.desc';
-  });
+  document
+    .querySelectorAll('#swipe-filter-modal input[type="checkbox"]')
+    .forEach(cb => {
+      cb.checked = cb.value === 'en' // Keep English selected by default for languages
+    })
+  document
+    .querySelectorAll('#swipe-filter-modal input[type="radio"]')
+    .forEach(radio => {
+      radio.checked = radio.value === 'popularity.desc'
+    })
 
-  const yearMin = document.getElementById('swipe-year-min');
-  const yearMax = document.getElementById('swipe-year-max');
-  const runtimeMin = document.getElementById('swipe-runtime-min');
-  const runtimeMax = document.getElementById('swipe-runtime-max');
-  const plexToggle = document.getElementById('swipe-plex-only-toggle');
-  const sortDirBtn = document.getElementById('swipe-sort-direction-btn');
+  const yearMin = document.getElementById('swipe-year-min')
+  const yearMax = document.getElementById('swipe-year-max')
+  const runtimeMin = document.getElementById('swipe-runtime-min')
+  const runtimeMax = document.getElementById('swipe-runtime-max')
+  const plexToggle = document.getElementById('swipe-plex-only-toggle')
+  const sortDirBtn = document.getElementById('swipe-sort-direction-btn')
 
-  if (yearMin) yearMin.value = '';
-  if (yearMax) yearMax.value = '';
-  if (runtimeMin) runtimeMin.value = '';
-  if (runtimeMax) runtimeMax.value = '';
-  if (swipeImdbRating) swipeImdbRating.value = 0;
-  if (swipeImdbValue) swipeImdbValue.textContent = '0.0';
-  if (swipeTmdbRating) swipeTmdbRating.value = 0;
-  if (swipeTmdbValue) swipeTmdbValue.textContent = '0.0';
-  if (swipeVoteCount) swipeVoteCount.value = 0;
-  if (swipeVoteValue) swipeVoteValue.textContent = '0';
+  if (yearMin) yearMin.value = ''
+  if (yearMax) yearMax.value = ''
+  if (runtimeMin) runtimeMin.value = ''
+  if (runtimeMax) runtimeMax.value = ''
+  if (swipeImdbRating) swipeImdbRating.value = 0
+  if (swipeImdbValue) swipeImdbValue.textContent = '0.0'
+  if (swipeTmdbRating) swipeTmdbRating.value = 0
+  if (swipeTmdbValue) swipeTmdbValue.textContent = '0.0'
+  if (swipeVoteCount) swipeVoteCount.value = 0
+  if (swipeVoteValue) swipeVoteValue.textContent = '0'
   if (plexToggle) {
-    plexToggle.checked = false;
-    const container = plexToggle.closest('.toggle-switch-container');
+    plexToggle.checked = false
+    const container = plexToggle.closest('.toggle-switch-container')
     if (container) {
-      const labels = container.querySelectorAll('.toggle-label-text');
+      const labels = container.querySelectorAll('.toggle-label-text')
       labels.forEach((label, index) => {
-        label.classList.toggle('active', index === 0);
-      });
+        label.classList.toggle('active', index === 0)
+      })
     }
   }
   if (sortDirBtn) {
-    sortDirBtn.dataset.direction = 'desc';
-    sortDirBtn.textContent = '↓';
+    sortDirBtn.dataset.direction = 'desc'
+    sortDirBtn.textContent = '↓'
   }
 
   // Reset dropdown button texts
-  updateSwipeGenreButton([]);
-  updateSwipeLanguageButton(['en']);
-  updateSwipeCountryButton([]);
-  updateSwipeContentRatingButton([]);
-  updateSwipeSortButton('popularity.desc');
+  updateSwipeGenreButton([])
+  updateSwipeLanguageButton(['en'])
+  updateSwipeCountryButton([])
+  updateSwipeContentRatingButton([])
+  updateSwipeSortButton('popularity.desc')
 
   // Sync with old Filters tab
-  const oldResetBtn = document.getElementById('reset-filters');
-  if (oldResetBtn) oldResetBtn.click();
+  const oldResetBtn = document.getElementById('reset-filters')
+  if (oldResetBtn) oldResetBtn.click()
 
-  updateSwipeFilterButtonState();
-});
+  updateSwipeFilterButtonState()
+})
 
 // Initialize swipe filter dropdowns
-setupSwipeFilterDropdowns();
+setupSwipeFilterDropdowns()
 
 // Update filter button state on page load
-setTimeout(updateSwipeFilterButtonState, 100);
+setTimeout(updateSwipeFilterButtonState, 100)
 
 // ===== MATCH POPUP FUNCTIONS =====
 function showMatchPopup(matchData) {
-  const popup = document.getElementById('match-popup');
-  const overlay = document.getElementById('match-popup-overlay');
-  const usersSpan = document.getElementById('match-popup-users');
-  const movieSpan = document.getElementById('match-popup-movie');
-  
+  const popup = document.getElementById('match-popup')
+  const overlay = document.getElementById('match-popup-overlay')
+  const usersSpan = document.getElementById('match-popup-users')
+  const movieSpan = document.getElementById('match-popup-movie')
+
   if (!popup || !overlay) {
-    console.error('Match popup elements not found in DOM');
-    return;
+    console.error('Match popup elements not found in DOM')
+    return
   }
-  
+
   // Format the users list
-  const currentUser = sessionStorage.getItem('userName');
-  const users = matchData.users || [];
+  const currentUser = sessionStorage.getItem('userName')
+  const users = matchData.users || []
   const displayUsers = currentUser
     ? users.filter(user => user !== currentUser)
-    : users;
-  const userList = displayUsers.length > 0 ? displayUsers : users;
+    : users
+  const userList = displayUsers.length > 0 ? displayUsers : users
 
-  let usersText = '';
+  let usersText = ''
   if (userList.length === 1) {
-    usersText = userList[0];
+    usersText = userList[0]
   } else if (userList.length === 2) {
-    usersText = `${userList[0]} and ${userList[1]}`;
+    usersText = `${userList[0]} and ${userList[1]}`
   } else if (userList.length > 2) {
-    usersText = `${userList.slice(0, -1).join(', ')}, and ${userList[userList.length - 1]}`;
+    usersText = `${userList.slice(0, -1).join(', ')}, and ${
+      userList[userList.length - 1]
+    }`
   }
-  
+
   // Update popup content
-  usersSpan.textContent = usersText;
-  movieSpan.textContent = matchData.movie?.title || 'this movie';
-  
+  usersSpan.textContent = usersText
+  movieSpan.textContent = matchData.movie?.title || 'this movie'
+
   // Show popup with animation
-  overlay.classList.add('active');
+  overlay.classList.add('active')
   setTimeout(() => {
-    popup.classList.add('active');
-  }, 10);
+    popup.classList.add('active')
+  }, 10)
 }
 
 function hideMatchPopup() {
-  const popup = document.getElementById('match-popup');
-  const overlay = document.getElementById('match-popup-overlay');
-  
-  if (!popup || !overlay) return;
-  
-  popup.classList.remove('active');
+  const popup = document.getElementById('match-popup')
+  const overlay = document.getElementById('match-popup-overlay')
+
+  if (!popup || !overlay) return
+
+  popup.classList.remove('active')
   setTimeout(() => {
-    overlay.classList.remove('active');
-  }, 300);
+    overlay.classList.remove('active')
+  }, 300)
 }
 
 // Match popup button handlers
 document.addEventListener('DOMContentLoaded', () => {
-  const viewMatchesBtn = document.getElementById('match-view-btn');
-  const keepSwipingBtn = document.getElementById('match-keep-swiping-btn');
-  const overlay = document.getElementById('match-popup-overlay');
-  
+  const viewMatchesBtn = document.getElementById('match-view-btn')
+  const keepSwipingBtn = document.getElementById('match-keep-swiping-btn')
+  const overlay = document.getElementById('match-popup-overlay')
+
   if (viewMatchesBtn) {
     viewMatchesBtn.addEventListener('click', () => {
-      hideMatchPopup();
+      hideMatchPopup()
       // Switch to matches tab
-      const matchesTab = document.querySelector('[data-tab="tab-matches"]');
+      const matchesTab = document.querySelector('[data-tab="tab-matches"]')
       if (matchesTab) {
-        matchesTab.click();
+        matchesTab.click()
       }
-    });
+    })
   }
-  
+
   if (keepSwipingBtn) {
     keepSwipingBtn.addEventListener('click', () => {
-      hideMatchPopup();
-    });
+      hideMatchPopup()
+    })
   }
-  
+
   if (overlay) {
     overlay.addEventListener('click', () => {
-      hideMatchPopup();
-    });
+      hideMatchPopup()
+    })
   }
-});
+})
 
 /* boot */
 main().catch(err => console.error('❌Uncaught error in main():', err))
