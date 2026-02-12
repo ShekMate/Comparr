@@ -217,9 +217,12 @@ function initTabs() {
   const allButtons = [...sidebarButtons, ...tabbarButtons]
 
   // Dropdown support (for mobile tabbar)
-  const dropdown = document.querySelector('.dropdown')
-  const dropdownToggle = document.querySelector('.dropdown-toggle')
-  const dropdownItems = document.querySelectorAll('.dropdown-item')
+  const dropdown = document.querySelector('.tabbar .dropdown:not(.mobile-settings-dropdown)')
+  const dropdownToggle = document.querySelector('.tabbar .dropdown:not(.mobile-settings-dropdown) .dropdown-toggle')
+  const dropdownItems = document.querySelectorAll('.tabbar .dropdown:not(.mobile-settings-dropdown) .dropdown-item')
+  const mobileSettingsDropdown = document.querySelector('.mobile-settings-dropdown')
+  const mobileSettingsToggle = document.querySelector('.mobile-settings-toggle')
+  const mobileSettingsItems = document.querySelectorAll('.mobile-settings-item')
   const settingsToggle = document.querySelector('.sidebar-settings-toggle')
   const settingsWrapper = document.querySelector('.sidebar-settings')
   const settingsSubitems = document.querySelectorAll('.sidebar-subitem')
@@ -255,12 +258,20 @@ function initTabs() {
   dropdownToggle?.addEventListener('click', (e) => {
     e.stopPropagation()
     dropdown.classList.toggle('show')
+    mobileSettingsDropdown?.classList.remove('show')
+  })
+
+  mobileSettingsToggle?.addEventListener('click', e => {
+    e.stopPropagation()
+    mobileSettingsDropdown?.classList.toggle('show')
+    dropdown?.classList.remove('show')
   })
 
   // Close dropdown when clicking outside
   if (dropdown) {
     document.addEventListener('click', () => {
       dropdown.classList.remove('show')
+      mobileSettingsDropdown?.classList.remove('show')
     })
   }
 
@@ -313,6 +324,18 @@ function initTabs() {
       const titleText = item.dataset.settingsTitle
       if (!targetId) return
       setActiveSettingsSection(targetId, titleText)
+    })
+  })
+
+  mobileSettingsItems.forEach(item => {
+    item.addEventListener('click', () => {
+      const targetId = item.dataset.settingsTarget
+      const titleText = item.dataset.settingsTitle
+      if (!targetId) return
+      handleTabClick('tab-settings')
+      setActiveSettingsSection(targetId, titleText)
+      mobileSettingsItems.forEach(el => el.classList.toggle('active', el.dataset.settingsTarget === targetId))
+      mobileSettingsDropdown?.classList.remove('show')
     })
   })
 

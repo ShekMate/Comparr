@@ -101,10 +101,34 @@
 		    </div>
 		  </div>
 	    </div>
-	    <button class="tab-button" data-tab="tab-settings">
-	      <i class="fas fa-cog"></i>
-	      Settings
-	    </button>
+	    <div class="dropdown mobile-settings-dropdown">
+		  <button class="tab-button dropdown-toggle mobile-settings-toggle" type="button">
+		    <i class="fas fa-cog"></i>
+		    Settings
+		  </button>
+		  <div class="dropdown-menu">
+		    <div class="dropdown-item mobile-settings-item" data-tab="tab-settings" data-settings-target="settings-core" data-settings-title="Core">
+		      <i class="fas fa-sliders-h"></i>
+		      Core
+		    </div>
+		    <div class="dropdown-item mobile-settings-item" data-tab="tab-settings" data-settings-target="settings-plex" data-settings-title="Plex">
+		      <i class="fas fa-server"></i>
+		      Plex
+		    </div>
+		    <div class="dropdown-item mobile-settings-item" data-tab="tab-settings" data-settings-target="settings-metadata" data-settings-title="Metadata">
+		      <i class="fas fa-database"></i>
+		      Metadata
+		    </div>
+		    <div class="dropdown-item mobile-settings-item" data-tab="tab-settings" data-settings-target="settings-request-services" data-settings-title="Request Services">
+		      <i class="fas fa-paper-plane"></i>
+		      Request Services
+		    </div>
+		    <div class="dropdown-item mobile-settings-item" data-tab="tab-settings" data-settings-target="settings-security" data-settings-title="Security">
+		      <i class="fas fa-shield-alt"></i>
+		      Security
+		    </div>
+		  </div>
+	    </div>
 	  </div>
 
       <!-- ===== Desktop Sidebar Navigation (visible on desktop only) ===== -->
