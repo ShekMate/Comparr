@@ -252,6 +252,10 @@ function initTabs() {
         dropdownToggle.classList.remove('is-active')
       }
     }
+
+    if (mobileSettingsToggle) {
+      mobileSettingsToggle.classList.toggle('is-active', id === 'tab-settings')
+    }
   }
 
   // Handle dropdown toggle
