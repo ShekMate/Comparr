@@ -152,13 +152,14 @@ export class ComparrAPI extends EventTarget {
             <i class="fas fa-exclamation-triangle"></i>
             <div>
               <strong>Error</strong>
-              <p>${data.payload.message}</p>
+              <p class="error-message"></p>
             </div>
             <button onclick="this.parentElement.parentElement.remove()" class="error-close">
               <i class="fas fa-times"></i>
             </button>
           </div>
         `
+        errorDiv.querySelector('.error-message').textContent = data.payload.message
         
         document.body.appendChild(errorDiv)
         
