@@ -307,13 +307,16 @@ function initTabs() {
   const settingsTitle = document.getElementById('settings-title')
   const settingsSections = document.querySelectorAll('.settings-section')
 
-  const setActiveSettingsSection = (targetId, titleText) => {
+  const setActiveSettingsSection = (targetId, titleText, options = {}) => {
+    const { highlightMobileItem = true } = options
     settingsSections.forEach(section => {
       const isActive = section.id === targetId
       section.toggleAttribute('hidden', !isActive)
     })
     settingsSubitems.forEach(el => el.classList.toggle('is-active', el.dataset.settingsTarget === targetId))
-    mobileSettingsItems.forEach(el => el.classList.toggle('active', el.dataset.settingsTarget === targetId))
+    mobileSettingsItems.forEach(el => {
+      el.classList.toggle('active', highlightMobileItem && el.dataset.settingsTarget === targetId)
+    })
     if (settingsTitle && titleText) {
       settingsTitle.textContent = titleText
     }
@@ -368,7 +371,7 @@ function initTabs() {
     const firstTarget = settingsSubitems[0].dataset.settingsTarget
     const firstTitle = settingsSubitems[0].dataset.settingsTitle
     if (firstTarget) {
-      setActiveSettingsSection(firstTarget, firstTitle)
+      setActiveSettingsSection(firstTarget, firstTitle, { highlightMobileItem: false })
     }
   }
   
