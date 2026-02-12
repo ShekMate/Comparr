@@ -852,11 +852,6 @@ class Session {
   private tmdbFormatInFlight: Map<number, Promise<any>> = new Map()
   private enrichmentCache: Map<string, Promise<any | undefined>> = new Map()
 
-  private discoverQueues: Map<string, DiscoverQueue> = new Map()
-  private tmdbFormatCache: Map<number, any> = new Map()
-  private tmdbFormatInFlight: Map<number, Promise<any>> = new Map()
-  private enrichmentCache: Map<string, Promise<any | undefined>> = new Map()
-
   constructor(roomCode: string) {
     this.roomCode = roomCode
 
