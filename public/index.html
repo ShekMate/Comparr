@@ -62,7 +62,9 @@
               autocomplete="current-password"
               required
             />
-            <button type="submit" class="submit-button">Continue</button>
+            <button type="submit" class="submit-button">
+              ${ACCESS_PASSWORD_SUBMIT}
+            </button>
           </div>
         </form>
 
@@ -73,17 +75,11 @@
           style="display: none"
         >
           <div class="login-instructions">
-            <h3>Welcome to Comparr!</h3>
+            <h3>${LOGIN_WELCOME_TITLE}</h3>
             <ol>
-              <li>Enter your name.</li>
-              <li>
-                Join an existing room by entering the code, or generate a new
-                one to share with friends.
-              </li>
-              <li>
-                Start swiping to to build your watchlist and find movies
-                everyone wants to watch!
-              </li>
+              <li>${LOGIN_STEP_NAME}</li>
+              <li>${LOGIN_STEP_ROOM}</li>
+              <li>${LOGIN_STEP_SWIPE}</li>
             </ol>
           </div>
 
@@ -116,30 +112,30 @@
       <div class="tabbar">
         <button class="tab-button is-active" data-tab="tab-swipe">
           <i class="fas fa-arrows-h"></i>
-          Swipe
+          ${NAV_SWIPE}
         </button>
         <div class="dropdown">
           <button class="tab-button dropdown-toggle" type="button">
             <i class="fas fa-star"></i>
-            Ratings
+            ${NAV_RATINGS}
           </button>
           <div class="dropdown-menu">
-            <div class="dropdown-item" data-tab="tab-matches">
+            <button type="button" class="dropdown-item" data-tab="tab-matches">
               <i class="fas fa-heart"></i>
-              Matches
-            </div>
-            <div class="dropdown-item" data-tab="tab-likes">
+              ${NAV_MATCHES}
+            </button>
+            <button type="button" class="dropdown-item" data-tab="tab-likes">
               <i class="fas fa-thumbs-up"></i>
-              Watch
-            </div>
-            <div class="dropdown-item" data-tab="tab-dislikes">
+              ${NAV_WATCH}
+            </button>
+            <button type="button" class="dropdown-item" data-tab="tab-dislikes">
               <i class="fas fa-thumbs-down"></i>
-              Pass
-            </div>
-            <div class="dropdown-item" data-tab="tab-seen">
+              ${NAV_PASS}
+            </button>
+            <button type="button" class="dropdown-item" data-tab="tab-seen">
               <i class="fas fa-eye"></i>
-              Seen
-            </div>
+              ${NAV_SEEN}
+            </button>
           </div>
         </div>
         <div class="dropdown mobile-settings-dropdown">
@@ -148,63 +144,69 @@
             type="button"
           >
             <i class="fas fa-cog"></i>
-            Settings
+            ${NAV_SETTINGS}
           </button>
           <div class="dropdown-menu">
-            <div
+            <button
+              type="button"
               class="dropdown-item mobile-settings-item"
               data-tab="tab-settings"
               data-settings-target="settings-core"
-              data-settings-title="Core"
+              data-settings-title="${SETTINGS_CORE}"
             >
               <i class="fas fa-sliders-h"></i>
-              Core
-            </div>
-            <div
+              ${SETTINGS_CORE}
+            </button>
+            <button
+              type="button"
               class="dropdown-item mobile-settings-item"
               data-tab="tab-settings"
               data-settings-target="settings-plex"
-              data-settings-title="Plex"
+              data-settings-title="${SETTINGS_PLEX}"
             >
               <i class="fas fa-server"></i>
-              Plex
-            </div>
-            <div
+              ${SETTINGS_PLEX}
+            </button>
+            <button
+              type="button"
               class="dropdown-item mobile-settings-item"
               data-tab="tab-settings"
               data-settings-target="settings-metadata"
-              data-settings-title="Metadata"
+              data-settings-title="${SETTINGS_METADATA}"
             >
               <i class="fas fa-database"></i>
-              Metadata
-            </div>
-            <div
+              ${SETTINGS_METADATA}
+            </button>
+            <button
+              type="button"
               class="dropdown-item mobile-settings-item"
               data-tab="tab-settings"
               data-settings-target="settings-sync"
-              data-settings-title="Sync"
+              data-settings-title="${SETTINGS_SYNC}"
             >
               <i class="fas fa-sync-alt"></i>
-              Sync
-            </div>
-            <div
+              ${SETTINGS_SYNC}
+            </button>
+            <button
+              type="button"
               class="dropdown-item mobile-settings-item"
               data-tab="tab-settings"
               data-settings-target="settings-request-services"
-              data-settings-title="Request Services"
+              data-settings-title="${SETTINGS_REQUEST_SERVICES}"
             >
               <i class="fas fa-paper-plane"></i>
-              Request Services
-            </div>
-            <div
+              ${SETTINGS_REQUEST_SERVICES}
+            </button>
+            <button
+              type="button"
               class="dropdown-item mobile-settings-item"
               data-tab="tab-settings"
               data-settings-target="settings-security"
-              data-settings-title="Security"
+              data-settings-title="${SETTINGS_SECURITY}"
             >
               <i class="fas fa-shield-alt"></i>
-              Security
-            </div>
+              ${SETTINGS_SECURITY}
+            </button>
           </div>
         </div>
       </div>
@@ -221,23 +223,23 @@
         <div class="sidebar-nav">
           <button class="sidebar-item is-active" data-tab="tab-swipe">
             <i class="fas fa-arrows-h"></i>
-            <span>Swipe</span>
+            <span>${NAV_SWIPE}</span>
           </button>
           <button class="sidebar-item" data-tab="tab-matches">
             <i class="fas fa-heart"></i>
-            <span>Matches</span>
+            <span>${NAV_MATCHES}</span>
           </button>
           <button class="sidebar-item" data-tab="tab-likes">
             <i class="fas fa-thumbs-up"></i>
-            <span>Watch</span>
+            <span>${NAV_WATCH}</span>
           </button>
           <button class="sidebar-item" data-tab="tab-dislikes">
             <i class="fas fa-thumbs-down"></i>
-            <span>Pass</span>
+            <span>${NAV_PASS}</span>
           </button>
           <button class="sidebar-item" data-tab="tab-seen">
             <i class="fas fa-eye"></i>
-            <span>Seen</span>
+            <span>${NAV_SEEN}</span>
           </button>
           <div class="sidebar-settings">
             <button
@@ -247,7 +249,7 @@
               aria-controls="sidebar-settings-menu"
             >
               <i class="fas fa-cog"></i>
-              <span>Settings</span>
+              <span>${NAV_SETTINGS}</span>
               <i
                 class="fas fa-chevron-right sidebar-settings-caret"
                 aria-hidden="true"
@@ -258,49 +260,49 @@
                 class="sidebar-subitem"
                 data-tab="tab-settings"
                 data-settings-target="settings-core"
-                data-settings-title="Core"
+                data-settings-title="${SETTINGS_CORE}"
               >
-                Core
+                ${SETTINGS_CORE}
               </button>
               <button
                 class="sidebar-subitem"
                 data-tab="tab-settings"
                 data-settings-target="settings-plex"
-                data-settings-title="Plex"
+                data-settings-title="${SETTINGS_PLEX}"
               >
-                Plex
+                ${SETTINGS_PLEX}
               </button>
               <button
                 class="sidebar-subitem"
                 data-tab="tab-settings"
                 data-settings-target="settings-metadata"
-                data-settings-title="Metadata"
+                data-settings-title="${SETTINGS_METADATA}"
               >
-                Metadata
+                ${SETTINGS_METADATA}
               </button>
               <button
                 class="sidebar-subitem"
                 data-tab="tab-settings"
                 data-settings-target="settings-sync"
-                data-settings-title="Sync"
+                data-settings-title="${SETTINGS_SYNC}"
               >
-                Sync
+                ${SETTINGS_SYNC}
               </button>
               <button
                 class="sidebar-subitem"
                 data-tab="tab-settings"
                 data-settings-target="settings-request-services"
-                data-settings-title="Request Services"
+                data-settings-title="${SETTINGS_REQUEST_SERVICES}"
               >
-                Request Services
+                ${SETTINGS_REQUEST_SERVICES}
               </button>
               <button
                 class="sidebar-subitem"
                 data-tab="tab-settings"
                 data-settings-target="settings-security"
-                data-settings-title="Security"
+                data-settings-title="${SETTINGS_SECURITY}"
               >
-                Security
+                ${SETTINGS_SECURITY}
               </button>
             </div>
           </div>
@@ -1769,7 +1771,7 @@
                   class="fas fa-cog"
                   style="color: var(--color-primary); margin-right: 0.5rem"
                 ></i>
-                <span id="settings-title">Settings</span>
+                <span id="settings-title">${NAV_SETTINGS}</span>
               </h3>
               <p class="settings-subtitle">
                 Manage Comparr configuration directly in the UI. Changes apply
