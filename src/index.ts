@@ -28,6 +28,8 @@ import {
 } from './features/session/session.ts'
 import { parseImdbCsv } from './features/session/imdb-import.ts'
 import { serveFile } from './infra/http/staticFileServer.ts'
+import { isLocalRequest } from './infra/http/network-access.ts'
+import { handleSettingsRoutes } from './infra/http/routes/settings.ts'
 import { WebSocketServer } from './infra/ws/websocketServer.ts'
 import {
   initializeRadarrCache,
@@ -45,31 +47,6 @@ import {
   startBackgroundUpdateJob,
 } from './features/catalog/imdb-datasets.ts'
 import { buildPlexCache } from './integrations/plex/cache.ts'
-
-// ---- DIAGNOSTIC HELPERS (add once near top) --------------------------------
-function newReqId() {
-  // short, sortable-ish correlation id
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
-}
-function redact(url: string) {
-  // do not log secrets in query strings
-  return url.replace(/(api_key|apikey|token|key)=([^&]+)/gi, '$1=***')
-}
-function j(obj: unknown, max = 2000) {
-  try {
-    const s = JSON.stringify(obj)
-    return s.length > max ? s.slice(0, max) + '…' : s
-  } catch {
-    return String(obj)
-  }
-}
-function now() {
-  return Date.now()
-}
-function ms(start: number) {
-  return `${Date.now() - start}ms`
-}
-// ----------------------------------------------------------------------------
 
 // Helper: fetch & persist TMDb providers for a TMDb ID, returning the same shape your UI expects
 async function updateStreamingForTmdbId(tmdbId: number) {
@@ -271,35 +248,6 @@ log.info(`  OMDB_API_KEY: ${getOmdbApiKey() ? '✅ Set' : '❌ Missing'}`)
 log.info(`  PLEX_URL: ${getPlexUrl() ? '✅ Set' : '❌ Missing'}`)
 log.info(`  PLEX_TOKEN: ${getPlexToken() ? '✅ Set' : '❌ Missing'}`)
 
-const isPrivateNetwork = (hostname: string) => {
-  if (!hostname) return false
-  if (hostname.startsWith('::ffff:')) {
-    hostname = hostname.replace('::ffff:', '')
-  }
-  if (
-    hostname === '127.0.0.1' ||
-    hostname === '::1' ||
-    hostname === '0:0:0:0:0:0:0:1'
-  ) {
-    return true
-  }
-  if (hostname.startsWith('10.')) return true
-  if (hostname.startsWith('192.168.')) return true
-  if (hostname.startsWith('172.')) {
-    const octet = Number(hostname.split('.')[1] ?? '0')
-    return octet >= 16 && octet <= 31
-  }
-  return false
-}
-
-const isLocalRequest = (
-  req: typeof server extends AsyncIterable<infer R> ? R : any
-) => {
-  const remote = req?.conn?.remoteAddr as Deno.NetAddr | undefined
-  const hostname = remote?.hostname ?? ''
-  return isPrivateNetwork(hostname)
-}
-
 for await (const req of server) {
   try {
     const url = new URL(req.url, 'http://local')
@@ -328,73 +276,17 @@ for await (const req of server) {
       continue
     }
 
-    if (p === '/api/settings-access') {
-      await req.respond({
-        status: 200,
-        body: JSON.stringify({ canAccess: isLocalRequest(req) }),
-        headers: new Headers({ 'content-type': 'application/json' }),
+    if (
+      await handleSettingsRoutes(req, p, {
+        buildPlexCache,
+        clearAllMoviesCache,
+        getPlexLibraryName,
+        getSettings,
+        isLocalRequest,
+        refreshRadarrCache,
+        updateSettings,
       })
-      continue
-    }
-
-    if (p === '/api/client-config') {
-      await req.respond({
-        status: 200,
-        body: JSON.stringify({
-          plexLibraryName: getPlexLibraryName(),
-        }),
-        headers: new Headers({ 'content-type': 'application/json' }),
-      })
-      continue
-    }
-
-    if (p === '/api/settings' && req.method === 'GET') {
-      if (!isLocalRequest(req)) {
-        await req.respond({ status: 403, body: 'Forbidden' })
-        continue
-      }
-      await req.respond({
-        status: 200,
-        body: JSON.stringify({ settings: getSettings() }),
-        headers: new Headers({ 'content-type': 'application/json' }),
-      })
-      continue
-    }
-
-    if (p === '/api/settings' && req.method === 'POST') {
-      if (!isLocalRequest(req)) {
-        await req.respond({ status: 403, body: 'Forbidden' })
-        continue
-      }
-      try {
-        const decoder = new TextDecoder()
-        const body = decoder.decode(await Deno.readAll(req.body))
-        const { settings } = JSON.parse(body)
-        const updated = await updateSettings(settings ?? {})
-        clearAllMoviesCache()
-        await refreshRadarrCache().catch(err =>
-          log.error(
-            `Failed to refresh Radarr cache after settings update: ${err}`
-          )
-        )
-        await buildPlexCache().catch(err =>
-          log.error(
-            `Failed to refresh Plex cache after settings update: ${err}`
-          )
-        )
-        await req.respond({
-          status: 200,
-          body: JSON.stringify({ settings: updated }),
-          headers: new Headers({ 'content-type': 'application/json' }),
-        })
-      } catch (err) {
-        log.error(`Settings update failed: ${err}`)
-        await req.respond({
-          status: 500,
-          body: JSON.stringify({ error: 'Failed to update settings' }),
-          headers: new Headers({ 'content-type': 'application/json' }),
-        })
-      }
+    ) {
       continue
     }
 
