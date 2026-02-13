@@ -37,10 +37,14 @@ export async function handleSettingsRoutes(
   }
 
   if (pathname === '/api/client-config') {
+    const settings = getSettings()
     await req.respond({
       status: 200,
       body: JSON.stringify({
         plexLibraryName: getPlexLibraryName(),
+        streamingProfileMode: settings.STREAMING_PROFILE_MODE,
+        paidStreamingServices: settings.PAID_STREAMING_SERVICES,
+        personalMediaSources: settings.PERSONAL_MEDIA_SOURCES,
       }),
       headers: new Headers({ 'content-type': 'application/json' }),
     })
