@@ -21,6 +21,9 @@ export type SettingsKey =
   | 'LINK_TYPE'
   | 'IMDB_SYNC_URL'
   | 'IMDB_SYNC_INTERVAL_MINUTES'
+  | 'STREAMING_PROFILE_MODE'
+  | 'PAID_STREAMING_SERVICES'
+  | 'PERSONAL_MEDIA_SOURCES'
 
 export type Settings = Record<SettingsKey, string>
 
@@ -47,6 +50,9 @@ const SETTINGS_KEYS: SettingsKey[] = [
   'LINK_TYPE',
   'IMDB_SYNC_URL',
   'IMDB_SYNC_INTERVAL_MINUTES',
+  'STREAMING_PROFILE_MODE',
+  'PAID_STREAMING_SERVICES',
+  'PERSONAL_MEDIA_SOURCES',
 ]
 
 const DEFAULTS: Partial<Settings> = {
@@ -62,6 +68,9 @@ const DEFAULTS: Partial<Settings> = {
   PLEX_LIBRARY_NAME: 'My Plex Library',
   IMDB_SYNC_URL: '',
   IMDB_SYNC_INTERVAL_MINUTES: '0',
+  STREAMING_PROFILE_MODE: 'anywhere',
+  PAID_STREAMING_SERVICES: '',
+  PERSONAL_MEDIA_SOURCES: '[]',
 }
 
 const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
