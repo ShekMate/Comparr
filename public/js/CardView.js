@@ -16,7 +16,7 @@ export default class CardView {
       console.error('❌ CardView: .js-card-stack not found in DOM!')
       return
     }
-    
+
     const node = document.createElement('div')
     this.node = node
     node.classList.add('card')
@@ -35,41 +35,47 @@ export default class CardView {
       rating = '',
     } = this.movieData
     node.dataset.guid = guid
-    
-	console.log('DEBUG CardView art:', art, 'starts with https:', art.startsWith('https://'))
-	
-    // Treat "/<digits>/thumb/<digits>" as a Plex-only path (not a real image file)
-    const isPlexThumb = (u) => !!u && /^\/\d+\/thumb\/\d+/.test(u);
+
+    console.log(
+      'DEBUG CardView art:',
+      art,
+      'starts with https:',
+      art.startsWith('https://')
+    )
 
     // Treat "/<digits>/thumb/<digits>" as a Plex-only path (not a real image file)
-    const isPlexThumbCore = (u) => /^\/\d+\/thumb\/\d+/.test(u || '');
+    const isPlexThumb = u => !!u && /^\/\d+\/thumb\/\d+/.test(u)
+
+    // Treat "/<digits>/thumb/<digits>" as a Plex-only path (not a real image file)
+    const isPlexThumbCore = u => /^\/\d+\/thumb\/\d+/.test(u || '')
 
     // Normalize any legacy or partial poster path into a canonical, loadable URL
-    const normalizeArt = (u) => {
-      if (!u) return u;
+    const normalizeArt = u => {
+      if (!u) return u
 
       // Strip known local prefixes to inspect the core path
-      let core = u;
-      if (core.startsWith('/tmdb-poster/')) core = core.slice('/tmdb-poster'.length);
-      if (core.startsWith('/poster/'))      core = core.slice('/poster'.length);
+      let core = u
+      if (core.startsWith('/tmdb-poster/'))
+        core = core.slice('/tmdb-poster'.length)
+      if (core.startsWith('/poster/')) core = core.slice('/poster'.length)
 
       // If the core path is a Plex thumb id, do NOT request it
-      if (isPlexThumbCore(core)) return '';
+      if (isPlexThumbCore(core)) return ''
 
       // Already-final or full URLs
-      if (u.startsWith('/cached-poster/') || u.startsWith('/tmdb-poster/')) return u;
-      if (u.startsWith('http://') || u.startsWith('https://')) return u;
+      if (u.startsWith('/cached-poster/') || u.startsWith('/tmdb-poster/'))
+        return u
+      if (u.startsWith('http://') || u.startsWith('https://')) return u
 
       // Legacy -> canonical
-      if (u.startsWith('/poster/')) return '/tmdb-poster/' + u.slice('/poster/'.length);
+      if (u.startsWith('/poster/'))
+        return '/tmdb-poster/' + u.slice('/poster/'.length)
 
       // Raw TMDB path like "/h7wJ...jpg"
-      return '/tmdb-poster' + (u.startsWith('/') ? u : ('/' + u));
-    };
+      return '/tmdb-poster' + (u.startsWith('/') ? u : '/' + u)
+    }
 
-
-
-    const finalArt = normalizeArt(art);
+    const finalArt = normalizeArt(art)
 
     node.innerHTML = `
       <div class="poster-wrapper">
@@ -78,7 +84,11 @@ export default class CardView {
         </button>
         <img
           class="poster"
-          src="${finalArt.startsWith('http') ? finalArt : `${this.basePath || ''}${finalArt}`}"
+          src="${
+            finalArt.startsWith('http')
+              ? finalArt
+              : `${this.basePath || ''}${finalArt}`
+          }"
           decoding="async"
           alt="${title} poster"
         />
@@ -89,7 +99,11 @@ export default class CardView {
           ${title}${type === 'movie' ? ` (${year})` : ''}
         </div>
         ${this.renderCrewInfo()}
-        ${summary ? `<p class="card-plot" onclick="this.closest('.card')._handlePlot(event)">${summary}</p>` : ''}
+        ${
+          summary
+            ? `<p class="card-plot" onclick="this.closest('.card')._handlePlot(event)">${summary}</p>`
+            : ''
+        }
         ${rating ? `<div class="card-ratings">${rating}</div>` : ''}
 
         <div class="rate-controls">
@@ -113,24 +127,23 @@ export default class CardView {
           </div>
         </div>
       </div>
-    `;
-
+    `
 
     // Wire the three buttons to dispatch the "rate" message
-    const upBtn   = node.querySelector('.rate-thumbs-up')
+    const upBtn = node.querySelector('.rate-thumbs-up')
     const downBtn = node.querySelector('.rate-thumbs-down')
     const seenBtn = node.querySelector('.rate-seen')
     const undoBtn = node.querySelector('.undo-button')
 
-    const handleRate = (value) => {
-      return (e) => {
+    const handleRate = value => {
+      return e => {
         e.preventDefault()
         e.stopPropagation()
         node.dispatchEvent(new MessageEvent('rate', { data: value }))
       }
     }
 
-    const handleUndo = (e) => {
+    const handleUndo = e => {
       e.preventDefault()
       e.stopPropagation()
       this.eventTarget.dispatchEvent(new Event('undo'))
@@ -148,31 +161,35 @@ export default class CardView {
 
     undoBtn?.addEventListener('touchend', handleUndo, { passive: false })
     undoBtn?.addEventListener('click', handleUndo)
-    
+
     // Add handlers for plot expansion
     const plotEl = node.querySelector('.card-plot')
-    const handlePlotToggle = (e) => {
+    const handlePlotToggle = e => {
       e.preventDefault()
       e.stopPropagation()
       plotEl.classList.toggle('expanded')
     }
-    
+
     plotEl?.addEventListener('touchend', handlePlotToggle, { passive: false })
     plotEl?.addEventListener('click', handlePlotToggle)
-    
+
     // Attach swipe handler ONLY to poster to allow scrolling on text/metadata areas
     // Only enable swipe on touch-capable devices (mobile/tablet)
     const posterEl = node.querySelector('.poster')
-    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+    const isTouchDevice =
+      'ontouchstart' in window || navigator.maxTouchPoints > 0
     if (isTouchDevice) {
       posterEl?.addEventListener('pointerdown', this.handleSwipe)
     }
-    
+
     // Append to card stack
-    console.log(`🎴 CardView: Appending card for "${this.movieData.title}" to stack`)
+    console.log(
+      `🎴 CardView: Appending card for "${this.movieData.title}" to stack`
+    )
     cardList.appendChild(node)
-    console.log(`✅ CardView: Card appended. Stack now has ${cardList.children.length} cards`)
-    
+    console.log(
+      `✅ CardView: Card appended. Stack now has ${cardList.children.length} cards`
+    )
   }
 
   async rate(wantsToWatch, animation) {
@@ -205,7 +222,7 @@ export default class CardView {
           guid: this.movieData.guid,
           wantsToWatch,
         },
-      }),
+      })
     )
 
     // remove this card
@@ -215,7 +232,7 @@ export default class CardView {
   handleSwipe = startEvent => {
     const isButton = startEvent.target.closest('button')
     const isPlot = startEvent.target.closest('.card-plot')
-    
+
     if (
       (startEvent.pointerType === 'mouse' && startEvent.button !== 0) ||
       isButton || // clicking a thumb: don't start swipe
@@ -235,16 +252,16 @@ export default class CardView {
       if (!hasMoved) {
         const deltaX = Math.abs(e.x - startEvent.x)
         const deltaY = Math.abs(e.y - startEvent.y)
-        
+
         if (deltaX < 10 && deltaY < 10) return // Ignore small movements (could be a tap)
-        
+
         // Check if movement is primarily vertical (scrolling) or horizontal (swiping)
         if (deltaY > deltaX) {
           // Vertical movement detected - allow scrolling, stop tracking this gesture
           this.node.removeEventListener('pointermove', handleMove)
           return
         }
-        
+
         // Now we know it's a horizontal swipe, not a tap or scroll
         hasMoved = true
         startEvent.preventDefault()
@@ -291,7 +308,7 @@ export default class CardView {
           }
         }
       },
-      { once: true },
+      { once: true }
     )
   }
 
@@ -317,89 +334,111 @@ export default class CardView {
         duration: this.animationDuration,
         easing: 'ease-in-out',
         fill: 'both',
-      },
+      }
     )
   }
 
   renderCrewInfo() {
-    const { director, writers, cast, genres, contentRating } = this.movieData;
-    
-    console.log('DEBUG renderCrewInfo:', { 
-      director, 
+    const { director, writers, cast, genres, contentRating } = this.movieData
+
+    console.log('DEBUG renderCrewInfo:', {
+      director,
       writersCount: writers?.length,
       writers: writers?.slice(0, 3),
       castCount: cast?.length,
       cast: cast?.slice(0, 3),
       genresCount: genres?.length,
       genres,
-      contentRating
-    });
-    
-    const lines = [];
-    
+      contentRating,
+    })
+
+    const lines = []
+
     // Content Rating + Genres combined line
-    const ratingGenreParts = [];
-    
+    const ratingGenreParts = []
+
     // Add content rating if available
     if (contentRating && contentRating !== 'N/A') {
-      ratingGenreParts.push(`<i class="fas fa-shield-alt"></i> ${contentRating}`);
+      ratingGenreParts.push(
+        `<i class="fas fa-shield-alt"></i> ${contentRating}`
+      )
     }
-    
+
     // Add genres if available
     if (genres && Array.isArray(genres) && genres.length > 0) {
-      const maxGenres = window.innerWidth <= 600 ? 3 : 4;
-      const displayGenres = genres.slice(0, maxGenres);
-      const hasMore = genres.length > maxGenres;
-      ratingGenreParts.push(`<i class="fas fa-theater-masks"></i> ${displayGenres.join(', ')}${hasMore ? '...' : ''}`);
+      const maxGenres = window.innerWidth <= 600 ? 3 : 4
+      const displayGenres = genres.slice(0, maxGenres)
+      const hasMore = genres.length > maxGenres
+      ratingGenreParts.push(
+        `<i class="fas fa-theater-masks"></i> ${displayGenres.join(', ')}${
+          hasMore ? '...' : ''
+        }`
+      )
     }
-    
+
     // âœ… Runtime (new block you added)
     const runtimeMin = (() => {
-      const m = this.movieData;
+      const m = this.movieData
       const minuteCandidates = [
         Number(m.runtime),
         Number(m.tmdbRuntime),
-        Number(m.runtimeMinutes)
-      ].filter(v => Number.isFinite(v) && v > 0);
-      if (minuteCandidates.length && minuteCandidates[0] < 1000) return Math.round(minuteCandidates[0]);
-      if (Number.isFinite(m.duration) && m.duration > 0) return Math.round(m.duration / 60000);
-      return null;
-    })();
+        Number(m.runtimeMinutes),
+      ].filter(v => Number.isFinite(v) && v > 0)
+      if (minuteCandidates.length && minuteCandidates[0] < 1000)
+        return Math.round(minuteCandidates[0])
+      if (Number.isFinite(m.duration) && m.duration > 0)
+        return Math.round(m.duration / 60000)
+      return null
+    })()
     if (runtimeMin) {
-      ratingGenreParts.push(`<i class="fas fa-clock"></i> ${runtimeMin} min`);
+      ratingGenreParts.push(`<i class="fas fa-clock"></i> ${runtimeMin} min`)
     }
-    
+
     // Combine with separator if both exist
     if (ratingGenreParts.length > 0) {
-      lines.push(`<div class="crew-line" onclick="this.classList.toggle('expanded')">${ratingGenreParts.join(' <span style="opacity: 0.5; margin: 0 0.25rem;">|</span> ')}</div>`);
+      lines.push(
+        `<div class="crew-line" onclick="this.classList.toggle('expanded')">${ratingGenreParts.join(
+          ' <span style="opacity: 0.5; margin: 0 0.25rem;">|</span> '
+        )}</div>`
+      )
     }
-    
+
     // Director
     if (director && director !== 'undefined') {
-      lines.push(`<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-video"></i> ${director}</div>`);
+      lines.push(
+        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-video"></i> ${director}</div>`
+      )
     }
-    
+
     // Writers (show max 2 on mobile, 3 on desktop)
     if (writers && Array.isArray(writers) && writers.length > 0) {
-      const maxWriters = window.innerWidth <= 600 ? 2 : 3;
-      const displayWriters = writers.slice(0, maxWriters);
-      const hasMore = writers.length > maxWriters;
-      lines.push(`<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-pen"></i> ${displayWriters.join(', ')}${hasMore ? ' & more' : ''}</div>`);
+      const maxWriters = window.innerWidth <= 600 ? 2 : 3
+      const displayWriters = writers.slice(0, maxWriters)
+      const hasMore = writers.length > maxWriters
+      lines.push(
+        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-pen"></i> ${displayWriters.join(
+          ', '
+        )}${hasMore ? ' & more' : ''}</div>`
+      )
     }
-    
+
     // Cast (show max 3 on mobile, 4 on desktop)
     if (cast && Array.isArray(cast) && cast.length > 0) {
-      const maxCast = window.innerWidth <= 600 ? 3 : 4;
-      const displayCast = cast.slice(0, maxCast);
-      const hasMore = cast.length > maxCast;
-      lines.push(`<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-users"></i> ${displayCast.join(', ')}${hasMore ? ' & more' : ''}</div>`);
+      const maxCast = window.innerWidth <= 600 ? 3 : 4
+      const displayCast = cast.slice(0, maxCast)
+      const hasMore = cast.length > maxCast
+      lines.push(
+        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-users"></i> ${displayCast.join(
+          ', '
+        )}${hasMore ? ' & more' : ''}</div>`
+      )
     }
-    
-    console.log('DEBUG lines generated:', lines.length);
-    
-    if (lines.length === 0) return '';
-    
-    return `<div class="card-crew">${lines.join('')}</div>`;
+
+    console.log('DEBUG lines generated:', lines.length)
+
+    if (lines.length === 0) return ''
+
+    return `<div class="card-crew">${lines.join('')}</div>`
   }
 
   destroy() {

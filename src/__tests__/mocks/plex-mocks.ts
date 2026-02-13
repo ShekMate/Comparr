@@ -41,7 +41,8 @@ export const mockPlexMovies = {
         type: 'movie',
         title: 'Inception',
         contentRating: 'PG-13',
-        summary: 'A thief who steals corporate secrets through dream-sharing technology...',
+        summary:
+          'A thief who steals corporate secrets through dream-sharing technology...',
         rating: 8.8,
         year: 2010,
         tagline: 'Your mind is the scene of the crime',
@@ -63,10 +64,7 @@ export const mockPlexMovies = {
           { tag: 'Joseph Gordon-Levitt' },
           { tag: 'Elliot Page' },
         ],
-        Guid: [
-          { id: 'imdb://tt1375666' },
-          { id: 'tmdb://27205' },
-        ],
+        Guid: [{ id: 'imdb://tt1375666' }, { id: 'tmdb://27205' }],
       },
       {
         ratingKey: '1002',
@@ -91,19 +89,13 @@ export const mockPlexMovies = {
           { tag: 'Science Fiction' },
         ],
         Director: [{ tag: 'Christopher Nolan' }],
-        Writer: [
-          { tag: 'Jonathan Nolan' },
-          { tag: 'Christopher Nolan' },
-        ],
+        Writer: [{ tag: 'Jonathan Nolan' }, { tag: 'Christopher Nolan' }],
         Role: [
           { tag: 'Matthew McConaughey' },
           { tag: 'Anne Hathaway' },
           { tag: 'Jessica Chastain' },
         ],
-        Guid: [
-          { id: 'imdb://tt0816692' },
-          { id: 'tmdb://157336' },
-        ],
+        Guid: [{ id: 'imdb://tt0816692' }, { id: 'tmdb://157336' }],
       },
       {
         ratingKey: '1003',
@@ -122,27 +114,15 @@ export const mockPlexMovies = {
         originallyAvailableAt: '1999-03-31',
         addedAt: 1234567892,
         updatedAt: 1234567892,
-        Genre: [
-          { tag: 'Action' },
-          { tag: 'Science Fiction' },
-        ],
-        Director: [
-          { tag: 'Lana Wachowski' },
-          { tag: 'Lilly Wachowski' },
-        ],
-        Writer: [
-          { tag: 'Lana Wachowski' },
-          { tag: 'Lilly Wachowski' },
-        ],
+        Genre: [{ tag: 'Action' }, { tag: 'Science Fiction' }],
+        Director: [{ tag: 'Lana Wachowski' }, { tag: 'Lilly Wachowski' }],
+        Writer: [{ tag: 'Lana Wachowski' }, { tag: 'Lilly Wachowski' }],
         Role: [
           { tag: 'Keanu Reeves' },
           { tag: 'Laurence Fishburne' },
           { tag: 'Carrie-Anne Moss' },
         ],
-        Guid: [
-          { id: 'imdb://tt0133093' },
-          { id: 'tmdb://603' },
-        ],
+        Guid: [{ id: 'imdb://tt0133093' }, { id: 'tmdb://603' }],
       },
     ],
   },
@@ -150,7 +130,9 @@ export const mockPlexMovies = {
 
 export const mockPlexMovie = mockPlexMovies.MediaContainer.Metadata[0]
 
-export function createMockPlexMovie(overrides: Partial<typeof mockPlexMovie> = {}) {
+export function createMockPlexMovie(
+  overrides: Partial<typeof mockPlexMovie> = {}
+) {
   return {
     ...mockPlexMovie,
     ...overrides,

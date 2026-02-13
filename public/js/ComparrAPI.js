@@ -2,52 +2,54 @@
 
 export class ComparrAPI extends EventTarget {
   constructor() {
-  super()
-  const basePath = location.pathname.replace(/\/(index\.html)?$/, '')
-  
-  const wsUrl = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}${basePath}/ws`;
-  console.log('🔌 Connecting WebSocket to:', wsUrl);
+    super()
+    const basePath = location.pathname.replace(/\/(index\.html)?$/, '')
 
-  this.socket = new WebSocket(wsUrl)
-  
-  this.socket.addEventListener('open', () => {
-    console.log('✅ WebSocket connected successfully');
-  });
-  
-  this.socket.addEventListener('error', (err) => {
-    console.error('❌ WebSocket error:', err);
-  });
-  
-  this.socket.addEventListener('close', (event) => {
-    console.warn('⚠️ WebSocket closed:', event.code, event.reason);
-    
-    // Clear any pending buffer promises in main.js
-    if (window.ensureMovieBufferPromise) {
-      window.ensureMovieBufferPromise = null;
-    }
-    if (window.isLoadingBatch !== undefined) {
-      window.isLoadingBatch = false;
-    }
-    
-    // Show error to user
-    const cardStack = document.querySelector('.js-card-stack');
-    if (cardStack) {
-      const hasVisibleMovies = cardStack.children.length > 0;
-      if (!hasVisibleMovies) {
-        cardStack.style.setProperty(
-          '--empty-text',
-          '"Connection lost. Please refresh the page."'
-        );
+    const wsUrl = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${
+      location.host
+    }${basePath}/ws`
+    console.log('🔌 Connecting WebSocket to:', wsUrl)
+
+    this.socket = new WebSocket(wsUrl)
+
+    this.socket.addEventListener('open', () => {
+      console.log('✅ WebSocket connected successfully')
+    })
+
+    this.socket.addEventListener('error', err => {
+      console.error('❌ WebSocket error:', err)
+    })
+
+    this.socket.addEventListener('close', event => {
+      console.warn('⚠️ WebSocket closed:', event.code, event.reason)
+
+      // Clear any pending buffer promises in main.js
+      if (window.ensureMovieBufferPromise) {
+        window.ensureMovieBufferPromise = null
       }
-    }
-    
-    // Show a notification
-    if (window.showNotification) {
-      window.showNotification('Connection lost. Please refresh the page.');
-    }
-  });
+      if (window.isLoadingBatch !== undefined) {
+        window.isLoadingBatch = false
+      }
 
-  this.socket.addEventListener('message', e => this.handleMessage(e))
+      // Show error to user
+      const cardStack = document.querySelector('.js-card-stack')
+      if (cardStack) {
+        const hasVisibleMovies = cardStack.children.length > 0
+        if (!hasVisibleMovies) {
+          cardStack.style.setProperty(
+            '--empty-text',
+            '"Connection lost. Please refresh the page."'
+          )
+        }
+      }
+
+      // Show a notification
+      if (window.showNotification) {
+        window.showNotification('Connection lost. Please refresh the page.')
+      }
+    })
+
+    this.socket.addEventListener('message', e => this.handleMessage(e))
 
     this._movieList = []
 
@@ -55,39 +57,47 @@ export class ComparrAPI extends EventTarget {
       this.socket.close()
     })
   }
-    // Recreate or wait until the WebSocket is OPEN before sending
+  // Recreate or wait until the WebSocket is OPEN before sending
   async _waitOpen() {
     // Already open? good to go.
-    if (this.socket && this.socket.readyState === WebSocket.OPEN) return;
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) return
 
     // Missing or closing/closed? recreate it
     if (!this.socket || this.socket.readyState >= WebSocket.CLOSING) {
-      const basePath = location.pathname.replace(/\/(index\.html)?$/, '');
+      const basePath = location.pathname.replace(/\/(index\.html)?$/, '')
       this.socket = new WebSocket(
-        `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}${basePath}/ws`
-      );
-      this.socket.addEventListener('message', e => this.handleMessage(e));
+        `${location.protocol === 'https:' ? 'wss' : 'ws'}://${
+          location.host
+        }${basePath}/ws`
+      )
+      this.socket.addEventListener('message', e => this.handleMessage(e))
       // no need to re-add the beforeunload handler; the one in the constructor
       // references this.socket and will close the current instance at unload time
     }
 
     // CONNECTING? wait until it opens (or error)
     await new Promise((resolve, reject) => {
-      if (this.socket.readyState === WebSocket.OPEN) return resolve();
-      const onOpen = () => { cleanup(); resolve(); };
-      const onErr  = (e) => { cleanup(); reject(e); };
+      if (this.socket.readyState === WebSocket.OPEN) return resolve()
+      const onOpen = () => {
+        cleanup()
+        resolve()
+      }
+      const onErr = e => {
+        cleanup()
+        reject(e)
+      }
       const cleanup = () => {
-        this.socket.removeEventListener('open', onOpen);
-        this.socket.removeEventListener('error', onErr);
-      };
-      this.socket.addEventListener('open',  onOpen, { once: true });
-      this.socket.addEventListener('error', onErr,  { once: true });
-    });
+        this.socket.removeEventListener('open', onOpen)
+        this.socket.removeEventListener('error', onErr)
+      }
+      this.socket.addEventListener('open', onOpen, { once: true })
+      this.socket.addEventListener('error', onErr, { once: true })
+    })
   }
 
   async login(user, roomCode, accessPassword) {
-    await this._waitOpen();
-	this.socket.send(
+    await this._waitOpen()
+    this.socket.send(
       JSON.stringify({
         type: 'login',
         payload: {
@@ -115,15 +125,15 @@ export class ComparrAPI extends EventTarget {
 
   handleMessage(e) {
     const data = JSON.parse(e.data)
-    console.log('📨 WebSocket message received:', data.type);
+    console.log('📨 WebSocket message received:', data.type)
 
     switch (data.type) {
       case 'batch': {
-        console.log('📦 Batch received:', data.payload.length, 'movies');
+        console.log('📦 Batch received:', data.payload.length, 'movies')
         if (data.payload.length === 0) {
-          console.error('❌ Empty batch received!');
+          console.error('❌ Empty batch received!')
         } else {
-          console.log('🎬 First movie:', data.payload[0]?.title);
+          console.log('🎬 First movie:', data.payload[0]?.title)
         }
         this.dispatchEvent(new MessageEvent('batch', { data: data.payload }))
         this._movieList.push(...data.payload)
@@ -143,7 +153,7 @@ export class ComparrAPI extends EventTarget {
       }
       case 'error': {
         console.error('Server error:', data.payload)
-        
+
         // Show user-friendly error notification
         const errorDiv = document.createElement('div')
         errorDiv.className = 'error-notification'
@@ -159,17 +169,18 @@ export class ComparrAPI extends EventTarget {
             </button>
           </div>
         `
-        errorDiv.querySelector('.error-message').textContent = data.payload.message
-        
+        errorDiv.querySelector('.error-message').textContent =
+          data.payload.message
+
         document.body.appendChild(errorDiv)
-        
+
         // Auto-remove after 10 seconds
         setTimeout(() => {
           if (errorDiv.parentElement) {
             errorDiv.remove()
           }
         }, 10000)
-        
+
         this.dispatchEvent(new MessageEvent('error', { data: data.payload }))
         break
       }
@@ -180,7 +191,7 @@ export class ComparrAPI extends EventTarget {
 
   // Build the same base path you already use for the WebSocket (e.g. "/comparr" or "")
   _getBasePath() {
-    return location.pathname.replace(/\/(index\.html)?$/, '');
+    return location.pathname.replace(/\/(index\.html)?$/, '')
   }
 
   /**
@@ -189,18 +200,20 @@ export class ComparrAPI extends EventTarget {
    * Returns whatever JSON your server sends; 404 returns an empty list.
    */
   async getUserDecisions(roomCode, userName) {
-    const base = this._getBasePath();
-    const url  = `${base}/api/session-state?code=${encodeURIComponent(roomCode)}&user=${encodeURIComponent(userName)}`;
+    const base = this._getBasePath()
+    const url = `${base}/api/session-state?code=${encodeURIComponent(
+      roomCode
+    )}&user=${encodeURIComponent(userName)}`
 
-    const res = await fetch(url);
+    const res = await fetch(url)
     if (res.status === 404) {
       // No endpoint yet — let the caller proceed with no history.
-      return { rated: [] };
+      return { rated: [] }
     }
     if (!res.ok) {
-      throw new Error(`GET ${url} failed: ${res.status}`);
+      throw new Error(`GET ${url} failed: ${res.status}`)
     }
-    return res.json();
+    return res.json()
   }
 
   /**
@@ -208,16 +221,16 @@ export class ComparrAPI extends EventTarget {
    * Used when hydrating the Watch/Pass tabs so we can show title/art.
    */
   async getMovieSummary(guid) {
-    const m = this.getMovie(guid);
-    if (!m) return null;
-    const { title, year, art } = m;
-    return { guid, title, year, art };
+    const m = this.getMovie(guid)
+    if (!m) return null
+    const { title, year, art } = m
+    return { guid, title, year, art }
   }
 
   // ================== PASTE ENDS HERE ==================
 
   async respond({ guid, wantsToWatch }) {
-    await this._waitOpen();
+    await this._waitOpen()
     this.socket.send(
       JSON.stringify({
         type: 'response',
@@ -227,18 +240,20 @@ export class ComparrAPI extends EventTarget {
   }
 
   async getMatches(roomCode, userName) {
-    const base = this._getBasePath();
-    const url = `${base}/api/matches?code=${encodeURIComponent(roomCode)}&user=${encodeURIComponent(userName)}`;
-    const res = await fetch(url);
+    const base = this._getBasePath()
+    const url = `${base}/api/matches?code=${encodeURIComponent(
+      roomCode
+    )}&user=${encodeURIComponent(userName)}`
+    const res = await fetch(url)
     if (!res.ok) {
-      throw new Error(`GET ${url} failed: ${res.status}`);
+      throw new Error(`GET ${url} failed: ${res.status}`)
     }
-    return res.json();
+    return res.json()
   }
 
   async requestNextBatch() {
-    await this._waitOpen();
-	
+    await this._waitOpen()
+
     this.socket.send(
       JSON.stringify({
         type: 'nextBatch',
@@ -250,11 +265,11 @@ export class ComparrAPI extends EventTarget {
   }
 
   async requestNextBatchWithFilters(filters) {
-    await this._waitOpen();
+    await this._waitOpen()
 
-	console.log('ComparrAPI received filters:', filters);
-    console.log('Directors:', filters.directors);
-    console.log('Actors:', filters.actors);
+    console.log('ComparrAPI received filters:', filters)
+    console.log('Directors:', filters.directors)
+    console.log('Actors:', filters.actors)
 
     const message = {
       type: 'nextBatch',
@@ -266,43 +281,57 @@ export class ComparrAPI extends EventTarget {
         showPlexOnly: filters.showPlexOnly,
         contentRatings: filters.contentRatings,
         imdbRating: filters.imdbRating,
-		tmdbRating: filters.tmdbRating,
-		languages: filters.languages,
-		countries: filters.countries,
-		runtimeMin: filters.runtimeRange.min,
-      runtimeMax: filters.runtimeRange.max,
-      voteCount: filters.voteCount,
-      sortBy: filters.sortBy,
-      // rtRating: filters.rtRating  // COMMENTED OUT
-      }
-    };
+        tmdbRating: filters.tmdbRating,
+        languages: filters.languages,
+        countries: filters.countries,
+        runtimeMin: filters.runtimeRange.min,
+        runtimeMax: filters.runtimeRange.max,
+        voteCount: filters.voteCount,
+        sortBy: filters.sortBy,
+        // rtRating: filters.rtRating  // COMMENTED OUT
+      },
+    }
 
-    console.log('🌐 FILTER DEBUG - WebSocket sending filters:');
-    console.log('  Year Range:', message.payload.yearMin, '-', message.payload.yearMax);
-    console.log('  Genres:', message.payload.genres);
+    console.log('🌐 FILTER DEBUG - WebSocket sending filters:')
+    console.log(
+      '  Year Range:',
+      message.payload.yearMin,
+      '-',
+      message.payload.yearMax
+    )
+    console.log('  Genres:', message.payload.genres)
     // console.log('  Streaming:', message.payload.streamingServices);
-    console.log('  Show Plex Only:', message.payload.showPlexOnly);
-    console.log('  Content Ratings:', message.payload.contentRatings);
-    console.log('  IMDb Rating:', message.payload.imdbRating);
-    console.log('  TMDb Rating:', message.payload.tmdbRating);
+    console.log('  Show Plex Only:', message.payload.showPlexOnly)
+    console.log('  Content Ratings:', message.payload.contentRatings)
+    console.log('  IMDb Rating:', message.payload.imdbRating)
+    console.log('  TMDb Rating:', message.payload.tmdbRating)
     // console.log('  RT Rating:', message.payload.rtRating);  // COMMENTED OUT
-    console.log('  Languages:', message.payload.languages);
-    console.log('  Countries:', message.payload.countries);
-    console.log('  Runtime:', message.payload.runtimeMin, '-', message.payload.runtimeMax);
-    console.log('  Vote Count:', message.payload.voteCount);
-    console.log('  Sort By:', message.payload.sortBy);
-    console.log('  Full message:', JSON.stringify(message, null, 2));
-    
-    this.socket.send(JSON.stringify(message));
-    
+    console.log('  Languages:', message.payload.languages)
+    console.log('  Countries:', message.payload.countries)
+    console.log(
+      '  Runtime:',
+      message.payload.runtimeMin,
+      '-',
+      message.payload.runtimeMax
+    )
+    console.log('  Vote Count:', message.payload.voteCount)
+    console.log('  Sort By:', message.payload.sortBy)
+    console.log('  Full message:', JSON.stringify(message, null, 2))
+
+    this.socket.send(JSON.stringify(message))
+
     return new Promise(resolve =>
-      this.addEventListener('batch', e => {
-        console.log('DEBUG: Received batch event:', e.data);
-        resolve(e.data);
-      }, { once: true })
-    );
+      this.addEventListener(
+        'batch',
+        e => {
+          console.log('DEBUG: Received batch event:', e.data)
+          resolve(e.data)
+        },
+        { once: true }
+      )
+    )
   }
-  
+
   getMovie(guid) {
     return this._movieList.find(_ => _.guid === guid)
   }

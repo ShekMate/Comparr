@@ -1,7 +1,17 @@
 // Tests for movie enrichment pipeline
-import { assertEquals, assertExists, mockEnv } from '../../../__tests__/utils/test-helpers.ts'
-import { mockOMDbMovie, mockOMDbNotFound } from '../../../__tests__/mocks/omdb-mocks.ts'
-import { mockTMDbMovieDetails, mockTMDbSearchResults } from '../../../__tests__/mocks/tmdb-mocks.ts'
+import {
+  assertEquals,
+  assertExists,
+  mockEnv,
+} from '../../../__tests__/utils/test-helpers.ts'
+import {
+  mockOMDbMovie,
+  mockOMDbNotFound,
+} from '../../../__tests__/mocks/omdb-mocks.ts'
+import {
+  mockTMDbMovieDetails,
+  mockTMDbSearchResults,
+} from '../../../__tests__/mocks/tmdb-mocks.ts'
 
 // Setup environment variables for tests
 const cleanup = mockEnv({

@@ -31,8 +31,18 @@
   },
   "stylelint": {
     "extends": "stylelint-config-standard",
+    "rules": {
+      "no-descending-specificity": null,
+      "no-duplicate-selectors": null,
+      "declaration-block-no-duplicate-properties": null,
+      "font-family-no-missing-generic-family-keyword": null,
+      "declaration-colon-newline-after": null,
+      "indentation": null
+    },
     "ignoreFiles": [
-      "public/index.html"
+      "public/index.html",
+      "coverage/**",
+      "node_modules/**"
     ]
   },
   "devDependencies": {

@@ -44,7 +44,14 @@ export function parseImdbCsv(csvText: string): ImdbCsvRow[] {
     const titleType = typeIdx >= 0 ? cols[typeIdx]?.trim().toLowerCase() : ''
 
     // Only import movies (skip TV series, episodes, etc.)
-    if (titleType && titleType !== 'movie' && titleType !== 'feature' && titleType !== 'tvmovie' && titleType !== 'tv movie' && titleType !== 'video') {
+    if (
+      titleType &&
+      titleType !== 'movie' &&
+      titleType !== 'feature' &&
+      titleType !== 'tvmovie' &&
+      titleType !== 'tv movie' &&
+      titleType !== 'video'
+    ) {
       continue
     }
 
@@ -122,7 +129,7 @@ export interface TmdbMovieResult {
  */
 export async function lookupMovieByImdbId(
   imdbId: string,
-  tmdbApiKey: string,
+  tmdbApiKey: string
 ): Promise<TmdbMovieResult | null> {
   try {
     const response = await fetch(
@@ -167,11 +174,25 @@ export async function lookupMovieByImdbId(
 
     // Genre mapping
     const genreMap: Record<number, string> = {
-      28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy',
-      80: 'Crime', 99: 'Documentary', 18: 'Drama', 10751: 'Family',
-      14: 'Fantasy', 36: 'History', 27: 'Horror', 10402: 'Music',
-      9648: 'Mystery', 10749: 'Romance', 878: 'Science Fiction',
-      10770: 'TV Movie', 53: 'Thriller', 10752: 'War', 37: 'Western',
+      28: 'Action',
+      12: 'Adventure',
+      16: 'Animation',
+      35: 'Comedy',
+      80: 'Crime',
+      99: 'Documentary',
+      18: 'Drama',
+      10751: 'Family',
+      14: 'Fantasy',
+      36: 'History',
+      27: 'Horror',
+      10402: 'Music',
+      9648: 'Mystery',
+      10749: 'Romance',
+      878: 'Science Fiction',
+      10770: 'TV Movie',
+      53: 'Thriller',
+      10752: 'War',
+      37: 'Western',
     }
 
     const genres = (movie.genre_ids || [])

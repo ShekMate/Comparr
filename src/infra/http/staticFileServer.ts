@@ -24,25 +24,25 @@ function normalizeURL(url: string): string {
 }
 
 export const serveFile = async (req: ServerRequest, basePath = 'public') => {
-  const publicRoot = join(Deno.cwd(), basePath.replace(/^\/+/, ''));
-  const urlPath = normalizeURL(req.url).replace(/^\/+/, ''); // strip leading '/'
+  const publicRoot = join(Deno.cwd(), basePath.replace(/^\/+/, ''))
+  const urlPath = normalizeURL(req.url).replace(/^\/+/, '') // strip leading '/'
   // Use index.html for root path (handles both '/' and '/?query=params')
-  const reqPathRaw = urlPath === '' ? 'index.html' : urlPath;
+  const reqPathRaw = urlPath === '' ? 'index.html' : urlPath
 
-  const normalizedPath = join(publicRoot, reqPathRaw);
+  const normalizedPath = join(publicRoot, reqPathRaw)
 
-  log.debug(`serveFile(${normalizedPath})`);
+  log.debug(`serveFile(${normalizedPath})`)
 
   try {
-    const stat = await Deno.stat(normalizedPath);
+    const stat = await Deno.stat(normalizedPath)
     if (!stat.isFile) {
-      throw new Error(`Only file serving is enabled.`);
+      throw new Error(`Only file serving is enabled.`)
     }
 
-    let body: Uint8Array | string = await Deno.readFile(normalizedPath);
+    let body: Uint8Array | string = await Deno.readFile(normalizedPath)
 
     if (extname(normalizedPath) === '.html') {
-      body = await translateHTML(body, req.headers);
+      body = await translateHTML(body, req.headers)
     }
 
     return await req.respond({
@@ -50,23 +50,22 @@ export const serveFile = async (req: ServerRequest, basePath = 'public') => {
       headers: new Headers({
         'content-type': getContentType(normalizedPath),
       }),
-    });
+    })
   } catch (err) {
     try {
-      const urlPath = normalizeURL(req.url);
+      const urlPath = normalizeURL(req.url)
       if (urlPath.startsWith('/tmdb-poster/')) {
         log.debug(
           `404 while serving poster -> URL: ${urlPath} | FS: ${normalizedPath}`
-        );
+        )
       }
     } catch {
       // ignore
     }
 
-    return await req.respond({ status: 404, body: 'Not Found' });
+    return await req.respond({ status: 404, body: 'Not Found' })
   }
-};
-
+}
 
 const getContentType = (path: string): string => {
   const MIME_MAP: Record<string, string> = {
