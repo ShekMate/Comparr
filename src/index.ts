@@ -3,17 +3,11 @@ import { serve } from 'https://deno.land/std@0.79.0/http/server.ts'
 import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
 import { clearAllMoviesCache, getServerId, proxyPoster } from './api/plex.ts'
 import {
-  getJellyseerrApiKey,
-  getJellyseerrUrl,
   getLinkType,
-  getOverseerrApiKey,
-  getOverseerrUrl,
   getPlexLibraryName,
   getPlexToken,
   getPlexUrl,
   getPort,
-  getRadarrApiKey,
-  getRadarrUrl,
   getRootPath,
   getTmdbApiKey,
   getOmdbApiKey,
@@ -24,23 +18,18 @@ import {
   handleLogin,
   ensurePlexHydrationReady,
   processImdbImportBackground,
-  getMatchesForUser,
 } from './features/session/session.ts'
 import { parseImdbCsv } from './features/session/imdb-import.ts'
 import { serveFile } from './infra/http/staticFileServer.ts'
 import { isLocalRequest } from './infra/http/network-access.ts'
 import { handleSettingsRoutes } from './infra/http/routes/settings.ts'
+import { handleRoutes } from './infra/http/router.ts'
+import { handleConfigDebugRoute } from './infra/http/routes/config.ts'
+import { handleMatchesRoute } from './infra/http/routes/matches.ts'
+import { handleRequestServiceRoutes } from './infra/http/routes/request-service.ts'
 import { WebSocketServer } from './infra/ws/websocketServer.ts'
-import {
-  initializeRadarrCache,
-  isMovieInRadarr,
-  refreshRadarrCache,
-} from './api/radarr.ts'
-import {
-  requestMovie,
-  isRequestServiceConfigured,
-  getMediaStatus,
-} from './api/jellyseerr.ts'
+import { initializeRadarrCache, refreshRadarrCache } from './api/radarr.ts'
+import { requestMovie } from './api/jellyseerr.ts'
 import { serveCachedPoster } from './services/cache/poster-cache.ts'
 import {
   initIMDbDatabase,
@@ -253,158 +242,23 @@ for await (const req of server) {
     const url = new URL(req.url, 'http://local')
     const p = url.pathname
 
-    // --- DEBUG: Config check endpoint
-    if (p === '/api/debug/config') {
-      await req.respond({
-        status: 200,
-        body: JSON.stringify(
-          {
-            tmdb_configured: !!getTmdbApiKey(),
-            omdb_configured: !!getOmdbApiKey(),
-            plex_configured: !!(getPlexUrl() && getPlexToken()),
-            radarr_configured: !!(getRadarrUrl() && getRadarrApiKey()),
-            jellyseerr_configured: !!(
-              getJellyseerrUrl() && getJellyseerrApiKey()
-            ),
-            overseerr_configured: !!(getOverseerrUrl() && getOverseerrApiKey()),
-          },
-          null,
-          2
-        ),
-        headers: new Headers({ 'content-type': 'application/json' }),
-      })
-      continue
-    }
-
     if (
-      await handleSettingsRoutes(req, p, {
-        buildPlexCache,
-        clearAllMoviesCache,
-        getPlexLibraryName,
-        getSettings,
-        isLocalRequest,
-        refreshRadarrCache,
-        updateSettings,
-      })
+      await handleRoutes(req, p, [
+        handleConfigDebugRoute,
+        async (routeReq, routePath) =>
+          await handleSettingsRoutes(routeReq, routePath, {
+            buildPlexCache,
+            clearAllMoviesCache,
+            getPlexLibraryName,
+            getSettings,
+            isLocalRequest,
+            refreshRadarrCache,
+            updateSettings,
+          }),
+        handleRequestServiceRoutes,
+        handleMatchesRoute,
+      ])
     ) {
-      continue
-    }
-
-    // --- API: Check if request service is configured
-    if (p === '/api/request-service-status') {
-      await req.respond({
-        status: 200,
-        body: JSON.stringify({ configured: isRequestServiceConfigured() }),
-        headers: new Headers({ 'content-type': 'application/json' }),
-      })
-      continue
-    }
-
-    if (p === '/api/matches') {
-      const url = new URL(req.url, 'http://local')
-      const roomCode = url.searchParams.get('code') || ''
-      const userName = url.searchParams.get('user') || ''
-
-      if (!roomCode || !userName) {
-        await req.respond({
-          status: 400,
-          body: JSON.stringify({ error: 'Missing room code or user' }),
-          headers: new Headers({ 'content-type': 'application/json' }),
-        })
-        continue
-      }
-
-      const matches = getMatchesForUser(roomCode, userName)
-      if (matches === null) {
-        await req.respond({
-          status: 404,
-          body: JSON.stringify({ error: 'Room not found' }),
-          headers: new Headers({ 'content-type': 'application/json' }),
-        })
-        continue
-      }
-
-      await req.respond({
-        status: 200,
-        body: JSON.stringify({ matches }),
-        headers: new Headers({ 'content-type': 'application/json' }),
-      })
-      continue
-    }
-
-    // --- API: Check if a movie is in Radarr/Plex by TMDb ID
-    if (p.startsWith('/api/check-movie-status')) {
-      try {
-        const url = new URL(req.url, 'http://local')
-        const tmdbId = parseInt(url.searchParams.get('tmdbId') || '')
-
-        if (!tmdbId || isNaN(tmdbId)) {
-          await req.respond({
-            status: 400,
-            body: JSON.stringify({ error: 'Invalid or missing TMDb ID' }),
-            headers: new Headers({ 'content-type': 'application/json' }),
-          })
-          continue
-        }
-
-        // Check if movie is in Radarr (which means it's in Plex or downloading)
-        const inPlex = isMovieInRadarr(tmdbId)
-
-        await req.respond({
-          status: 200,
-          body: JSON.stringify({
-            inPlex,
-            tmdbId,
-          }),
-          headers: new Headers({ 'content-type': 'application/json' }),
-        })
-      } catch (err) {
-        log.error(`Error checking movie status: ${err}`)
-        await req.respond({
-          status: 500,
-          body: JSON.stringify({ error: 'Failed to check status' }),
-          headers: new Headers({ 'content-type': 'application/json' }),
-        })
-      }
-      continue
-    }
-
-    // --- API: Check if a movie is already requested in Jellyseerr/Overseerr
-    if (p.startsWith('/api/check-request-status')) {
-      try {
-        const url = new URL(req.url, 'http://local')
-        const tmdbId = parseInt(url.searchParams.get('tmdbId') || '')
-
-        if (!tmdbId || isNaN(tmdbId)) {
-          await req.respond({
-            status: 400,
-            body: JSON.stringify({ error: 'Invalid or missing TMDb ID' }),
-            headers: new Headers({ 'content-type': 'application/json' }),
-          })
-          continue
-        }
-
-        // Check request status in Jellyseerr/Overseerr
-        const status = await getMediaStatus(tmdbId)
-
-        await req.respond({
-          status: 200,
-          body: JSON.stringify({
-            available: status?.available || false,
-            pending: status?.pending || false,
-            processing: status?.processing || false,
-            tmdbId,
-          }),
-          headers: new Headers({ 'content-type': 'application/json' }),
-        })
-      } catch (err) {
-        log.error(`Error checking request status: ${err}`)
-        await req.respond({
-          status: 500,
-          body: JSON.stringify({ error: 'Failed to check request status' }),
-          headers: new Headers({ 'content-type': 'application/json' }),
-        })
-      }
       continue
     }
 

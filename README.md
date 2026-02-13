@@ -389,6 +389,8 @@ cp .env.example .env
 
 ## Development
 
+For an incremental refactor plan, see [Repository Architecture Roadmap](docs/repo-architecture-roadmap.md).
+
 ### Running Tests
 
 ```bash
