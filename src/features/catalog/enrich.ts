@@ -3,6 +3,7 @@
 // Priority: 1) Local IMDb database, 2) OMDB API, 3) TMDb API
 // The local IMDb database is sourced from daily IMDb dataset dumps.
 
+import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
 import { getIMDbRating } from "./imdb-datasets.ts";
 import { getOmdbApiKey, getPlexLibraryName, getTmdbApiKey } from '../../core/config.ts'
 
@@ -10,27 +11,7 @@ const getOmdbKey = () => getOmdbApiKey()
 const getTmdbKey = () => getTmdbApiKey()
 const tmdbCache = new Map<string, any>()
 const tmdbSearchCache = new Map<string, any>()
-const redactUrl = (u: string) => u.replace(/(api_key|apikey|token|key)=([^&]+)/gi, '$1=***');
-async function fetchJsonLogged(url: string, init?: RequestInit, label = 'fetch') {
-  const t0 = Date.now();
-  const safeUrl = redactUrl(url);
-  try {
-    const res = await fetch(url, init);
-    const text = await res.text();
-    let json: any = null;
-    try { json = JSON.parse(text); } catch {}
-    console.log(`[enrich] ${label} ${safeUrl} -> ${res.status} in ${Date.now() - t0}ms sample=${text.slice(0,300)}…`);
-    if (!res.ok) {
-      throw new Error(`${label} HTTP ${res.status}`);
-    }
-    return json ?? text;
-  } catch (e) {
-    console.error(`[enrich] ${label} FAILED ${safeUrl}: ${e?.message || e}`);
-    throw e;
-  }
-}
-
-// Replace the old "j" with a label-aware logger that redacts keys
+// Label-aware fetch logger that redacts API keys
 async function j(url: string, label = "fetch") {
   const t0 = Date.now();
   const safe = url.replace(/(api_key|apikey|token|key)=([^&]+)/gi, "$1=***");
@@ -39,8 +20,8 @@ async function j(url: string, label = "fetch") {
   try {
     res = await fetch(url);
     text = await res.text();
-    console.log(
-      `[enrich] ${label} ${safe} -> ${res.status} in ${Date.now() - t0}ms sample=${text.slice(0, 240)}…`
+    log.debug(
+      `[enrich] ${label} ${safe} -> ${res.status} in ${Date.now() - t0}ms`
     );
     if (!res.ok) {
       throw new Error(`${label} HTTP ${res.status}`);
@@ -48,11 +29,11 @@ async function j(url: string, label = "fetch") {
     try {
       return JSON.parse(text);
     } catch (e) {
-      console.error(`[enrich] ${label} JSON parse failed: ${e?.message || e}`);
+      log.error(`[enrich] ${label} JSON parse failed: ${e?.message || e}`);
       throw e;
     }
   } catch (e) {
-    console.error(`[enrich] ${label} FAILED ${safe}: ${e?.message || e}`);
+    log.error(`[enrich] ${label} FAILED ${safe}: ${e?.message || e}`);
     throw e;
   }
 }
@@ -60,19 +41,19 @@ async function j(url: string, label = "fetch") {
 async function omdbById(id: string) {
   const OMDB = getOmdbKey()
   if (!OMDB || !id) {
-    console.log(`[enrich] omdbById skip: api=${!!OMDB} id=${!!id}`);
+    log.debug(`[enrich] omdbById skip: api=${!!OMDB} id=${!!id}`);
     return null as any;
   }
   const url = `http://www.omdbapi.com/?apikey=${OMDB}&i=${id}&plot=short`;
   try {
     const d = await j(url, "omdbById");
     const ok = d && d.Response !== "False";
-    console.log(
+    log.debug(
       `[enrich] omdbById result for ${id}: ${ok ? "OK" : "NO MATCH"} ${ok ? `imdb=${d.imdbRating}` : d?.Error || ""}`
     );
     return ok ? d : null;
   } catch (e) {
-    console.error(`[enrich] omdbById error for ${id}: ${e?.message || e}`);
+    log.error(`[enrich] omdbById error for ${id}: ${e?.message || e}`);
     return null;
   }
 }
@@ -80,7 +61,7 @@ async function omdbById(id: string) {
 async function omdbByTitle(t: string, y?: number | null) {
   const OMDB = getOmdbKey()
   if (!OMDB || !t) {
-    console.log(`[enrich] omdbByTitle skip: api=${!!OMDB} title=${!!t}`);
+    log.debug(`[enrich] omdbByTitle skip: api=${!!OMDB} title=${!!t}`);
     return null as any;
   }
   const yq = y ? `&y=${y}` : "";
@@ -89,7 +70,7 @@ async function omdbByTitle(t: string, y?: number | null) {
     const d = await j(url, "omdbByTitle");
     return d && d.Response !== "False" ? d : null;
   } catch (e) {
-    console.error(`[enrich] omdbByTitle error: ${e?.message || e}`);
+    log.error(`[enrich] omdbByTitle error: ${e?.message || e}`);
     return null;
   }
 }
@@ -97,7 +78,7 @@ async function omdbByTitle(t: string, y?: number | null) {
 async function tmdbSearchMovie(title: string, year?: number | null) {
   const TMDB = getTmdbKey()
   if (!TMDB || !title) {
-    console.log(`[enrich] tmdbSearchMovie skip: api=${!!TMDB} title=${!!title}`);
+    log.debug(`[enrich] tmdbSearchMovie skip: api=${!!TMDB} title=${!!title}`);
     return null as any;
   }
   const cacheKey = `search-${title}-${year || "noyear"}`;
@@ -110,11 +91,11 @@ async function tmdbSearchMovie(title: string, year?: number | null) {
   try {
     const data = await j(url, "tmdb.search");
     const result = data?.results?.[0] ?? null;
-    if (!result) console.warn(`[enrich] tmdb.search no results for "${title}" y=${year ?? ""}`);
+    if (!result) log.warning(`[enrich] tmdb.search no results for "${title}" y=${year ?? ""}`);
     if (result) tmdbSearchCache.set(cacheKey, result);
     return result;
   } catch (e) {
-    console.error(`[enrich] tmdb.search error: ${e?.message || e}`);
+    log.error(`[enrich] tmdb.search error: ${e?.message || e}`);
     return null;
   }
 }
@@ -122,7 +103,7 @@ async function tmdbSearchMovie(title: string, year?: number | null) {
 async function tmdbMovieDetails(id: number) {
   const TMDB = getTmdbKey()
   if (!TMDB || !id) {
-    console.log(`[enrich] tmdbMovieDetails skip: api=${!!TMDB} id=${!!id}`);
+    log.debug(`[enrich] tmdbMovieDetails skip: api=${!!TMDB} id=${!!id}`);
     return null as any;
   }
   const cacheKey = `details-${id}`;
@@ -132,11 +113,11 @@ async function tmdbMovieDetails(id: number) {
   const url = `https://api.themoviedb.org/3/movie/${id}?api_key=${TMDB}&append_to_response=external_ids,watch/providers,credits`;
   try {
     const result = await j(url, "tmdb.details");
-    if (!result) console.warn(`[enrich] tmdb.details empty for id=${id}`);
+    if (!result) log.warning(`[enrich] tmdb.details empty for id=${id}`);
     if (result) tmdbCache.set(cacheKey, result);
     return result;
   } catch (e) {
-    console.error(`[enrich] tmdb.details error id=${id}: ${e?.message || e}`);
+    log.error(`[enrich] tmdb.details error id=${id}: ${e?.message || e}`);
     return null;
   }
 }
@@ -308,7 +289,7 @@ export async function enrich({
         });
       }
     } catch (err) {
-      console.log(`[enrich] Failed to check Plex status: ${err?.message || err}`);
+      log.debug(`[enrich] Failed to check Plex status: ${err?.message || err}`);
     }
 
     /*
@@ -448,7 +429,7 @@ export async function enrich({
       });
     }
   } catch (err) {
-    console.log(`[enrich] Failed to check Plex status: ${err?.message || err}`);
+    log.debug(`[enrich] Failed to check Plex status: ${err?.message || err}`);
   }
 
   /*

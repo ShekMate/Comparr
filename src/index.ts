@@ -78,9 +78,9 @@ async function updateStreamingForTmdbId(tmdbId: number) {
 
   if (providers?.flatrate) {
     for (const p of providers.flatrate) {
-      log.info(`🔍 DEBUG: Raw provider name from TMDb: "${p.provider_name}"`);
+      log.debug(`Raw provider name from TMDb: "${p.provider_name}"`);
       const normalizedName = normalizeProviderName(p.provider_name);
-      log.info(`🔍 DEBUG: Normalized to: "${normalizedName}"`);
+      log.debug(`Normalized to: "${normalizedName}"`);
       if (!subscriptionMap.has(normalizedName)) {
         subscriptionMap.set(normalizedName, {
           id: p.provider_id,
@@ -237,8 +237,8 @@ initPosterCache().catch(err =>
   log.error(`Failed to initialize poster cache: ${err}`)
 )
 
-// DEBUG: Log environment check on startup
-log.info(`🔍 Config check:`)
+// Log environment check on startup
+log.info(`Config check:`)
 log.info(`  TMDB_API_KEY: ${getTmdbApiKey() ? '✅ Set' : '❌ Missing'}`)
 log.info(`  OMDB_API_KEY: ${getOmdbApiKey() ? '✅ Set' : '❌ Missing'}`)
 log.info(`  PLEX_URL: ${getPlexUrl() ? '✅ Set' : '❌ Missing'}`)

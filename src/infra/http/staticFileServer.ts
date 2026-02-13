@@ -52,12 +52,11 @@ export const serveFile = async (req: ServerRequest, basePath = 'public') => {
       }),
     });
   } catch (err) {
-    // --- DEBUG for missing posters: show the final filesystem path that caused 404
     try {
       const urlPath = normalizeURL(req.url);
       if (urlPath.startsWith('/tmdb-poster/')) {
-        log.warning(
-          `[POSTER DEBUG] 404 while serving poster -> URL: ${urlPath} | FS: ${normalizedPath}`
+        log.debug(
+          `404 while serving poster -> URL: ${urlPath} | FS: ${normalizedPath}`
         );
       }
     } catch {
