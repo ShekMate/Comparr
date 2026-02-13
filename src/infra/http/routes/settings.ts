@@ -1,3 +1,4 @@
+import { SettingsValidationError } from '../../../core/settings.ts'
 import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
 
 export type SettingsRouteDeps = {
@@ -95,6 +96,18 @@ export async function handleSettingsRoutes(
         headers: new Headers({ 'content-type': 'application/json' }),
       })
     } catch (err) {
+      if (err instanceof SettingsValidationError) {
+        await req.respond({
+          status: 400,
+          body: JSON.stringify({
+            error: 'Invalid settings payload',
+            details: err.details,
+          }),
+          headers: new Headers({ 'content-type': 'application/json' }),
+        })
+        return true
+      }
+
       log.error(`Settings update failed: ${err}`)
       await req.respond({
         status: 500,

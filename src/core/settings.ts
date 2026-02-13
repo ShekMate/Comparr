@@ -1,3 +1,8 @@
+import {
+  SettingsValidationError,
+  validateAndNormalizeStreamingSettings,
+} from './streamingProfileSettings.ts'
+
 export type SettingsKey =
   | 'PLEX_URL'
   | 'PLEX_TOKEN'
@@ -26,6 +31,9 @@ export type SettingsKey =
   | 'PERSONAL_MEDIA_SOURCES'
 
 export type Settings = Record<SettingsKey, string>
+
+export { SettingsValidationError }
+
 
 const SETTINGS_KEYS: SettingsKey[] = [
   'PLEX_URL',
@@ -156,11 +164,17 @@ export const getSetting = (key: SettingsKey): string => settingsCache[key] ?? ''
 export const updateSettings = async (
   updates: Partial<Settings>
 ): Promise<Settings> => {
+  const touchedKeys = new Set<SettingsKey>()
+
   for (const key of SETTINGS_KEYS) {
     if (Object.prototype.hasOwnProperty.call(updates, key)) {
       settingsCache[key] = normalizeValue(updates[key])
+      touchedKeys.add(key)
     }
   }
+
+  validateAndNormalizeStreamingSettings(settingsCache, touchedKeys)
+
   syncEnv(settingsCache)
   await persistSettings()
   return getSettings()

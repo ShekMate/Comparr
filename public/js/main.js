@@ -673,6 +673,35 @@ function toggleSettingsVisibility(canAccess) {
   }
 }
 
+function collectPersonalMediaSourcesSetting() {
+  const selectedSources = Array.from(
+    document.querySelectorAll('[data-personal-media-source]:checked')
+  )
+    .map(input => input.value)
+    .filter(Boolean)
+
+  return JSON.stringify(selectedSources)
+}
+
+function hydratePersonalMediaSourcesSetting(rawValue) {
+  let parsedSources = []
+
+  if (typeof rawValue === 'string' && rawValue.trim()) {
+    try {
+      const parsed = JSON.parse(rawValue)
+      if (Array.isArray(parsed)) {
+        parsedSources = parsed.map(value => String(value).toLowerCase())
+      }
+    } catch {
+      parsedSources = []
+    }
+  }
+
+  document.querySelectorAll('[data-personal-media-source]').forEach(input => {
+    input.checked = parsedSources.includes(input.value)
+  })
+}
+
 function collectSettingsForm() {
   const settings = {}
   document.querySelectorAll('[data-setting-key]').forEach(el => {
@@ -684,6 +713,9 @@ function collectSettingsForm() {
     }
     settings[key] = el.value
   })
+
+  settings.PERSONAL_MEDIA_SOURCES = collectPersonalMediaSourcesSetting()
+
   return settings
 }
 
@@ -706,6 +738,8 @@ async function hydrateSettingsForm() {
         el.value = value
       }
     })
+
+    hydratePersonalMediaSourcesSetting(settings.PERSONAL_MEDIA_SOURCES)
   } catch (err) {
     console.warn('Failed to hydrate settings form:', err)
   }
@@ -724,7 +758,21 @@ async function saveSettingsForm() {
       body: JSON.stringify({ settings }),
     })
     if (!res.ok) {
-      throw new Error(`Settings save failed: ${res.status}`)
+      let serverError = `Settings save failed: ${res.status}`
+      try {
+        const errorData = await res.json()
+        if (errorData?.details && typeof errorData.details === 'object') {
+          const details = Object.entries(errorData.details)
+            .map(([key, message]) => `${key}: ${message}`)
+            .join(' | ')
+          serverError = details || serverError
+        } else if (errorData?.error) {
+          serverError = errorData.error
+        }
+      } catch {
+        // ignore parse errors and use fallback message
+      }
+      throw new Error(serverError)
     }
     const data = await res.json()
     if (data?.settings?.PLEX_LIBRARY_NAME) {
@@ -736,7 +784,7 @@ async function saveSettingsForm() {
   } catch (err) {
     console.error('Failed to save settings:', err)
     if (status) {
-      status.textContent = 'Failed to save settings.'
+      status.textContent = `Failed to save settings: ${err?.message || 'Unknown error.'}`
     }
   }
 }
