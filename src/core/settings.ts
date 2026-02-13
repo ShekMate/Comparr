@@ -1,3 +1,8 @@
+import {
+  SettingsValidationError,
+  validateAndNormalizeStreamingSettings,
+} from './streamingProfileSettings.ts'
+
 export type SettingsKey =
   | 'PLEX_URL'
   | 'PLEX_TOKEN'
@@ -21,8 +26,14 @@ export type SettingsKey =
   | 'LINK_TYPE'
   | 'IMDB_SYNC_URL'
   | 'IMDB_SYNC_INTERVAL_MINUTES'
+  | 'STREAMING_PROFILE_MODE'
+  | 'PAID_STREAMING_SERVICES'
+  | 'PERSONAL_MEDIA_SOURCES'
 
 export type Settings = Record<SettingsKey, string>
+
+export { SettingsValidationError }
+
 
 const SETTINGS_KEYS: SettingsKey[] = [
   'PLEX_URL',
@@ -47,6 +58,9 @@ const SETTINGS_KEYS: SettingsKey[] = [
   'LINK_TYPE',
   'IMDB_SYNC_URL',
   'IMDB_SYNC_INTERVAL_MINUTES',
+  'STREAMING_PROFILE_MODE',
+  'PAID_STREAMING_SERVICES',
+  'PERSONAL_MEDIA_SOURCES',
 ]
 
 const DEFAULTS: Partial<Settings> = {
@@ -62,6 +76,9 @@ const DEFAULTS: Partial<Settings> = {
   PLEX_LIBRARY_NAME: 'My Plex Library',
   IMDB_SYNC_URL: '',
   IMDB_SYNC_INTERVAL_MINUTES: '0',
+  STREAMING_PROFILE_MODE: 'anywhere',
+  PAID_STREAMING_SERVICES: '',
+  PERSONAL_MEDIA_SOURCES: '[]',
 }
 
 const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
@@ -147,11 +164,17 @@ export const getSetting = (key: SettingsKey): string => settingsCache[key] ?? ''
 export const updateSettings = async (
   updates: Partial<Settings>
 ): Promise<Settings> => {
+  const touchedKeys = new Set<SettingsKey>()
+
   for (const key of SETTINGS_KEYS) {
     if (Object.prototype.hasOwnProperty.call(updates, key)) {
       settingsCache[key] = normalizeValue(updates[key])
+      touchedKeys.add(key)
     }
   }
+
+  validateAndNormalizeStreamingSettings(settingsCache, touchedKeys)
+
   syncEnv(settingsCache)
   await persistSettings()
   return getSettings()

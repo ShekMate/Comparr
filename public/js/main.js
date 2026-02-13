@@ -632,9 +632,22 @@ async function loadClientConfig() {
     if (data?.plexLibraryName) {
       window.PLEX_LIBRARY_NAME = data.plexLibraryName
     }
+    if (data?.streamingProfileMode) {
+      window.STREAMING_PROFILE_MODE = data.streamingProfileMode
+    }
+    if (data?.paidStreamingServices !== undefined) {
+      window.PAID_STREAMING_SERVICES = data.paidStreamingServices
+    }
+    if (data?.personalMediaSources !== undefined) {
+      window.PERSONAL_MEDIA_SOURCES = data.personalMediaSources
+    }
   } catch (err) {
     console.warn('Client config fetch failed:', err)
   }
+}
+
+function isLibrariesOnlyProfile() {
+  return window.STREAMING_PROFILE_MODE === 'my_libraries'
 }
 
 function toggleSettingsVisibility(canAccess) {
@@ -711,7 +724,21 @@ async function saveSettingsForm() {
       body: JSON.stringify({ settings }),
     })
     if (!res.ok) {
-      throw new Error(`Settings save failed: ${res.status}`)
+      let serverError = `Settings save failed: ${res.status}`
+      try {
+        const errorData = await res.json()
+        if (errorData?.details && typeof errorData.details === 'object') {
+          const details = Object.entries(errorData.details)
+            .map(([key, message]) => `${key}: ${message}`)
+            .join(' | ')
+          serverError = details || serverError
+        } else if (errorData?.error) {
+          serverError = errorData.error
+        }
+      } catch {
+        // ignore parse errors and use fallback message
+      }
+      throw new Error(serverError)
     }
     const data = await res.json()
     if (data?.settings?.PLEX_LIBRARY_NAME) {
@@ -723,7 +750,7 @@ async function saveSettingsForm() {
   } catch (err) {
     console.error('Failed to save settings:', err)
     if (status) {
-      status.textContent = 'Failed to save settings.'
+      status.textContent = `Failed to save settings: ${err?.message || 'Unknown error.'}`
     }
   }
 }
@@ -2699,7 +2726,7 @@ const main = async () => {
     genres: [],
     contentRatings: [],
     //streamingServices: [],
-    showPlexOnly: false,
+    showPlexOnly: isLibrariesOnlyProfile(),
     languages: [...DEFAULT_LANGUAGES],
     countries: [],
     imdbRating: 0.0,
@@ -2793,17 +2820,17 @@ const main = async () => {
     // Update label styling
     toggleLabels.forEach((label, index) => {
       if (index === 0) {
-        // "All Movies"
+        // "Anywhere"
         label.classList.toggle('active', !e.target.checked)
       } else {
-        // "My Plex Only"
+        // "My Libraries"
         label.classList.toggle('active', e.target.checked)
       }
     })
 
     console.log(
       'Where to Watch:',
-      filterState.showPlexOnly ? 'My Plex Only' : 'All Movies'
+      filterState.showPlexOnly ? 'My Libraries' : 'Anywhere'
     )
 
     // Immediately clear any buffered movies fetched with the previous filter state
@@ -3302,18 +3329,15 @@ const main = async () => {
     //checkbox.checked = false
     //})
 
-    // Reset Where to Watch toggle
+    // Reset Where to Watch toggle to configured profile
     const plexOnlyToggle = document.getElementById('plex-only-toggle')
     if (plexOnlyToggle) {
-      plexOnlyToggle.checked = false
-      filterState.showPlexOnly = false
+      const isLibrariesOnly = isLibrariesOnlyProfile()
+      plexOnlyToggle.checked = isLibrariesOnly
+      filterState.showPlexOnly = isLibrariesOnly
       const toggleLabels = document.querySelectorAll('.toggle-label-text')
       toggleLabels.forEach((label, index) => {
-        if (index === 0) {
-          label.classList.add('active')
-        } else {
-          label.classList.remove('active')
-        }
+        label.classList.toggle('active', isLibrariesOnly ? index === 1 : index === 0)
       })
     }
 
@@ -5109,7 +5133,7 @@ swipeFilterReset?.addEventListener('click', () => {
     window.filterState.yearRange = { min: 1895, max: currentYear }
     window.filterState.genres = []
     window.filterState.contentRatings = []
-    window.filterState.showPlexOnly = false
+    window.filterState.showPlexOnly = isLibrariesOnlyProfile()
     window.filterState.languages = ['en']
     window.filterState.countries = []
     window.filterState.imdbRating = 0
@@ -5149,12 +5173,13 @@ swipeFilterReset?.addEventListener('click', () => {
   if (swipeVoteCount) swipeVoteCount.value = 0
   if (swipeVoteValue) swipeVoteValue.textContent = '0'
   if (plexToggle) {
-    plexToggle.checked = false
+    const isLibrariesOnly = isLibrariesOnlyProfile()
+    plexToggle.checked = isLibrariesOnly
     const container = plexToggle.closest('.toggle-switch-container')
     if (container) {
       const labels = container.querySelectorAll('.toggle-label-text')
       labels.forEach((label, index) => {
-        label.classList.toggle('active', index === 0)
+        label.classList.toggle('active', isLibrariesOnly ? index === 1 : index === 0)
       })
     }
   }
