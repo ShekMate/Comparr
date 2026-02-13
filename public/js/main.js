@@ -632,6 +632,15 @@ async function loadClientConfig() {
     if (data?.plexLibraryName) {
       window.PLEX_LIBRARY_NAME = data.plexLibraryName
     }
+    if (data?.streamingProfileMode) {
+      window.STREAMING_PROFILE_MODE = data.streamingProfileMode
+    }
+    if (data?.paidStreamingServices !== undefined) {
+      window.PAID_STREAMING_SERVICES = data.paidStreamingServices
+    }
+    if (data?.personalMediaSources !== undefined) {
+      window.PERSONAL_MEDIA_SOURCES = data.personalMediaSources
+    }
   } catch (err) {
     console.warn('Client config fetch failed:', err)
   }
