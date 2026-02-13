@@ -395,9 +395,15 @@ describe('ComparrAPI', () => {
     it('should emit events for different message types', () => {
       const events = []
 
-      api.addEventListener('batch', e => events.push({ type: 'batch', data: e.data }))
-      api.addEventListener('match', e => events.push({ type: 'match', data: e.data }))
-      api.addEventListener('error', e => events.push({ type: 'error', data: e.data }))
+      api.addEventListener('batch', e =>
+        events.push({ type: 'batch', data: e.data })
+      )
+      api.addEventListener('match', e =>
+        events.push({ type: 'match', data: e.data })
+      )
+      api.addEventListener('error', e =>
+        events.push({ type: 'error', data: e.data })
+      )
 
       // Send different message types
       mockWebSocket.simulateMessage({

@@ -19,8 +19,14 @@ const getPlexConfig = () => {
   const plexUrl = getPlexUrl()
   const plexToken = getPlexToken()
 
-  assert(typeof plexUrl === 'string' && plexUrl !== '', 'A PLEX_URL is required')
-  assert(typeof plexToken === 'string' && plexToken !== '', 'A PLEX_TOKEN is required')
+  assert(
+    typeof plexUrl === 'string' && plexUrl !== '',
+    'A PLEX_URL is required'
+  )
+  assert(
+    typeof plexToken === 'string' && plexToken !== '',
+    'A PLEX_TOKEN is required'
+  )
   assert(
     !plexToken.startsWith('claim-'),
     'Your PLEX_TOKEN does not look right. Please see: https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/'
@@ -191,14 +197,14 @@ const GENRE_MAP: Record<number, string> = {
   10770: 'TV Movie',
   53: 'Thriller',
   10752: 'War',
-  37: 'Western'
-};
+  37: 'Western',
+}
 
 function genreIdsToNames(genreIds: (number | string)[]): string[] {
   return genreIds.map(id => {
-    if (typeof id === 'string') return id;
-    return GENRE_MAP[id] || String(id);
-  });
+    if (typeof id === 'string') return id
+    return GENRE_MAP[id] || String(id)
+  })
 }
 
 export const getRandomMovie = (() => {
@@ -238,45 +244,55 @@ export const getFilteredRandomMovie = (() => {
   const getRandom = (
     movies: PlexVideo['Metadata'],
     filters?: {
-      yearMin?: number;
-      yearMax?: number;
-      genres?: string[];
+      yearMin?: number
+      yearMax?: number
+      genres?: string[]
     }
   ): PlexVideo['Metadata'][number] => {
     // First, filter the movie list based on criteria we can check without enrichment
-    let filteredMovies = movies;
+    let filteredMovies = movies
 
     // Apply year filter
     if (filters?.yearMin || filters?.yearMax) {
       filteredMovies = filteredMovies.filter(movie => {
-        const movieYear = typeof movie.year === 'number' ? movie.year : Number(movie.year);
-        if (filters.yearMin && movieYear < filters.yearMin) return false;
-        if (filters.yearMax && movieYear > filters.yearMax) return false;
-        return true;
-      });
+        const movieYear =
+          typeof movie.year === 'number' ? movie.year : Number(movie.year)
+        if (filters.yearMin && movieYear < filters.yearMin) return false
+        if (filters.yearMax && movieYear > filters.yearMax) return false
+        return true
+      })
     }
 
     // Apply genre filter using Plex's Genre tags
     if (filters?.genres && filters.genres.length > 0) {
-      const filterGenreNames = genreIdsToNames(filters.genres).map(g => g.toLowerCase());
+      const filterGenreNames = genreIdsToNames(filters.genres).map(g =>
+        g.toLowerCase()
+      )
       filteredMovies = filteredMovies.filter(movie => {
-        if (!movie.Genre || movie.Genre.length === 0) return false;
-        const movieGenres = movie.Genre.map(g => g.tag.toLowerCase());
-        return filterGenreNames.some(filterGenre => movieGenres.includes(filterGenre));
-      });
+        if (!movie.Genre || movie.Genre.length === 0) return false
+        const movieGenres = movie.Genre.map(g => g.tag.toLowerCase())
+        return filterGenreNames.some(filterGenre =>
+          movieGenres.includes(filterGenre)
+        )
+      })
     }
 
-    assert(filteredMovies.length !== 0, `No movies match the current filters in your Plex library`)
-    
+    assert(
+      filteredMovies.length !== 0,
+      `No movies match the current filters in your Plex library`
+    )
+
     if (drawnGuids.size === filteredMovies.length) {
-      log.info(`All ${filteredMovies.length} matching Plex movies have been shown`);
+      log.info(
+        `All ${filteredMovies.length} matching Plex movies have been shown`
+      )
       throw new NoMoreMoviesError()
     }
 
     // Pick a random movie from the filtered list that hasn't been drawn yet
-    let attempts = 0;
-    const maxAttempts = filteredMovies.length * 2; // Reasonable limit
-    
+    let attempts = 0
+    const maxAttempts = filteredMovies.length * 2 // Reasonable limit
+
     while (attempts < maxAttempts) {
       const randomIndex = Math.floor(Math.random() * filteredMovies.length)
       const movie = filteredMovies[randomIndex]
@@ -288,21 +304,23 @@ export const getFilteredRandomMovie = (() => {
 
       if (!drawnGuids.has(movie.guid)) {
         drawnGuids.add(movie.guid)
-        log.debug(`✅ Selected movie ${movie.title} from ${filteredMovies.length} filtered Plex movies`)
+        log.debug(
+          `✅ Selected movie ${movie.title} from ${filteredMovies.length} filtered Plex movies`
+        )
         return movie
       }
-      
-      attempts++;
+
+      attempts++
     }
-    
+
     // If we get here, all filtered movies have been drawn
     throw new NoMoreMoviesError()
   }
 
   return async (filters?: {
-    yearMin?: number;
-    yearMax?: number;
-    genres?: string[];
+    yearMin?: number
+    yearMax?: number
+    genres?: string[]
   }) => getRandom(await getAllMovies(), filters)
 })()
 
@@ -367,10 +385,10 @@ export const proxyPoster = async (req: ServerRequest, key: string) => {
     }
 
     const imageData = new Uint8Array(await posterReq.arrayBuffer())
-    
+
     // Cache the downloaded poster
     const { cachePoster } = await import('../services/cache/poster-cache.ts')
-    cachePoster(key, 'plex', url).catch(err => 
+    cachePoster(key, 'plex', url).catch(err =>
       log.error(`Failed to cache Plex poster: ${err}`)
     )
 
@@ -391,9 +409,14 @@ export const proxyPoster = async (req: ServerRequest, key: string) => {
  * Check if a movie exists in the Plex library by title and year
  * This now uses the fast cache instead of scanning the entire library
  */
-export async function isMovieInPlex(title: string, year?: number | null): Promise<boolean> {
+export async function isMovieInPlex(
+  title: string,
+  year?: number | null
+): Promise<boolean> {
   try {
-    const { isMovieInPlex: cachedCheck } = await import('../integrations/plex/cache.ts')
+    const { isMovieInPlex: cachedCheck } = await import(
+      '../integrations/plex/cache.ts'
+    )
     return cachedCheck({ title, year })
   } catch (err) {
     log.error(`Failed to check if movie is in Plex: ${err}`)

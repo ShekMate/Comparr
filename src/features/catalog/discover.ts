@@ -45,82 +45,94 @@ async function j(url: string) {
 
 // Map UI streaming service names to TMDb provider IDs (US region)
 const STREAMING_PROVIDER_MAP: Record<string, number> = {
-  'netflix': 8,
+  netflix: 8,
   'amazon-prime': 9,
   'disney-plus': 337,
   'hbo-max': 1899,
-  'hulu': 15,
+  hulu: 15,
   'paramount-plus': 531,
-  'peacock': 387,
-  'apple-tv-plus': 350
+  peacock: 387,
+  'apple-tv-plus': 350,
 }
 
-export async function discoverMovies(filters: DiscoverFilters): Promise<TMDbDiscoverResult> {
+export async function discoverMovies(
+  filters: DiscoverFilters
+): Promise<TMDbDiscoverResult> {
   const TMDB = getTmdbKey()
-  if (!TMDB) return { results: [] };
+  if (!TMDB) return { results: [] }
 
   const params = new URLSearchParams({
     api_key: TMDB,
     sort_by: filters.sortBy || 'popularity.desc',
     include_adult: 'false',
     page: String(filters.page || 1),
-    watch_region: DEFAULT_DISCOVER_REGION,  // Required for streaming providers
-    region: DEFAULT_DISCOVER_REGION
-  });
+    watch_region: DEFAULT_DISCOVER_REGION, // Required for streaming providers
+    region: DEFAULT_DISCOVER_REGION,
+  })
 
-  const yearMin = filters.yearMin ?? DEFAULT_DISCOVER_YEAR_MIN;
-  params.set('primary_release_date.gte', `${yearMin}-01-01`);
-  if (filters.yearMax) params.set('primary_release_date.lte', `${filters.yearMax}-12-31`);
-  if (filters.genres?.length) params.set('with_genres', filters.genres.join('|'));
-  if (filters.tmdbRating) params.set('vote_average.gte', filters.tmdbRating.toString());
+  const yearMin = filters.yearMin ?? DEFAULT_DISCOVER_YEAR_MIN
+  params.set('primary_release_date.gte', `${yearMin}-01-01`)
+  if (filters.yearMax)
+    params.set('primary_release_date.lte', `${filters.yearMax}-12-31`)
+  if (filters.genres?.length)
+    params.set('with_genres', filters.genres.join('|'))
+  if (filters.tmdbRating)
+    params.set('vote_average.gte', filters.tmdbRating.toString())
 
   // CRITICAL FIX: Pass vote count to TMDb API to avoid fetching low-vote movies
   if (filters.voteCount && filters.voteCount > 0) {
-    params.set('vote_count.gte', filters.voteCount.toString());
-    log.debug(`🎯 Filtering by vote count >= ${filters.voteCount} at API level`);
+    params.set('vote_count.gte', filters.voteCount.toString())
+    log.debug(`🎯 Filtering by vote count >= ${filters.voteCount} at API level`)
   }
 
   if (Array.isArray(filters.languages) && filters.languages.length) {
-    params.set('with_original_language', filters.languages.join('|'));
+    params.set('with_original_language', filters.languages.join('|'))
   } else if (filters.languages === undefined) {
-    params.set('with_original_language', DEFAULT_DISCOVER_LANGUAGES.join('|'));
+    params.set('with_original_language', DEFAULT_DISCOVER_LANGUAGES.join('|'))
   }
-  if (filters.countries?.length) params.set('with_origin_country', filters.countries.join('|'));
+  if (filters.countries?.length)
+    params.set('with_origin_country', filters.countries.join('|'))
 
-  if (filters.runtimeMin && filters.runtimeMin > 0) params.set('with_runtime.gte', filters.runtimeMin.toString());
-  if (filters.runtimeMax && filters.runtimeMax > 0) params.set('with_runtime.lte', filters.runtimeMax.toString());
-  
+  if (filters.runtimeMin && filters.runtimeMin > 0)
+    params.set('with_runtime.gte', filters.runtimeMin.toString())
+  if (filters.runtimeMax && filters.runtimeMax > 0)
+    params.set('with_runtime.lte', filters.runtimeMax.toString())
+
   // NEW: Map streaming services to TMDb provider IDs
   if (filters.streamingServices?.length) {
     const providerIds = filters.streamingServices
-      .filter(service => service !== 'my-plex-library')  // Exclude Plex
+      .filter(service => service !== 'my-plex-library') // Exclude Plex
       .map(service => STREAMING_PROVIDER_MAP[service])
-      .filter(id => id !== undefined);
-    
+      .filter(id => id !== undefined)
+
     if (providerIds.length > 0) {
-      params.set('with_watch_providers', providerIds.join('|'));
-      log.debug(`🎬 Using TMDb streaming providers: ${providerIds.join(', ')}`);
+      params.set('with_watch_providers', providerIds.join('|'))
+      log.debug(`🎬 Using TMDb streaming providers: ${providerIds.join(', ')}`)
     }
   }
-  
+
   if (filters.contentRatings?.length) {
-    params.set('certification_country', 'US');
-    params.set('certification', filters.contentRatings.join('|'));
+    params.set('certification_country', 'US')
+    params.set('certification', filters.contentRatings.join('|'))
   }
-  
-  const url = `https://api.themoviedb.org/3/discover/movie?${params}`;
-  
+
+  const url = `https://api.themoviedb.org/3/discover/movie?${params}`
+
   log.debug('🔍 TMDb API Call:', {
     url,
-    params: Object.fromEntries(params.entries())
-  });
-  
-  const data = await j(url);
-  
-  log.info(`📊 TMDb Results: ${data.total_results} total, ${data.results?.length || 0} on page`);
+    params: Object.fromEntries(params.entries()),
+  })
+
+  const data = await j(url)
+
+  log.info(
+    `📊 TMDb Results: ${data.total_results} total, ${
+      data.results?.length || 0
+    } on page`
+  )
   if (data.results?.length === 0) {
-    log.warning('⚠️ TMDb returned no results for current filters');
+    log.warning('⚠️ TMDb returned no results for current filters')
   }
-  
-  return data;
+
+  return data
 }

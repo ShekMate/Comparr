@@ -17,21 +17,26 @@ export const getPlexUrl = () => normalizeUrl(getSettingTrimmed('PLEX_URL'))
 export const getPlexToken = () => getSettingTrimmed('PLEX_TOKEN')
 export const getPort = () => getSettingTrimmed('PORT') ?? '8000'
 export const LOG_LEVEL = getSettingTrimmed('LOG_LEVEL') ?? 'INFO'
-export const getMovieBatchSize = () => getSettingTrimmed('MOVIE_BATCH_SIZE') ?? '20'
+export const getMovieBatchSize = () =>
+  getSettingTrimmed('MOVIE_BATCH_SIZE') ?? '20'
 export const getLinkType = () => getSettingTrimmed('LINK_TYPE') ?? 'app'
 export const getDefaultSectionTypeFilter = () =>
   getSettingTrimmed('DEFAULT_SECTION_TYPE_FILTER') ?? 'movie'
 export const getLibraryFilter = () => getSettingTrimmed('LIBRARY_FILTER') ?? ''
-export const getCollectionFilter = () => getSettingTrimmed('COLLECTION_FILTER') ?? ''
+export const getCollectionFilter = () =>
+  getSettingTrimmed('COLLECTION_FILTER') ?? ''
 export const getRootPath = () => getSettingTrimmed('ROOT_PATH') ?? ''
 export const getPlexLibraryName = () =>
   getSettingTrimmed('PLEX_LIBRARY_NAME') ?? 'My Plex Library'
 export const getRadarrUrl = () => normalizeUrl(getSettingTrimmed('RADARR_URL'))
 export const getRadarrApiKey = () => getSettingTrimmed('RADARR_API_KEY')
-export const getAccessPassword = () => getSettingTrimmed('ACCESS_PASSWORD') ?? ''
-export const getJellyseerrUrl = () => normalizeUrl(getSettingTrimmed('JELLYSEERR_URL'))
+export const getAccessPassword = () =>
+  getSettingTrimmed('ACCESS_PASSWORD') ?? ''
+export const getJellyseerrUrl = () =>
+  normalizeUrl(getSettingTrimmed('JELLYSEERR_URL'))
 export const getJellyseerrApiKey = () => getSettingTrimmed('JELLYSEERR_API_KEY')
-export const getOverseerrUrl = () => normalizeUrl(getSettingTrimmed('OVERSEERR_URL'))
+export const getOverseerrUrl = () =>
+  normalizeUrl(getSettingTrimmed('OVERSEERR_URL'))
 export const getOverseerrApiKey = () => getSettingTrimmed('OVERSEERR_API_KEY')
 export const getTmdbApiKey = () => getSettingTrimmed('TMDB_API_KEY')
 export const getOmdbApiKey = () => getSettingTrimmed('OMDB_API_KEY')

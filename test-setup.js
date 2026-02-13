@@ -68,7 +68,9 @@ class MockWebSocket {
 
   // Test helper to simulate receiving a message
   simulateMessage(data) {
-    const messageData = { data: typeof data === 'string' ? data : JSON.stringify(data) }
+    const messageData = {
+      data: typeof data === 'string' ? data : JSON.stringify(data),
+    }
     if (this.onmessage) {
       this.onmessage(messageData)
     }

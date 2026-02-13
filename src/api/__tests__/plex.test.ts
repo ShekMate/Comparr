@@ -1,6 +1,16 @@
 // Tests for Plex API integration
-import { assertEquals, assertExists, assertRejects, createMockFetch, createMockResponse, mockEnv } from '../../__tests__/utils/test-helpers.ts'
-import { mockPlexSections, mockPlexMovies } from '../../__tests__/mocks/plex-mocks.ts'
+import {
+  assertEquals,
+  assertExists,
+  assertRejects,
+  createMockFetch,
+  createMockResponse,
+  mockEnv,
+} from '../../__tests__/utils/test-helpers.ts'
+import {
+  mockPlexSections,
+  mockPlexMovies,
+} from '../../__tests__/mocks/plex-mocks.ts'
 
 // Mock the global fetch before importing the module
 const originalFetch = globalThis.fetch
@@ -20,9 +30,7 @@ Deno.test({
   async fn() {
     // Setup mock fetch
     globalThis.fetch = createMockFetch(
-      new Map([
-        ['library/sections', { status: 200, body: mockPlexSections }]
-      ])
+      new Map([['library/sections', { status: 200, body: mockPlexSections }]])
     )
 
     // Dynamically import to get fresh module with mocked env
@@ -44,9 +52,7 @@ Deno.test({
   name: 'Plex API - getSections - 401 authentication error',
   async fn() {
     globalThis.fetch = createMockFetch(
-      new Map([
-        ['library/sections', { status: 401, body: 'Unauthorized' }]
-      ])
+      new Map([['library/sections', { status: 401, body: 'Unauthorized' }]])
     )
 
     const { getSections } = await import('../plex.ts')
@@ -68,16 +74,13 @@ Deno.test({
   async fn() {
     globalThis.fetch = createMockFetch(
       new Map([
-        ['library/sections', { status: 500, body: 'Internal Server Error' }]
+        ['library/sections', { status: 500, body: 'Internal Server Error' }],
       ])
     )
 
     const { getSections } = await import('../plex.ts')
 
-    await assertRejects(
-      async () => await getSections(),
-      Error
-    )
+    await assertRejects(async () => await getSections(), Error)
 
     globalThis.fetch = originalFetch
   },
@@ -92,7 +95,10 @@ Deno.test({
     globalThis.fetch = async (url: string | URL | Request) => {
       const urlString = typeof url === 'string' ? url : url.toString()
 
-      if (urlString.includes('library/sections') && !urlString.includes('/all')) {
+      if (
+        urlString.includes('library/sections') &&
+        !urlString.includes('/all')
+      ) {
         return createMockResponse({ status: 200, body: mockPlexSections })
       }
 
@@ -126,7 +132,10 @@ Deno.test({
     globalThis.fetch = async (url: string | URL | Request) => {
       const urlString = typeof url === 'string' ? url : url.toString()
 
-      if (urlString.includes('library/sections') && !urlString.includes('/all')) {
+      if (
+        urlString.includes('library/sections') &&
+        !urlString.includes('/all')
+      ) {
         return createMockResponse({ status: 200, body: mockPlexSections })
       }
 
@@ -137,7 +146,9 @@ Deno.test({
       return createMockResponse({ status: 404, body: 'Not Found' })
     }
 
-    const { getRandomMovie, getAllMovies, NoMoreMoviesError } = await import('../plex.ts')
+    const { getRandomMovie, getAllMovies, NoMoreMoviesError } = await import(
+      '../plex.ts'
+    )
     const movies = await getAllMovies()
 
     // Get random movies - should not repeat
@@ -184,7 +195,10 @@ Deno.test({
     globalThis.fetch = async (url: string | URL | Request) => {
       const urlString = typeof url === 'string' ? url : url.toString()
 
-      if (urlString.includes('library/sections') && !urlString.includes('/all')) {
+      if (
+        urlString.includes('library/sections') &&
+        !urlString.includes('/all')
+      ) {
         return createMockResponse({ status: 200, body: mockPlexSections })
       }
 
