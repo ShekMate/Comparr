@@ -368,12 +368,12 @@ for await (const req of server) {
     if (p === '/api/matches') {
       const url = new URL(req.url, 'http://local')
       const roomCode = url.searchParams.get('code') || ''
-      const userName = url.searchParams.get('user') || ''
+      const userName = (url.searchParams.get('user') || '').trim()
 
-      if (!roomCode || !userName) {
+      if (!roomCode || !userName || !/^[a-zA-Z0-9]{1,20}$/.test(roomCode) || userName.length > 50) {
         await req.respond({
           status: 400,
-          body: JSON.stringify({ error: 'Missing room code or user' }),
+          body: JSON.stringify({ error: 'Missing or invalid room code or user' }),
           headers: new Headers({ 'content-type': 'application/json' }),
         })
         continue
@@ -401,9 +401,9 @@ for await (const req of server) {
 	if (p.startsWith('/api/check-movie-status')) {
 	  try {
 		const url = new URL(req.url, 'http://local')
-		const tmdbId = parseInt(url.searchParams.get('tmdbId') || '')
-		
-		if (!tmdbId || isNaN(tmdbId)) {
+		const tmdbId = Number(url.searchParams.get('tmdbId') || '')
+
+		if (!Number.isInteger(tmdbId) || tmdbId <= 0 || tmdbId > 999999999) {
 		  await req.respond({
 			status: 400,
 			body: JSON.stringify({ error: 'Invalid or missing TMDb ID' }),
@@ -411,7 +411,7 @@ for await (const req of server) {
 		  })
 		  continue
 		}
-		
+
 		// Check if movie is in Radarr (which means it's in Plex or downloading)
 		const inPlex = isMovieInRadarr(tmdbId)
 		
@@ -438,9 +438,9 @@ for await (const req of server) {
 	if (p.startsWith('/api/check-request-status')) {
 	  try {
 		const url = new URL(req.url, 'http://local')
-		const tmdbId = parseInt(url.searchParams.get('tmdbId') || '')
-		
-		if (!tmdbId || isNaN(tmdbId)) {
+		const tmdbId = Number(url.searchParams.get('tmdbId') || '')
+
+		if (!Number.isInteger(tmdbId) || tmdbId <= 0 || tmdbId > 999999999) {
 		  await req.respond({
 			status: 400,
 			body: JSON.stringify({ error: 'Invalid or missing TMDb ID' }),
@@ -448,7 +448,7 @@ for await (const req of server) {
 		  })
 		  continue
 		}
-		
+
 		// Check request status in Jellyseerr/Overseerr
 		const status = await getMediaStatus(tmdbId)
 		
