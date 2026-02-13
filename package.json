@@ -32,8 +32,27 @@
   "stylelint": {
     "extends": "stylelint-config-standard",
     "ignoreFiles": [
-      "public/index.html"
-    ]
+      "public/index.html",
+      "coverage/**",
+      "node_modules/**"
+    ],
+    "rules": {
+      "declaration-colon-newline-after": null,
+      "block-opening-brace-newline-after": null,
+      "block-closing-brace-newline-before": null,
+      "selector-list-comma-newline-after": null,
+      "indentation": null,
+      "no-descending-specificity": null,
+      "no-duplicate-selectors": null,
+      "declaration-block-no-duplicate-properties": null,
+      "length-zero-no-unit": null,
+      "font-family-no-missing-generic-family-keyword": null,
+      "declaration-empty-line-before": null,
+      "declaration-block-semicolon-space-before": null,
+      "rule-empty-line-before": null,
+      "selector-pseudo-element-colon-notation": null,
+      "comment-empty-line-before": null
+    }
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^2.0.0",

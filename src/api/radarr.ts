@@ -47,14 +47,14 @@ async function fetchRadarrMovies(): Promise<RadarrMovie[]> {
 export async function refreshRadarrCache(): Promise<void> {
   const movies = await fetchRadarrMovies()
   const newCache = new Map<number, RadarrMovie>()
-  
-  let skippedCount = 0;
+
+  let skippedCount = 0
   for (const movie of movies) {
     if (movie.tmdbId) {
       // Safety check: prevent cache from growing too large
       if (newCache.size >= MAX_RADARR_CACHE_SIZE) {
-        skippedCount++;
-        continue;
+        skippedCount++
+        continue
       }
       newCache.set(movie.tmdbId, movie)
     }
@@ -63,15 +63,17 @@ export async function refreshRadarrCache(): Promise<void> {
   movieCache = newCache
   lastCacheUpdate = Date.now()
   log.info(`✅ Radarr cache updated with ${movieCache.size} movies`)
-  
+
   if (skippedCount > 0) {
-    log.warning(`⚠️ Radarr cache size limit reached. ${skippedCount} movies skipped. Consider increasing MAX_RADARR_CACHE_SIZE.`)
+    log.warning(
+      `⚠️ Radarr cache size limit reached. ${skippedCount} movies skipped. Consider increasing MAX_RADARR_CACHE_SIZE.`
+    )
   }
 }
 
 export async function initializeRadarrCache(): Promise<void> {
   await refreshRadarrCache()
-  
+
   // Set up daily refresh timer
   setInterval(async () => {
     try {
@@ -80,7 +82,7 @@ export async function initializeRadarrCache(): Promise<void> {
       log.error(`Background Radarr cache update failed: ${error}`)
     }
   }, CACHE_DURATION)
-  
+
   log.info('⏰ Radarr background refresh scheduled for every 24 hours')
 }
 
@@ -97,11 +99,15 @@ export function isMovieInRadarr(tmdbId: number): boolean {
   return movie ? movie.hasFile : false
 }
 
-export function getRadarrCacheStats(): { size: number; lastUpdate: Date; isStale: boolean } {
+export function getRadarrCacheStats(): {
+  size: number
+  lastUpdate: Date
+  isStale: boolean
+} {
   const now = Date.now()
   return {
     size: movieCache.size,
     lastUpdate: new Date(lastCacheUpdate),
-    isStale: now - lastCacheUpdate > CACHE_DURATION
+    isStale: now - lastCacheUpdate > CACHE_DURATION,
   }
 }

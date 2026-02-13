@@ -21,7 +21,7 @@ const cache: PlexAvailabilityCache = {
   byTitleYear: new Map(),
   byTmdbId: new Map(),
   byImdbId: new Map(),
-  lastUpdated: 0
+  lastUpdated: 0,
 }
 
 const CACHE_REFRESH_INTERVAL = 60 * 60 * 1000 // 1 hour
@@ -45,18 +45,18 @@ function normalizeTitle(title: string): string {
  */
 function extractTmdbId(guid?: string): number | undefined {
   if (!guid) return undefined
-  
+
   const patterns = [
     /tmdb:\/\/(\d+)/,
     /themoviedb:\/\/(\d+)/,
-    /themoviedb\.org\/movie\/(\d+)/
+    /themoviedb\.org\/movie\/(\d+)/,
   ]
-  
+
   for (const pattern of patterns) {
     const match = guid.match(pattern)
     if (match) return parseInt(match[1])
   }
-  
+
   return undefined
 }
 
@@ -76,53 +76,57 @@ export async function buildPlexCache(): Promise<void> {
   try {
     log.info('🔄 Building Plex availability cache...')
     const startTime = Date.now()
-    
+
     const movies = await getAllMovies()
-    
+
     // Clear existing cache
     cache.byTitleYear.clear()
     cache.byTmdbId.clear()
     cache.byImdbId.clear()
-    
+
     let processedCount = 0
     let tmdbIdCount = 0
     let imdbIdCount = 0
-    
+
     for (const movie of movies) {
       const entry: PlexMovieEntry = {
         title: movie.title,
         year: movie.year || null,
         guid: movie.guid,
         tmdbId: extractTmdbId(movie.guid),
-        imdbId: extractImdbId(movie.guid)
+        imdbId: extractImdbId(movie.guid),
       }
-      
+
       // Index by title+year
-      const titleYearKey = `${normalizeTitle(movie.title)}|${movie.year || 'unknown'}`
+      const titleYearKey = `${normalizeTitle(movie.title)}|${
+        movie.year || 'unknown'
+      }`
       if (!cache.byTitleYear.has(titleYearKey)) {
         cache.byTitleYear.set(titleYearKey, [])
       }
       cache.byTitleYear.get(titleYearKey)!.push(entry)
-      
+
       // Index by TMDb ID
       if (entry.tmdbId) {
         cache.byTmdbId.set(entry.tmdbId, entry)
         tmdbIdCount++
       }
-      
-      // Index by IMDb ID  
+
+      // Index by IMDb ID
       if (entry.imdbId) {
         cache.byImdbId.set(entry.imdbId, entry)
         imdbIdCount++
       }
-      
+
       processedCount++
     }
-    
+
     cache.lastUpdated = Date.now()
-    
+
     const duration = Date.now() - startTime
-    log.info(`✅ Plex cache built: ${processedCount} movies (${tmdbIdCount} TMDb, ${imdbIdCount} IMDb) in ${duration}ms`)
+    log.info(
+      `✅ Plex cache built: ${processedCount} movies (${tmdbIdCount} TMDb, ${imdbIdCount} IMDb) in ${duration}ms`
+    )
   } catch (err) {
     log.error(`Failed to build Plex cache: ${err}`)
   }
@@ -182,16 +186,19 @@ export function isInPlexByImdbId(imdbId: string): boolean {
 /**
  * Check if a movie is in Plex by title and year
  */
-export function isInPlexByTitleYear(title: string, year?: number | null): boolean {
+export function isInPlexByTitleYear(
+  title: string,
+  year?: number | null
+): boolean {
   const normalizedTitle = normalizeTitle(title)
-  
+
   // Check with year first (more accurate)
   if (year) {
     const key = `${normalizedTitle}|${year}`
     if (cache.byTitleYear.has(key)) {
       return true
     }
-    
+
     // Also check year +/- 1 (sometimes release years differ)
     for (let offset = -1; offset <= 1; offset++) {
       const nearKey = `${normalizedTitle}|${year + offset}`
@@ -200,14 +207,14 @@ export function isInPlexByTitleYear(title: string, year?: number | null): boolea
       }
     }
   }
-  
+
   // Fallback: check without year (less accurate)
   for (const [key, entries] of cache.byTitleYear.entries()) {
     if (key.startsWith(`${normalizedTitle}|`)) {
       return true
     }
   }
-  
+
   return false
 }
 
@@ -224,17 +231,17 @@ export function isMovieInPlex(params: {
   if (params.tmdbId && isInPlexByTmdbId(params.tmdbId)) {
     return true
   }
-  
+
   // Try IMDb ID
   if (params.imdbId && isInPlexByImdbId(params.imdbId)) {
     return true
   }
-  
+
   // Fallback to title + year
   if (params.title) {
     return isInPlexByTitleYear(params.title, params.year)
   }
-  
+
   return false
 }
 
@@ -247,7 +254,7 @@ export function getCacheStats() {
     moviesWithTmdbId: cache.byTmdbId.size,
     moviesWithImdbId: cache.byImdbId.size,
     lastUpdated: cache.lastUpdated,
-    isStale: Date.now() - cache.lastUpdated > CACHE_REFRESH_INTERVAL
+    isStale: Date.now() - cache.lastUpdated > CACHE_REFRESH_INTERVAL,
   }
 }
 

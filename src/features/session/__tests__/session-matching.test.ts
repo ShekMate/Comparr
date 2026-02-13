@@ -1,5 +1,10 @@
 // Tests for session matching logic
-import { assertEquals, assertExists, MockWebSocket, waitFor } from '../../../__tests__/utils/test-helpers.ts'
+import {
+  assertEquals,
+  assertExists,
+  MockWebSocket,
+  waitFor,
+} from '../../../__tests__/utils/test-helpers.ts'
 
 // Mock movie data for testing
 const mockMovie1 = {
@@ -173,7 +178,10 @@ Deno.test({
     const likedUsers = simulator.likedMovies.get(mockMovie1)
     assertExists(likedUsers)
     assertEquals(likedUsers.length, 3)
-    assertEquals(likedUsers.map(u => u.name), ['Alice', 'Bob', 'Charlie'])
+    assertEquals(
+      likedUsers.map(u => u.name),
+      ['Alice', 'Bob', 'Charlie']
+    )
   },
 })
 
@@ -283,7 +291,8 @@ Deno.test({
 })
 
 Deno.test({
-  name: 'Session Matching - getExistingMatches returns only matches involving the user',
+  name:
+    'Session Matching - getExistingMatches returns only matches involving the user',
   fn() {
     const simulator = new MatchingSimulator()
 

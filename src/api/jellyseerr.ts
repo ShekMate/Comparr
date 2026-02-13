@@ -23,12 +23,16 @@ interface MediaStatus {
 const validateConfiguration = () => {
   const jellyseerrConfigured = !!(getJellyseerrUrl() && getJellyseerrApiKey())
   const overseerrConfigured = !!(getOverseerrUrl() && getOverseerrApiKey())
-  
+
   if (jellyseerrConfigured && overseerrConfigured) {
-    log.warning('⚠️  Both Jellyseerr and Overseerr are configured! Only one should be set.')
-    log.warning('⚠️  Jellyseerr will be used. Please remove Overseerr configuration from your .env file.')
+    log.warning(
+      '⚠️  Both Jellyseerr and Overseerr are configured! Only one should be set.'
+    )
+    log.warning(
+      '⚠️  Jellyseerr will be used. Please remove Overseerr configuration from your .env file.'
+    )
   }
-  
+
   if (jellyseerrConfigured) {
     log.info('✅ Jellyseerr request service configured')
   } else if (overseerrConfigured) {
@@ -46,16 +50,24 @@ const getServiceConfig = () => {
   const overseerrApiKey = getOverseerrApiKey()
   const jellyseerrConfigured = !!(jellyseerrUrl && jellyseerrApiKey)
   const overseerrConfigured = !!(overseerrUrl && overseerrApiKey)
-  
+
   // Prioritize Jellyseerr if both are configured
   if (jellyseerrConfigured && overseerrConfigured) {
     log.warning('Both services configured - using Jellyseerr')
   }
-  
+
   if (jellyseerrConfigured) {
-    return { url: jellyseerrUrl!, apiKey: jellyseerrApiKey!, service: 'jellyseerr' }
+    return {
+      url: jellyseerrUrl!,
+      apiKey: jellyseerrApiKey!,
+      service: 'jellyseerr',
+    }
   } else if (overseerrConfigured) {
-    return { url: overseerrUrl!, apiKey: overseerrApiKey!, service: 'overseerr' }
+    return {
+      url: overseerrUrl!,
+      apiKey: overseerrApiKey!,
+      service: 'overseerr',
+    }
   }
   return null
 }
@@ -65,7 +77,7 @@ validateConfiguration()
 
 export async function requestMovie(tmdbId: number): Promise<RequestResponse> {
   const config = getServiceConfig()
-  
+
   if (!config) {
     log.warning('No Jellyseerr or Overseerr configured')
     return { success: false, message: 'Request service not configured' }
@@ -73,7 +85,7 @@ export async function requestMovie(tmdbId: number): Promise<RequestResponse> {
 
   try {
     log.info(`Requesting movie via ${config.service}: TMDb ID ${tmdbId}`)
-    
+
     const response = await fetch(`${config.url}/api/v1/request`, {
       method: 'POST',
       headers: {
@@ -88,25 +100,27 @@ export async function requestMovie(tmdbId: number): Promise<RequestResponse> {
     })
 
     if (!response.ok) {
-	  const errorText = await response.text()
-	  log.error(`${config.service} API error: ${response.status} - ${errorText}`)
-	  
-	  // Try to parse the actual error message from Jellyseerr/Overseerr
-	  let errorMessage = response.statusText
-	  try {
-		const errorData = JSON.parse(errorText)
-		errorMessage = errorData.message || errorMessage
-	  } catch {
-		// If not JSON, use the raw text or status text
-		errorMessage = errorText || errorMessage
-	  }
-	  
-	  return { success: false, message: `Request failed: ${errorMessage}` }  // ✅ CORRECT
-	}
+      const errorText = await response.text()
+      log.error(
+        `${config.service} API error: ${response.status} - ${errorText}`
+      )
+
+      // Try to parse the actual error message from Jellyseerr/Overseerr
+      let errorMessage = response.statusText
+      try {
+        const errorData = JSON.parse(errorText)
+        errorMessage = errorData.message || errorMessage
+      } catch {
+        // If not JSON, use the raw text or status text
+        errorMessage = errorText || errorMessage
+      }
+
+      return { success: false, message: `Request failed: ${errorMessage}` } // ✅ CORRECT
+    }
 
     const data = await response.json()
     log.info(`Movie request successful: ${JSON.stringify(data)}`)
-    
+
     return {
       success: true,
       message: 'Movie requested successfully',
@@ -119,9 +133,11 @@ export async function requestMovie(tmdbId: number): Promise<RequestResponse> {
   }
 }
 
-export async function getMediaStatus(tmdbId: number): Promise<MediaStatus | null> {
+export async function getMediaStatus(
+  tmdbId: number
+): Promise<MediaStatus | null> {
   const config = getServiceConfig()
-  
+
   if (!config) {
     return null
   }
@@ -138,7 +154,7 @@ export async function getMediaStatus(tmdbId: number): Promise<MediaStatus | null
     }
 
     const data = await response.json()
-    
+
     return {
       available: data.mediaInfo?.status === 5, // Status 5 = Available
       pending: data.mediaInfo?.status === 2 || data.mediaInfo?.status === 3, // Pending or Processing
