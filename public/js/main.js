@@ -711,6 +711,12 @@ function collectSettingsForm() {
       settings[key] = el.checked ? 'true' : 'false'
       return
     }
+    if (el.multiple) {
+      settings[key] = Array.from(el.selectedOptions)
+        .map(option => option.value)
+        .join(',')
+      return
+    }
     settings[key] = el.value
   })
 
@@ -734,6 +740,15 @@ async function hydrateSettingsForm() {
       if (value === undefined || value === null) return
       if (el.type === 'checkbox') {
         el.checked = value === 'true'
+      } else if (el.multiple) {
+        const selectedValues = String(value)
+          .split(',')
+          .map(entry => entry.trim().toLowerCase())
+          .filter(Boolean)
+        const selectedSet = new Set(selectedValues)
+        Array.from(el.options).forEach(option => {
+          option.selected = selectedSet.has(option.value)
+        })
       } else {
         el.value = value
       }
