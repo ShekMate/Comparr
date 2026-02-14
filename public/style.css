@@ -4849,6 +4849,11 @@ footer {
   color: #fff;
 }
 
+
+.settings-field select.settings-multi-select {
+  min-height: 8.75rem;
+}
+
 .settings-field input:focus,
 .settings-field select:focus {
   outline: 2px solid rgba(99, 102, 241, 0.35);
