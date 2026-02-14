@@ -1861,24 +1861,61 @@
               <p>Reserved for upcoming discovery source filtering.</p>
             </div>
             <div class="settings-field">
-              <label for="setting-paid-streaming-services"
-                >Paid Streaming Services</label
-              >
-              <select
+              <label for="setting-paid-streaming-services">My Paid Streaming Services</label>
+              <input
                 id="setting-paid-streaming-services"
-                class="settings-multi-select"
+                type="hidden"
                 data-setting-key="PAID_STREAMING_SERVICES"
-                multiple
-              >
-                <option value="netflix">Netflix</option>
-                <option value="amazon-prime">Amazon Prime Video</option>
-                <option value="disney-plus">Disney+</option>
-                <option value="hbo-max">Max</option>
-                <option value="hulu">Hulu</option>
-                <option value="paramount-plus">Paramount+</option>
-                <option value="peacock">Peacock</option>
-                <option value="apple-tv-plus">Apple TV+</option>
-              </select>
+              />
+              <details class="settings-multi-dropdown" id="setting-paid-streaming-services-dropdown">
+                <summary id="setting-paid-streaming-services-summary">Select one or more services</summary>
+                <div class="settings-checkbox-group settings-multi-dropdown-options">
+                  <label class="settings-checkbox-option">
+                    <input type="checkbox" data-paid-streaming-service value="netflix" />
+                    Netflix
+                  </label>
+                  <label class="settings-checkbox-option">
+                    <input
+                      type="checkbox"
+                      data-paid-streaming-service
+                      value="amazon-prime"
+                    />
+                    Amazon Prime Video
+                  </label>
+                  <label class="settings-checkbox-option">
+                    <input type="checkbox" data-paid-streaming-service value="disney-plus" />
+                    Disney+
+                  </label>
+                  <label class="settings-checkbox-option">
+                    <input type="checkbox" data-paid-streaming-service value="hbo-max" />
+                    Max
+                  </label>
+                  <label class="settings-checkbox-option">
+                    <input type="checkbox" data-paid-streaming-service value="hulu" />
+                    Hulu
+                  </label>
+                  <label class="settings-checkbox-option">
+                    <input
+                      type="checkbox"
+                      data-paid-streaming-service
+                      value="paramount-plus"
+                    />
+                    Paramount+
+                  </label>
+                  <label class="settings-checkbox-option">
+                    <input type="checkbox" data-paid-streaming-service value="peacock" />
+                    Peacock
+                  </label>
+                  <label class="settings-checkbox-option">
+                    <input
+                      type="checkbox"
+                      data-paid-streaming-service
+                      value="apple-tv-plus"
+                    />
+                    Apple TV+
+                  </label>
+                </div>
+              </details>
               <p>Choose one or more providers used by future filtering modes.</p>
             </div>
             <div class="settings-field">
