@@ -18,8 +18,11 @@ import {
 import {
   getAccessPassword,
   getMovieBatchSize,
+  getPaidStreamingServices,
+  getPersonalMediaSources,
   getPlexLibraryName,
   getRootPath,
+  getStreamingProfileMode,
   getTmdbApiKey,
 } from '../../core/config.ts'
 import {
@@ -183,6 +186,7 @@ type DiscoverFilters = {
   sortBy?: string
   imdbRating?: number
   rtRating?: number
+  streamingServices?: string[]
 }
 
 function extractTmdbIdFromGuid(guid?: string | null): number | null {
@@ -1332,10 +1336,34 @@ class Session {
     imdbRating?: number
     rtRating?: number
   }) {
-    const showMyPlexOnly = filters?.showPlexOnly ?? false
+    const profileMode = getStreamingProfileMode()
+    const configuredPaidServices = getPaidStreamingServices()
+    const configuredPersonalSources = getPersonalMediaSources()
+    const requestedServices = (filters?.streamingServices || [])
+      .map(service => service.trim())
+      .filter(Boolean)
+
+    let effectiveShowMyPlexOnly = filters?.showPlexOnly ?? false
+    let effectiveStreamingServices = [...requestedServices]
+
+    if (profileMode === 'my_libraries') {
+      effectiveShowMyPlexOnly = true
+    } else if (
+      (profileMode === 'my_subscriptions' ||
+        profileMode === 'my_availability') &&
+      effectiveStreamingServices.length === 0
+    ) {
+      effectiveStreamingServices = [...configuredPaidServices]
+    }
+
+    const shouldBlendPlexInAvailability =
+      profileMode === 'my_availability' &&
+      configuredPersonalSources.includes('plex') &&
+      !effectiveShowMyPlexOnly
+
     const tmdbConfigured = Boolean(getTmdbApiKey())
 
-    if (!tmdbConfigured && !showMyPlexOnly) {
+    if (!tmdbConfigured && !effectiveShowMyPlexOnly) {
       log.warning(
         'TMDb API key is missing; falling back to Plex library movies for swipe results.'
       )
@@ -1344,7 +1372,7 @@ class Session {
     try {
       // Increase batch size to account for movies we'll skip
       const attemptBatchSize = Math.min(
-        showMyPlexOnly ? (await getAllMovies()).length : 40, // Try more movies to get enough valid ones
+        effectiveShowMyPlexOnly ? (await getAllMovies()).length : 40, // Try more movies to get enough valid ones
         Number(getMovieBatchSize()) * 2 // Double the normal batch size
       )
 
@@ -1407,7 +1435,7 @@ class Session {
       let personMovies: any[] = []
       let person: { id: number; name: string } | undefined
 
-      if (hasPersonFilters && !showMyPlexOnly) {
+      if (hasPersonFilters && !effectiveShowMyPlexOnly) {
         person = filters?.directors?.[0] || filters?.actors?.[0]
         if (person) {
           log.info(`🎭 Getting all movies for ${person.name}`)
@@ -1446,12 +1474,29 @@ class Session {
       let pendingCandidate: PendingCandidate | null = null
 
       const fetchCandidate = async (attemptNumber: number): Promise<any> => {
-        if (showMyPlexOnly || !tmdbConfigured) {
-          return await getFilteredRandomMovie({
+        const fetchPlexCandidate = async () =>
+          await getFilteredRandomMovie({
             yearMin: filters?.yearMin,
             yearMax: filters?.yearMax,
             genres: filters?.genres,
           })
+
+        if (effectiveShowMyPlexOnly || !tmdbConfigured) {
+          return await fetchPlexCandidate()
+        }
+
+        if (shouldBlendPlexInAvailability && attemptNumber % 2 === 1) {
+          try {
+            return await fetchPlexCandidate()
+          } catch (err) {
+            if (err instanceof NoMoreMoviesError) {
+              log.debug(
+                'No more Plex candidates for my_availability blend; falling back to TMDb discovery.'
+              )
+            } else {
+              throw err
+            }
+          }
         }
 
         if (hasPersonFilters && personMovies.length > 0 && person) {
@@ -1476,6 +1521,7 @@ class Session {
           runtimeMax: filters?.runtimeMax,
           voteCount: filters?.voteCount,
           sortBy: filters?.sortBy,
+          streamingServices: effectiveStreamingServices,
         })
       }
 
@@ -2110,6 +2156,7 @@ class Session {
       sortBy?: string
       imdbRating?: number
       rtRating?: number
+      streamingServices?: string[]
     }
   ): Promise<any> {
     // If person filters are applied, use a more targeted approach
@@ -2132,6 +2179,7 @@ class Session {
       voteCount: filters?.voteCount,
       sortBy: filters?.sortBy,
       rtRating: filters?.rtRating,
+      streamingServices: filters?.streamingServices,
     }
 
     const { queue } = this.resolveDiscoverQueue(discoverFilters)
