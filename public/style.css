@@ -4936,34 +4936,33 @@ footer {
 .settings-paid-services-list {
   position: static;
   width: 100%;
-  margin-top: 0.65rem;
-  max-height: 340px;
-  border: 1px solid rgba(99, 102, 241, 0.35);
-  border-radius: 0.65rem;
-  background: linear-gradient(
-    180deg,
-    rgba(45, 59, 86, 0.92) 0%,
-    rgba(39, 51, 76, 0.96) 100%
-  );
-  overflow-y: auto;
-  box-shadow: 0 16px 30px rgba(2, 6, 23, 0.5);
+  margin-top: 0.5rem;
+  max-height: 180px;
 }
 
 .settings-paid-services-options {
   grid-template-columns: 1fr;
   gap: 0;
-  padding: 0.35rem 0;
 }
 
 .settings-paid-services-options .settings-checkbox-option {
-  min-height: 2.55rem;
   border: 0;
   border-radius: 0;
   background: transparent;
-  padding: 0.55rem 0.95rem;
-  color: #e5e7eb;
+  padding: 0.5rem 0.75rem;
+  color: var(--color-text-secondary);
+  font-size: 0.8125rem;
+  gap: 0.625rem;
 }
 
 .settings-paid-services-options .settings-checkbox-option:hover {
-  background: rgba(99, 102, 241, 0.14);
+  background: transparent;
+  color: var(--color-text-primary);
+}
+
+.settings-paid-services-checkbox {
+  width: 0.9375rem;
+  height: 0.9375rem;
+  margin: 0;
+  flex-shrink: 0;
 }
