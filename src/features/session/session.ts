@@ -1338,7 +1338,6 @@ class Session {
   }) {
     const profileMode = getStreamingProfileMode()
     const configuredPaidServices = getPaidStreamingServices()
-    const configuredPersonalSources = getPersonalMediaSources()
     const requestedServices = (filters?.streamingServices || [])
       .map(service => service.trim())
       .filter(Boolean)
