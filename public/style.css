@@ -4849,6 +4849,7 @@ footer {
   color: #fff;
 }
 
+
 .settings-field input:focus,
 .settings-field select:focus {
   outline: 2px solid rgba(99, 102, 241, 0.35);
@@ -4899,4 +4900,28 @@ footer {
   font-size: 0.9rem;
   min-height: 1.2rem;
   color: var(--color-text-secondary);
+}
+
+
+
+
+.settings-paid-services-toggle {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.settings-paid-services-list {
+  position: static;
+  width: 100%;
+  margin-top: 0.5rem;
+  max-height: none;
+}
+
+.settings-paid-services-options {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  padding: 0.5rem;
+}
+
+.settings-paid-services-options .settings-checkbox-option {
+  min-height: 3rem;
 }
