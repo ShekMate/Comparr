@@ -651,6 +651,8 @@ function isLibrariesOnlyProfile() {
 }
 
 function toggleSettingsVisibility(canAccess) {
+  initializePaidStreamingServicesControl()
+
   const settingsButtons = document.querySelectorAll('[data-tab="tab-settings"]')
   settingsButtons.forEach(btn => {
     btn.style.display = canAccess ? '' : 'none'
@@ -702,13 +704,70 @@ function hydratePersonalMediaSourcesSetting(rawValue) {
   })
 }
 
+function collectPaidStreamingServicesSetting() {
+  return Array.from(document.querySelectorAll('[data-paid-streaming-service]:checked'))
+    .map(input => input.value)
+    .filter(Boolean)
+    .join(',')
+}
+
+function hydratePaidStreamingServicesSetting(rawValue) {
+  const selectedValues = String(rawValue || '')
+    .split(',')
+    .map(entry => entry.trim().toLowerCase())
+    .filter(Boolean)
+  const selectedSet = new Set(selectedValues)
+
+  document.querySelectorAll('[data-paid-streaming-service]').forEach(input => {
+    input.checked = selectedSet.has(input.value)
+  })
+
+  const hiddenInput = document.getElementById('setting-paid-streaming-services')
+  if (hiddenInput) {
+    hiddenInput.value = selectedValues.join(',')
+  }
+
+  const summary = document.getElementById('setting-paid-streaming-services-summary')
+  if (summary) {
+    summary.textContent =
+      selectedValues.length > 0
+        ? `${selectedValues.length} service${selectedValues.length === 1 ? '' : 's'} selected`
+        : 'Select one or more services'
+  }
+}
+
+function initializePaidStreamingServicesControl() {
+  const updateSelection = () => {
+    const selectedCsv = collectPaidStreamingServicesSetting()
+    hydratePaidStreamingServicesSetting(selectedCsv)
+  }
+
+  document.querySelectorAll('[data-paid-streaming-service]').forEach(input => {
+    if (input.dataset.boundPaidStreamingChange === 'true') {
+      return
+    }
+    input.addEventListener('change', updateSelection)
+    input.dataset.boundPaidStreamingChange = 'true'
+  })
+}
+
 function collectSettingsForm() {
   const settings = {}
   document.querySelectorAll('[data-setting-key]').forEach(el => {
     const key = el.dataset.settingKey
     if (!key) return
+    if (key === 'PAID_STREAMING_SERVICES') {
+      settings[key] = collectPaidStreamingServicesSetting()
+      return
+    }
     if (el.type === 'checkbox') {
       settings[key] = el.checked ? 'true' : 'false'
+      return
+    }
+    if (el.multiple) {
+      settings[key] = Array.from(el.selectedOptions)
+        .map(option => option.value)
+        .join(',')
       return
     }
     settings[key] = el.value
@@ -732,13 +791,25 @@ async function hydrateSettingsForm() {
       if (!key) return
       const value = settings[key]
       if (value === undefined || value === null) return
-      if (el.type === 'checkbox') {
+      if (key === 'PAID_STREAMING_SERVICES') {
+        hydratePaidStreamingServicesSetting(value)
+      } else if (el.type === 'checkbox') {
         el.checked = value === 'true'
+      } else if (el.multiple) {
+        const selectedValues = String(value)
+          .split(',')
+          .map(entry => entry.trim().toLowerCase())
+          .filter(Boolean)
+        const selectedSet = new Set(selectedValues)
+        Array.from(el.options).forEach(option => {
+          option.selected = selectedSet.has(option.value)
+        })
       } else {
         el.value = value
       }
     })
 
+    hydratePaidStreamingServicesSetting(settings.PAID_STREAMING_SERVICES)
     hydratePersonalMediaSourcesSetting(settings.PERSONAL_MEDIA_SOURCES)
   } catch (err) {
     console.warn('Failed to hydrate settings form:', err)
