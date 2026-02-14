@@ -8,7 +8,9 @@ function uniqueSettingsModulePath() {
 }
 
 Deno.test('settings include streaming profile defaults', async () => {
-  const dataDir = await Deno.makeTempDir({ prefix: 'comparr-settings-defaults-' })
+  const dataDir = await Deno.makeTempDir({
+    prefix: 'comparr-settings-defaults-',
+  })
   const originalDataDir = Deno.env.get('DATA_DIR')
 
   Deno.env.set('DATA_DIR', dataDir)
@@ -18,7 +20,7 @@ Deno.test('settings include streaming profile defaults', async () => {
     const settings = settingsModule.getSettings()
 
     assertEquals(settings.STREAMING_PROFILE_MODE, 'anywhere')
-    assertEquals(settings.PAID_STREAMING_SERVICES, '')
+    assertEquals(settings.PAID_STREAMING_SERVICES, '[]')
     assertEquals(settings.PERSONAL_MEDIA_SOURCES, '[]')
   } finally {
     if (originalDataDir === undefined) {
@@ -41,7 +43,7 @@ Deno.test('settings can persist streaming profile updates', async () => {
 
     await settingsModule.updateSettings({
       STREAMING_PROFILE_MODE: 'my_subscriptions',
-      PAID_STREAMING_SERVICES: 'netflix,hulu',
+      PAID_STREAMING_SERVICES: '["netflix","hulu"]',
       PERSONAL_MEDIA_SOURCES: '["plex","jellyfin"]',
     })
 
@@ -49,7 +51,7 @@ Deno.test('settings can persist streaming profile updates', async () => {
     const settings = reloaded.getSettings()
 
     assertEquals(settings.STREAMING_PROFILE_MODE, 'my_subscriptions')
-    assertEquals(settings.PAID_STREAMING_SERVICES, 'netflix,hulu')
+    assertEquals(settings.PAID_STREAMING_SERVICES, '["netflix","hulu"]')
     assertEquals(settings.PERSONAL_MEDIA_SOURCES, '["plex","jellyfin"]')
   } finally {
     if (originalDataDir === undefined) {
@@ -61,9 +63,10 @@ Deno.test('settings can persist streaming profile updates', async () => {
   }
 })
 
-
 Deno.test('settings normalize streaming profile values', async () => {
-  const dataDir = await Deno.makeTempDir({ prefix: 'comparr-settings-normalize-' })
+  const dataDir = await Deno.makeTempDir({
+    prefix: 'comparr-settings-normalize-',
+  })
   const originalDataDir = Deno.env.get('DATA_DIR')
 
   Deno.env.set('DATA_DIR', dataDir)
@@ -73,14 +76,14 @@ Deno.test('settings normalize streaming profile values', async () => {
 
     await settingsModule.updateSettings({
       STREAMING_PROFILE_MODE: 'MY_SUBSCRIPTIONS',
-      PAID_STREAMING_SERVICES: ' Netflix, hulu, netflix ',
+      PAID_STREAMING_SERVICES: '["Netflix", " hulu ", "netflix"]',
       PERSONAL_MEDIA_SOURCES: '["Plex", " jellyfin ", "plex"]',
     })
 
     const settings = settingsModule.getSettings()
 
     assertEquals(settings.STREAMING_PROFILE_MODE, 'my_subscriptions')
-    assertEquals(settings.PAID_STREAMING_SERVICES, 'netflix,hulu')
+    assertEquals(settings.PAID_STREAMING_SERVICES, '["netflix","hulu"]')
     assertEquals(settings.PERSONAL_MEDIA_SOURCES, '["plex","jellyfin"]')
   } finally {
     if (originalDataDir === undefined) {
@@ -93,7 +96,9 @@ Deno.test('settings normalize streaming profile values', async () => {
 })
 
 Deno.test('settings reject invalid streaming profile values', async () => {
-  const dataDir = await Deno.makeTempDir({ prefix: 'comparr-settings-invalid-' })
+  const dataDir = await Deno.makeTempDir({
+    prefix: 'comparr-settings-invalid-',
+  })
   const originalDataDir = Deno.env.get('DATA_DIR')
 
   Deno.env.set('DATA_DIR', dataDir)
@@ -113,7 +118,7 @@ Deno.test('settings reject invalid streaming profile values', async () => {
     await assertRejects(
       () =>
         settingsModule.updateSettings({
-          PAID_STREAMING_SERVICES: 'netflix,unknown-provider',
+          PAID_STREAMING_SERVICES: '["netflix","unknown-provider"]',
         }),
       Error,
       'Settings validation failed'
@@ -136,3 +141,33 @@ Deno.test('settings reject invalid streaming profile values', async () => {
     await Deno.remove(dataDir, { recursive: true }).catch(() => {})
   }
 })
+
+Deno.test(
+  'settings accept legacy CSV paid services and normalize to JSON array',
+  async () => {
+    const dataDir = await Deno.makeTempDir({
+      prefix: 'comparr-settings-legacy-csv-',
+    })
+    const originalDataDir = Deno.env.get('DATA_DIR')
+
+    Deno.env.set('DATA_DIR', dataDir)
+
+    try {
+      const settingsModule = await import(uniqueSettingsModulePath())
+
+      await settingsModule.updateSettings({
+        PAID_STREAMING_SERVICES: 'Netflix, hulu, netflix',
+      })
+
+      const settings = settingsModule.getSettings()
+      assertEquals(settings.PAID_STREAMING_SERVICES, '["netflix","hulu"]')
+    } finally {
+      if (originalDataDir === undefined) {
+        Deno.env.delete('DATA_DIR')
+      } else {
+        Deno.env.set('DATA_DIR', originalDataDir)
+      }
+      await Deno.remove(dataDir, { recursive: true }).catch(() => {})
+    }
+  }
+)

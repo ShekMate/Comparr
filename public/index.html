@@ -152,60 +152,60 @@
               class="dropdown-item mobile-settings-item"
               data-tab="tab-settings"
               data-settings-target="settings-core"
-              data-settings-title="${SETTINGS_CORE}"
+              data-settings-title="System"
             >
               <i class="fas fa-sliders-h"></i>
-              ${SETTINGS_CORE}
+              System
             </button>
             <button
               type="button"
               class="dropdown-item mobile-settings-item"
               data-tab="tab-settings"
               data-settings-target="settings-streaming-profile"
-              data-settings-title="Streaming Profile"
+              data-settings-title="Discovery Profile"
             >
               <i class="fas fa-tv"></i>
-              Streaming Profile
+              Discovery Profile
             </button>
             <button
               type="button"
               class="dropdown-item mobile-settings-item"
               data-tab="tab-settings"
               data-settings-target="settings-metadata"
-              data-settings-title="${SETTINGS_METADATA}"
+              data-settings-title="Integrations"
             >
               <i class="fas fa-database"></i>
-              ${SETTINGS_METADATA}
+              Integrations
             </button>
             <button
               type="button"
               class="dropdown-item mobile-settings-item"
               data-tab="tab-settings"
               data-settings-target="settings-sync"
-              data-settings-title="${SETTINGS_SYNC}"
+              data-settings-title="Sync & Imports"
             >
               <i class="fas fa-sync-alt"></i>
-              ${SETTINGS_SYNC}
+              Sync & Imports
             </button>
             <button
               type="button"
               class="dropdown-item mobile-settings-item"
               data-tab="tab-settings"
               data-settings-target="settings-request-services"
-              data-settings-title="${SETTINGS_REQUEST_SERVICES}"
+              data-settings-title="Requests"
             >
               <i class="fas fa-paper-plane"></i>
-              ${SETTINGS_REQUEST_SERVICES}
+              Requests
             </button>
             <button
               type="button"
               class="dropdown-item mobile-settings-item"
               data-tab="tab-settings"
               data-settings-target="settings-security"
-              data-settings-title="${SETTINGS_SECURITY}"
+              data-settings-title="Security & Access"
             >
               <i class="fas fa-shield-alt"></i>
-              ${SETTINGS_SECURITY}
+              Security & Access
             </button>
           </div>
         </div>
@@ -260,49 +260,49 @@
                 class="sidebar-subitem"
                 data-tab="tab-settings"
                 data-settings-target="settings-core"
-                data-settings-title="${SETTINGS_CORE}"
+                data-settings-title="System"
               >
-                ${SETTINGS_CORE}
+                System
               </button>
               <button
                 class="sidebar-subitem"
                 data-tab="tab-settings"
                 data-settings-target="settings-streaming-profile"
-                data-settings-title="Streaming Profile"
+                data-settings-title="Discovery Profile"
               >
-                Streaming Profile
+                Discovery Profile
               </button>
               <button
                 class="sidebar-subitem"
                 data-tab="tab-settings"
                 data-settings-target="settings-metadata"
-                data-settings-title="${SETTINGS_METADATA}"
+                data-settings-title="Integrations"
               >
-                ${SETTINGS_METADATA}
+                Integrations
               </button>
               <button
                 class="sidebar-subitem"
                 data-tab="tab-settings"
                 data-settings-target="settings-sync"
-                data-settings-title="${SETTINGS_SYNC}"
+                data-settings-title="Sync & Imports"
               >
-                ${SETTINGS_SYNC}
+                Sync & Imports
               </button>
               <button
                 class="sidebar-subitem"
                 data-tab="tab-settings"
                 data-settings-target="settings-request-services"
-                data-settings-title="${SETTINGS_REQUEST_SERVICES}"
+                data-settings-title="Requests"
               >
-                ${SETTINGS_REQUEST_SERVICES}
+                Requests
               </button>
               <button
                 class="sidebar-subitem"
                 data-tab="tab-settings"
                 data-settings-target="settings-security"
-                data-settings-title="${SETTINGS_SECURITY}"
+                data-settings-title="Security & Access"
               >
-                ${SETTINGS_SECURITY}
+                Security & Access
               </button>
             </div>
           </div>
@@ -1774,8 +1774,8 @@
                 <span id="settings-title">${NAV_SETTINGS}</span>
               </h3>
               <p class="settings-subtitle">
-                Manage Comparr configuration directly in the UI. Changes apply
-                immediately unless marked otherwise.
+                Organize System, Discovery Profile, Integrations, Sync, and Security settings.
+                Changes apply immediately unless marked otherwise.
               </p>
             </div>
             <button class="settings-save-btn" type="button">
@@ -1784,8 +1784,16 @@
             </button>
           </div>
 
+          <div class="settings-toolbar">
+            <label class="settings-advanced-toggle">
+              <input type="checkbox" id="settings-show-advanced" />
+              Show advanced settings
+            </label>
+            <span class="settings-helper-text">Use Test buttons before saving integration changes.</span>
+          </div>
+
           <div class="settings-section" id="settings-core">
-            <h4>Core</h4>
+            <h4>System</h4>
             <div class="settings-field">
               <label for="setting-port"
                 >Port
@@ -1799,7 +1807,7 @@
               />
               <p>Internal web server port.</p>
             </div>
-            <div class="settings-field">
+            <div class="settings-field settings-field-advanced" data-advanced-setting hidden>
               <label for="setting-root-path"
                 >Root Path
                 <span class="settings-badge">Restart required</span></label
@@ -1812,7 +1820,7 @@
               />
               <p>Base path when running behind a reverse proxy.</p>
             </div>
-            <div class="settings-field">
+            <div class="settings-field settings-field-advanced" data-advanced-setting hidden>
               <label for="setting-log-level"
                 >Log Level
                 <span class="settings-badge">Restart required</span></label
@@ -1828,7 +1836,7 @@
           </div>
 
           <div class="settings-section" id="settings-streaming-profile">
-            <h4>Streaming Profile (Preview)</h4>
+            <h4>Discovery Profile</h4>
             <div class="settings-field">
               <label for="setting-streaming-profile-mode">Profile Mode</label>
               <select
@@ -1840,7 +1848,7 @@
                 <option value="my_libraries">My Libraries</option>
                 <option value="my_availability">Everything I Can Watch</option>
               </select>
-              <p>Reserved for upcoming discovery source filtering.</p>
+              <p>Beta feature: this profile currently affects discovery-related availability filtering.</p>
             </div>
             <div class="settings-field">
               <label for="setting-paid-streaming-services"
@@ -2032,6 +2040,7 @@
                   data-required-when-source-selected="plex"
                   placeholder="••••••••"
                 />
+                <button type="button" class="settings-test-btn" data-test-target="plex">Test Plex connection</button>
               </div>
               <div class="settings-field">
                 <label for="setting-plex-library-name">Plex Library Name</label>
@@ -2044,7 +2053,7 @@
                 />
                 <p>Label shown for Plex availability in the UI.</p>
               </div>
-              <div class="settings-field">
+              <div class="settings-field settings-field-advanced" data-advanced-setting hidden>
                 <label for="setting-library-filter">Library Filter</label>
                 <input
                   id="setting-library-filter"
@@ -2054,7 +2063,7 @@
                 />
                 <p>Comma-separated library names to include.</p>
               </div>
-              <div class="settings-field">
+              <div class="settings-field settings-field-advanced" data-advanced-setting hidden>
                 <label for="setting-collection-filter">Collection Filter</label>
                 <input
                   id="setting-collection-filter"
@@ -2068,7 +2077,7 @@
           </div>
 
           <div class="settings-section" id="settings-metadata">
-            <h4>Metadata</h4>
+            <h4>Integrations</h4>
             <div class="settings-field">
               <label for="setting-tmdb-key">TMDb API Key</label>
               <input
@@ -2100,7 +2109,7 @@
           </div>
 
           <div class="settings-section" id="settings-sync">
-            <h4>Sync</h4>
+            <h4>Sync & Imports</h4>
             <div class="settings-field">
               <label for="setting-imdb-sync-url">IMDb Seen List URL</label>
               <input
@@ -2180,7 +2189,7 @@
           </div>
 
           <div class="settings-section" id="settings-request-services">
-            <h4>Request Services</h4>
+            <h4>Requests</h4>
             <div class="settings-field">
               <label for="setting-radarr-url">Radarr URL</label>
               <input
@@ -2198,6 +2207,7 @@
                 data-setting-key="RADARR_API_KEY"
                 placeholder="••••••••"
               />
+              <button type="button" class="settings-test-btn" data-test-target="radarr">Test Radarr connection</button>
             </div>
             <div class="settings-field">
               <label for="setting-jellyseerr-url">Jellyseerr URL</label>
@@ -2216,6 +2226,7 @@
                 data-setting-key="JELLYSEERR_API_KEY"
                 placeholder="••••••••"
               />
+              <button type="button" class="settings-test-btn" data-test-target="jellyseerr">Test Jellyseerr connection</button>
             </div>
             <div class="settings-field">
               <label for="setting-overseerr-url">Overseerr URL</label>
@@ -2234,11 +2245,12 @@
                 data-setting-key="OVERSEERR_API_KEY"
                 placeholder="••••••••"
               />
+              <button type="button" class="settings-test-btn" data-test-target="overseerr">Test Overseerr connection</button>
             </div>
           </div>
 
           <div class="settings-section" id="settings-security">
-            <h4>Security</h4>
+            <h4>Security & Access</h4>
             <div class="settings-field">
               <label for="setting-access-password">Access Password</label>
               <input
