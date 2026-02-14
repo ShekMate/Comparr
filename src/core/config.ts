@@ -20,6 +20,21 @@ const splitCsvSetting = (value: string) =>
     .map(part => part.trim())
     .filter(Boolean)
 
+
+const parseJsonArraySetting = (value: string): string[] => {
+  if (!value) return []
+
+  try {
+    const parsed = JSON.parse(value)
+    if (!Array.isArray(parsed)) return []
+    return parsed
+      .map(item => String(item).trim().toLowerCase())
+      .filter(Boolean)
+  } catch {
+    return []
+  }
+}
+
 export const getPlexUrl = () => normalizeUrl(getSettingTrimmed('PLEX_URL'))
 export const getPlexToken = () => getSettingTrimmed('PLEX_TOKEN')
 export const getPort = () => getSettingTrimmed('PORT') ?? '8000'
@@ -51,6 +66,8 @@ export const getStreamingProfileMode = () =>
   getSettingTrimmed('STREAMING_PROFILE_MODE') ?? 'anywhere'
 export const getPaidStreamingServices = () =>
   splitCsvSetting(getSettingTrimmed('PAID_STREAMING_SERVICES') ?? '')
+export const getPersonalMediaSources = () =>
+  parseJsonArraySetting(getSettingTrimmed('PERSONAL_MEDIA_SOURCES') ?? '[]')
 export const getVersion = async () => {
   const pkgText = await Deno.readTextFile(Deno.cwd() + '/package.json')
   const pkg: { version: string } = JSON.parse(pkgText)

@@ -19,6 +19,7 @@ import {
   getAccessPassword,
   getMovieBatchSize,
   getPaidStreamingServices,
+  getPersonalMediaSources,
   getPlexLibraryName,
   getRootPath,
   getStreamingProfileMode,
@@ -1354,6 +1355,11 @@ class Session {
       effectiveStreamingServices = [...configuredPaidServices]
     }
 
+    const shouldBlendPlexInAvailability =
+      profileMode === 'my_availability' &&
+      configuredPersonalSources.includes('plex') &&
+      !effectiveShowMyPlexOnly
+
     const tmdbConfigured = Boolean(getTmdbApiKey())
 
     if (!tmdbConfigured && !effectiveShowMyPlexOnly) {
@@ -1467,12 +1473,29 @@ class Session {
       let pendingCandidate: PendingCandidate | null = null
 
       const fetchCandidate = async (attemptNumber: number): Promise<any> => {
-        if (effectiveShowMyPlexOnly || !tmdbConfigured) {
-          return await getFilteredRandomMovie({
+        const fetchPlexCandidate = async () =>
+          await getFilteredRandomMovie({
             yearMin: filters?.yearMin,
             yearMax: filters?.yearMax,
             genres: filters?.genres,
           })
+
+        if (effectiveShowMyPlexOnly || !tmdbConfigured) {
+          return await fetchPlexCandidate()
+        }
+
+        if (shouldBlendPlexInAvailability && attemptNumber % 2 === 1) {
+          try {
+            return await fetchPlexCandidate()
+          } catch (err) {
+            if (err instanceof NoMoreMoviesError) {
+              log.debug(
+                'No more Plex candidates for my_availability blend; falling back to TMDb discovery.'
+              )
+            } else {
+              throw err
+            }
+          }
         }
 
         if (hasPersonFilters && personMovies.length > 0 && person) {
