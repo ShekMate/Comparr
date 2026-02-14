@@ -652,6 +652,7 @@ function isLibrariesOnlyProfile() {
 
 function toggleSettingsVisibility(canAccess) {
   initializePaidStreamingServicesControl()
+  initializePersonalMediaSourcesControl()
 
   const settingsButtons = document.querySelectorAll('[data-tab="tab-settings"]')
   settingsButtons.forEach(btn => {
@@ -702,10 +703,29 @@ function hydratePersonalMediaSourcesSetting(rawValue) {
   document.querySelectorAll('[data-personal-media-source]').forEach(input => {
     input.checked = parsedSources.includes(input.value)
   })
+
+  const hiddenInput = document.getElementById('setting-personal-media-sources')
+  if (hiddenInput) {
+    hiddenInput.value = JSON.stringify(parsedSources)
+  }
+
+  const summary = document.getElementById(
+    'setting-personal-media-sources-summary'
+  )
+  if (summary) {
+    summary.textContent =
+      parsedSources.length > 0
+        ? `${parsedSources.length} source${
+            parsedSources.length === 1 ? '' : 's'
+          } selected`
+        : 'Select Sources'
+  }
 }
 
 function collectPaidStreamingServicesSetting() {
-  return Array.from(document.querySelectorAll('[data-paid-streaming-service]:checked'))
+  return Array.from(
+    document.querySelectorAll('[data-paid-streaming-service]:checked')
+  )
     .map(input => input.value)
     .filter(Boolean)
     .join(',')
@@ -727,17 +747,81 @@ function hydratePaidStreamingServicesSetting(rawValue) {
     hiddenInput.value = selectedValues.join(',')
   }
 
-  const summary = document.getElementById('setting-paid-streaming-services-summary')
+  const summary = document.getElementById(
+    'setting-paid-streaming-services-summary'
+  )
   if (summary) {
     summary.textContent =
       selectedValues.length > 0
-        ? `${selectedValues.length} service${selectedValues.length === 1 ? '' : 's'} selected`
-        : 'Select one or more services'
+        ? `${selectedValues.length} service${
+            selectedValues.length === 1 ? '' : 's'
+          } selected`
+        : 'Select Subscriptions'
   }
 }
 
+function initializePersonalMediaSourcesControl() {
+  const toggle = document.getElementById(
+    'setting-personal-media-sources-toggle'
+  )
+  const list = document.getElementById('setting-personal-media-sources-list')
+
+  const closeDropdown = () => {
+    toggle?.classList.remove('open')
+    list?.classList.remove('active')
+    toggle?.setAttribute('aria-expanded', 'false')
+  }
+
+  const updateSelection = () => {
+    const selectedRaw = collectPersonalMediaSourcesSetting()
+    hydratePersonalMediaSourcesSetting(selectedRaw)
+  }
+
+  if (toggle && list && toggle.dataset.boundPersonalMediaToggle !== 'true') {
+    toggle.addEventListener('click', e => {
+      e.stopPropagation()
+      const isOpen = list.classList.contains('active')
+      if (isOpen) {
+        closeDropdown()
+      } else {
+        toggle.classList.add('open')
+        list.classList.add('active')
+        toggle.setAttribute('aria-expanded', 'true')
+      }
+    })
+    toggle.dataset.boundPersonalMediaToggle = 'true'
+  }
+
+  if (list && list.dataset.boundPersonalMediaList !== 'true') {
+    list.addEventListener('click', e => e.stopPropagation())
+    list.dataset.boundPersonalMediaList = 'true'
+  }
+
+  if (document.body.dataset.boundPersonalMediaOutside !== 'true') {
+    document.addEventListener('click', e => {
+      if (
+        !e.target.closest('#setting-personal-media-sources-toggle') &&
+        !e.target.closest('#setting-personal-media-sources-list')
+      ) {
+        closeDropdown()
+      }
+    })
+    document.body.dataset.boundPersonalMediaOutside = 'true'
+  }
+
+  document.querySelectorAll('[data-personal-media-source]').forEach(input => {
+    if (input.dataset.boundPersonalMediaChange === 'true') {
+      return
+    }
+    input.addEventListener('change', updateSelection)
+    input.dataset.boundPersonalMediaChange = 'true'
+  })
+}
+
 function initializePaidStreamingServicesControl() {
-  const toggle = document.getElementById('setting-paid-streaming-services-toggle')
+  const toggle = document.getElementById(
+    'setting-paid-streaming-services-toggle'
+  )
   const list = document.getElementById('setting-paid-streaming-services-list')
 
   const closeDropdown = () => {
@@ -896,7 +980,9 @@ async function saveSettingsForm() {
   } catch (err) {
     console.error('Failed to save settings:', err)
     if (status) {
-      status.textContent = `Failed to save settings: ${err?.message || 'Unknown error.'}`
+      status.textContent = `Failed to save settings: ${
+        err?.message || 'Unknown error.'
+      }`
     }
   }
 }
@@ -3483,7 +3569,10 @@ const main = async () => {
       filterState.showPlexOnly = isLibrariesOnly
       const toggleLabels = document.querySelectorAll('.toggle-label-text')
       toggleLabels.forEach((label, index) => {
-        label.classList.toggle('active', isLibrariesOnly ? index === 1 : index === 0)
+        label.classList.toggle(
+          'active',
+          isLibrariesOnly ? index === 1 : index === 0
+        )
       })
     }
 
@@ -5325,7 +5414,10 @@ swipeFilterReset?.addEventListener('click', () => {
     if (container) {
       const labels = container.querySelectorAll('.toggle-label-text')
       labels.forEach((label, index) => {
-        label.classList.toggle('active', isLibrariesOnly ? index === 1 : index === 0)
+        label.classList.toggle(
+          'active',
+          isLibrariesOnly ? index === 1 : index === 0
+        )
       })
     }
   }
