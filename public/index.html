@@ -1967,32 +1967,56 @@
               </p>
             </div>
             <div class="settings-field">
-              <label>Personal Media Sources</label>
-              <div class="settings-checkbox-group">
-                <label class="settings-checkbox-option">
-                  <input
-                    type="checkbox"
-                    data-personal-media-source
-                    value="plex"
-                  />
-                  Plex
-                </label>
-                <label class="settings-checkbox-option">
-                  <input
-                    type="checkbox"
-                    data-personal-media-source
-                    value="emby"
-                  />
-                  Emby
-                </label>
-                <label class="settings-checkbox-option">
-                  <input
-                    type="checkbox"
-                    data-personal-media-source
-                    value="jellyfin"
-                  />
-                  Jellyfin
-                </label>
+              <label for="setting-personal-media-sources-toggle"
+                >Personal Media Sources</label
+              >
+              <input id="setting-personal-media-sources" type="hidden" />
+              <button
+                type="button"
+                class="dropdown-button settings-personal-media-toggle"
+                id="setting-personal-media-sources-toggle"
+                aria-expanded="false"
+              >
+                <span id="setting-personal-media-sources-summary"
+                  >Select Sources</span
+                >
+                <span class="dropdown-arrow">&#9660;</span>
+              </button>
+              <div
+                class="dropdown-list settings-personal-media-list"
+                id="setting-personal-media-sources-list"
+              >
+                <div
+                  class="settings-checkbox-group settings-personal-media-options"
+                >
+                  <label class="settings-checkbox-option">
+                    <input
+                      type="checkbox"
+                      data-personal-media-source
+                      class="settings-personal-media-checkbox"
+                      value="plex"
+                    />
+                    Plex
+                  </label>
+                  <label class="settings-checkbox-option">
+                    <input
+                      type="checkbox"
+                      data-personal-media-source
+                      class="settings-personal-media-checkbox"
+                      value="emby"
+                    />
+                    Emby
+                  </label>
+                  <label class="settings-checkbox-option">
+                    <input
+                      type="checkbox"
+                      data-personal-media-source
+                      class="settings-personal-media-checkbox"
+                      value="jellyfin"
+                    />
+                    Jellyfin
+                  </label>
+                </div>
               </div>
               <p>
                 Select which personal servers should be considered in profile

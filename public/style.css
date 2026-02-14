@@ -4905,30 +4905,35 @@ footer {
   color: var(--color-text-secondary);
 }
 
-.settings-paid-services-toggle {
+.settings-paid-services-toggle,
+.settings-personal-media-toggle {
   width: 100%;
   justify-content: space-between;
   font-size: 0.8125rem;
   padding: 0.4375rem 0.625rem;
 }
 
-.settings-paid-services-toggle .dropdown-arrow {
+.settings-paid-services-toggle .dropdown-arrow,
+.settings-personal-media-toggle .dropdown-arrow {
   font-size: 0.625rem;
 }
 
-.settings-paid-services-list {
+.settings-paid-services-list,
+.settings-personal-media-list {
   position: static;
   width: 100%;
   margin-top: 0.5rem;
   max-height: 180px;
 }
 
-.settings-paid-services-options {
+.settings-paid-services-options,
+.settings-personal-media-options {
   grid-template-columns: 1fr;
   gap: 0;
 }
 
-.settings-paid-services-options .settings-checkbox-option {
+.settings-paid-services-options .settings-checkbox-option,
+.settings-personal-media-options .settings-checkbox-option {
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -4938,12 +4943,14 @@ footer {
   gap: 0.625rem;
 }
 
-.settings-paid-services-options .settings-checkbox-option:hover {
+.settings-paid-services-options .settings-checkbox-option:hover,
+.settings-personal-media-options .settings-checkbox-option:hover {
   background: transparent;
   color: var(--color-text-primary);
 }
 
-.settings-paid-services-checkbox {
+.settings-paid-services-checkbox,
+.settings-personal-media-checkbox {
   width: 0.9375rem;
   height: 0.9375rem;
   margin: 0;

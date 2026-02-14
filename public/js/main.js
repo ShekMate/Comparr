@@ -652,6 +652,7 @@ function isLibrariesOnlyProfile() {
 
 function toggleSettingsVisibility(canAccess) {
   initializePaidStreamingServicesControl()
+  initializePersonalMediaSourcesControl()
 
   const settingsButtons = document.querySelectorAll('[data-tab="tab-settings"]')
   settingsButtons.forEach(btn => {
@@ -702,6 +703,23 @@ function hydratePersonalMediaSourcesSetting(rawValue) {
   document.querySelectorAll('[data-personal-media-source]').forEach(input => {
     input.checked = parsedSources.includes(input.value)
   })
+
+  const hiddenInput = document.getElementById('setting-personal-media-sources')
+  if (hiddenInput) {
+    hiddenInput.value = JSON.stringify(parsedSources)
+  }
+
+  const summary = document.getElementById(
+    'setting-personal-media-sources-summary'
+  )
+  if (summary) {
+    summary.textContent =
+      parsedSources.length > 0
+        ? `${parsedSources.length} source${
+            parsedSources.length === 1 ? '' : 's'
+          } selected`
+        : 'Select Sources'
+  }
 }
 
 function collectPaidStreamingServicesSetting() {
@@ -740,6 +758,64 @@ function hydratePaidStreamingServicesSetting(rawValue) {
           } selected`
         : 'Select Subscriptions'
   }
+}
+
+function initializePersonalMediaSourcesControl() {
+  const toggle = document.getElementById(
+    'setting-personal-media-sources-toggle'
+  )
+  const list = document.getElementById('setting-personal-media-sources-list')
+
+  const closeDropdown = () => {
+    toggle?.classList.remove('open')
+    list?.classList.remove('active')
+    toggle?.setAttribute('aria-expanded', 'false')
+  }
+
+  const updateSelection = () => {
+    const selectedRaw = collectPersonalMediaSourcesSetting()
+    hydratePersonalMediaSourcesSetting(selectedRaw)
+  }
+
+  if (toggle && list && toggle.dataset.boundPersonalMediaToggle !== 'true') {
+    toggle.addEventListener('click', e => {
+      e.stopPropagation()
+      const isOpen = list.classList.contains('active')
+      if (isOpen) {
+        closeDropdown()
+      } else {
+        toggle.classList.add('open')
+        list.classList.add('active')
+        toggle.setAttribute('aria-expanded', 'true')
+      }
+    })
+    toggle.dataset.boundPersonalMediaToggle = 'true'
+  }
+
+  if (list && list.dataset.boundPersonalMediaList !== 'true') {
+    list.addEventListener('click', e => e.stopPropagation())
+    list.dataset.boundPersonalMediaList = 'true'
+  }
+
+  if (document.body.dataset.boundPersonalMediaOutside !== 'true') {
+    document.addEventListener('click', e => {
+      if (
+        !e.target.closest('#setting-personal-media-sources-toggle') &&
+        !e.target.closest('#setting-personal-media-sources-list')
+      ) {
+        closeDropdown()
+      }
+    })
+    document.body.dataset.boundPersonalMediaOutside = 'true'
+  }
+
+  document.querySelectorAll('[data-personal-media-source]').forEach(input => {
+    if (input.dataset.boundPersonalMediaChange === 'true') {
+      return
+    }
+    input.addEventListener('change', updateSelection)
+    input.dataset.boundPersonalMediaChange = 'true'
+  })
 }
 
 function initializePaidStreamingServicesControl() {
