@@ -1,3 +1,4 @@
+import { SettingsValidationError } from '../../../core/settings.ts'
 import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
 
 export type SettingsRouteDeps = {
@@ -37,10 +38,14 @@ export async function handleSettingsRoutes(
   }
 
   if (pathname === '/api/client-config') {
+    const settings = getSettings()
     await req.respond({
       status: 200,
       body: JSON.stringify({
         plexLibraryName: getPlexLibraryName(),
+        streamingProfileMode: settings.STREAMING_PROFILE_MODE,
+        paidStreamingServices: settings.PAID_STREAMING_SERVICES,
+        personalMediaSources: settings.PERSONAL_MEDIA_SOURCES,
       }),
       headers: new Headers({ 'content-type': 'application/json' }),
     })
@@ -91,6 +96,18 @@ export async function handleSettingsRoutes(
         headers: new Headers({ 'content-type': 'application/json' }),
       })
     } catch (err) {
+      if (err instanceof SettingsValidationError) {
+        await req.respond({
+          status: 400,
+          body: JSON.stringify({
+            error: 'Invalid settings payload',
+            details: err.details,
+          }),
+          headers: new Headers({ 'content-type': 'application/json' }),
+        })
+        return true
+      }
+
       log.error(`Settings update failed: ${err}`)
       await req.respond({
         status: 500,
