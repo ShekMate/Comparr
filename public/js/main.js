@@ -737,9 +737,50 @@ function hydratePaidStreamingServicesSetting(rawValue) {
 }
 
 function initializePaidStreamingServicesControl() {
+  const toggle = document.getElementById('setting-paid-streaming-services-toggle')
+  const list = document.getElementById('setting-paid-streaming-services-list')
+
+  const closeDropdown = () => {
+    toggle?.classList.remove('open')
+    list?.classList.remove('active')
+    toggle?.setAttribute('aria-expanded', 'false')
+  }
+
   const updateSelection = () => {
     const selectedCsv = collectPaidStreamingServicesSetting()
     hydratePaidStreamingServicesSetting(selectedCsv)
+  }
+
+  if (toggle && list && toggle.dataset.boundPaidStreamingToggle !== 'true') {
+    toggle.addEventListener('click', e => {
+      e.stopPropagation()
+      const isOpen = list.classList.contains('active')
+      if (isOpen) {
+        closeDropdown()
+      } else {
+        toggle.classList.add('open')
+        list.classList.add('active')
+        toggle.setAttribute('aria-expanded', 'true')
+      }
+    })
+    toggle.dataset.boundPaidStreamingToggle = 'true'
+  }
+
+  if (list && list.dataset.boundPaidStreamingList !== 'true') {
+    list.addEventListener('click', e => e.stopPropagation())
+    list.dataset.boundPaidStreamingList = 'true'
+  }
+
+  if (document.body.dataset.boundPaidStreamingOutside !== 'true') {
+    document.addEventListener('click', e => {
+      if (
+        !e.target.closest('#setting-paid-streaming-services-toggle') &&
+        !e.target.closest('#setting-paid-streaming-services-list')
+      ) {
+        closeDropdown()
+      }
+    })
+    document.body.dataset.boundPaidStreamingOutside = 'true'
   }
 
   document.querySelectorAll('[data-paid-streaming-service]').forEach(input => {
