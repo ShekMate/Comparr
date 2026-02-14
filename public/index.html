@@ -161,16 +161,6 @@
               type="button"
               class="dropdown-item mobile-settings-item"
               data-tab="tab-settings"
-              data-settings-target="settings-plex"
-              data-settings-title="${SETTINGS_PLEX}"
-            >
-              <i class="fas fa-server"></i>
-              ${SETTINGS_PLEX}
-            </button>
-            <button
-              type="button"
-              class="dropdown-item mobile-settings-item"
-              data-tab="tab-settings"
               data-settings-target="settings-streaming-profile"
               data-settings-title="Streaming Profile"
             >
@@ -273,14 +263,6 @@
                 data-settings-title="${SETTINGS_CORE}"
               >
                 ${SETTINGS_CORE}
-              </button>
-              <button
-                class="sidebar-subitem"
-                data-tab="tab-settings"
-                data-settings-target="settings-plex"
-                data-settings-title="${SETTINGS_PLEX}"
-              >
-                ${SETTINGS_PLEX}
               </button>
               <button
                 class="sidebar-subitem"
@@ -2023,68 +2005,79 @@
                 modes.
               </p>
             </div>
-          </div>
 
-          <div class="settings-section" id="settings-plex">
-            <h4>Plex</h4>
-            <div class="settings-field">
-              <label for="setting-plex-url">Plex URL</label>
-              <input
-                id="setting-plex-url"
-                type="text"
-                data-setting-key="PLEX_URL"
-                placeholder="http://192.168.1.100:32400"
-              />
-            </div>
-            <div class="settings-field">
-              <label for="setting-plex-token">Plex Token</label>
-              <input
-                id="setting-plex-token"
-                type="password"
-                data-setting-key="PLEX_TOKEN"
-                placeholder="••••••••"
-              />
-            </div>
-            <div class="settings-field">
-              <label for="setting-plex-library-name">Plex Library Name</label>
-              <input
-                id="setting-plex-library-name"
-                type="text"
-                data-setting-key="PLEX_LIBRARY_NAME"
-                placeholder="My Plex Library"
-              />
-              <p>Label shown for Plex availability in the UI.</p>
-            </div>
-            <div class="settings-field">
-              <label for="setting-default-section">Default Section Type</label>
-              <select
-                id="setting-default-section"
-                data-setting-key="DEFAULT_SECTION_TYPE_FILTER"
-              >
-                <option value="movie">movie</option>
-                <option value="show">show</option>
-              </select>
-              <p>Default media type to load from Plex.</p>
-            </div>
-            <div class="settings-field">
-              <label for="setting-library-filter">Library Filter</label>
-              <input
-                id="setting-library-filter"
-                type="text"
-                data-setting-key="LIBRARY_FILTER"
-                placeholder="Movies,4K Movies"
-              />
-              <p>Comma-separated library names to include.</p>
-            </div>
-            <div class="settings-field">
-              <label for="setting-collection-filter">Collection Filter</label>
-              <input
-                id="setting-collection-filter"
-                type="text"
-                data-setting-key="COLLECTION_FILTER"
-                placeholder="Marvel,Pixar"
-              />
-              <p>Comma-separated collection names to include.</p>
+            <div
+              class="settings-field"
+              id="settings-personal-media-config-plex"
+              data-personal-media-config="plex"
+              hidden
+            >
+              <h5>Plex Configuration</h5>
+              <div class="settings-field">
+                <label for="setting-plex-url">Plex URL</label>
+                <input
+                  id="setting-plex-url"
+                  type="text"
+                  data-setting-key="PLEX_URL"
+                  data-required-when-source-selected="plex"
+                  placeholder="http://192.168.1.100:32400"
+                />
+              </div>
+              <div class="settings-field">
+                <label for="setting-plex-token">Plex Token</label>
+                <input
+                  id="setting-plex-token"
+                  type="password"
+                  data-setting-key="PLEX_TOKEN"
+                  data-required-when-source-selected="plex"
+                  placeholder="••••••••"
+                />
+              </div>
+              <div class="settings-field">
+                <label for="setting-plex-library-name">Plex Library Name</label>
+                <input
+                  id="setting-plex-library-name"
+                  type="text"
+                  data-setting-key="PLEX_LIBRARY_NAME"
+                  data-required-when-source-selected="plex"
+                  placeholder="My Plex Library"
+                />
+                <p>Label shown for Plex availability in the UI.</p>
+              </div>
+              <div class="settings-field">
+                <label for="setting-default-section"
+                  >Default Section Type</label
+                >
+                <select
+                  id="setting-default-section"
+                  data-setting-key="DEFAULT_SECTION_TYPE_FILTER"
+                  data-required-when-source-selected="plex"
+                >
+                  <option value="movie">movie</option>
+                  <option value="show">show</option>
+                </select>
+                <p>Default media type to load from Plex.</p>
+              </div>
+              <div class="settings-field">
+                <label for="setting-library-filter">Library Filter</label>
+                <input
+                  id="setting-library-filter"
+                  type="text"
+                  data-setting-key="LIBRARY_FILTER"
+                  placeholder="Movies,4K Movies"
+                />
+                <p>Comma-separated library names to include.</p>
+              </div>
+              <div class="settings-field">
+                <label for="setting-collection-filter">Collection Filter</label>
+                <input
+                  id="setting-collection-filter"
+                  type="text"
+                  data-setting-key="COLLECTION_FILTER"
+                  placeholder="Marvel,Pixar"
+                />
+                <p>Comma-separated collection names to include.</p>
+              </div>
             </div>
           </div>
 

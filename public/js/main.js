@@ -720,6 +720,35 @@ function hydratePersonalMediaSourcesSetting(rawValue) {
           } selected`
         : 'Select Sources'
   }
+
+  updatePersonalMediaSourceConfigVisibility(parsedSources)
+}
+
+function updatePersonalMediaSourceConfigVisibility(selectedSources = []) {
+  const selected = new Set(
+    Array.isArray(selectedSources)
+      ? selectedSources.map(value => String(value).toLowerCase())
+      : []
+  )
+
+  document.querySelectorAll('[data-personal-media-config]').forEach(section => {
+    const source = String(
+      section.dataset.personalMediaConfig || ''
+    ).toLowerCase()
+    const isSelected = selected.has(source)
+    section.toggleAttribute('hidden', !isSelected)
+  })
+
+  document
+    .querySelectorAll('[data-required-when-source-selected]')
+    .forEach(field => {
+      const requiredSource = String(
+        field.dataset.requiredWhenSourceSelected || ''
+      ).toLowerCase()
+      const isRequired = selected.has(requiredSource)
+      field.required = isRequired
+      field.setAttribute('aria-required', isRequired ? 'true' : 'false')
+    })
 }
 
 function collectPaidStreamingServicesSetting() {
@@ -816,6 +845,40 @@ function initializePersonalMediaSourcesControl() {
     input.addEventListener('change', updateSelection)
     input.dataset.boundPersonalMediaChange = 'true'
   })
+}
+
+function validateConditionalPersonalMediaSettings() {
+  const selectedSources = Array.from(
+    document.querySelectorAll('[data-personal-media-source]:checked')
+  ).map(input => String(input.value || '').toLowerCase())
+
+  const selectedSet = new Set(selectedSources)
+  const requiredFields = Array.from(
+    document.querySelectorAll('[data-required-when-source-selected]')
+  )
+
+  for (const field of requiredFields) {
+    const requiredSource = String(
+      field.dataset.requiredWhenSourceSelected || ''
+    ).toLowerCase()
+    if (!selectedSet.has(requiredSource)) {
+      field.setCustomValidity('')
+      continue
+    }
+
+    const value = String(field.value || '').trim()
+    if (!value) {
+      field.setCustomValidity(
+        `This field is required when ${requiredSource} is selected.`
+      )
+      field.reportValidity()
+      return false
+    }
+
+    field.setCustomValidity('')
+  }
+
+  return true
 }
 
 function initializePaidStreamingServicesControl() {
@@ -947,6 +1010,14 @@ async function saveSettingsForm() {
     status.textContent = 'Saving settings...'
   }
   try {
+    if (!validateConditionalPersonalMediaSettings()) {
+      if (status) {
+        status.textContent =
+          'Please fill all required fields for selected personal media sources.'
+      }
+      return
+    }
+
     const settings = collectSettingsForm()
     const res = await fetch('/api/settings', {
       method: 'POST',
