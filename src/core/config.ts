@@ -13,13 +13,11 @@ const getSettingTrimmed = (name: Parameters<typeof getSetting>[0]) => {
 const normalizeUrl = (value?: string) =>
   typeof value === 'string' && value !== '' ? value.replace(/\/$/, '') : ''
 
-
 const splitCsvSetting = (value: string) =>
   value
     .split(',')
     .map(part => part.trim())
     .filter(Boolean)
-
 
 const parseJsonArraySetting = (value: string): string[] => {
   if (!value) return []
@@ -27,9 +25,7 @@ const parseJsonArraySetting = (value: string): string[] => {
   try {
     const parsed = JSON.parse(value)
     if (!Array.isArray(parsed)) return []
-    return parsed
-      .map(item => String(item).trim().toLowerCase())
-      .filter(Boolean)
+    return parsed.map(item => String(item).trim().toLowerCase()).filter(Boolean)
   } catch {
     return []
   }
@@ -42,8 +38,6 @@ export const LOG_LEVEL = getSettingTrimmed('LOG_LEVEL') ?? 'INFO'
 export const getMovieBatchSize = () =>
   getSettingTrimmed('MOVIE_BATCH_SIZE') ?? '20'
 export const getLinkType = () => getSettingTrimmed('LINK_TYPE') ?? 'app'
-export const getDefaultSectionTypeFilter = () =>
-  getSettingTrimmed('DEFAULT_SECTION_TYPE_FILTER') ?? 'movie'
 export const getLibraryFilter = () => getSettingTrimmed('LIBRARY_FILTER') ?? ''
 export const getCollectionFilter = () =>
   getSettingTrimmed('COLLECTION_FILTER') ?? ''
