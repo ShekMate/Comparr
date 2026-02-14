@@ -3,7 +3,6 @@ import { assert } from 'https://deno.land/std@0.79.0/_util/assert.ts'
 import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
 import {
   getCollectionFilter,
-  getDefaultSectionTypeFilter,
   getLibraryFilter,
   getPlexToken,
   getPlexUrl,
@@ -38,6 +37,8 @@ const getPlexConfig = () => {
 // thrown when the plex token is invalid
 class PlexTokenError extends Error {}
 
+const DEFAULT_SECTION_TYPE_FILTER = 'movie'
+
 export const getSections = async (): Promise<
   PlexMediaContainer<PlexDirectory>
 > => {
@@ -69,7 +70,7 @@ const getSelectedLibraryTitles = (
   log.debug(`Available libraries: ${availableLibraryNames.join(', ')}`)
 
   const defaultLibraryName = sections.MediaContainer.Directory.find(
-    ({ hidden, type }) => hidden !== 1 && type === getDefaultSectionTypeFilter()
+    ({ hidden, type }) => hidden !== 1 && type === DEFAULT_SECTION_TYPE_FILTER
   )?.title
 
   const libraryTitles =

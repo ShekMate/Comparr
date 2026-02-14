@@ -22,7 +22,6 @@ const cleanup = mockEnv({
   PLEX_TOKEN: 'test-token-123',
   LIBRARY_FILTER: '',
   COLLECTION_FILTER: '',
-  DEFAULT_SECTION_TYPE_FILTER: 'movie',
 })
 
 Deno.test({
@@ -189,7 +188,6 @@ Deno.test({
       PLEX_TOKEN: 'test-token-123',
       LIBRARY_FILTER: 'Animation',
       COLLECTION_FILTER: '',
-      DEFAULT_SECTION_TYPE_FILTER: 'movie',
     })
 
     globalThis.fetch = async (url: string | URL | Request) => {

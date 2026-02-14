@@ -22,7 +22,6 @@ export type SettingsKey =
   | 'LIBRARY_FILTER'
   | 'COLLECTION_FILTER'
   | 'ROOT_PATH'
-  | 'DEFAULT_SECTION_TYPE_FILTER'
   | 'LINK_TYPE'
   | 'IMDB_SYNC_URL'
   | 'IMDB_SYNC_INTERVAL_MINUTES'
@@ -33,7 +32,6 @@ export type SettingsKey =
 export type Settings = Record<SettingsKey, string>
 
 export { SettingsValidationError }
-
 
 const SETTINGS_KEYS: SettingsKey[] = [
   'PLEX_URL',
@@ -54,7 +52,6 @@ const SETTINGS_KEYS: SettingsKey[] = [
   'LIBRARY_FILTER',
   'COLLECTION_FILTER',
   'ROOT_PATH',
-  'DEFAULT_SECTION_TYPE_FILTER',
   'LINK_TYPE',
   'IMDB_SYNC_URL',
   'IMDB_SYNC_INTERVAL_MINUTES',
@@ -71,7 +68,6 @@ const DEFAULTS: Partial<Settings> = {
   LIBRARY_FILTER: '',
   COLLECTION_FILTER: '',
   ROOT_PATH: '',
-  DEFAULT_SECTION_TYPE_FILTER: 'movie',
   LINK_TYPE: 'app',
   PLEX_LIBRARY_NAME: 'My Plex Library',
   IMDB_SYNC_URL: '',
