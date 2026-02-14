@@ -4800,6 +4800,51 @@ footer {
   opacity: 0.92;
 }
 
+.settings-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+}
+
+.settings-advanced-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.settings-helper-text {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.settings-field-advanced {
+  border-left: 2px dashed var(--color-line);
+  padding-left: 0.75rem;
+}
+
+.settings-test-btn {
+  align-self: flex-start;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  padding: 0.45rem 0.65rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.settings-test-btn:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-primary);
+}
+
 .settings-section {
   background: var(--color-surface);
   border: 1px solid var(--color-line);

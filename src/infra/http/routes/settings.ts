@@ -13,6 +13,78 @@ export type SettingsRouteDeps = {
   ) => Promise<Record<string, unknown>>
 }
 
+const isValidHttpUrl = (value: string) => {
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+const runConnectionCheck = async (
+  target: string,
+  url: string,
+  token: string
+): Promise<{ ok: boolean; message: string }> => {
+  const normalizedTarget = String(target || '')
+    .trim()
+    .toLowerCase()
+  const normalizedUrl = String(url || '')
+    .trim()
+    .replace(/\/$/, '')
+  const normalizedToken = String(token || '').trim()
+
+  if (!isValidHttpUrl(normalizedUrl)) {
+    return { ok: false, message: 'Invalid URL.' }
+  }
+
+  if (!normalizedToken) {
+    return { ok: false, message: 'API key/token is required.' }
+  }
+
+  let endpoint = normalizedUrl
+  let headers: HeadersInit = {}
+
+  if (normalizedTarget === 'plex') {
+    endpoint = `${normalizedUrl}/library/sections?X-Plex-Token=${encodeURIComponent(
+      normalizedToken
+    )}`
+  } else if (normalizedTarget === 'radarr') {
+    endpoint = `${normalizedUrl}/api/v3/system/status`
+    headers = { 'X-Api-Key': normalizedToken }
+  } else if (
+    normalizedTarget === 'jellyseerr' ||
+    normalizedTarget === 'overseerr'
+  ) {
+    endpoint = `${normalizedUrl}/api/v1/status`
+    headers = { 'X-Api-Key': normalizedToken }
+  } else {
+    return { ok: false, message: 'Unknown service target.' }
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'GET',
+      headers,
+    })
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        message: `Connection failed with status ${response.status}.`,
+      }
+    }
+
+    return { ok: true, message: 'Connection successful.' }
+  } catch (err) {
+    return {
+      ok: false,
+      message: `Connection failed: ${err?.message || err}`,
+    }
+  }
+}
+
 export async function handleSettingsRoutes(
   req: any,
   pathname: string,
@@ -49,6 +121,46 @@ export async function handleSettingsRoutes(
       }),
       headers: new Headers({ 'content-type': 'application/json' }),
     })
+    return true
+  }
+
+  if (pathname === '/api/settings-test' && req.method === 'POST') {
+    if (!isLocalRequest(req)) {
+      await req.respond({ status: 403, body: 'Forbidden' })
+      return true
+    }
+
+    try {
+      const decoder = new TextDecoder()
+      const body = decoder.decode(await Deno.readAll(req.body))
+      const payload = JSON.parse(body) as {
+        target?: string
+        url?: string
+        token?: string
+      }
+
+      const result = await runConnectionCheck(
+        payload?.target || '',
+        payload?.url || '',
+        payload?.token || ''
+      )
+
+      await req.respond({
+        status: result.ok ? 200 : 400,
+        body: JSON.stringify(result),
+        headers: new Headers({ 'content-type': 'application/json' }),
+      })
+    } catch (err) {
+      await req.respond({
+        status: 500,
+        body: JSON.stringify({
+          ok: false,
+          message: `Test request failed: ${err?.message || err}`,
+        }),
+        headers: new Headers({ 'content-type': 'application/json' }),
+      })
+    }
+
     return true
   }
 

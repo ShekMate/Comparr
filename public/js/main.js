@@ -612,6 +612,22 @@ function sortWatchList(sortBy) {
 }
 
 /* --------------------- settings --------------------- */
+let settingsDirty = false
+
+function setSettingsStatus(message) {
+  const status = document.querySelector('.settings-status')
+  if (status) {
+    status.textContent = message
+  }
+}
+
+function setSettingsDirty(isDirty) {
+  settingsDirty = Boolean(isDirty)
+  if (settingsDirty) {
+    setSettingsStatus('You have unsaved changes.')
+  }
+}
+
 async function fetchSettingsAccess() {
   try {
     const res = await fetch('/api/settings-access')
@@ -751,20 +767,48 @@ function updatePersonalMediaSourceConfigVisibility(selectedSources = []) {
     })
 }
 
+function parseArraySetting(rawValue) {
+  if (Array.isArray(rawValue)) {
+    return rawValue
+      .map(entry => String(entry).trim().toLowerCase())
+      .filter(Boolean)
+  }
+
+  const trimmed = String(rawValue || '').trim()
+  if (!trimmed) return []
+
+  if (trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map(entry => String(entry).trim().toLowerCase())
+          .filter(Boolean)
+      }
+    } catch {
+      return []
+    }
+  }
+
+  // Backward compatibility for pre-upgrade CSV storage.
+  return trimmed
+    .split(',')
+    .map(entry => entry.trim().toLowerCase())
+    .filter(Boolean)
+}
+
 function collectPaidStreamingServicesSetting() {
-  return Array.from(
+  const selected = Array.from(
     document.querySelectorAll('[data-paid-streaming-service]:checked')
   )
     .map(input => input.value)
     .filter(Boolean)
-    .join(',')
+
+  return JSON.stringify(selected)
 }
 
 function hydratePaidStreamingServicesSetting(rawValue) {
-  const selectedValues = String(rawValue || '')
-    .split(',')
-    .map(entry => entry.trim().toLowerCase())
-    .filter(Boolean)
+  const selectedValues = parseArraySetting(rawValue)
   const selectedSet = new Set(selectedValues)
 
   document.querySelectorAll('[data-paid-streaming-service]').forEach(input => {
@@ -773,7 +817,7 @@ function hydratePaidStreamingServicesSetting(rawValue) {
 
   const hiddenInput = document.getElementById('setting-paid-streaming-services')
   if (hiddenInput) {
-    hiddenInput.value = selectedValues.join(',')
+    hiddenInput.value = JSON.stringify(selectedValues)
   }
 
   const summary = document.getElementById(
@@ -939,6 +983,109 @@ function initializePaidStreamingServicesControl() {
   })
 }
 
+function initializeAdvancedSettingsToggle() {
+  const toggle = document.getElementById('settings-show-advanced')
+  if (!toggle || toggle.dataset.boundAdvancedToggle === 'true') return
+
+  const stored = localStorage.getItem('settingsShowAdvanced')
+  const shouldShow = stored === 'true'
+  toggle.checked = shouldShow
+
+  const applyVisibility = showAdvanced => {
+    document.querySelectorAll('[data-advanced-setting]').forEach(field => {
+      field.toggleAttribute('hidden', !showAdvanced)
+    })
+  }
+
+  applyVisibility(shouldShow)
+
+  toggle.addEventListener('change', () => {
+    const enabled = toggle.checked
+    localStorage.setItem('settingsShowAdvanced', enabled ? 'true' : 'false')
+    applyVisibility(enabled)
+  })
+
+  toggle.dataset.boundAdvancedToggle = 'true'
+}
+
+function isValidUrl(value) {
+  try {
+    new URL(String(value || '').trim())
+    return true
+  } catch {
+    return false
+  }
+}
+
+function initializeIntegrationTestButtons() {
+  const mappings = {
+    plex: { url: 'setting-plex-url', key: 'setting-plex-token' },
+    radarr: { url: 'setting-radarr-url', key: 'setting-radarr-api-key' },
+    jellyseerr: {
+      url: 'setting-jellyseerr-url',
+      key: 'setting-jellyseerr-api-key',
+    },
+    overseerr: {
+      url: 'setting-overseerr-url',
+      key: 'setting-overseerr-api-key',
+    },
+  }
+
+  document.querySelectorAll('[data-test-target]').forEach(button => {
+    if (button.dataset.boundTestButton === 'true') return
+
+    button.addEventListener('click', () => {
+      const target = button.dataset.testTarget
+      const config = mappings[target]
+      if (!config) return
+
+      const urlValue = document.getElementById(config.url)?.value || ''
+      const keyValue = document.getElementById(config.key)?.value || ''
+
+      if (!isValidUrl(urlValue)) {
+        setSettingsStatus(
+          `⚠️ ${target} URL looks invalid. Please check and try again.`
+        )
+        return
+      }
+
+      if (!String(keyValue).trim()) {
+        setSettingsStatus(`⚠️ ${target} API key/token is empty.`)
+        return
+      }
+
+      setSettingsStatus(`Testing ${target} connection...`)
+
+      fetch('/api/settings-test', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          target,
+          url: urlValue,
+          token: keyValue,
+        }),
+      })
+        .then(async res => {
+          const data = await res.json().catch(() => ({ ok: false }))
+          if (res.ok && data?.ok) {
+            setSettingsStatus(`✅ ${target} connection successful.`)
+            return
+          }
+
+          const message = data?.message || `Connection failed (${res.status}).`
+          setSettingsStatus(`⚠️ ${target} connection test failed: ${message}`)
+        })
+        .catch(err => {
+          setSettingsStatus(
+            `⚠️ ${target} connection test failed: ${err?.message || err}`
+          )
+        })
+    })
+
+    button.dataset.boundTestButton = 'true'
+  })
+}
+
 function collectSettingsForm() {
   const settings = {}
   document.querySelectorAll('[data-setting-key]').forEach(el => {
@@ -999,22 +1146,20 @@ async function hydrateSettingsForm() {
 
     hydratePaidStreamingServicesSetting(settings.PAID_STREAMING_SERVICES)
     hydratePersonalMediaSourcesSetting(settings.PERSONAL_MEDIA_SOURCES)
+    setSettingsDirty(false)
+    setSettingsStatus('Loaded current settings.')
   } catch (err) {
     console.warn('Failed to hydrate settings form:', err)
   }
 }
 
 async function saveSettingsForm() {
-  const status = document.querySelector('.settings-status')
-  if (status) {
-    status.textContent = 'Saving settings...'
-  }
+  setSettingsStatus('Saving settings...')
   try {
     if (!validateConditionalPersonalMediaSettings()) {
-      if (status) {
-        status.textContent =
-          'Please fill all required fields for selected personal media sources.'
-      }
+      setSettingsStatus(
+        'Please fill all required fields for selected personal media sources.'
+      )
       return
     }
 
@@ -1045,16 +1190,15 @@ async function saveSettingsForm() {
     if (data?.settings?.PLEX_LIBRARY_NAME) {
       window.PLEX_LIBRARY_NAME = data.settings.PLEX_LIBRARY_NAME
     }
-    if (status) {
-      status.textContent = 'Settings saved.'
-    }
+    setSettingsStatus(
+      'Settings saved. Caches are refreshing in the background.'
+    )
+    setSettingsDirty(false)
   } catch (err) {
     console.error('Failed to save settings:', err)
-    if (status) {
-      status.textContent = `Failed to save settings: ${
-        err?.message || 'Unknown error.'
-      }`
-    }
+    setSettingsStatus(
+      `Failed to save settings: ${err?.message || 'Unknown error.'}`
+    )
   }
 }
 
@@ -1064,7 +1208,21 @@ async function setupSettingsUI() {
   if (!canAccess) {
     return
   }
+
+  initializeAdvancedSettingsToggle()
+  initializeIntegrationTestButtons()
   await hydrateSettingsForm()
+
+  document
+    .querySelectorAll(
+      '[data-setting-key], [data-paid-streaming-service], [data-personal-media-source]'
+    )
+    .forEach(el => {
+      if (el.dataset.boundSettingsDirty === 'true') return
+      el.addEventListener('change', () => setSettingsDirty(true))
+      el.dataset.boundSettingsDirty = 'true'
+    })
+
   document
     .querySelector('.settings-save-btn')
     ?.addEventListener('click', saveSettingsForm)
