@@ -104,7 +104,21 @@
               Generate
             </button>
           </div>
-          <button type="submit" class="submit-button">${LOGIN_SUBMIT}</button>
+          <div class="login-helper-copy">
+            <p>
+              <strong>Want to match with others?</strong> Share your room code,
+              or join with a code someone shared.
+            </p>
+            <p>
+              <strong>Want to keep it personal?</strong> Create your own room
+              code and keep it private.
+            </p>
+            <p class="login-helper-microcopy">
+              Room codes are case-insensitive. Tip: save your private room code
+              to keep your personal list.
+            </p>
+          </div>
+          <button type="submit" class="submit-button">Continue</button>
         </form>
       </section>
 
@@ -161,11 +175,11 @@
               type="button"
               class="dropdown-item mobile-settings-item"
               data-tab="tab-settings"
-              data-settings-target="settings-streaming-profile"
-              data-settings-title="Discovery Profile"
+              data-settings-target="settings-availability"
+              data-settings-title="Availability"
             >
               <i class="fas fa-tv"></i>
-              Discovery Profile
+              Availability
             </button>
             <button
               type="button"
@@ -267,8 +281,8 @@
               <button
                 class="sidebar-subitem"
                 data-tab="tab-settings"
-                data-settings-target="settings-streaming-profile"
-                data-settings-title="Discovery Profile"
+                data-settings-target="settings-availability"
+                data-settings-title="Availability"
               >
                 Discovery Profile
               </button>
@@ -1360,19 +1374,36 @@
             </div>
           </div>
 
-          <!-- Where to Watch Toggle -->
           <div class="filter-group">
             <label>
               <i class="fas fa-glasses"></i>
-              Where to Watch:
+              Availability:
             </label>
-            <div class="toggle-switch-container">
-              <span class="toggle-label-text active">Anywhere</span>
-              <label class="toggle-switch">
-                <input type="checkbox" id="swipe-plex-only-toggle" />
-                <span class="toggle-slider"></span>
+            <button
+              type="button"
+              class="dropdown-button"
+              id="swipe-availability-toggle"
+            >
+              Anywhere <span class="dropdown-arrow">&#9660;</span>
+            </button>
+            <div class="dropdown-list" id="swipe-availability-list">
+              <label class="rating-checkbox">
+                <input type="checkbox" id="swipe-availability-anywhere" checked />
+                Anywhere
               </label>
-              <span class="toggle-label-text">My Libraries</span>
+              <label class="rating-checkbox">
+                <input type="checkbox" id="swipe-availability-room-media" />
+                Room Personal Media
+              </label>
+              <label class="rating-checkbox">
+                <input type="checkbox" id="swipe-availability-paid" />
+                My Paid Subscriptions
+              </label>
+              <label class="rating-checkbox">
+                <input type="checkbox" id="swipe-availability-free" />
+                Free Streaming
+              </label>
+              <p id="swipe-availability-hint" class="settings-helper-text"></p>
             </div>
           </div>
 
@@ -1774,7 +1805,7 @@
                 <span id="settings-title">${NAV_SETTINGS}</span>
               </h3>
               <p class="settings-subtitle">
-                Organize System, Discovery Profile, Integrations, Sync, and
+                Organize System, Availability, Integrations, Sync, and
                 Security settings. Changes apply immediately unless marked
                 otherwise.
               </p>
@@ -1846,24 +1877,8 @@
             </div>
           </div>
 
-          <div class="settings-section" id="settings-streaming-profile">
-            <h4>Discovery Profile</h4>
-            <div class="settings-field">
-              <label for="setting-streaming-profile-mode">Profile Mode</label>
-              <select
-                id="setting-streaming-profile-mode"
-                data-setting-key="STREAMING_PROFILE_MODE"
-              >
-                <option value="anywhere">Anywhere</option>
-                <option value="my_subscriptions">My Subscriptions</option>
-                <option value="my_libraries">My Libraries</option>
-                <option value="my_availability">Everything I Can Watch</option>
-              </select>
-              <p>
-                Beta feature: this profile currently affects discovery-related
-                availability filtering.
-              </p>
-            </div>
+          <div class="settings-section" id="settings-availability">
+            <h4>Availability</h4>
             <div class="settings-field">
               <label for="setting-paid-streaming-services"
                 ><i class="fas fa-shield-alt" aria-hidden="true"></i> My Paid
@@ -2320,6 +2335,16 @@
                 placeholder="(optional)"
               />
               <p>Password required before users can log in.</p>
+            </div>
+            <div class="settings-field">
+              <label for="setting-admin-password">Admin Password</label>
+              <input
+                id="setting-admin-password"
+                type="password"
+                data-setting-key="ADMIN_PASSWORD"
+                placeholder="(leave blank to keep current)"
+              />
+              <p>Required to edit protected settings tabs from any client.</p>
             </div>
           </div>
 

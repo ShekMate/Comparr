@@ -22,7 +22,6 @@ import {
   getPersonalMediaSources,
   getPlexLibraryName,
   getRootPath,
-  getStreamingProfileMode,
   getTmdbApiKey,
 } from '../../core/config.ts'
 import {
@@ -471,6 +470,12 @@ interface WebSocketNextBatchMessage {
     genres?: string[]
     streamingServices?: string[]
     showPlexOnly?: boolean
+    availability?: {
+      anywhere?: boolean
+      roomPersonalMedia?: boolean
+      paidSubscriptions?: boolean
+      freeStreaming?: boolean
+    }
     contentRatings?: string[]
     imdbRating?: number
     tmdbRating?: number
@@ -1322,6 +1327,12 @@ class Session {
     genres?: string[]
     streamingServices?: string[]
     showPlexOnly?: boolean
+    availability?: {
+      anywhere?: boolean
+      roomPersonalMedia?: boolean
+      paidSubscriptions?: boolean
+      freeStreaming?: boolean
+    }
     contentRatings?: string[]
     imdbRating?: number
     tmdbRating?: number
@@ -1336,30 +1347,54 @@ class Session {
     imdbRating?: number
     rtRating?: number
   }) {
-    const profileMode = getStreamingProfileMode()
     const configuredPaidServices = getPaidStreamingServices()
     const configuredPersonalSources = getPersonalMediaSources()
     const requestedServices = (filters?.streamingServices || [])
       .map(service => service.trim())
       .filter(Boolean)
 
-    let effectiveShowMyPlexOnly = filters?.showPlexOnly ?? false
-    let effectiveStreamingServices = [...requestedServices]
+    const requestedAvailability = filters?.availability
+    const normalizedAvailability = {
+      anywhere: Boolean(requestedAvailability?.anywhere),
+      roomPersonalMedia: Boolean(requestedAvailability?.roomPersonalMedia),
+      paidSubscriptions: Boolean(requestedAvailability?.paidSubscriptions),
+      freeStreaming: Boolean(requestedAvailability?.freeStreaming),
+    }
 
-    if (profileMode === 'my_libraries') {
-      effectiveShowMyPlexOnly = true
-    } else if (
-      (profileMode === 'my_subscriptions' ||
-        profileMode === 'my_availability') &&
-      effectiveStreamingServices.length === 0
+    if (
+      !normalizedAvailability.anywhere &&
+      !normalizedAvailability.roomPersonalMedia &&
+      !normalizedAvailability.paidSubscriptions &&
+      !normalizedAvailability.freeStreaming
     ) {
+      normalizedAvailability.anywhere = true
+    }
+
+    if (normalizedAvailability.anywhere) {
+      normalizedAvailability.roomPersonalMedia = false
+      normalizedAvailability.paidSubscriptions = false
+      normalizedAvailability.freeStreaming = false
+    }
+
+    const wantsRoomPersonalMedia =
+      normalizedAvailability.roomPersonalMedia &&
+      configuredPersonalSources.length > 0
+    const wantsPaidSubscriptions =
+      normalizedAvailability.paidSubscriptions &&
+      configuredPaidServices.length > 0
+    const wantsFreeStreaming = normalizedAvailability.freeStreaming
+
+    let effectiveShowMyPlexOnly =
+      filters?.showPlexOnly ??
+      (wantsRoomPersonalMedia && !wantsPaidSubscriptions && !wantsFreeStreaming)
+
+    let effectiveStreamingServices = [...requestedServices]
+    if (effectiveStreamingServices.length === 0 && wantsPaidSubscriptions) {
       effectiveStreamingServices = [...configuredPaidServices]
     }
 
     const shouldBlendPlexInAvailability =
-      profileMode === 'my_availability' &&
-      configuredPersonalSources.includes('plex') &&
-      !effectiveShowMyPlexOnly
+      wantsRoomPersonalMedia && !effectiveShowMyPlexOnly
 
     const tmdbConfigured = Boolean(getTmdbApiKey())
 
@@ -1491,7 +1526,7 @@ class Session {
           } catch (err) {
             if (err instanceof NoMoreMoviesError) {
               log.debug(
-                'No more Plex candidates for my_availability blend; falling back to TMDb discovery.'
+                'No more room library candidates for blended availability; falling back to TMDb discovery.'
               )
             } else {
               throw err
@@ -1824,6 +1859,13 @@ class Session {
           let streamingServices = extra?.streamingServices || {
             subscription: [],
             free: [],
+          }
+
+          if (wantsFreeStreaming && streamingServices.free.length === 0) {
+            log.debug(
+              `⛔️ Skipping ${plexMovie.title} - missing free streaming availability`
+            )
+            continue
           }
 
           if (plexMovie.guid?.startsWith('plex://')) {

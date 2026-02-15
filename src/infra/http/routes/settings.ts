@@ -107,6 +107,28 @@ const runConnectionCheck = async (
   }
 }
 
+const parseAdminPassword = (req: any) => {
+  const header = req.headers?.get?.('x-admin-password')
+  if (typeof header === 'string') return header.trim()
+  return ''
+}
+
+const hasAdminPasswordConfigured = (settings: Record<string, unknown>) =>
+  Boolean(String(settings.ADMIN_PASSWORD ?? '').trim())
+
+const isAdminAuthorized = (
+  req: any,
+  settings: Record<string, unknown>,
+  isLocalRequest: (req: any) => boolean
+) => {
+  const configuredPassword = String(settings.ADMIN_PASSWORD ?? '').trim()
+  if (!configuredPassword) {
+    return isLocalRequest(req)
+  }
+
+  return parseAdminPassword(req) === configuredPassword
+}
+
 export async function handleSettingsRoutes(
   req: any,
   pathname: string,
@@ -123,9 +145,16 @@ export async function handleSettingsRoutes(
   } = deps
 
   if (pathname === '/api/settings-access') {
+    const settings = getSettings()
+    const hasAdminPassword = hasAdminPasswordConfigured(settings)
+    const canAccess = hasAdminPassword ? true : isLocalRequest(req)
+
     await req.respond({
       status: 200,
-      body: JSON.stringify({ canAccess: isLocalRequest(req) }),
+      body: JSON.stringify({
+        canAccess,
+        requiresAdminPassword: hasAdminPassword,
+      }),
       headers: new Headers({ 'content-type': 'application/json' }),
     })
     return true
@@ -137,7 +166,6 @@ export async function handleSettingsRoutes(
       status: 200,
       body: JSON.stringify({
         plexLibraryName: getPlexLibraryName(),
-        streamingProfileMode: settings.STREAMING_PROFILE_MODE,
         paidStreamingServices: settings.PAID_STREAMING_SERVICES,
         personalMediaSources: settings.PERSONAL_MEDIA_SOURCES,
       }),
@@ -147,7 +175,8 @@ export async function handleSettingsRoutes(
   }
 
   if (pathname === '/api/settings-test' && req.method === 'POST') {
-    if (!isLocalRequest(req)) {
+    const settings = getSettings()
+    if (!isAdminAuthorized(req, settings, isLocalRequest)) {
       await req.respond({ status: 403, body: 'Forbidden' })
       return true
     }
@@ -187,21 +216,25 @@ export async function handleSettingsRoutes(
   }
 
   if (pathname === '/api/settings' && req.method === 'GET') {
-    if (!isLocalRequest(req)) {
+    const settings = getSettings()
+    if (!isAdminAuthorized(req, settings, isLocalRequest)) {
       await req.respond({ status: 403, body: 'Forbidden' })
       return true
     }
 
     await req.respond({
       status: 200,
-      body: JSON.stringify({ settings: getSettings() }),
+      body: JSON.stringify({
+        settings: { ...settings, ADMIN_PASSWORD: '' },
+      }),
       headers: new Headers({ 'content-type': 'application/json' }),
     })
     return true
   }
 
   if (pathname === '/api/settings' && req.method === 'POST') {
-    if (!isLocalRequest(req)) {
+    const settings = getSettings()
+    if (!isAdminAuthorized(req, settings, isLocalRequest)) {
       await req.respond({ status: 403, body: 'Forbidden' })
       return true
     }
@@ -210,9 +243,23 @@ export async function handleSettingsRoutes(
       const decoder = new TextDecoder()
       const body = decoder.decode(await Deno.readAll(req.body))
       const { settings } = JSON.parse(body)
-      const updated = await updateSettings(
-        (settings ?? {}) as Record<string, unknown>
-      )
+      const incomingSettings =
+        ((settings ?? {}) as Record<string, unknown>) || {}
+      const currentSettings = getSettings()
+
+      if (
+        Object.prototype.hasOwnProperty.call(
+          incomingSettings,
+          'ADMIN_PASSWORD'
+        ) &&
+        String(incomingSettings.ADMIN_PASSWORD ?? '').trim() === ''
+      ) {
+        incomingSettings.ADMIN_PASSWORD = String(
+          currentSettings.ADMIN_PASSWORD ?? ''
+        )
+      }
+
+      const updated = await updateSettings(incomingSettings)
 
       clearAllMoviesCache()
       await refreshRadarrCache().catch(err =>
@@ -226,7 +273,9 @@ export async function handleSettingsRoutes(
 
       await req.respond({
         status: 200,
-        body: JSON.stringify({ settings: updated }),
+        body: JSON.stringify({
+          settings: { ...updated, ADMIN_PASSWORD: '' },
+        }),
         headers: new Headers({ 'content-type': 'application/json' }),
       })
     } catch (err) {

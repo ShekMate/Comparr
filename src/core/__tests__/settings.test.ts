@@ -20,6 +20,7 @@ Deno.test('settings include streaming profile defaults', async () => {
     const settings = settingsModule.getSettings()
 
     assertEquals(settings.STREAMING_PROFILE_MODE, 'anywhere')
+    assertEquals(settings.ADMIN_PASSWORD, '')
     assertEquals(settings.PAID_STREAMING_SERVICES, '[]')
     assertEquals(settings.PERSONAL_MEDIA_SOURCES, '[]')
   } finally {
@@ -43,6 +44,7 @@ Deno.test('settings can persist streaming profile updates', async () => {
 
     await settingsModule.updateSettings({
       STREAMING_PROFILE_MODE: 'my_subscriptions',
+      ADMIN_PASSWORD: 'secret-admin',
       PAID_STREAMING_SERVICES: '["netflix","hulu"]',
       PERSONAL_MEDIA_SOURCES: '["plex","jellyfin"]',
     })
@@ -51,6 +53,7 @@ Deno.test('settings can persist streaming profile updates', async () => {
     const settings = reloaded.getSettings()
 
     assertEquals(settings.STREAMING_PROFILE_MODE, 'my_subscriptions')
+    assertEquals(settings.ADMIN_PASSWORD, 'secret-admin')
     assertEquals(settings.PAID_STREAMING_SERVICES, '["netflix","hulu"]')
     assertEquals(settings.PERSONAL_MEDIA_SOURCES, '["plex","jellyfin"]')
   } finally {
@@ -83,6 +86,7 @@ Deno.test('settings normalize streaming profile values', async () => {
     const settings = settingsModule.getSettings()
 
     assertEquals(settings.STREAMING_PROFILE_MODE, 'my_subscriptions')
+    assertEquals(settings.ADMIN_PASSWORD, 'secret-admin')
     assertEquals(settings.PAID_STREAMING_SERVICES, '["netflix","hulu"]')
     assertEquals(settings.PERSONAL_MEDIA_SOURCES, '["plex","jellyfin"]')
   } finally {
