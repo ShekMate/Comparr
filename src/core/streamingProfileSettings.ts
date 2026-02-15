@@ -28,15 +28,44 @@ const VALID_PAID_STREAMING_SERVICES = new Set([
   'apple-tv-plus',
 ])
 
-const normalizeCsvList = (value: string) =>
+const normalizeStringList = (value: string[]): string[] =>
   Array.from(
-    new Set(
-      value
-        .split(',')
-        .map(part => part.trim().toLowerCase())
-        .filter(Boolean)
-    )
+    new Set(value.map(part => part.trim().toLowerCase()).filter(Boolean))
   )
+
+const parseServiceList = (raw: string): string[] => {
+  const trimmed = raw.trim()
+  if (!trimmed) return []
+
+  if (trimmed.startsWith('[')) {
+    const parsed = JSON.parse(trimmed)
+    if (
+      !Array.isArray(parsed) ||
+      !parsed.every(item => typeof item === 'string')
+    ) {
+      throw new Error('Invalid paid services array')
+    }
+    return normalizeStringList(parsed as string[])
+  }
+
+  // Backward compatibility for existing CSV settings.
+  return normalizeStringList(trimmed.split(','))
+}
+
+const parsePersonalMediaSources = (raw: string): string[] => {
+  const trimmed = raw.trim()
+  if (!trimmed) return []
+
+  const parsed = JSON.parse(trimmed)
+  if (
+    !Array.isArray(parsed) ||
+    !parsed.every(item => typeof item === 'string')
+  ) {
+    throw new Error('Invalid personal sources array')
+  }
+
+  return normalizeStringList(parsed as string[])
+}
 
 export const validateAndNormalizeStreamingSettings = (
   settings: Settings,
@@ -55,41 +84,35 @@ export const validateAndNormalizeStreamingSettings = (
   }
 
   if (touchedKeys.has('PAID_STREAMING_SERVICES')) {
-    const normalizedServices = normalizeCsvList(settings.PAID_STREAMING_SERVICES)
-    const invalidServices = normalizedServices.filter(
-      service => !VALID_PAID_STREAMING_SERVICES.has(service)
-    )
+    try {
+      const normalizedServices = parseServiceList(
+        settings.PAID_STREAMING_SERVICES
+      )
+      const invalidServices = normalizedServices.filter(
+        service => !VALID_PAID_STREAMING_SERVICES.has(service)
+      )
 
-    if (invalidServices.length > 0) {
-      errors.PAID_STREAMING_SERVICES = `Unknown services: ${invalidServices.join(', ')}`
-    } else {
-      settings.PAID_STREAMING_SERVICES = normalizedServices.join(',')
+      if (invalidServices.length > 0) {
+        errors.PAID_STREAMING_SERVICES = `Unknown services: ${invalidServices.join(
+          ', '
+        )}`
+      } else {
+        settings.PAID_STREAMING_SERVICES = JSON.stringify(normalizedServices)
+      }
+    } catch {
+      errors.PAID_STREAMING_SERVICES =
+        'Must be a JSON array of strings (example: ["netflix"]).'
     }
   }
 
   if (touchedKeys.has('PERSONAL_MEDIA_SOURCES')) {
-    const raw = settings.PERSONAL_MEDIA_SOURCES.trim()
-
-    if (raw === '') {
-      settings.PERSONAL_MEDIA_SOURCES = '[]'
-    } else {
-      try {
-        const parsed = JSON.parse(raw)
-
-        if (!Array.isArray(parsed)) {
-          errors.PERSONAL_MEDIA_SOURCES = 'Must be a JSON array of strings.'
-        } else if (!parsed.every(item => typeof item === 'string')) {
-          errors.PERSONAL_MEDIA_SOURCES =
-            'Must be a JSON array containing only string values.'
-        } else {
-          const normalized = Array.from(
-            new Set(parsed.map(item => item.trim().toLowerCase()).filter(Boolean))
-          )
-          settings.PERSONAL_MEDIA_SOURCES = JSON.stringify(normalized)
-        }
-      } catch {
-        errors.PERSONAL_MEDIA_SOURCES = 'Must be valid JSON (example: ["plex"]).'
-      }
+    try {
+      settings.PERSONAL_MEDIA_SOURCES = JSON.stringify(
+        parsePersonalMediaSources(settings.PERSONAL_MEDIA_SOURCES)
+      )
+    } catch {
+      errors.PERSONAL_MEDIA_SOURCES =
+        'Must be valid JSON array of strings (example: ["plex"]).'
     }
   }
 
