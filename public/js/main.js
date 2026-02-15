@@ -1251,6 +1251,11 @@ async function hydrateSettingsForm() {
     setSettingsDirty(false)
     setSettingsStatus('Loaded current settings.')
   } catch (err) {
+    if (err?.message && String(err.message).includes('403')) {
+      adminPassword = ''
+      sessionStorage.removeItem('comparrAdminPassword')
+      setSettingsStatus('Admin password was rejected. Please try again.')
+    }
     console.warn('Failed to hydrate settings form:', err)
   }
 }
@@ -1304,17 +1309,10 @@ async function saveSettingsForm() {
   }
 }
 
-async function setupSettingsUI() {
-  settingsAccessState = await fetchSettingsAccess()
-  toggleSettingsVisibility(settingsAccessState.canAccess)
-  if (!settingsAccessState.canAccess) {
-    return
-  }
+let settingsUiHydrated = false
 
-  if (!(await ensureAdminAccess())) {
-    setSettingsStatus('Admin password is required to view settings.')
-    return
-  }
+async function hydrateSettingsUiIfAuthorized() {
+  if (settingsUiHydrated) return true
 
   initializeAdvancedSettingsToggle()
   initializeIntegrationTestButtons()
@@ -1333,6 +1331,63 @@ async function setupSettingsUI() {
   document
     .querySelector('.settings-save-btn')
     ?.addEventListener('click', saveSettingsForm)
+
+  settingsUiHydrated = true
+  return true
+}
+
+function bindSettingsAccessGuards() {
+  const settingsTriggers = document.querySelectorAll(
+    '[data-tab="tab-settings"], .mobile-settings-item, .sidebar-subitem'
+  )
+
+  settingsTriggers.forEach(trigger => {
+    if (trigger.dataset.boundAdminGuard === 'true') return
+
+    trigger.addEventListener(
+      'click',
+      async e => {
+        if (!settingsAccessState.requiresAdminPassword) {
+          await hydrateSettingsUiIfAuthorized()
+          return
+        }
+
+        const hasAccess = await ensureAdminAccess()
+        if (!hasAccess) {
+          e.preventDefault()
+          e.stopPropagation()
+          if (typeof e.stopImmediatePropagation === 'function') {
+            e.stopImmediatePropagation()
+          }
+          setSettingsStatus('Admin password is required to access settings.')
+          return
+        }
+
+        await hydrateSettingsUiIfAuthorized()
+      },
+      true
+    )
+
+    trigger.dataset.boundAdminGuard = 'true'
+  })
+}
+
+async function setupSettingsUI() {
+  settingsAccessState = await fetchSettingsAccess()
+  toggleSettingsVisibility(settingsAccessState.canAccess)
+  if (!settingsAccessState.canAccess) {
+    return
+  }
+
+  bindSettingsAccessGuards()
+
+  if (!settingsAccessState.requiresAdminPassword) {
+    await hydrateSettingsUiIfAuthorized()
+  } else {
+    setSettingsStatus(
+      'Settings are protected. Open Settings to enter admin password.'
+    )
+  }
 }
 
 // Make it globally available
