@@ -107,6 +107,62 @@ const runConnectionCheck = async (
   }
 }
 
+const parseAdminPassword = (req: any) => {
+  const header = req.headers?.get?.('x-admin-password')
+  if (typeof header === 'string') return header.trim()
+  return ''
+}
+
+const hasAdminPasswordConfigured = (settings: Record<string, unknown>) =>
+  Boolean(String(settings.ADMIN_PASSWORD ?? '').trim())
+
+const isAdminAuthorized = (
+  req: any,
+  settings: Record<string, unknown>,
+  isLocalRequest: (req: any) => boolean
+) => {
+  const configuredPassword = String(settings.ADMIN_PASSWORD ?? '').trim()
+  if (!configuredPassword) {
+    return isLocalRequest(req)
+  }
+
+  return parseAdminPassword(req) === configuredPassword
+}
+
+const ADMIN_ONLY_SETTINGS = new Set([
+  'PLEX_URL',
+  'PLEX_TOKEN',
+  'PLEX_LIBRARY_NAME',
+  'LIBRARY_FILTER',
+  'COLLECTION_FILTER',
+  'PERSONAL_MEDIA_SOURCES',
+  'TMDB_API_KEY',
+  'OMDB_API_KEY',
+  'RADARR_URL',
+  'RADARR_API_KEY',
+  'JELLYSEERR_URL',
+  'JELLYSEERR_API_KEY',
+  'OVERSEERR_URL',
+  'OVERSEERR_API_KEY',
+  'ACCESS_PASSWORD',
+  'ADMIN_PASSWORD',
+])
+
+const sanitizeSettingsForClient = (
+  settings: Record<string, unknown>,
+  isAdmin: boolean
+) => {
+  const sanitized = { ...settings, ADMIN_PASSWORD: '' }
+
+  if (!isAdmin) {
+    for (const key of ADMIN_ONLY_SETTINGS) {
+      sanitized[key] = ''
+    }
+  }
+
+  return sanitized
+}
+
 export async function handleSettingsRoutes(
   req: any,
   pathname: string,
@@ -123,9 +179,16 @@ export async function handleSettingsRoutes(
   } = deps
 
   if (pathname === '/api/settings-access') {
+    const settings = getSettings()
+    const hasAdminPassword = hasAdminPasswordConfigured(settings)
+    const canAccess = true
+
     await req.respond({
       status: 200,
-      body: JSON.stringify({ canAccess: isLocalRequest(req) }),
+      body: JSON.stringify({
+        canAccess,
+        requiresAdminPassword: hasAdminPassword,
+      }),
       headers: new Headers({ 'content-type': 'application/json' }),
     })
     return true
@@ -137,7 +200,6 @@ export async function handleSettingsRoutes(
       status: 200,
       body: JSON.stringify({
         plexLibraryName: getPlexLibraryName(),
-        streamingProfileMode: settings.STREAMING_PROFILE_MODE,
         paidStreamingServices: settings.PAID_STREAMING_SERVICES,
         personalMediaSources: settings.PERSONAL_MEDIA_SOURCES,
       }),
@@ -147,7 +209,8 @@ export async function handleSettingsRoutes(
   }
 
   if (pathname === '/api/settings-test' && req.method === 'POST') {
-    if (!isLocalRequest(req)) {
+    const settings = getSettings()
+    if (!isAdminAuthorized(req, settings, isLocalRequest)) {
       await req.respond({ status: 403, body: 'Forbidden' })
       return true
     }
@@ -187,46 +250,75 @@ export async function handleSettingsRoutes(
   }
 
   if (pathname === '/api/settings' && req.method === 'GET') {
-    if (!isLocalRequest(req)) {
-      await req.respond({ status: 403, body: 'Forbidden' })
-      return true
-    }
+    const settings = getSettings()
+    const isAdmin = isAdminAuthorized(req, settings, isLocalRequest)
 
     await req.respond({
       status: 200,
-      body: JSON.stringify({ settings: getSettings() }),
+      body: JSON.stringify({
+        settings: sanitizeSettingsForClient(settings, isAdmin),
+      }),
       headers: new Headers({ 'content-type': 'application/json' }),
     })
     return true
   }
 
   if (pathname === '/api/settings' && req.method === 'POST') {
-    if (!isLocalRequest(req)) {
-      await req.respond({ status: 403, body: 'Forbidden' })
-      return true
-    }
+    const currentSettings = getSettings()
+    const isAdmin = isAdminAuthorized(req, currentSettings, isLocalRequest)
 
     try {
       const decoder = new TextDecoder()
       const body = decoder.decode(await Deno.readAll(req.body))
       const { settings } = JSON.parse(body)
-      const updated = await updateSettings(
-        (settings ?? {}) as Record<string, unknown>
-      )
+      const incomingSettings =
+        ((settings ?? {}) as Record<string, unknown>) || {}
 
-      clearAllMoviesCache()
-      await refreshRadarrCache().catch(err =>
-        log.error(
-          `Failed to refresh Radarr cache after settings update: ${err}`
+      if (!isAdmin) {
+        for (const key of Object.keys(incomingSettings)) {
+          if (ADMIN_ONLY_SETTINGS.has(key)) {
+            delete incomingSettings[key]
+          }
+        }
+      }
+
+      if (
+        isAdmin &&
+        Object.prototype.hasOwnProperty.call(
+          incomingSettings,
+          'ADMIN_PASSWORD'
+        ) &&
+        String(incomingSettings.ADMIN_PASSWORD ?? '').trim() === ''
+      ) {
+        incomingSettings.ADMIN_PASSWORD = String(
+          currentSettings.ADMIN_PASSWORD ?? ''
         )
-      )
-      await buildPlexCache().catch(err =>
-        log.error(`Failed to refresh Plex cache after settings update: ${err}`)
-      )
+      }
+
+      const hasUpdates = Object.keys(incomingSettings).length > 0
+      const updated = hasUpdates
+        ? await updateSettings(incomingSettings)
+        : currentSettings
+
+      if (hasUpdates) {
+        clearAllMoviesCache()
+        await refreshRadarrCache().catch(err =>
+          log.error(
+            `Failed to refresh Radarr cache after settings update: ${err}`
+          )
+        )
+        await buildPlexCache().catch(err =>
+          log.error(
+            `Failed to refresh Plex cache after settings update: ${err}`
+          )
+        )
+      }
 
       await req.respond({
         status: 200,
-        body: JSON.stringify({ settings: updated }),
+        body: JSON.stringify({
+          settings: sanitizeSettingsForClient(updated, isAdmin),
+        }),
         headers: new Headers({ 'content-type': 'application/json' }),
       })
     } catch (err) {

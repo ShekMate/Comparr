@@ -1309,6 +1309,21 @@ body:not(.is-logged-in) .card-stack:empty::after {
   margin-bottom: 0;
 }
 
+.login-helper-copy {
+  margin: 0.75rem 0 1rem;
+  font-size: 0.9rem;
+  color: #d1d5db;
+}
+
+.login-helper-copy p {
+  margin: 0.25rem 0;
+}
+
+.login-helper-copy .login-helper-microcopy {
+  color: #9ca3af;
+  font-size: 0.82rem;
+}
+
 /* Password Form - Enhanced */
 .password-form {
   display: flex;

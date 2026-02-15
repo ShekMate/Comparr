@@ -277,6 +277,7 @@ export class ComparrAPI extends EventTarget {
         genres: filters.genres,
         // streamingServices: filters.streamingServices,
         showPlexOnly: filters.showPlexOnly,
+        availability: filters.availability,
         contentRatings: filters.contentRatings,
         imdbRating: filters.imdbRating,
         tmdbRating: filters.tmdbRating,
