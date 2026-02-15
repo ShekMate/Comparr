@@ -1007,11 +1007,21 @@ function initializeAdvancedSettingsToggle() {
   toggle.checked = shouldShow
 
   applyAdvancedSettingsVisibility(shouldShow)
+  setSettingsStatus(
+    shouldShow
+      ? 'Advanced settings are visible.'
+      : 'Advanced settings are hidden.'
+  )
 
   toggle.addEventListener('change', () => {
     const enabled = toggle.checked
     localStorage.setItem('settingsShowAdvanced', enabled ? 'true' : 'false')
     applyAdvancedSettingsVisibility(enabled)
+    setSettingsStatus(
+      enabled
+        ? 'Advanced settings are visible.'
+        : 'Advanced settings are hidden.'
+    )
   })
 
   toggle.dataset.boundAdvancedToggle = 'true'
@@ -1038,6 +1048,8 @@ function initializeIntegrationTestButtons() {
       url: 'setting-overseerr-url',
       key: 'setting-overseerr-api-key',
     },
+    tmdb: { key: 'setting-tmdb-key' },
+    omdb: { key: 'setting-omdb-key' },
   }
 
   document.querySelectorAll('[data-test-target]').forEach(button => {
@@ -1048,10 +1060,12 @@ function initializeIntegrationTestButtons() {
       const config = mappings[target]
       if (!config) return
 
-      const urlValue = document.getElementById(config.url)?.value || ''
+      const urlValue = config.url
+        ? document.getElementById(config.url)?.value || ''
+        : ''
       const keyValue = document.getElementById(config.key)?.value || ''
 
-      if (!isValidUrl(urlValue)) {
+      if (config.url && !isValidUrl(urlValue)) {
         setSettingsStatus(
           `⚠️ ${target} URL looks invalid. Please check and try again.`
         )

@@ -35,7 +35,11 @@ const runConnectionCheck = async (
     .replace(/\/$/, '')
   const normalizedToken = String(token || '').trim()
 
-  if (!isValidHttpUrl(normalizedUrl)) {
+  if (
+    normalizedTarget !== 'tmdb' &&
+    normalizedTarget !== 'omdb' &&
+    !isValidHttpUrl(normalizedUrl)
+  ) {
     return { ok: false, message: 'Invalid URL.' }
   }
 
@@ -59,6 +63,14 @@ const runConnectionCheck = async (
   ) {
     endpoint = `${normalizedUrl}/api/v1/status`
     headers = { 'X-Api-Key': normalizedToken }
+  } else if (normalizedTarget === 'tmdb') {
+    endpoint = `https://api.themoviedb.org/3/configuration?api_key=${encodeURIComponent(
+      normalizedToken
+    )}`
+  } else if (normalizedTarget === 'omdb') {
+    endpoint = `https://www.omdbapi.com/?apikey=${encodeURIComponent(
+      normalizedToken
+    )}&i=tt0133093`
   } else {
     return { ok: false, message: 'Unknown service target.' }
   }
@@ -73,6 +85,16 @@ const runConnectionCheck = async (
       return {
         ok: false,
         message: `Connection failed with status ${response.status}.`,
+      }
+    }
+
+    if (normalizedTarget === 'omdb') {
+      const payload = await response.json().catch(() => ({}))
+      if (payload?.Response === 'False') {
+        return {
+          ok: false,
+          message: payload?.Error || 'OMDb API key validation failed.',
+        }
       }
     }
 

@@ -1774,8 +1774,9 @@
                 <span id="settings-title">${NAV_SETTINGS}</span>
               </h3>
               <p class="settings-subtitle">
-                Organize System, Discovery Profile, Integrations, Sync, and Security settings.
-                Changes apply immediately unless marked otherwise.
+                Organize System, Discovery Profile, Integrations, Sync, and
+                Security settings. Changes apply immediately unless marked
+                otherwise.
               </p>
             </div>
             <button class="settings-save-btn" type="button">
@@ -1789,7 +1790,9 @@
               <input type="checkbox" id="settings-show-advanced" />
               Show advanced settings
             </label>
-            <span class="settings-helper-text">Use Test buttons before saving integration changes.</span>
+            <span class="settings-helper-text"
+              >Use Test buttons before saving integration changes.</span
+            >
           </div>
 
           <div class="settings-section" id="settings-core">
@@ -1807,7 +1810,11 @@
               />
               <p>Internal web server port.</p>
             </div>
-            <div class="settings-field settings-field-advanced" data-advanced-setting hidden>
+            <div
+              class="settings-field settings-field-advanced"
+              data-advanced-setting
+              hidden
+            >
               <label for="setting-root-path"
                 >Root Path
                 <span class="settings-badge">Restart required</span></label
@@ -1820,7 +1827,11 @@
               />
               <p>Base path when running behind a reverse proxy.</p>
             </div>
-            <div class="settings-field settings-field-advanced" data-advanced-setting hidden>
+            <div
+              class="settings-field settings-field-advanced"
+              data-advanced-setting
+              hidden
+            >
               <label for="setting-log-level"
                 >Log Level
                 <span class="settings-badge">Restart required</span></label
@@ -1848,7 +1859,10 @@
                 <option value="my_libraries">My Libraries</option>
                 <option value="my_availability">Everything I Can Watch</option>
               </select>
-              <p>Beta feature: this profile currently affects discovery-related availability filtering.</p>
+              <p>
+                Beta feature: this profile currently affects discovery-related
+                availability filtering.
+              </p>
             </div>
             <div class="settings-field">
               <label for="setting-paid-streaming-services"
@@ -2040,7 +2054,13 @@
                   data-required-when-source-selected="plex"
                   placeholder="••••••••"
                 />
-                <button type="button" class="settings-test-btn" data-test-target="plex">Test Plex connection</button>
+                <button
+                  type="button"
+                  class="settings-test-btn"
+                  data-test-target="plex"
+                >
+                  Test Plex connection
+                </button>
               </div>
               <div class="settings-field">
                 <label for="setting-plex-library-name">Plex Library Name</label>
@@ -2053,7 +2073,11 @@
                 />
                 <p>Label shown for Plex availability in the UI.</p>
               </div>
-              <div class="settings-field settings-field-advanced" data-advanced-setting hidden>
+              <div
+                class="settings-field settings-field-advanced"
+                data-advanced-setting
+                hidden
+              >
                 <label for="setting-library-filter">Library Filter</label>
                 <input
                   id="setting-library-filter"
@@ -2063,7 +2087,11 @@
                 />
                 <p>Comma-separated library names to include.</p>
               </div>
-              <div class="settings-field settings-field-advanced" data-advanced-setting hidden>
+              <div
+                class="settings-field settings-field-advanced"
+                data-advanced-setting
+                hidden
+              >
                 <label for="setting-collection-filter">Collection Filter</label>
                 <input
                   id="setting-collection-filter"
@@ -2086,6 +2114,13 @@
                 data-setting-key="TMDB_API_KEY"
                 placeholder="••••••••"
               />
+              <button
+                type="button"
+                class="settings-test-btn"
+                data-test-target="tmdb"
+              >
+                Test TMDb connection
+              </button>
             </div>
             <div class="settings-field">
               <label for="setting-omdb-key">OMDb API Key</label>
@@ -2095,6 +2130,13 @@
                 data-setting-key="OMDB_API_KEY"
                 placeholder="••••••••"
               />
+              <button
+                type="button"
+                class="settings-test-btn"
+                data-test-target="omdb"
+              >
+                Test OMDb connection
+              </button>
             </div>
             <div class="settings-field">
               <label for="setting-movie-batch-size">Movie Batch Size</label>
@@ -2207,7 +2249,13 @@
                 data-setting-key="RADARR_API_KEY"
                 placeholder="••••••••"
               />
-              <button type="button" class="settings-test-btn" data-test-target="radarr">Test Radarr connection</button>
+              <button
+                type="button"
+                class="settings-test-btn"
+                data-test-target="radarr"
+              >
+                Test Radarr connection
+              </button>
             </div>
             <div class="settings-field">
               <label for="setting-jellyseerr-url">Jellyseerr URL</label>
@@ -2226,7 +2274,13 @@
                 data-setting-key="JELLYSEERR_API_KEY"
                 placeholder="••••••••"
               />
-              <button type="button" class="settings-test-btn" data-test-target="jellyseerr">Test Jellyseerr connection</button>
+              <button
+                type="button"
+                class="settings-test-btn"
+                data-test-target="jellyseerr"
+              >
+                Test Jellyseerr connection
+              </button>
             </div>
             <div class="settings-field">
               <label for="setting-overseerr-url">Overseerr URL</label>
@@ -2245,7 +2299,13 @@
                 data-setting-key="OVERSEERR_API_KEY"
                 placeholder="••••••••"
               />
-              <button type="button" class="settings-test-btn" data-test-target="overseerr">Test Overseerr connection</button>
+              <button
+                type="button"
+                class="settings-test-btn"
+                data-test-target="overseerr"
+              >
+                Test Overseerr connection
+              </button>
             </div>
           </div>
 
