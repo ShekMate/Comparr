@@ -765,6 +765,21 @@ function updatePersonalMediaSourceConfigVisibility(selectedSources = []) {
       field.required = isRequired
       field.setAttribute('aria-required', isRequired ? 'true' : 'false')
     })
+
+  // Keep advanced visibility in sync when sections are dynamically revealed.
+  applyAdvancedSettingsVisibility()
+}
+
+function applyAdvancedSettingsVisibility(forceValue) {
+  const toggle = document.getElementById('settings-show-advanced')
+  const shouldShow =
+    typeof forceValue === 'boolean'
+      ? forceValue
+      : Boolean(toggle && toggle.checked)
+
+  document.querySelectorAll('[data-advanced-setting]').forEach(field => {
+    field.toggleAttribute('hidden', !shouldShow)
+  })
 }
 
 function parseArraySetting(rawValue) {
@@ -991,18 +1006,12 @@ function initializeAdvancedSettingsToggle() {
   const shouldShow = stored === 'true'
   toggle.checked = shouldShow
 
-  const applyVisibility = showAdvanced => {
-    document.querySelectorAll('[data-advanced-setting]').forEach(field => {
-      field.toggleAttribute('hidden', !showAdvanced)
-    })
-  }
-
-  applyVisibility(shouldShow)
+  applyAdvancedSettingsVisibility(shouldShow)
 
   toggle.addEventListener('change', () => {
     const enabled = toggle.checked
     localStorage.setItem('settingsShowAdvanced', enabled ? 'true' : 'false')
-    applyVisibility(enabled)
+    applyAdvancedSettingsVisibility(enabled)
   })
 
   toggle.dataset.boundAdvancedToggle = 'true'
