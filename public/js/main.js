@@ -628,16 +628,50 @@ function setSettingsDirty(isDirty) {
   }
 }
 
+let adminPassword = sessionStorage.getItem('comparrAdminPassword') || ''
+let settingsAccessState = {
+  canAccess: false,
+  requiresAdminPassword: false,
+}
+
+function getAdminHeaders() {
+  return adminPassword ? { 'x-admin-password': adminPassword } : {}
+}
+
 async function fetchSettingsAccess() {
   try {
     const res = await fetch('/api/settings-access')
-    if (!res.ok) return false
+    if (!res.ok) return { canAccess: false, requiresAdminPassword: false }
     const data = await res.json()
-    return Boolean(data?.canAccess)
+    return {
+      canAccess: Boolean(data?.canAccess),
+      requiresAdminPassword: Boolean(data?.requiresAdminPassword),
+    }
   } catch (err) {
     console.warn('Settings access check failed:', err)
+    return { canAccess: false, requiresAdminPassword: false }
+  }
+}
+
+async function ensureAdminAccess(forcePrompt = false) {
+  if (!settingsAccessState.canAccess) return false
+
+  if (!settingsAccessState.requiresAdminPassword) {
+    return true
+  }
+
+  if (!forcePrompt && adminPassword) {
+    return true
+  }
+
+  const entered = window.prompt('Enter admin password to access settings:')
+  if (!entered) {
     return false
   }
+
+  adminPassword = String(entered).trim()
+  sessionStorage.setItem('comparrAdminPassword', adminPassword)
+  return true
 }
 
 async function loadClientConfig() {
@@ -647,9 +681,6 @@ async function loadClientConfig() {
     const data = await res.json()
     if (data?.plexLibraryName) {
       window.PLEX_LIBRARY_NAME = data.plexLibraryName
-    }
-    if (data?.streamingProfileMode) {
-      window.STREAMING_PROFILE_MODE = data.streamingProfileMode
     }
     if (data?.paidStreamingServices !== undefined) {
       window.PAID_STREAMING_SERVICES = data.paidStreamingServices
@@ -662,8 +693,54 @@ async function loadClientConfig() {
   }
 }
 
-function isLibrariesOnlyProfile() {
-  return window.STREAMING_PROFILE_MODE === 'my_libraries'
+function getDefaultAvailabilityState() {
+  return {
+    anywhere: true,
+    roomPersonalMedia: false,
+    paidSubscriptions: false,
+    freeStreaming: false,
+  }
+}
+
+function normalizeAvailabilityState(value) {
+  const fallback = getDefaultAvailabilityState()
+  if (!value || typeof value !== 'object') {
+    return fallback
+  }
+
+  const state = {
+    anywhere: Boolean(value.anywhere),
+    roomPersonalMedia: Boolean(value.roomPersonalMedia),
+    paidSubscriptions: Boolean(value.paidSubscriptions),
+    freeStreaming: Boolean(value.freeStreaming),
+  }
+
+  if (
+    !state.anywhere &&
+    !state.roomPersonalMedia &&
+    !state.paidSubscriptions &&
+    !state.freeStreaming
+  ) {
+    state.anywhere = true
+  }
+
+  if (state.anywhere) {
+    state.roomPersonalMedia = false
+    state.paidSubscriptions = false
+    state.freeStreaming = false
+  }
+
+  return state
+}
+
+function deriveShowPlexOnlyFromAvailability(availability) {
+  const normalized = normalizeAvailabilityState(availability)
+  return (
+    !normalized.anywhere &&
+    normalized.roomPersonalMedia &&
+    !normalized.paidSubscriptions &&
+    !normalized.freeStreaming
+  )
 }
 
 function toggleSettingsVisibility(canAccess) {
@@ -1081,7 +1158,7 @@ function initializeIntegrationTestButtons() {
 
       fetch('/api/settings-test', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', ...getAdminHeaders() },
         body: JSON.stringify({
           target,
           url: urlValue,
@@ -1138,7 +1215,9 @@ function collectSettingsForm() {
 
 async function hydrateSettingsForm() {
   try {
-    const res = await fetch('/api/settings')
+    const res = await fetch('/api/settings', {
+      headers: { ...getAdminHeaders() },
+    })
     if (!res.ok) {
       throw new Error(`Settings fetch failed: ${res.status}`)
     }
@@ -1172,6 +1251,11 @@ async function hydrateSettingsForm() {
     setSettingsDirty(false)
     setSettingsStatus('Loaded current settings.')
   } catch (err) {
+    if (err?.message && String(err.message).includes('403')) {
+      adminPassword = ''
+      sessionStorage.removeItem('comparrAdminPassword')
+      setSettingsStatus('Admin password was rejected. Please try again.')
+    }
     console.warn('Failed to hydrate settings form:', err)
   }
 }
@@ -1189,7 +1273,7 @@ async function saveSettingsForm() {
     const settings = collectSettingsForm()
     const res = await fetch('/api/settings', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...getAdminHeaders() },
       body: JSON.stringify({ settings }),
     })
     if (!res.ok) {
@@ -1225,12 +1309,10 @@ async function saveSettingsForm() {
   }
 }
 
-async function setupSettingsUI() {
-  const canAccess = await fetchSettingsAccess()
-  toggleSettingsVisibility(canAccess)
-  if (!canAccess) {
-    return
-  }
+let settingsUiHydrated = false
+
+async function hydrateSettingsUiIfAuthorized() {
+  if (settingsUiHydrated) return true
 
   initializeAdvancedSettingsToggle()
   initializeIntegrationTestButtons()
@@ -1249,6 +1331,63 @@ async function setupSettingsUI() {
   document
     .querySelector('.settings-save-btn')
     ?.addEventListener('click', saveSettingsForm)
+
+  settingsUiHydrated = true
+  return true
+}
+
+function bindSettingsAccessGuards() {
+  const settingsTriggers = document.querySelectorAll(
+    '[data-tab="tab-settings"], .mobile-settings-item, .sidebar-subitem'
+  )
+
+  settingsTriggers.forEach(trigger => {
+    if (trigger.dataset.boundAdminGuard === 'true') return
+
+    trigger.addEventListener(
+      'click',
+      async e => {
+        if (!settingsAccessState.requiresAdminPassword) {
+          await hydrateSettingsUiIfAuthorized()
+          return
+        }
+
+        const hasAccess = await ensureAdminAccess()
+        if (!hasAccess) {
+          e.preventDefault()
+          e.stopPropagation()
+          if (typeof e.stopImmediatePropagation === 'function') {
+            e.stopImmediatePropagation()
+          }
+          setSettingsStatus('Admin password is required to access settings.')
+          return
+        }
+
+        await hydrateSettingsUiIfAuthorized()
+      },
+      true
+    )
+
+    trigger.dataset.boundAdminGuard = 'true'
+  })
+}
+
+async function setupSettingsUI() {
+  settingsAccessState = await fetchSettingsAccess()
+  toggleSettingsVisibility(settingsAccessState.canAccess)
+  if (!settingsAccessState.canAccess) {
+    return
+  }
+
+  bindSettingsAccessGuards()
+
+  if (!settingsAccessState.requiresAdminPassword) {
+    await hydrateSettingsUiIfAuthorized()
+  } else {
+    setSettingsStatus(
+      'Settings are protected. Open Settings to enter admin password.'
+    )
+  }
 }
 
 // Make it globally available
@@ -3209,8 +3348,8 @@ const main = async () => {
     yearRange: { min: DEFAULT_YEAR_MIN, max: new Date().getFullYear() },
     genres: [],
     contentRatings: [],
-    //streamingServices: [],
-    showPlexOnly: isLibrariesOnlyProfile(),
+    availability: getDefaultAvailabilityState(),
+    showPlexOnly: false,
     languages: [...DEFAULT_LANGUAGES],
     countries: [],
     imdbRating: 0.0,
@@ -3294,55 +3433,24 @@ const main = async () => {
   })
   */
 
-  // Where to Watch toggle handler (proper switch style)
-  const plexOnlyToggle = document.getElementById('plex-only-toggle')
-  const toggleLabels = document.querySelectorAll('.toggle-label-text')
+  const legacyPlexOnlyToggle = document.getElementById('plex-only-toggle')
 
-  const handlePlexToggle = e => {
-    filterState.showPlexOnly = e.target.checked
-
-    // Update label styling
-    toggleLabels.forEach((label, index) => {
-      if (index === 0) {
-        // "Anywhere"
-        label.classList.toggle('active', !e.target.checked)
-      } else {
-        // "My Libraries"
-        label.classList.toggle('active', e.target.checked)
-      }
-    })
-
-    console.log(
-      'Where to Watch:',
-      filterState.showPlexOnly ? 'My Libraries' : 'Anywhere'
-    )
-
-    // Immediately clear any buffered movies fetched with the previous filter state
-    // so the swipe stack doesn't continue to show non-Plex results.
-    window.__resetMovies = true
-
-    // If the user is already logged in, request a fresh batch right away so the
-    // swipe deck reflects the Plex-only preference without waiting for the
-    // Apply button.
-    if (
-      document.body.classList.contains('is-logged-in') &&
-      typeof triggerNewBatch === 'function' &&
-      typeof cardStackEventTarget !== 'undefined'
-    ) {
-      triggerNewBatch()
-    }
+  const syncLegacyPlexOnlyToggle = () => {
+    if (!legacyPlexOnlyToggle) return
+    legacyPlexOnlyToggle.checked = filterState.showPlexOnly
   }
 
-  plexOnlyToggle?.addEventListener('change', handlePlexToggle)
-  // Add touchend for better mobile responsiveness
-  plexOnlyToggle?.addEventListener(
-    'touchend',
-    e => {
-      // Let the change event handle the logic
-      e.stopPropagation()
-    },
-    { passive: false }
-  )
+  legacyPlexOnlyToggle?.addEventListener('change', e => {
+    filterState.availability = normalizeAvailabilityState({
+      anywhere: !e.target.checked,
+      roomPersonalMedia: e.target.checked,
+      paidSubscriptions: false,
+      freeStreaming: false,
+    })
+    filterState.showPlexOnly = deriveShowPlexOnlyFromAvailability(
+      filterState.availability
+    )
+  })
 
   // FIXED DROPDOWN SETUP
   function setupAllDropdowns() {
@@ -3816,16 +3924,9 @@ const main = async () => {
     // Reset Where to Watch toggle to configured profile
     const plexOnlyToggle = document.getElementById('plex-only-toggle')
     if (plexOnlyToggle) {
-      const isLibrariesOnly = isLibrariesOnlyProfile()
-      plexOnlyToggle.checked = isLibrariesOnly
-      filterState.showPlexOnly = isLibrariesOnly
-      const toggleLabels = document.querySelectorAll('.toggle-label-text')
-      toggleLabels.forEach((label, index) => {
-        label.classList.toggle(
-          'active',
-          isLibrariesOnly ? index === 1 : index === 0
-        )
-      })
+      filterState.availability = getDefaultAvailabilityState()
+      filterState.showPlexOnly = false
+      plexOnlyToggle.checked = false
     }
 
     // Sliders
@@ -5104,6 +5205,95 @@ function updateSwipeSortButton(sortBy) {
   } <span class="dropdown-arrow">▼</span>`
 }
 
+function parsePaidServices() {
+  try {
+    const parsed = JSON.parse(window.PAID_STREAMING_SERVICES || '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function parsePersonalSources() {
+  try {
+    const parsed = JSON.parse(window.PERSONAL_MEDIA_SOURCES || '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function updateSwipeAvailabilityUI() {
+  const availability = normalizeAvailabilityState(
+    window.filterState?.availability
+  )
+  const anywhereInput = document.getElementById('swipe-availability-anywhere')
+  const roomMediaInput = document.getElementById(
+    'swipe-availability-room-media'
+  )
+  const paidInput = document.getElementById('swipe-availability-paid')
+  const freeInput = document.getElementById('swipe-availability-free')
+  const hint = document.getElementById('swipe-availability-hint')
+
+  const paidConfigured = parsePaidServices().length > 0
+  const roomMediaConfigured = parsePersonalSources().length > 0
+
+  if (anywhereInput) anywhereInput.checked = availability.anywhere
+  if (roomMediaInput) {
+    roomMediaInput.checked = availability.roomPersonalMedia
+    roomMediaInput.disabled = !roomMediaConfigured || availability.anywhere
+  }
+  if (paidInput) {
+    paidInput.checked = availability.paidSubscriptions
+    paidInput.disabled = !paidConfigured || availability.anywhere
+  }
+  if (freeInput) {
+    freeInput.checked = availability.freeStreaming
+    freeInput.disabled = availability.anywhere
+  }
+
+  const messages = []
+  if (!roomMediaConfigured) {
+    messages.push(
+      'Room Personal Media unavailable until a personal media source is configured.'
+    )
+  }
+  if (!paidConfigured) {
+    messages.push(
+      'My Paid Subscriptions unavailable until services are configured in Settings.'
+    )
+  }
+  if (hint) {
+    hint.textContent = messages.join(' ')
+  }
+
+  const toggle = document.getElementById('swipe-availability-toggle')
+  if (toggle) {
+    let label = 'Anywhere'
+    if (!availability.anywhere) {
+      const selected = []
+      if (availability.roomPersonalMedia) selected.push('Room Personal Media')
+      if (availability.paidSubscriptions) selected.push('My Paid Subscriptions')
+      if (availability.freeStreaming) selected.push('Free Streaming')
+      label = selected.length > 0 ? selected.join(', ') : 'Anywhere'
+    }
+    toggle.innerHTML = `${label} <span class="dropdown-arrow">▼</span>`
+  }
+}
+
+function setAvailabilityState(nextState) {
+  if (!window.filterState) return
+  window.filterState.availability = normalizeAvailabilityState(nextState)
+  window.filterState.showPlexOnly = deriveShowPlexOnlyFromAvailability(
+    window.filterState.availability
+  )
+  const oldToggle = document.getElementById('plex-only-toggle')
+  if (oldToggle) {
+    oldToggle.checked = window.filterState.showPlexOnly
+  }
+  updateSwipeAvailabilityUI()
+}
+
 // Sync swipe filter modal UI with filterState
 function syncSwipeFilterModalWithState() {
   // Year range
@@ -5145,20 +5335,7 @@ function syncSwipeFilterModalWithState() {
       ).toLocaleString()
   }
 
-  // Plex toggle
-  const plexToggle = document.getElementById('swipe-plex-only-toggle')
-  if (plexToggle && window.filterState) {
-    plexToggle.checked = window.filterState.showPlexOnly || false
-    // Update toggle labels
-    const container = plexToggle.closest('.toggle-switch-container')
-    if (container) {
-      const labels = container.querySelectorAll('.toggle-label-text')
-      labels.forEach((label, index) => {
-        if (index === 0) label.classList.toggle('active', !plexToggle.checked)
-        else label.classList.toggle('active', plexToggle.checked)
-      })
-    }
-  }
+  updateSwipeAvailabilityUI()
 
   // Sort
   if (window.filterState?.sortBy) {
@@ -5224,6 +5401,7 @@ function hasActiveSwipeFilters() {
     fs.countries?.length > 0 ||
     (fs.languages?.length > 0 &&
       !(fs.languages.length === 1 && fs.languages[0] === 'en')) ||
+    !fs.availability?.anywhere ||
     fs.showPlexOnly ||
     fs.imdbRating > 0 ||
     fs.tmdbRating > 0 ||
@@ -5300,6 +5478,14 @@ function setupSwipeFilterDropdowns() {
       list: document.getElementById('swipe-rating-list'),
       checkboxes: document.querySelectorAll(
         '#swipe-rating-list input[type="checkbox"]'
+      ),
+    },
+    {
+      type: 'swipe-availability',
+      toggle: document.getElementById('swipe-availability-toggle'),
+      list: document.getElementById('swipe-availability-list'),
+      checkboxes: document.querySelectorAll(
+        '#swipe-availability-list input[type="checkbox"]'
       ),
     },
     {
@@ -5580,27 +5766,43 @@ document.getElementById('swipe-runtime-max')?.addEventListener('change', e => {
   if (oldInput) oldInput.value = val
 })
 
-// Plex toggle
-document
-  .getElementById('swipe-plex-only-toggle')
-  ?.addEventListener('change', e => {
-    if (window.filterState) window.filterState.showPlexOnly = e.target.checked
-    // Update toggle labels
-    const container = e.target.closest('.toggle-switch-container')
-    if (container) {
-      const labels = container.querySelectorAll('.toggle-label-text')
-      labels.forEach((label, index) => {
-        if (index === 0) label.classList.toggle('active', !e.target.checked)
-        else label.classList.toggle('active', e.target.checked)
-      })
+// Availability controls
+const swipeAvailabilityAnywhere = document.getElementById(
+  'swipe-availability-anywhere'
+)
+const swipeAvailabilityRoomMedia = document.getElementById(
+  'swipe-availability-room-media'
+)
+const swipeAvailabilityPaid = document.getElementById('swipe-availability-paid')
+const swipeAvailabilityFree = document.getElementById('swipe-availability-free')
+
+swipeAvailabilityAnywhere?.addEventListener('change', e => {
+  if (e.target.checked) {
+    setAvailabilityState(getDefaultAvailabilityState())
+  } else {
+    setAvailabilityState({
+      anywhere: false,
+      roomPersonalMedia: true,
+      paidSubscriptions: false,
+      freeStreaming: false,
+    })
+  }
+})
+;[
+  swipeAvailabilityRoomMedia,
+  swipeAvailabilityPaid,
+  swipeAvailabilityFree,
+].forEach(input => {
+  input?.addEventListener('change', () => {
+    const next = {
+      anywhere: false,
+      roomPersonalMedia: Boolean(swipeAvailabilityRoomMedia?.checked),
+      paidSubscriptions: Boolean(swipeAvailabilityPaid?.checked),
+      freeStreaming: Boolean(swipeAvailabilityFree?.checked),
     }
-    // Sync old toggle
-    const oldToggle = document.getElementById('plex-only-toggle')
-    if (oldToggle) {
-      oldToggle.checked = e.target.checked
-      oldToggle.dispatchEvent(new Event('change'))
-    }
+    setAvailabilityState(next)
   })
+})
 
 // Apply button
 swipeFilterApply?.addEventListener('click', e => {
@@ -5620,7 +5822,8 @@ swipeFilterReset?.addEventListener('click', () => {
     window.filterState.yearRange = { min: 1895, max: currentYear }
     window.filterState.genres = []
     window.filterState.contentRatings = []
-    window.filterState.showPlexOnly = isLibrariesOnlyProfile()
+    window.filterState.availability = getDefaultAvailabilityState()
+    window.filterState.showPlexOnly = false
     window.filterState.languages = ['en']
     window.filterState.countries = []
     window.filterState.imdbRating = 0
@@ -5632,9 +5835,16 @@ swipeFilterReset?.addEventListener('click', () => {
 
   // Reset UI
   document
-    .querySelectorAll('#swipe-filter-modal input[type="checkbox"]')
+    .querySelectorAll(
+      '#swipe-genre-list input[type="checkbox"], #swipe-country-list input[type="checkbox"], #swipe-rating-list input[type="checkbox"]'
+    )
     .forEach(cb => {
-      cb.checked = cb.value === 'en' // Keep English selected by default for languages
+      cb.checked = false
+    })
+  document
+    .querySelectorAll('#swipe-language-list input[type="checkbox"]')
+    .forEach(cb => {
+      cb.checked = cb.value === 'en'
     })
   document
     .querySelectorAll('#swipe-filter-modal input[type="radio"]')
@@ -5646,7 +5856,6 @@ swipeFilterReset?.addEventListener('click', () => {
   const yearMax = document.getElementById('swipe-year-max')
   const runtimeMin = document.getElementById('swipe-runtime-min')
   const runtimeMax = document.getElementById('swipe-runtime-max')
-  const plexToggle = document.getElementById('swipe-plex-only-toggle')
   const sortDirBtn = document.getElementById('swipe-sort-direction-btn')
 
   if (yearMin) yearMin.value = ''
@@ -5659,20 +5868,8 @@ swipeFilterReset?.addEventListener('click', () => {
   if (swipeTmdbValue) swipeTmdbValue.textContent = '0.0'
   if (swipeVoteCount) swipeVoteCount.value = 0
   if (swipeVoteValue) swipeVoteValue.textContent = '0'
-  if (plexToggle) {
-    const isLibrariesOnly = isLibrariesOnlyProfile()
-    plexToggle.checked = isLibrariesOnly
-    const container = plexToggle.closest('.toggle-switch-container')
-    if (container) {
-      const labels = container.querySelectorAll('.toggle-label-text')
-      labels.forEach((label, index) => {
-        label.classList.toggle(
-          'active',
-          isLibrariesOnly ? index === 1 : index === 0
-        )
-      })
-    }
-  }
+  setAvailabilityState(getDefaultAvailabilityState())
+
   if (sortDirBtn) {
     sortDirBtn.dataset.direction = 'desc'
     sortDirBtn.textContent = '↓'

@@ -9,6 +9,7 @@ export type SettingsKey =
   | 'PLEX_LIBRARY_NAME'
   | 'PORT'
   | 'ACCESS_PASSWORD'
+  | 'ADMIN_PASSWORD'
   | 'TMDB_API_KEY'
   | 'OMDB_API_KEY'
   | 'RADARR_URL'
@@ -39,6 +40,7 @@ const SETTINGS_KEYS: SettingsKey[] = [
   'PLEX_LIBRARY_NAME',
   'PORT',
   'ACCESS_PASSWORD',
+  'ADMIN_PASSWORD',
   'TMDB_API_KEY',
   'OMDB_API_KEY',
   'RADARR_URL',
@@ -63,6 +65,7 @@ const SETTINGS_KEYS: SettingsKey[] = [
 const DEFAULTS: Partial<Settings> = {
   PORT: '8000',
   ACCESS_PASSWORD: '',
+  ADMIN_PASSWORD: '',
   LOG_LEVEL: 'INFO',
   MOVIE_BATCH_SIZE: '20',
   LIBRARY_FILTER: '',
