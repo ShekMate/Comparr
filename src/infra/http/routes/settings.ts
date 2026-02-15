@@ -129,6 +129,40 @@ const isAdminAuthorized = (
   return parseAdminPassword(req) === configuredPassword
 }
 
+const ADMIN_ONLY_SETTINGS = new Set([
+  'PLEX_URL',
+  'PLEX_TOKEN',
+  'PLEX_LIBRARY_NAME',
+  'LIBRARY_FILTER',
+  'COLLECTION_FILTER',
+  'PERSONAL_MEDIA_SOURCES',
+  'TMDB_API_KEY',
+  'OMDB_API_KEY',
+  'RADARR_URL',
+  'RADARR_API_KEY',
+  'JELLYSEERR_URL',
+  'JELLYSEERR_API_KEY',
+  'OVERSEERR_URL',
+  'OVERSEERR_API_KEY',
+  'ACCESS_PASSWORD',
+  'ADMIN_PASSWORD',
+])
+
+const sanitizeSettingsForClient = (
+  settings: Record<string, unknown>,
+  isAdmin: boolean
+) => {
+  const sanitized = { ...settings, ADMIN_PASSWORD: '' }
+
+  if (!isAdmin) {
+    for (const key of ADMIN_ONLY_SETTINGS) {
+      sanitized[key] = ''
+    }
+  }
+
+  return sanitized
+}
+
 export async function handleSettingsRoutes(
   req: any,
   pathname: string,
@@ -147,7 +181,7 @@ export async function handleSettingsRoutes(
   if (pathname === '/api/settings-access') {
     const settings = getSettings()
     const hasAdminPassword = hasAdminPasswordConfigured(settings)
-    const canAccess = hasAdminPassword ? true : isLocalRequest(req)
+    const canAccess = true
 
     await req.respond({
       status: 200,
@@ -217,15 +251,12 @@ export async function handleSettingsRoutes(
 
   if (pathname === '/api/settings' && req.method === 'GET') {
     const settings = getSettings()
-    if (!isAdminAuthorized(req, settings, isLocalRequest)) {
-      await req.respond({ status: 403, body: 'Forbidden' })
-      return true
-    }
+    const isAdmin = isAdminAuthorized(req, settings, isLocalRequest)
 
     await req.respond({
       status: 200,
       body: JSON.stringify({
-        settings: { ...settings, ADMIN_PASSWORD: '' },
+        settings: sanitizeSettingsForClient(settings, isAdmin),
       }),
       headers: new Headers({ 'content-type': 'application/json' }),
     })
@@ -233,11 +264,8 @@ export async function handleSettingsRoutes(
   }
 
   if (pathname === '/api/settings' && req.method === 'POST') {
-    const settings = getSettings()
-    if (!isAdminAuthorized(req, settings, isLocalRequest)) {
-      await req.respond({ status: 403, body: 'Forbidden' })
-      return true
-    }
+    const currentSettings = getSettings()
+    const isAdmin = isAdminAuthorized(req, currentSettings, isLocalRequest)
 
     try {
       const decoder = new TextDecoder()
@@ -245,9 +273,17 @@ export async function handleSettingsRoutes(
       const { settings } = JSON.parse(body)
       const incomingSettings =
         ((settings ?? {}) as Record<string, unknown>) || {}
-      const currentSettings = getSettings()
+
+      if (!isAdmin) {
+        for (const key of Object.keys(incomingSettings)) {
+          if (ADMIN_ONLY_SETTINGS.has(key)) {
+            delete incomingSettings[key]
+          }
+        }
+      }
 
       if (
+        isAdmin &&
         Object.prototype.hasOwnProperty.call(
           incomingSettings,
           'ADMIN_PASSWORD'
@@ -259,22 +295,29 @@ export async function handleSettingsRoutes(
         )
       }
 
-      const updated = await updateSettings(incomingSettings)
+      const hasUpdates = Object.keys(incomingSettings).length > 0
+      const updated = hasUpdates
+        ? await updateSettings(incomingSettings)
+        : currentSettings
 
-      clearAllMoviesCache()
-      await refreshRadarrCache().catch(err =>
-        log.error(
-          `Failed to refresh Radarr cache after settings update: ${err}`
+      if (hasUpdates) {
+        clearAllMoviesCache()
+        await refreshRadarrCache().catch(err =>
+          log.error(
+            `Failed to refresh Radarr cache after settings update: ${err}`
+          )
         )
-      )
-      await buildPlexCache().catch(err =>
-        log.error(`Failed to refresh Plex cache after settings update: ${err}`)
-      )
+        await buildPlexCache().catch(err =>
+          log.error(
+            `Failed to refresh Plex cache after settings update: ${err}`
+          )
+        )
+      }
 
       await req.respond({
         status: 200,
         body: JSON.stringify({
-          settings: { ...updated, ADMIN_PASSWORD: '' },
+          settings: sanitizeSettingsForClient(updated, isAdmin),
         }),
         headers: new Headers({ 'content-type': 'application/json' }),
       })

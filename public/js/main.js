@@ -389,8 +389,16 @@ function initTabs() {
 
   const setActiveSettingsSection = (targetId, titleText, options = {}) => {
     const { highlightMobileItem = true } = options
+    const adminSectionIds = new Set([
+      'settings-metadata',
+      'settings-request-services',
+      'settings-security',
+    ])
+
     settingsSections.forEach(section => {
-      const isActive = section.id === targetId
+      const isAdminCompositeTarget =
+        targetId === 'settings-admin' && adminSectionIds.has(section.id)
+      const isActive = section.id === targetId || isAdminCompositeTarget
       section.toggleAttribute('hidden', !isActive)
     })
     settingsSubitems.forEach(el =>
@@ -633,6 +641,7 @@ let settingsAccessState = {
   canAccess: false,
   requiresAdminPassword: false,
 }
+let hasAdminSettingsAccess = false
 
 function getAdminHeaders() {
   return adminPassword ? { 'x-admin-password': adminPassword } : {}
@@ -741,6 +750,14 @@ function deriveShowPlexOnlyFromAvailability(availability) {
     !normalized.paidSubscriptions &&
     !normalized.freeStreaming
   )
+}
+
+function updateAdminOnlySettingsVisibility() {
+  const canSeeAdmin = hasAdminSettingsAccess
+
+  document.querySelectorAll('[data-admin-only]').forEach(el => {
+    el.toggleAttribute('hidden', !canSeeAdmin)
+  })
 }
 
 function toggleSettingsVisibility(canAccess) {
@@ -1191,6 +1208,8 @@ function collectSettingsForm() {
   document.querySelectorAll('[data-setting-key]').forEach(el => {
     const key = el.dataset.settingKey
     if (!key) return
+
+    if (el.closest('[data-admin-section]') && !hasAdminSettingsAccess) return
     if (key === 'PAID_STREAMING_SERVICES') {
       settings[key] = collectPaidStreamingServicesSetting()
       return
@@ -1208,7 +1227,9 @@ function collectSettingsForm() {
     settings[key] = el.value
   })
 
-  settings.PERSONAL_MEDIA_SOURCES = collectPersonalMediaSourcesSetting()
+  if (hasAdminSettingsAccess) {
+    settings.PERSONAL_MEDIA_SOURCES = collectPersonalMediaSourcesSetting()
+  }
 
   return settings
 }
@@ -1254,6 +1275,8 @@ async function hydrateSettingsForm() {
     if (err?.message && String(err.message).includes('403')) {
       adminPassword = ''
       sessionStorage.removeItem('comparrAdminPassword')
+      hasAdminSettingsAccess = false
+      updateAdminOnlySettingsVisibility()
       setSettingsStatus('Admin password was rejected. Please try again.')
     }
     console.warn('Failed to hydrate settings form:', err)
@@ -1332,13 +1355,14 @@ async function hydrateSettingsUiIfAuthorized() {
     .querySelector('.settings-save-btn')
     ?.addEventListener('click', saveSettingsForm)
 
+  updateAdminOnlySettingsVisibility()
   settingsUiHydrated = true
   return true
 }
 
 function bindSettingsAccessGuards() {
   const settingsTriggers = document.querySelectorAll(
-    '[data-tab="tab-settings"], .mobile-settings-item, .sidebar-subitem'
+    '.mobile-settings-item[data-settings-target="settings-admin"], .sidebar-subitem[data-settings-target="settings-admin"]'
   )
 
   settingsTriggers.forEach(trigger => {
@@ -1348,6 +1372,8 @@ function bindSettingsAccessGuards() {
       'click',
       async e => {
         if (!settingsAccessState.requiresAdminPassword) {
+          hasAdminSettingsAccess = true
+          updateAdminOnlySettingsVisibility()
           await hydrateSettingsUiIfAuthorized()
           return
         }
@@ -1359,10 +1385,13 @@ function bindSettingsAccessGuards() {
           if (typeof e.stopImmediatePropagation === 'function') {
             e.stopImmediatePropagation()
           }
-          setSettingsStatus('Admin password is required to access settings.')
+          setSettingsStatus(
+            'Admin password is required to access Admin settings.'
+          )
           return
         }
 
+        hasAdminSettingsAccess = true
         await hydrateSettingsUiIfAuthorized()
       },
       true
@@ -1379,13 +1408,15 @@ async function setupSettingsUI() {
     return
   }
 
+  hasAdminSettingsAccess = !settingsAccessState.requiresAdminPassword
+  updateAdminOnlySettingsVisibility()
   bindSettingsAccessGuards()
 
-  if (!settingsAccessState.requiresAdminPassword) {
-    await hydrateSettingsUiIfAuthorized()
-  } else {
+  await hydrateSettingsUiIfAuthorized()
+
+  if (settingsAccessState.requiresAdminPassword) {
     setSettingsStatus(
-      'Settings are protected. Open Settings to enter admin password.'
+      'Admin settings are protected. Open Admin to enter the admin password.'
     )
   }
 }

@@ -185,11 +185,11 @@
               type="button"
               class="dropdown-item mobile-settings-item"
               data-tab="tab-settings"
-              data-settings-target="settings-metadata"
-              data-settings-title="Integrations"
+              data-settings-target="settings-admin"
+              data-settings-title="Admin"
             >
-              <i class="fas fa-database"></i>
-              Integrations
+              <i class="fas fa-user-shield"></i>
+              Admin
             </button>
             <button
               type="button"
@@ -200,26 +200,6 @@
             >
               <i class="fas fa-sync-alt"></i>
               Sync & Imports
-            </button>
-            <button
-              type="button"
-              class="dropdown-item mobile-settings-item"
-              data-tab="tab-settings"
-              data-settings-target="settings-request-services"
-              data-settings-title="Requests"
-            >
-              <i class="fas fa-paper-plane"></i>
-              Requests
-            </button>
-            <button
-              type="button"
-              class="dropdown-item mobile-settings-item"
-              data-tab="tab-settings"
-              data-settings-target="settings-security"
-              data-settings-title="Security & Access"
-            >
-              <i class="fas fa-shield-alt"></i>
-              Security & Access
             </button>
           </div>
         </div>
@@ -284,15 +264,15 @@
                 data-settings-target="settings-availability"
                 data-settings-title="Availability"
               >
-                Discovery Profile
+                Availability
               </button>
               <button
                 class="sidebar-subitem"
                 data-tab="tab-settings"
-                data-settings-target="settings-metadata"
-                data-settings-title="Integrations"
+                data-settings-target="settings-admin"
+                data-settings-title="Admin"
               >
-                Integrations
+                Admin
               </button>
               <button
                 class="sidebar-subitem"
@@ -301,22 +281,6 @@
                 data-settings-title="Sync & Imports"
               >
                 Sync & Imports
-              </button>
-              <button
-                class="sidebar-subitem"
-                data-tab="tab-settings"
-                data-settings-target="settings-request-services"
-                data-settings-title="Requests"
-              >
-                Requests
-              </button>
-              <button
-                class="sidebar-subitem"
-                data-tab="tab-settings"
-                data-settings-target="settings-security"
-                data-settings-title="Security & Access"
-              >
-                Security & Access
               </button>
             </div>
           </div>
@@ -1388,7 +1352,11 @@
             </button>
             <div class="dropdown-list" id="swipe-availability-list">
               <label class="rating-checkbox">
-                <input type="checkbox" id="swipe-availability-anywhere" checked />
+                <input
+                  type="checkbox"
+                  id="swipe-availability-anywhere"
+                  checked
+                />
                 Anywhere
               </label>
               <label class="rating-checkbox">
@@ -1805,9 +1773,8 @@
                 <span id="settings-title">${NAV_SETTINGS}</span>
               </h3>
               <p class="settings-subtitle">
-                Organize System, Availability, Integrations, Sync, and
-                Security settings. Changes apply immediately unless marked
-                otherwise.
+                Organize System, Availability, Admin, and Security settings.
+                Changes apply immediately unless marked otherwise.
               </p>
             </div>
             <button class="settings-save-btn" type="button">
@@ -1985,7 +1952,7 @@
                 Choose one or more providers used by future filtering modes.
               </p>
             </div>
-            <div class="settings-field">
+            <div class="settings-field" data-admin-only="true">
               <label for="setting-personal-media-sources-toggle"
                 >Personal Media Sources</label
               >
@@ -2046,6 +2013,7 @@
             <div
               class="settings-field"
               id="settings-personal-media-config-plex"
+              data-admin-only="true"
               data-personal-media-config="plex"
               hidden
             >
@@ -2119,8 +2087,12 @@
             </div>
           </div>
 
-          <div class="settings-section" id="settings-metadata">
-            <h4>Integrations</h4>
+          <div
+            class="settings-section"
+            id="settings-metadata"
+            data-admin-section="true"
+          >
+            <h4>Admin</h4>
             <div class="settings-field">
               <label for="setting-tmdb-key">TMDb API Key</label>
               <input
@@ -2245,7 +2217,11 @@
             </div>
           </div>
 
-          <div class="settings-section" id="settings-request-services">
+          <div
+            class="settings-section"
+            id="settings-request-services"
+            data-admin-section="true"
+          >
             <h4>Requests</h4>
             <div class="settings-field">
               <label for="setting-radarr-url">Radarr URL</label>
@@ -2324,7 +2300,11 @@
             </div>
           </div>
 
-          <div class="settings-section" id="settings-security">
+          <div
+            class="settings-section"
+            id="settings-security"
+            data-admin-section="true"
+          >
             <h4>Security & Access</h4>
             <div class="settings-field">
               <label for="setting-access-password">Access Password</label>
