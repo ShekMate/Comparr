@@ -4915,8 +4915,19 @@ footer {
 
 .settings-section h4 {
   margin: 0;
-  font-size: 1rem;
-  letter-spacing: 0.02em;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  color: var(--color-text-primary);
+}
+
+.settings-section h5 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-text-primary);
 }
 
 .settings-field {
@@ -4926,6 +4937,7 @@ footer {
 }
 
 .settings-field label {
+  font-size: 1rem;
   font-weight: 600;
   display: flex;
   align-items: center;
