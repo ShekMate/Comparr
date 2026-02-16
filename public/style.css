@@ -261,7 +261,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .sidebar-subitem.is-active {
-  color: white;
+  color: var(--color-primary-light);
   background: rgba(255, 255, 255, 0.08);
   border-left-color: var(--color-primary);
 }
