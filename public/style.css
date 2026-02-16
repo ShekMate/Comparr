@@ -1407,6 +1407,44 @@ body:not(.is-logged-in) .card-stack:empty::after {
   color: var(--color-text-muted);
 }
 
+.password-visibility-field {
+  position: relative;
+  display: flex;
+  width: 100%;
+  align-items: center;
+}
+
+.password-visibility-field input {
+  width: 100%;
+  padding-right: 3rem;
+}
+
+.password-visibility-toggle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 2.65rem;
+  border: none;
+  border-left: 1px solid var(--color-line);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background: rgba(99, 102, 241, 0.9);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.password-visibility-toggle:hover {
+  background: rgba(99, 102, 241, 1);
+}
+
+.password-visibility-toggle:focus-visible {
+  outline: 2px solid rgba(99, 102, 241, 0.35);
+  outline-offset: 2px;
+}
+
 .password-form .submit-button {
   align-self: center;
   width: auto;
