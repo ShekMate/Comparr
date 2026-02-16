@@ -249,7 +249,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   cursor: pointer;
   display: block;
   font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.8);
+  color: white;
   padding: 0.45rem 1rem 0.45rem 3rem;
   transition: color 0.2s ease, background 0.2s ease, border 0.2s ease;
   border-left: 3px solid transparent;
@@ -264,10 +264,6 @@ body:not(.is-logged-in) .card-stack:empty::after {
   color: var(--color-primary-light);
   background: rgba(255, 255, 255, 0.08);
   border-left-color: var(--color-primary);
-}
-
-.sidebar-settings.is-open .sidebar-settings-toggle.is-active ~ .sidebar-settings-menu .sidebar-subitem.is-active {
-  color: var(--color-primary-light);
 }
 
 .sidebar-section-label {
