@@ -1473,9 +1473,16 @@ async function saveSettingsForm() {
 }
 
 let settingsUiHydrated = false
+let settingsHydratedWithAdminAccess = false
 
 async function hydrateSettingsUiIfAuthorized() {
-  if (settingsUiHydrated) return true
+  if (settingsUiHydrated) {
+    if (hasAdminSettingsAccess && !settingsHydratedWithAdminAccess) {
+      await hydrateSettingsForm()
+      settingsHydratedWithAdminAccess = true
+    }
+    return true
+  }
 
   initializeAdvancedSettingsToggle()
   initializeAdminSettingsTabs()
@@ -1498,6 +1505,7 @@ async function hydrateSettingsUiIfAuthorized() {
 
   updateAdminOnlySettingsVisibility()
   settingsUiHydrated = true
+  settingsHydratedWithAdminAccess = hasAdminSettingsAccess
   return true
 }
 
