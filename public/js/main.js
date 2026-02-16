@@ -629,6 +629,21 @@ function setSettingsStatus(message) {
   }
 }
 
+function clearCachedAdminPassword() {
+  adminPassword = ''
+  sessionStorage.removeItem('comparrAdminPassword')
+}
+
+function parseApiErrorMessage(data, fallback = 'Request failed.') {
+  if (typeof data?.message === 'string' && data.message.trim()) {
+    return data.message
+  }
+  if (typeof data?.error === 'string' && data.error.trim()) {
+    return data.error
+  }
+  return fallback
+}
+
 function setSettingsDirty(isDirty) {
   settingsDirty = Boolean(isDirty)
   if (settingsDirty) {
@@ -1183,13 +1198,33 @@ function initializeIntegrationTestButtons() {
         }),
       })
         .then(async res => {
-          const data = await res.json().catch(() => ({ ok: false }))
+          const data = await res
+            .json()
+            .catch(() => ({ ok: false, message: '' }))
+
           if (res.ok && data?.ok) {
             setSettingsStatus(`✅ ${target} connection successful.`)
             return
           }
 
-          const message = data?.message || `Connection failed (${res.status}).`
+          if (res.status === 403) {
+            const message = parseApiErrorMessage(
+              data,
+              'Admin authorization is required for integration connection tests.'
+            )
+            clearCachedAdminPassword()
+            hasAdminSettingsAccess = false
+            updateAdminOnlySettingsVisibility()
+            setSettingsStatus(
+              `⚠️ ${target} connection test blocked by admin auth: ${message}`
+            )
+            return
+          }
+
+          const message = parseApiErrorMessage(
+            data,
+            `Connection failed (${res.status}).`
+          )
           setSettingsStatus(`⚠️ ${target} connection test failed: ${message}`)
         })
         .catch(err => {
@@ -1273,8 +1308,7 @@ async function hydrateSettingsForm() {
     setSettingsStatus('Loaded current settings.')
   } catch (err) {
     if (err?.message && String(err.message).includes('403')) {
-      adminPassword = ''
-      sessionStorage.removeItem('comparrAdminPassword')
+      clearCachedAdminPassword()
       hasAdminSettingsAccess = false
       updateAdminOnlySettingsVisibility()
       setSettingsStatus('Admin password was rejected. Please try again.')
@@ -1308,12 +1342,19 @@ async function saveSettingsForm() {
             .map(([key, message]) => `${key}: ${message}`)
             .join(' | ')
           serverError = details || serverError
-        } else if (errorData?.error) {
-          serverError = errorData.error
+        } else {
+          serverError = parseApiErrorMessage(errorData, serverError)
         }
       } catch {
         // ignore parse errors and use fallback message
       }
+
+      if (res.status === 403) {
+        clearCachedAdminPassword()
+        hasAdminSettingsAccess = false
+        updateAdminOnlySettingsVisibility()
+      }
+
       throw new Error(serverError)
     }
     const data = await res.json()
@@ -1416,7 +1457,7 @@ async function setupSettingsUI() {
 
   if (settingsAccessState.requiresAdminPassword) {
     setSettingsStatus(
-      'Admin settings are protected. Open Admin to enter the admin password.'
+      'Admin settings are protected. Open Admin to enter the admin password before testing or saving integrations.'
     )
   }
 }
