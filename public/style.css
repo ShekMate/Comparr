@@ -4870,6 +4870,34 @@ footer {
   border-color: var(--color-primary);
 }
 
+.settings-admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.settings-admin-tab {
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+  color: var(--color-text-secondary);
+  padding: 0.45rem 0.75rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.settings-admin-tab:hover {
+  color: var(--color-text-primary);
+}
+
+.settings-admin-tab.is-active {
+  color: var(--color-primary);
+  border-color: rgba(99, 102, 241, 0.55);
+  background: rgba(99, 102, 241, 0.14);
+}
+
 .settings-section {
   background: var(--color-surface);
   border: 1px solid var(--color-line);

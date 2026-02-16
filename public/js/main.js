@@ -394,10 +394,15 @@ function initTabs() {
   const setActiveSettingsSection = (targetId, titleText, options = {}) => {
     const { highlightMobileItem = true } = options
     const adminSectionIds = new Set([
+      'settings-core',
+      'settings-personal-media',
       'settings-metadata',
       'settings-request-services',
+      'settings-sync',
       'settings-security',
     ])
+
+    currentSettingsTarget = targetId
 
     settingsSections.forEach(section => {
       const isAdminCompositeTarget =
@@ -417,6 +422,8 @@ function initTabs() {
     if (settingsTitle && titleText) {
       settingsTitle.textContent = titleText
     }
+
+    applyAdminSettingsTabVisibility()
   }
 
   settingsSubitems.forEach(item => {
@@ -679,6 +686,8 @@ let settingsAccessState = {
   requiresAdminPassword: false,
 }
 let hasAdminSettingsAccess = false
+let currentSettingsTarget = 'settings-availability'
+let activeAdminSettingsTab = 'settings-core'
 
 function getAdminHeaders() {
   return adminPassword ? { 'x-admin-password': adminPassword } : {}
@@ -789,12 +798,62 @@ function deriveShowPlexOnlyFromAvailability(availability) {
   )
 }
 
+function applyAdminSettingsTabVisibility() {
+  const tabsContainer = document.getElementById('settings-admin-tabs')
+  if (!tabsContainer) return
+
+  const shouldShow =
+    currentSettingsTarget === 'settings-admin' && hasAdminSettingsAccess
+  tabsContainer.toggleAttribute('hidden', !shouldShow)
+
+  if (!shouldShow) return
+
+  const tabs = Array.from(
+    tabsContainer.querySelectorAll('[data-admin-tab-target]')
+  )
+  if (tabs.length === 0) return
+
+  const hasActive = tabs.some(
+    tab => tab.dataset.adminTabTarget === activeAdminSettingsTab
+  )
+  if (!hasActive) {
+    activeAdminSettingsTab = tabs[0].dataset.adminTabTarget || 'settings-core'
+  }
+
+  tabs.forEach(tab => {
+    const target = tab.dataset.adminTabTarget || ''
+    tab.classList.toggle('is-active', target === activeAdminSettingsTab)
+  })
+
+  document.querySelectorAll('[data-admin-tab-panel]').forEach(panel => {
+    panel.toggleAttribute('hidden', panel.id !== activeAdminSettingsTab)
+  })
+}
+
+function initializeAdminSettingsTabs() {
+  const tabsContainer = document.getElementById('settings-admin-tabs')
+  if (!tabsContainer || tabsContainer.dataset.boundAdminTabs === 'true') return
+
+  tabsContainer.querySelectorAll('[data-admin-tab-target]').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.adminTabTarget
+      if (!target) return
+      activeAdminSettingsTab = target
+      applyAdminSettingsTabVisibility()
+    })
+  })
+
+  tabsContainer.dataset.boundAdminTabs = 'true'
+}
+
 function updateAdminOnlySettingsVisibility() {
   const canSeeAdmin = hasAdminSettingsAccess
 
   document.querySelectorAll('[data-admin-only]').forEach(el => {
     el.toggleAttribute('hidden', !canSeeAdmin)
   })
+
+  applyAdminSettingsTabVisibility()
 }
 
 function toggleSettingsVisibility(canAccess) {
@@ -1419,6 +1478,7 @@ async function hydrateSettingsUiIfAuthorized() {
   if (settingsUiHydrated) return true
 
   initializeAdvancedSettingsToggle()
+  initializeAdminSettingsTabs()
   initializeIntegrationTestButtons()
   await hydrateSettingsForm()
 
