@@ -216,6 +216,12 @@ body:not(.is-logged-in) .card-stack:empty::after {
   color: var(--color-text-primary);
 }
 
+.sidebar-settings.is-open .sidebar-settings-toggle.is-active {
+  background: var(--gradient-primary);
+  color: white;
+  box-shadow: var(--shadow-sm);
+}
+
 .sidebar-settings-caret {
   margin-left: auto;
   font-size: 0.85rem;
@@ -230,8 +236,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
   display: none;
   flex-direction: column;
   margin: 0.35rem 0 0.5rem 0;
-  padding: 0.25rem 0 0.25rem 0.25rem;
-  border-left: 3px solid rgba(255, 255, 255, 0.12);
+  padding: 0.25rem 0;
+  border-left: 3px solid rgba(99, 102, 241, 0.65);
 }
 
 .sidebar-settings.is-open .sidebar-settings-menu {
@@ -243,8 +249,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
   cursor: pointer;
   display: block;
   font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.8);
-  padding: 0.45rem 1rem 0.45rem 1.5rem;
+  color: white;
+  padding: 0.45rem 1rem 0.45rem 3rem;
   transition: color 0.2s ease, background 0.2s ease, border 0.2s ease;
   border-left: 3px solid transparent;
 }
@@ -255,9 +261,13 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .sidebar-subitem.is-active {
-  color: white;
+  color: var(--color-primary-light);
   background: rgba(255, 255, 255, 0.08);
-  border-left-color: #f5c542;
+  border-left-color: var(--color-primary);
+}
+
+.sidebar-settings-menu .sidebar-subitem:not(.is-active) {
+  color: white;
 }
 
 .sidebar-section-label {
