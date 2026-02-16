@@ -163,6 +163,20 @@ const isAdminAuthorized = (
   return parseAdminPassword(req) === configuredPassword
 }
 
+const getAdminAuthFailureMessage = (
+  req: any,
+  settings: Record<string, unknown>,
+  isLocalRequest: (req: any) => boolean
+) => {
+  if (hasAdminPasswordConfigured(settings)) {
+    return 'Admin password required. Enter the configured admin password and retry.'
+  }
+
+  return isLocalRequest(req)
+    ? 'Admin access is unavailable. Please retry.'
+    : 'Admin access is limited to local/private-network requests when ADMIN_PASSWORD is not configured. If you are behind a reverse proxy, forward client IP headers (X-Forwarded-For or X-Real-IP), or set ADMIN_PASSWORD.'
+}
+
 const ADMIN_ONLY_SETTINGS = new Set([
   'PLEX_URL',
   'PLEX_TOKEN',
@@ -245,7 +259,14 @@ export async function handleSettingsRoutes(
   if (pathname === '/api/settings-test' && req.method === 'POST') {
     const settings = getSettings()
     if (!isAdminAuthorized(req, settings, isLocalRequest)) {
-      await req.respond({ status: 403, body: 'Forbidden' })
+      await req.respond({
+        status: 403,
+        body: JSON.stringify({
+          ok: false,
+          message: getAdminAuthFailureMessage(req, settings, isLocalRequest),
+        }),
+        headers: new Headers({ 'content-type': 'application/json' }),
+      })
       return true
     }
 
@@ -309,10 +330,31 @@ export async function handleSettingsRoutes(
         ((settings ?? {}) as Record<string, unknown>) || {}
 
       if (!isAdmin) {
-        for (const key of Object.keys(incomingSettings)) {
-          if (ADMIN_ONLY_SETTINGS.has(key)) {
-            delete incomingSettings[key]
-          }
+        const attemptedAdminOnlySettings = Object.keys(
+          incomingSettings
+        ).filter(key => ADMIN_ONLY_SETTINGS.has(key))
+
+        if (
+          attemptedAdminOnlySettings.length > 0 &&
+          attemptedAdminOnlySettings.length ===
+            Object.keys(incomingSettings).length
+        ) {
+          await req.respond({
+            status: 403,
+            body: JSON.stringify({
+              error: getAdminAuthFailureMessage(
+                req,
+                currentSettings,
+                isLocalRequest
+              ),
+            }),
+            headers: new Headers({ 'content-type': 'application/json' }),
+          })
+          return true
+        }
+
+        for (const key of attemptedAdminOnlySettings) {
+          delete incomingSettings[key]
         }
       }
 
