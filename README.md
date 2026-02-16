@@ -185,6 +185,12 @@ docker-compose up -d
 
 ## Configuration
 
+Comparr persists application settings in `/data/settings.json` after you save them in the **Settings** page in the web UI.
+
+- You can use environment variables for first boot (for example, to set `PLEX_URL` and `PLEX_TOKEN`).
+- After saving values in the web UI, those settings will persist from `/data` and no longer need to be kept in your container's environment list.
+- Container/runtime variables (`PUID`, `PGID`, `DATA_DIR`) are still Docker-level settings and should remain in the container configuration.
+
 ### Required Variables
 
 | Variable     | Description                    | Example                                                 |
@@ -203,14 +209,17 @@ docker-compose up -d
 
 #### Application Settings
 
-| Variable            | Description                                              | Default           |
-| ------------------- | -------------------------------------------------------- | ----------------- |
-| `PORT`              | Internal web server port                                 | `8000`            |
-| `PLEX_LIBRARY_NAME` | Display name for your Plex library                       | `My Plex Library` |
-| `ACCESS_PASSWORD`   | Password to access the app (leave empty for no password) | _(none)_          |
-| `LOG_LEVEL`         | Logging verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR`   | `INFO`            |
-| `MOVIE_BATCH_SIZE`  | Number of movies to load at once                         | `20`              |
-| `ROOT_PATH`         | Base path if running behind a reverse proxy              | _(none)_          |
+| Variable                 | Description                                              | Default           |
+| ------------------------ | -------------------------------------------------------- | ----------------- |
+| `PORT`                   | Internal web server port                                 | `8000`            |
+| `PLEX_LIBRARY_NAME`      | Display name for your Plex library                       | `My Plex Library` |
+| `ACCESS_PASSWORD`        | Password to access the app (leave empty for no password) | _(none)_          |
+| `ADMIN_PASSWORD`         | Password required for admin settings                     | _(none)_          |
+| `LOG_LEVEL`              | Logging verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR`   | `INFO`            |
+| `MOVIE_BATCH_SIZE`       | Number of movies to load at once                         | `20`              |
+| `ROOT_PATH`              | Base path if running behind a reverse proxy              | _(none)_          |
+| `STREAMING_PROFILE_MODE` | Availability filtering mode (`anywhere`, etc.)           | `anywhere`        |
+| `LINK_TYPE`              | Movie link behavior (`app` or `plex.tv`)                | `app`             |
 
 #### Library Filtering
 

@@ -1860,6 +1860,24 @@
 
           <div class="settings-section" id="settings-availability">
             <h4>Availability</h4>
+            <div class="settings-field" data-admin-only="true">
+              <label for="setting-streaming-profile-mode"
+                >Streaming Profile Mode</label
+              >
+              <select
+                id="setting-streaming-profile-mode"
+                data-setting-key="STREAMING_PROFILE_MODE"
+              >
+                <option value="anywhere">Anywhere</option>
+                <option value="my_subscriptions">My Subscriptions</option>
+                <option value="my_libraries">My Libraries</option>
+                <option value="my_availability">My Availability</option>
+              </select>
+              <p>
+                Controls how availability is filtered when showing streaming
+                providers.
+              </p>
+            </div>
             <div class="settings-field">
               <label for="setting-paid-streaming-services"
                 ><i class="fas fa-shield-alt" aria-hidden="true"></i> My Paid
@@ -2085,6 +2103,21 @@
                   placeholder="My Plex Library"
                 />
                 <p>Label shown for Plex availability in the UI.</p>
+              </div>
+              <div
+                class="settings-field settings-field-advanced"
+                data-advanced-setting
+                hidden
+              >
+                <label for="setting-link-type"
+                  >Link Type
+                  <span class="settings-badge">Restart required</span></label
+                >
+                <select id="setting-link-type" data-setting-key="LINK_TYPE">
+                  <option value="app">Plex app deep links</option>
+                  <option value="plex.tv">Plex Web (app.plex.tv)</option>
+                </select>
+                <p>Choose how movie links open from matches and cards.</p>
               </div>
               <div
                 class="settings-field settings-field-advanced"
