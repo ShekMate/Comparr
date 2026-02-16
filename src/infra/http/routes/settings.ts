@@ -27,6 +27,28 @@ const normalizePlexToken = (token: string) =>
     .trim()
     .replace(/^X-Plex-Token=/i, '')
 
+const normalizePlexUrl = (value: string) => {
+  const trimmed = String(value || '')
+    .trim()
+    .replace(/\/$/, '')
+  if (!trimmed) return ''
+
+  try {
+    const parsed = new URL(trimmed)
+    const normalizedPath = parsed.pathname
+      .replace(/\/$/, '')
+      .replace(/\/web$/i, '')
+      .replace(/\/web\/index\.html$/i, '')
+
+    return `${parsed.origin}${normalizedPath}`.replace(/\/$/, '')
+  } catch {
+    return trimmed
+      .replace(/\/web\/index\.html$/i, '')
+      .replace(/\/web$/i, '')
+      .replace(/\/$/, '')
+  }
+}
+
 const runConnectionCheck = async (
   target: string,
   url: string,
@@ -38,6 +60,10 @@ const runConnectionCheck = async (
   const normalizedUrl = String(url || '')
     .trim()
     .replace(/\/$/, '')
+  const serviceUrl =
+    normalizedTarget === 'plex'
+      ? normalizePlexUrl(normalizedUrl)
+      : normalizedUrl
   const normalizedToken =
     normalizedTarget === 'plex'
       ? normalizePlexToken(token)
@@ -46,7 +72,7 @@ const runConnectionCheck = async (
   if (
     normalizedTarget !== 'tmdb' &&
     normalizedTarget !== 'omdb' &&
-    !isValidHttpUrl(normalizedUrl)
+    !isValidHttpUrl(serviceUrl)
   ) {
     return { ok: false, message: 'Invalid URL.' }
   }
@@ -55,21 +81,21 @@ const runConnectionCheck = async (
     return { ok: false, message: 'API key/token is required.' }
   }
 
-  let endpoint = normalizedUrl
+  let endpoint = serviceUrl
   let headers: HeadersInit = {}
 
   if (normalizedTarget === 'plex') {
-    endpoint = `${normalizedUrl}/library/sections?X-Plex-Token=${encodeURIComponent(
+    endpoint = `${serviceUrl}/library/sections?X-Plex-Token=${encodeURIComponent(
       normalizedToken
     )}`
   } else if (normalizedTarget === 'radarr') {
-    endpoint = `${normalizedUrl}/api/v3/system/status`
+    endpoint = `${serviceUrl}/api/v3/system/status`
     headers = { 'X-Api-Key': normalizedToken }
   } else if (
     normalizedTarget === 'jellyseerr' ||
     normalizedTarget === 'overseerr'
   ) {
-    endpoint = `${normalizedUrl}/api/v1/status`
+    endpoint = `${serviceUrl}/api/v1/status`
     headers = { 'X-Api-Key': normalizedToken }
   } else if (normalizedTarget === 'tmdb') {
     endpoint = `https://api.themoviedb.org/3/configuration?api_key=${encodeURIComponent(
