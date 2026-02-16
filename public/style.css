@@ -4913,10 +4913,24 @@ footer {
   display: none !important;
 }
 
-.settings-section h4 {
+.settings-section h4,
+.settings-section h5 {
   margin: 0;
-  font-size: 1rem;
-  letter-spacing: 0.02em;
+  color: var(--color-text-primary);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+}
+
+.settings-section h4 {
+  font-size: 1.5rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid rgba(99, 102, 241, 0.35);
+}
+
+.settings-section h5 {
+  font-size: 1.25rem;
+  margin-top: 0.2rem;
 }
 
 .settings-field {
@@ -4926,7 +4940,9 @@ footer {
 }
 
 .settings-field label {
+  font-size: 0.95rem;
   font-weight: 600;
+  color: var(--color-text-secondary);
   display: flex;
   align-items: center;
   gap: 0.5rem;
