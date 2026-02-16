@@ -22,3 +22,8 @@ environment:
 ```
 
 If you want to use an [env file](https://github.com/ShekMate/comparr/blob/main/.env-template) instead of passing variables via environment, you can use that with docker-compose using the [`env_file`](https://docs.docker.com/compose/compose-file/compose-file-v3/#env_file) option.
+
+
+After the initial setup, open Comparr's **Settings** page and save your configuration there. Comparr writes these values to `/data/settings.json`, so most app settings (Plex, metadata providers, request services, filtering, security, and sync options) can be removed from Docker container environment variables once they are saved in the UI.
+
+Keep only container/runtime environment variables (for example `PUID`, `PGID`, and optionally `DATA_DIR`) in your container settings.
