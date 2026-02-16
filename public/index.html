@@ -165,16 +165,6 @@
               type="button"
               class="dropdown-item mobile-settings-item"
               data-tab="tab-settings"
-              data-settings-target="settings-core"
-              data-settings-title="System"
-            >
-              <i class="fas fa-sliders-h"></i>
-              System
-            </button>
-            <button
-              type="button"
-              class="dropdown-item mobile-settings-item"
-              data-tab="tab-settings"
               data-settings-target="settings-availability"
               data-settings-title="Availability"
             >
@@ -190,16 +180,6 @@
             >
               <i class="fas fa-user-shield"></i>
               Admin
-            </button>
-            <button
-              type="button"
-              class="dropdown-item mobile-settings-item"
-              data-tab="tab-settings"
-              data-settings-target="settings-sync"
-              data-settings-title="Sync & Imports"
-            >
-              <i class="fas fa-sync-alt"></i>
-              Sync & Imports
             </button>
           </div>
         </div>
@@ -253,14 +233,6 @@
               <button
                 class="sidebar-subitem"
                 data-tab="tab-settings"
-                data-settings-target="settings-core"
-                data-settings-title="System"
-              >
-                System
-              </button>
-              <button
-                class="sidebar-subitem"
-                data-tab="tab-settings"
                 data-settings-target="settings-availability"
                 data-settings-title="Availability"
               >
@@ -273,14 +245,6 @@
                 data-settings-title="Admin"
               >
                 Admin
-              </button>
-              <button
-                class="sidebar-subitem"
-                data-tab="tab-settings"
-                data-settings-target="settings-sync"
-                data-settings-title="Sync & Imports"
-              >
-                Sync & Imports
               </button>
             </div>
           </div>
@@ -1793,7 +1757,57 @@
             >
           </div>
 
-          <div class="settings-section" id="settings-core">
+          <div class="settings-admin-tabs" id="settings-admin-tabs" hidden>
+            <button
+              type="button"
+              class="settings-admin-tab is-active"
+              data-admin-tab-target="settings-core"
+            >
+              System
+            </button>
+            <button
+              type="button"
+              class="settings-admin-tab"
+              data-admin-tab-target="settings-personal-media"
+            >
+              Personal Media
+            </button>
+            <button
+              type="button"
+              class="settings-admin-tab"
+              data-admin-tab-target="settings-metadata"
+            >
+              Metadata
+            </button>
+            <button
+              type="button"
+              class="settings-admin-tab"
+              data-admin-tab-target="settings-request-services"
+            >
+              Requests
+            </button>
+            <button
+              type="button"
+              class="settings-admin-tab"
+              data-admin-tab-target="settings-sync"
+            >
+              Imports
+            </button>
+            <button
+              type="button"
+              class="settings-admin-tab"
+              data-admin-tab-target="settings-security"
+            >
+              Security
+            </button>
+          </div>
+
+          <div
+            class="settings-section"
+            id="settings-core"
+            data-admin-section="true"
+            data-admin-tab-panel="true"
+          >
             <h4>System</h4>
             <div class="settings-field">
               <label for="setting-port"
@@ -1952,6 +1966,15 @@
                 Choose one or more providers used by future filtering modes.
               </p>
             </div>
+          </div>
+
+          <div
+            class="settings-section"
+            id="settings-personal-media"
+            data-admin-section="true"
+            data-admin-tab-panel="true"
+          >
+            <h4>Personal Media</h4>
             <div class="settings-field" data-admin-only="true">
               <label for="setting-personal-media-sources-toggle"
                 >Personal Media Sources</label
@@ -2098,8 +2121,9 @@
             class="settings-section"
             id="settings-metadata"
             data-admin-section="true"
+            data-admin-tab-panel="true"
           >
-            <h4>Admin</h4>
+            <h4>Metadata</h4>
             <div class="settings-field">
               <label for="setting-tmdb-key">TMDb API Key</label>
               <input
@@ -2144,7 +2168,12 @@
             </div>
           </div>
 
-          <div class="settings-section" id="settings-sync">
+          <div
+            class="settings-section"
+            id="settings-sync"
+            data-admin-section="true"
+            data-admin-tab-panel="true"
+          >
             <h4>Sync & Imports</h4>
             <div class="settings-field">
               <label for="setting-imdb-sync-url">IMDb Seen List URL</label>
@@ -2228,6 +2257,7 @@
             class="settings-section"
             id="settings-request-services"
             data-admin-section="true"
+            data-admin-tab-panel="true"
           >
             <h4>Requests</h4>
             <div class="settings-field">
@@ -2311,6 +2341,7 @@
             class="settings-section"
             id="settings-security"
             data-admin-section="true"
+            data-admin-tab-panel="true"
           >
             <h4>Security & Access</h4>
             <div class="settings-field">
