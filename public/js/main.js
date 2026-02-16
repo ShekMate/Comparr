@@ -621,12 +621,30 @@ function sortWatchList(sortBy) {
 
 /* --------------------- settings --------------------- */
 let settingsDirty = false
+let settingsStatusTimeoutId = null
 
 function setSettingsStatus(message) {
   const status = document.querySelector('.settings-status')
   if (status) {
     status.textContent = message
   }
+}
+
+function clearSettingsStatusAfterDelay(delayMs = 0) {
+  if (settingsStatusTimeoutId) {
+    clearTimeout(settingsStatusTimeoutId)
+    settingsStatusTimeoutId = null
+  }
+
+  if (!delayMs) {
+    setSettingsStatus('')
+    return
+  }
+
+  settingsStatusTimeoutId = setTimeout(() => {
+    setSettingsStatus('')
+    settingsStatusTimeoutId = null
+  }, delayMs)
 }
 
 function clearCachedAdminPassword() {
@@ -1161,6 +1179,15 @@ function initializeIntegrationTestButtons() {
     omdb: { key: 'setting-omdb-key' },
   }
 
+  const targetLabels = {
+    plex: 'Plex',
+    radarr: 'Radarr',
+    jellyseerr: 'Jellyseerr',
+    overseerr: 'Overseerr',
+    tmdb: 'TMDB',
+    omdb: 'OMDb',
+  }
+
   document.querySelectorAll('[data-test-target]').forEach(button => {
     if (button.dataset.boundTestButton === 'true') return
 
@@ -1168,6 +1195,9 @@ function initializeIntegrationTestButtons() {
       const target = button.dataset.testTarget
       const config = mappings[target]
       if (!config) return
+      const targetLabel = targetLabels[target] || target
+
+      clearSettingsStatusAfterDelay()
 
       const urlValue = config.url
         ? document.getElementById(config.url)?.value || ''
@@ -1176,17 +1206,17 @@ function initializeIntegrationTestButtons() {
 
       if (config.url && !isValidUrl(urlValue)) {
         setSettingsStatus(
-          `⚠️ ${target} URL looks invalid. Please check and try again.`
+          `⚠️ ${targetLabel} URL looks invalid. Please check and try again.`
         )
         return
       }
 
       if (!String(keyValue).trim()) {
-        setSettingsStatus(`⚠️ ${target} API key/token is empty.`)
+        setSettingsStatus(`⚠️ ${targetLabel} API key/token is empty.`)
         return
       }
 
-      setSettingsStatus(`Testing ${target} connection...`)
+      setSettingsStatus(`Testing ${targetLabel} connection...`)
 
       fetch('/api/settings-test', {
         method: 'POST',
@@ -1203,7 +1233,8 @@ function initializeIntegrationTestButtons() {
             .catch(() => ({ ok: false, message: '' }))
 
           if (res.ok && data?.ok) {
-            setSettingsStatus(`✅ ${target} connection successful.`)
+            setSettingsStatus(`✅ ${targetLabel} connection successful.`)
+            clearSettingsStatusAfterDelay(5000)
             return
           }
 
@@ -1216,8 +1247,9 @@ function initializeIntegrationTestButtons() {
             hasAdminSettingsAccess = false
             updateAdminOnlySettingsVisibility()
             setSettingsStatus(
-              `⚠️ ${target} connection test blocked by admin auth: ${message}`
+              `⚠️ ${targetLabel} connection test blocked by admin auth: ${message}`
             )
+            clearSettingsStatusAfterDelay(7000)
             return
           }
 
@@ -1225,12 +1257,16 @@ function initializeIntegrationTestButtons() {
             data,
             `Connection failed (${res.status}).`
           )
-          setSettingsStatus(`⚠️ ${target} connection test failed: ${message}`)
+          setSettingsStatus(
+            `⚠️ ${targetLabel} connection test failed: ${message}`
+          )
+          clearSettingsStatusAfterDelay(7000)
         })
         .catch(err => {
           setSettingsStatus(
-            `⚠️ ${target} connection test failed: ${err?.message || err}`
+            `⚠️ ${targetLabel} connection test failed: ${err?.message || err}`
           )
+          clearSettingsStatusAfterDelay(7000)
         })
     })
 
