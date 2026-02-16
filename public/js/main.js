@@ -272,8 +272,12 @@ function initTabs() {
   if (!sidebar && !tabbar) return
 
   // Get all navigation buttons from both containers
-  const sidebarButtons = sidebar ? sidebar.querySelectorAll('[data-tab]') : []
-  const tabbarButtons = tabbar ? tabbar.querySelectorAll('[data-tab]') : []
+  const sidebarButtons = sidebar
+    ? sidebar.querySelectorAll('[data-tab]:not(.sidebar-subitem)')
+    : []
+  const tabbarButtons = tabbar
+    ? tabbar.querySelectorAll('[data-tab]:not(.mobile-settings-item)')
+    : []
   const allButtons = [...sidebarButtons, ...tabbarButtons]
 
   // Dropdown support (for mobile tabbar)
