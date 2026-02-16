@@ -13,6 +13,26 @@ const getSettingTrimmed = (name: Parameters<typeof getSetting>[0]) => {
 const normalizeUrl = (value?: string) =>
   typeof value === 'string' && value !== '' ? value.replace(/\/$/, '') : ''
 
+const normalizePlexUrl = (value?: string) => {
+  const trimmed = normalizeUrl(value)
+  if (!trimmed) return ''
+
+  try {
+    const parsed = new URL(trimmed)
+    const normalizedPath = parsed.pathname
+      .replace(/\/$/, '')
+      .replace(/\/web$/i, '')
+      .replace(/\/web\/index\.html$/i, '')
+
+    return `${parsed.origin}${normalizedPath}`.replace(/\/$/, '')
+  } catch {
+    return trimmed
+      .replace(/\/web\/index\.html$/i, '')
+      .replace(/\/web$/i, '')
+      .replace(/\/$/, '')
+  }
+}
+
 const splitCsvSetting = (value: string) =>
   value
     .split(',')
@@ -31,7 +51,7 @@ const parseJsonArraySetting = (value: string): string[] => {
   }
 }
 
-export const getPlexUrl = () => normalizeUrl(getSettingTrimmed('PLEX_URL'))
+export const getPlexUrl = () => normalizePlexUrl(getSettingTrimmed('PLEX_URL'))
 export const getPlexToken = () => getSettingTrimmed('PLEX_TOKEN')
 export const getPort = () => getSettingTrimmed('PORT') ?? '8000'
 export const LOG_LEVEL = getSettingTrimmed('LOG_LEVEL') ?? 'INFO'
