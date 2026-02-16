@@ -260,6 +260,41 @@ function updateWatchContentRatingButton(selectedRatings) {
     rating => rating
   )
 }
+
+function initializePasswordVisibilityToggles() {
+  document.querySelectorAll('input[type="password"]').forEach(input => {
+    if (input.dataset.passwordToggleBound === 'true') return
+
+    const wrapper = document.createElement('div')
+    wrapper.className = 'password-visibility-field'
+
+    const parent = input.parentElement
+    if (!parent) return
+
+    parent.insertBefore(wrapper, input)
+    wrapper.appendChild(input)
+
+    const toggle = document.createElement('button')
+    toggle.type = 'button'
+    toggle.className = 'password-visibility-toggle'
+    toggle.setAttribute('aria-label', 'Show value')
+    toggle.setAttribute('aria-pressed', 'false')
+    toggle.innerHTML = '<i class="fas fa-eye-slash" aria-hidden="true"></i>'
+
+    toggle.addEventListener('click', () => {
+      const isHidden = input.type === 'password'
+      input.type = isHidden ? 'text' : 'password'
+      toggle.setAttribute('aria-label', isHidden ? 'Hide value' : 'Show value')
+      toggle.setAttribute('aria-pressed', isHidden ? 'true' : 'false')
+      toggle.innerHTML = isHidden
+        ? '<i class="fas fa-eye" aria-hidden="true"></i>'
+        : '<i class="fas fa-eye-slash" aria-hidden="true"></i>'
+    })
+
+    wrapper.appendChild(toggle)
+    input.dataset.passwordToggleBound = 'true'
+  })
+}
 // ===== END DROPDOWN BUTTON TEXT UPDATE FUNCTIONS =====
 
 /* --------------------- tabs --------------------- */
@@ -3338,6 +3373,7 @@ function showNoMoviesNotification() {
 /* -------------------- main ---------------------- */
 const main = async () => {
   console.log('🚀 Comparr main() starting')
+  initializePasswordVisibilityToggles()
   const CARD_STACK_SIZE = 4
 
   api = new ComparrAPI()
