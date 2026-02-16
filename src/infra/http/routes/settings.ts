@@ -22,6 +22,11 @@ const isValidHttpUrl = (value: string) => {
   }
 }
 
+const normalizePlexToken = (token: string) =>
+  String(token || '')
+    .trim()
+    .replace(/^X-Plex-Token=/i, '')
+
 const runConnectionCheck = async (
   target: string,
   url: string,
@@ -33,7 +38,10 @@ const runConnectionCheck = async (
   const normalizedUrl = String(url || '')
     .trim()
     .replace(/\/$/, '')
-  const normalizedToken = String(token || '').trim()
+  const normalizedToken =
+    normalizedTarget === 'plex'
+      ? normalizePlexToken(token)
+      : String(token || '').trim()
 
   if (
     normalizedTarget !== 'tmdb' &&
