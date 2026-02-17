@@ -1689,13 +1689,44 @@
       <!-- ===== Pass panel ===== -->
       <section class="tab-panel" id="tab-dislikes" hidden>
         <div class="watch-list-layout">
-          <h3>
-            <i
-              class="fas fa-thumbs-down"
-              style="color: var(--color-error); margin-right: 0.5rem"
-            ></i>
-            Pass List
-          </h3>
+          <div class="watch-list-header">
+            <h3>
+              <i
+                class="fas fa-thumbs-down"
+                style="color: var(--color-error); margin-right: 0.5rem"
+              ></i>
+              Pass List
+            </h3>
+            <div class="sort-controls">
+              <div class="sort-controls-wrapper">
+                <select id="pass-sort" class="watch-sort-dropdown">
+                  <option value="date">Date Added</option>
+                  <option value="release_date">Release Date</option>
+                  <option value="title">Title</option>
+                  <option value="popularity">Popularity</option>
+                  <option value="vote_count">Votes</option>
+                  <option value="imdb">IMDb Rating</option>
+                  <option value="rt">Rotten Tomatoes Rating</option>
+                  <option value="tmdb">TMDb Rating</option>
+                </select>
+                <button
+                  id="pass-sort-direction"
+                  class="sort-direction-btn"
+                  type="button"
+                  title="Sort Direction"
+                >
+                  ↓
+                </button>
+              </div>
+              <button
+                id="toggle-expand-all-pass-btn"
+                class="expand-collapse-btn"
+                title="Expand All"
+              >
+                <i class="fas fa-chevron-down"></i>
+              </button>
+            </div>
+          </div>
           <div class="watch-list-container">
             <div class="watch-list dislikes-list">
               <!-- Movies will be inserted here as cards -->
@@ -1707,7 +1738,7 @@
       <!-- ===== Seen panel ===== -->
       <section class="tab-panel" id="tab-seen" hidden>
         <div class="watch-list-layout">
-          <div class="seen-list-header">
+          <div class="watch-list-header">
             <h3>
               <i
                 class="fas fa-eye"
@@ -1715,6 +1746,35 @@
               ></i>
               Seen List
             </h3>
+            <div class="sort-controls">
+              <div class="sort-controls-wrapper">
+                <select id="seen-sort" class="watch-sort-dropdown">
+                  <option value="date">Date Added</option>
+                  <option value="release_date">Release Date</option>
+                  <option value="title">Title</option>
+                  <option value="popularity">Popularity</option>
+                  <option value="vote_count">Votes</option>
+                  <option value="imdb">IMDb Rating</option>
+                  <option value="rt">Rotten Tomatoes Rating</option>
+                  <option value="tmdb">TMDb Rating</option>
+                </select>
+                <button
+                  id="seen-sort-direction"
+                  class="sort-direction-btn"
+                  type="button"
+                  title="Sort Direction"
+                >
+                  ↓
+                </button>
+              </div>
+              <button
+                id="toggle-expand-all-seen-btn"
+                class="expand-collapse-btn"
+                title="Expand All"
+              >
+                <i class="fas fa-chevron-down"></i>
+              </button>
+            </div>
           </div>
           <div class="watch-list-container">
             <div class="watch-list seen-list">

@@ -1608,6 +1608,182 @@ async function setupSettingsUI() {
 // Make it globally available
 window.sortWatchList = sortWatchList
 
+function sortPassList(sortBy) {
+  const dislikesList = document.querySelector('.dislikes-list')
+  if (!dislikesList) return
+
+  const cards = Array.from(dislikesList.querySelectorAll('.watch-card'))
+
+  // Store original order for date sorting
+  if (!dislikesList.dataset.originalOrder) {
+    dislikesList.dataset.originalOrder = cards.map(c => c.dataset.guid).join(',')
+  }
+
+  // Parse sortBy into field and direction
+  let sortField, sortDirection
+  if (sortBy.includes('-')) {
+    const parts = sortBy.split('-')
+    sortField = parts[0]
+    sortDirection = parts[1]
+  } else {
+    sortField = sortBy
+    sortDirection = 'desc'
+  }
+
+  cards.sort((a, b) => {
+    const titleA = a.querySelector('.watch-card-title-compact').textContent.trim()
+    const titleB = b.querySelector('.watch-card-title-compact').textContent.trim()
+
+    const yearA = parseInt(a.querySelector('.watch-card-year').textContent.match(/\d+/)?.[0] || 0)
+    const yearB = parseInt(b.querySelector('.watch-card-year').textContent.match(/\d+/)?.[0] || 0)
+
+    const getRatings = card => {
+      const ratingEl = card.querySelector('.watch-card-ratings')
+      if (!ratingEl) return { imdb: 0, rt: 0, tmdb: 0 }
+      const innerHTML = ratingEl.innerHTML
+      const imdbMatch = innerHTML.match(/imdb\.svg[^>]*>\s*([\d.]+)/i)
+      const imdb = imdbMatch ? parseFloat(imdbMatch[1]) : 0
+      const rtMatch = innerHTML.match(/rottentomatoes\.svg[^>]*>\s*([\d.]+)%/i)
+      const rt = rtMatch ? parseFloat(rtMatch[1]) : 0
+      const tmdbMatch = innerHTML.match(/tmdb\.svg[^>]*>\s*([\d.]+)/i)
+      const tmdb = tmdbMatch ? parseFloat(tmdbMatch[1]) : 0
+      return { imdb, rt, tmdb }
+    }
+
+    const ratingsA = getRatings(a)
+    const ratingsB = getRatings(b)
+    const popularityA = parseFloat(a.dataset.popularity || 0)
+    const popularityB = parseFloat(b.dataset.popularity || 0)
+    const votesA = parseInt(a.dataset.voteCount || 0)
+    const votesB = parseInt(b.dataset.voteCount || 0)
+
+    let result = 0
+    switch (sortField) {
+      case 'title':
+        result = titleA.localeCompare(titleB)
+        break
+      case 'year':
+      case 'release_date':
+        result = yearA - yearB
+        break
+      case 'imdb':
+        result = ratingsA.imdb - ratingsB.imdb
+        break
+      case 'rt':
+        result = ratingsA.rt - ratingsB.rt
+        break
+      case 'tmdb':
+        result = ratingsA.tmdb - ratingsB.tmdb
+        break
+      case 'popularity':
+        result = popularityA - popularityB
+        break
+      case 'vote_count':
+        result = votesA - votesB
+        break
+      case 'date':
+        const originalOrder = dislikesList.dataset.originalOrder.split(',')
+        result = originalOrder.indexOf(a.dataset.guid) - originalOrder.indexOf(b.dataset.guid)
+        break
+      default:
+        result = 0
+    }
+    return sortDirection === 'asc' ? result : -result
+  })
+
+  cards.forEach(card => card.remove())
+  cards.forEach(card => dislikesList.appendChild(card))
+}
+window.sortPassList = sortPassList
+
+function sortSeenList(sortBy) {
+  const seenList = document.querySelector('.seen-list')
+  if (!seenList) return
+
+  const cards = Array.from(seenList.querySelectorAll('.watch-card'))
+
+  // Store original order for date sorting
+  if (!seenList.dataset.originalOrder) {
+    seenList.dataset.originalOrder = cards.map(c => c.dataset.guid).join(',')
+  }
+
+  // Parse sortBy into field and direction
+  let sortField, sortDirection
+  if (sortBy.includes('-')) {
+    const parts = sortBy.split('-')
+    sortField = parts[0]
+    sortDirection = parts[1]
+  } else {
+    sortField = sortBy
+    sortDirection = 'desc'
+  }
+
+  cards.sort((a, b) => {
+    const titleA = a.querySelector('.watch-card-title-compact').textContent.trim()
+    const titleB = b.querySelector('.watch-card-title-compact').textContent.trim()
+
+    const yearA = parseInt(a.querySelector('.watch-card-year').textContent.match(/\d+/)?.[0] || 0)
+    const yearB = parseInt(b.querySelector('.watch-card-year').textContent.match(/\d+/)?.[0] || 0)
+
+    const getRatings = card => {
+      const ratingEl = card.querySelector('.watch-card-ratings')
+      if (!ratingEl) return { imdb: 0, rt: 0, tmdb: 0 }
+      const innerHTML = ratingEl.innerHTML
+      const imdbMatch = innerHTML.match(/imdb\.svg[^>]*>\s*([\d.]+)/i)
+      const imdb = imdbMatch ? parseFloat(imdbMatch[1]) : 0
+      const rtMatch = innerHTML.match(/rottentomatoes\.svg[^>]*>\s*([\d.]+)%/i)
+      const rt = rtMatch ? parseFloat(rtMatch[1]) : 0
+      const tmdbMatch = innerHTML.match(/tmdb\.svg[^>]*>\s*([\d.]+)/i)
+      const tmdb = tmdbMatch ? parseFloat(tmdbMatch[1]) : 0
+      return { imdb, rt, tmdb }
+    }
+
+    const ratingsA = getRatings(a)
+    const ratingsB = getRatings(b)
+    const popularityA = parseFloat(a.dataset.popularity || 0)
+    const popularityB = parseFloat(b.dataset.popularity || 0)
+    const votesA = parseInt(a.dataset.voteCount || 0)
+    const votesB = parseInt(b.dataset.voteCount || 0)
+
+    let result = 0
+    switch (sortField) {
+      case 'title':
+        result = titleA.localeCompare(titleB)
+        break
+      case 'year':
+      case 'release_date':
+        result = yearA - yearB
+        break
+      case 'imdb':
+        result = ratingsA.imdb - ratingsB.imdb
+        break
+      case 'rt':
+        result = ratingsA.rt - ratingsB.rt
+        break
+      case 'tmdb':
+        result = ratingsA.tmdb - ratingsB.tmdb
+        break
+      case 'popularity':
+        result = popularityA - popularityB
+        break
+      case 'vote_count':
+        result = votesA - votesB
+        break
+      case 'date':
+        const originalOrder = seenList.dataset.originalOrder.split(',')
+        result = originalOrder.indexOf(a.dataset.guid) - originalOrder.indexOf(b.dataset.guid)
+        break
+      default:
+        result = 0
+    }
+    return sortDirection === 'asc' ? result : -result
+  })
+
+  cards.forEach(card => card.remove())
+  cards.forEach(card => seenList.appendChild(card))
+}
+window.sortSeenList = sortSeenList
+
 /* ------------- login (prevents page nav) -------- */
 async function login(api) {
   const loginSection = document.querySelector('.login-section')
@@ -4964,6 +5140,116 @@ toggleExpandAllBtn?.addEventListener('click', () => {
     toggleExpandAllBtn.classList.add('all-expanded')
     toggleExpandAllBtn.title = 'Collapse All'
     allExpanded = true
+  }
+})
+
+// =========================================================
+// Pass List Sort Controls
+// =========================================================
+const passSortDropdown = document.getElementById('pass-sort')
+const passSortDirectionBtn = document.getElementById('pass-sort-direction')
+
+if (passSortDirectionBtn && !passSortDirectionBtn.dataset.direction) {
+  passSortDirectionBtn.dataset.direction = 'desc'
+}
+
+passSortDropdown?.addEventListener('change', () => {
+  const sortField = passSortDropdown.value
+  const direction = passSortDirectionBtn?.dataset.direction || 'desc'
+  window.sortPassList(`${sortField}-${direction}`)
+})
+
+passSortDirectionBtn?.addEventListener('click', e => {
+  e.preventDefault()
+  e.stopPropagation()
+
+  const currentDirection =
+    passSortDirectionBtn.dataset.direction === 'asc' ? 'asc' : 'desc'
+  const newDirection = currentDirection === 'desc' ? 'asc' : 'desc'
+  passSortDirectionBtn.dataset.direction = newDirection
+  passSortDirectionBtn.textContent = newDirection === 'desc' ? '↓' : '↑'
+
+  const sortField = passSortDropdown?.value || 'date'
+  window.sortPassList(`${sortField}-${newDirection}`)
+})
+
+// =========================================================
+// Pass List Expand/Collapse All Button
+// =========================================================
+const toggleExpandAllPassBtn = document.getElementById('toggle-expand-all-pass-btn')
+let allPassExpanded = false
+
+toggleExpandAllPassBtn?.addEventListener('click', () => {
+  const dislikesList = document.querySelector('.dislikes-list')
+  if (!dislikesList) return
+
+  const cards = dislikesList.querySelectorAll('.watch-card')
+
+  if (allPassExpanded) {
+    cards.forEach(card => card.classList.remove('expanded'))
+    toggleExpandAllPassBtn.classList.remove('all-expanded')
+    toggleExpandAllPassBtn.title = 'Expand All'
+    allPassExpanded = false
+  } else {
+    cards.forEach(card => card.classList.add('expanded'))
+    toggleExpandAllPassBtn.classList.add('all-expanded')
+    toggleExpandAllPassBtn.title = 'Collapse All'
+    allPassExpanded = true
+  }
+})
+
+// =========================================================
+// Seen List Sort Controls
+// =========================================================
+const seenSortDropdown = document.getElementById('seen-sort')
+const seenSortDirectionBtn = document.getElementById('seen-sort-direction')
+
+if (seenSortDirectionBtn && !seenSortDirectionBtn.dataset.direction) {
+  seenSortDirectionBtn.dataset.direction = 'desc'
+}
+
+seenSortDropdown?.addEventListener('change', () => {
+  const sortField = seenSortDropdown.value
+  const direction = seenSortDirectionBtn?.dataset.direction || 'desc'
+  window.sortSeenList(`${sortField}-${direction}`)
+})
+
+seenSortDirectionBtn?.addEventListener('click', e => {
+  e.preventDefault()
+  e.stopPropagation()
+
+  const currentDirection =
+    seenSortDirectionBtn.dataset.direction === 'asc' ? 'asc' : 'desc'
+  const newDirection = currentDirection === 'desc' ? 'asc' : 'desc'
+  seenSortDirectionBtn.dataset.direction = newDirection
+  seenSortDirectionBtn.textContent = newDirection === 'desc' ? '↓' : '↑'
+
+  const sortField = seenSortDropdown?.value || 'date'
+  window.sortSeenList(`${sortField}-${newDirection}`)
+})
+
+// =========================================================
+// Seen List Expand/Collapse All Button
+// =========================================================
+const toggleExpandAllSeenBtn = document.getElementById('toggle-expand-all-seen-btn')
+let allSeenExpanded = false
+
+toggleExpandAllSeenBtn?.addEventListener('click', () => {
+  const seenList = document.querySelector('.seen-list')
+  if (!seenList) return
+
+  const cards = seenList.querySelectorAll('.watch-card')
+
+  if (allSeenExpanded) {
+    cards.forEach(card => card.classList.remove('expanded'))
+    toggleExpandAllSeenBtn.classList.remove('all-expanded')
+    toggleExpandAllSeenBtn.title = 'Expand All'
+    allSeenExpanded = false
+  } else {
+    cards.forEach(card => card.classList.add('expanded'))
+    toggleExpandAllSeenBtn.classList.add('all-expanded')
+    toggleExpandAllSeenBtn.title = 'Collapse All'
+    allSeenExpanded = true
   }
 })
 
