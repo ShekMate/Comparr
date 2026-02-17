@@ -4841,21 +4841,8 @@ footer {
 
 .settings-toolbar {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-alt);
-}
-
-.settings-advanced-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
 }
 
 .settings-helper-text {
@@ -4863,9 +4850,31 @@ footer {
   font-size: 0.85rem;
 }
 
+.settings-mode-toggle {
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+}
+
+.settings-mode-toggle:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-primary);
+}
+
+.settings-mode-toggle[aria-pressed='true'] {
+  color: var(--color-primary);
+  border-color: rgba(99, 102, 241, 0.55);
+  background: rgba(99, 102, 241, 0.14);
+}
+
 .settings-field-advanced {
-  border-left: 2px dashed var(--color-line);
-  padding-left: 0.75rem;
+  border-left: none;
+  padding-left: 0;
 }
 
 .settings-test-btn {
@@ -4951,6 +4960,10 @@ footer {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+}
+
+.settings-field[hidden] {
+  display: none !important;
 }
 
 .settings-field label {
