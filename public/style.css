@@ -4962,6 +4962,10 @@ footer {
   gap: 0.4rem;
 }
 
+.settings-field[hidden] {
+  display: none !important;
+}
+
 .settings-field label {
   font-size: 0.95rem;
   font-weight: 600;
