@@ -1036,11 +1036,6 @@ function updateAdvancedSettingsToggleVisibility() {
   )
 
   toolbar.toggleAttribute('hidden', !hasAdvancedSettings)
-
-  if (!hasAdvancedSettings) {
-    toggle.setAttribute('aria-pressed', 'false')
-    applyAdvancedSettingsVisibility(false)
-  }
 }
 
 function parseArraySetting(rawValue) {
