@@ -4534,7 +4534,9 @@ footer {
   min-height: 2rem;
 }
 
-#toggle-expand-all-btn {
+#toggle-expand-all-btn,
+#toggle-expand-all-pass-btn,
+#toggle-expand-all-seen-btn {
   height: 2rem !important;
   width: 2rem !important;
   min-width: 2rem !important;
@@ -4564,7 +4566,6 @@ footer {
 #tab-seen .watch-list-layout {
   position: relative;
 }
-
 
 .seen-header-actions {
   position: absolute;
