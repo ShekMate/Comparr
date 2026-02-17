@@ -798,7 +798,11 @@ function getDefaultAvailabilityState() {
   }
 }
 
-function normalizeAvailabilityState(value) {
+function normalizeAvailabilityState(value, options = {}) {
+  const {
+    enforceSelection = true,
+    enforceAnywhereExclusivity = true,
+  } = options
   const fallback = getDefaultAvailabilityState()
   if (!value || typeof value !== 'object') {
     return fallback
@@ -812,6 +816,7 @@ function normalizeAvailabilityState(value) {
   }
 
   if (
+    enforceSelection &&
     !state.anywhere &&
     !state.roomPersonalMedia &&
     !state.paidSubscriptions &&
@@ -820,7 +825,7 @@ function normalizeAvailabilityState(value) {
     state.anywhere = true
   }
 
-  if (state.anywhere) {
+  if (enforceAnywhereExclusivity && state.anywhere) {
     state.roomPersonalMedia = false
     state.paidSubscriptions = false
     state.freeStreaming = false
@@ -5818,9 +5823,9 @@ function parsePersonalSources() {
 }
 
 function updateSwipeAvailabilityUI() {
-  const availability = normalizeAvailabilityState(
-    window.filterState?.availability
-  )
+  const availability = normalizeAvailabilityState(window.filterState?.availability, {
+    enforceSelection: false,
+  })
   const anywhereInput = document.getElementById('swipe-availability-anywhere')
   const roomMediaInput = document.getElementById(
     'swipe-availability-room-media'
@@ -5877,7 +5882,9 @@ function updateSwipeAvailabilityUI() {
 
 function setAvailabilityState(nextState) {
   if (!window.filterState) return
-  window.filterState.availability = normalizeAvailabilityState(nextState)
+  window.filterState.availability = normalizeAvailabilityState(nextState, {
+    enforceSelection: false,
+  })
   window.filterState.showPlexOnly = deriveShowPlexOnlyFromAvailability(
     window.filterState.availability
   )
@@ -6376,9 +6383,9 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
   } else {
     setAvailabilityState({
       anywhere: false,
-      roomPersonalMedia: true,
-      paidSubscriptions: false,
-      freeStreaming: false,
+      roomPersonalMedia: Boolean(swipeAvailabilityRoomMedia?.checked),
+      paidSubscriptions: Boolean(swipeAvailabilityPaid?.checked),
+      freeStreaming: Boolean(swipeAvailabilityFree?.checked),
     })
   }
 })
@@ -6401,6 +6408,10 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
 // Apply button
 swipeFilterApply?.addEventListener('click', e => {
   e.preventDefault()
+  const normalizedForSave = normalizeAvailabilityState(
+    window.filterState?.availability
+  )
+  setAvailabilityState(normalizedForSave)
   window.__resetMovies = true
   if (typeof triggerNewBatch === 'function') triggerNewBatch()
   closeSwipeFilterModal()
