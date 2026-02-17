@@ -443,6 +443,7 @@ function initTabs() {
     ])
 
     currentSettingsTarget = targetId
+    clearSettingsStatusAfterDelay()
 
     settingsSections.forEach(section => {
       const isAdminCompositeTarget =
@@ -839,11 +840,13 @@ function deriveShowPlexOnlyFromAvailability(availability) {
 }
 
 function applyAdminSettingsTabVisibility() {
+  const adminControls = document.getElementById('settings-admin-controls')
   const tabsContainer = document.getElementById('settings-admin-tabs')
   if (!tabsContainer) return
 
   const shouldShow =
     currentSettingsTarget === 'settings-admin' && hasAdminSettingsAccess
+  adminControls?.toggleAttribute('hidden', !shouldShow)
   tabsContainer.toggleAttribute('hidden', !shouldShow)
 
   if (!shouldShow) return
@@ -878,6 +881,7 @@ function initializeAdminSettingsTabs() {
     tab.addEventListener('click', () => {
       const target = tab.dataset.adminTabTarget
       if (!target) return
+      clearSettingsStatusAfterDelay()
       activeAdminSettingsTab = target
       applyAdminSettingsTabVisibility()
     })
@@ -1237,21 +1241,11 @@ function initializeAdvancedSettingsToggle() {
   toggle.checked = shouldShow
 
   applyAdvancedSettingsVisibility(shouldShow)
-  setSettingsStatus(
-    shouldShow
-      ? 'Advanced settings are visible.'
-      : 'Advanced settings are hidden.'
-  )
 
   toggle.addEventListener('change', () => {
     const enabled = toggle.checked
     localStorage.setItem('settingsShowAdvanced', enabled ? 'true' : 'false')
     applyAdvancedSettingsVisibility(enabled)
-    setSettingsStatus(
-      enabled
-        ? 'Advanced settings are visible.'
-        : 'Advanced settings are hidden.'
-    )
   })
 
   toggle.dataset.boundAdvancedToggle = 'true'
@@ -1602,12 +1596,6 @@ async function setupSettingsUI() {
   bindSettingsAccessGuards()
 
   await hydrateSettingsUiIfAuthorized()
-
-  if (settingsAccessState.requiresAdminPassword) {
-    setSettingsStatus(
-      'Admin settings are protected. Open Admin to enter the admin password before testing or saving integrations.'
-    )
-  }
 }
 
 // Make it globally available

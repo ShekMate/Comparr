@@ -1801,65 +1801,63 @@
                 Changes apply immediately unless marked otherwise.
               </p>
             </div>
-            <button class="settings-save-btn" type="button">
-              <i class="fas fa-save"></i>
-              Save Changes
-            </button>
           </div>
 
-          <div class="settings-toolbar">
-            <label class="settings-advanced-toggle">
-              <input type="checkbox" id="settings-show-advanced" />
-              Show advanced settings
-            </label>
-            <span class="settings-helper-text"
-              >Use Test buttons before saving integration changes.</span
-            >
-          </div>
+          <div id="settings-admin-controls" hidden>
+            <div class="settings-toolbar">
+              <label class="settings-advanced-toggle">
+                <input type="checkbox" id="settings-show-advanced" />
+                Show advanced settings
+              </label>
+              <span class="settings-helper-text"
+                >Use Test buttons before saving integration changes.</span
+              >
+            </div>
 
-          <div class="settings-admin-tabs" id="settings-admin-tabs" hidden>
-            <button
-              type="button"
-              class="settings-admin-tab is-active"
-              data-admin-tab-target="settings-core"
-            >
-              System
-            </button>
-            <button
-              type="button"
-              class="settings-admin-tab"
-              data-admin-tab-target="settings-personal-media"
-            >
-              Personal Media
-            </button>
-            <button
-              type="button"
-              class="settings-admin-tab"
-              data-admin-tab-target="settings-metadata"
-            >
-              Metadata
-            </button>
-            <button
-              type="button"
-              class="settings-admin-tab"
-              data-admin-tab-target="settings-request-services"
-            >
-              Requests
-            </button>
-            <button
-              type="button"
-              class="settings-admin-tab"
-              data-admin-tab-target="settings-sync"
-            >
-              Imports
-            </button>
-            <button
-              type="button"
-              class="settings-admin-tab"
-              data-admin-tab-target="settings-security"
-            >
-              Security
-            </button>
+            <div class="settings-admin-tabs" id="settings-admin-tabs" hidden>
+              <button
+                type="button"
+                class="settings-admin-tab is-active"
+                data-admin-tab-target="settings-core"
+              >
+                System
+              </button>
+              <button
+                type="button"
+                class="settings-admin-tab"
+                data-admin-tab-target="settings-personal-media"
+              >
+                Personal Media
+              </button>
+              <button
+                type="button"
+                class="settings-admin-tab"
+                data-admin-tab-target="settings-metadata"
+              >
+                Metadata
+              </button>
+              <button
+                type="button"
+                class="settings-admin-tab"
+                data-admin-tab-target="settings-request-services"
+              >
+                Requests
+              </button>
+              <button
+                type="button"
+                class="settings-admin-tab"
+                data-admin-tab-target="settings-sync"
+              >
+                Imports
+              </button>
+              <button
+                type="button"
+                class="settings-admin-tab"
+                data-admin-tab-target="settings-security"
+              >
+                Security
+              </button>
+            </div>
           </div>
 
           <div
@@ -2458,6 +2456,11 @@
               <p>Required to edit protected settings tabs from any client.</p>
             </div>
           </div>
+
+          <button class="settings-save-btn" type="button">
+            <i class="fas fa-save"></i>
+            Save Changes
+          </button>
 
           <div class="settings-status" role="status" aria-live="polite"></div>
         </div>
