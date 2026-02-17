@@ -400,12 +400,17 @@ function initTabs() {
 
     // Handle Watch list auto-refresh
     if (tabId === 'tab-likes') {
+      applyCurrentWatchListSort()
       startWatchListAutoRefresh()
       setTimeout(refreshWatchListStatus, 500)
       // Reset expand/collapse button state
       if (typeof resetExpandCollapseButton === 'function') {
         resetExpandCollapseButton()
       }
+    } else if (tabId === 'tab-dislikes') {
+      applyCurrentPassListSort()
+    } else if (tabId === 'tab-seen') {
+      applyCurrentSeenListSort()
     } else if (tabId === 'tab-matches') {
       if (typeof window.refreshMatchesList === 'function') {
         window.refreshMatchesList()
@@ -1616,7 +1621,9 @@ function sortPassList(sortBy) {
 
   // Store original order for date sorting
   if (!dislikesList.dataset.originalOrder) {
-    dislikesList.dataset.originalOrder = cards.map(c => c.dataset.guid).join(',')
+    dislikesList.dataset.originalOrder = cards
+      .map(c => c.dataset.guid)
+      .join(',')
   }
 
   // Parse sortBy into field and direction
@@ -1631,11 +1638,19 @@ function sortPassList(sortBy) {
   }
 
   cards.sort((a, b) => {
-    const titleA = a.querySelector('.watch-card-title-compact').textContent.trim()
-    const titleB = b.querySelector('.watch-card-title-compact').textContent.trim()
+    const titleA = a
+      .querySelector('.watch-card-title-compact')
+      .textContent.trim()
+    const titleB = b
+      .querySelector('.watch-card-title-compact')
+      .textContent.trim()
 
-    const yearA = parseInt(a.querySelector('.watch-card-year').textContent.match(/\d+/)?.[0] || 0)
-    const yearB = parseInt(b.querySelector('.watch-card-year').textContent.match(/\d+/)?.[0] || 0)
+    const yearA = parseInt(
+      a.querySelector('.watch-card-year').textContent.match(/\d+/)?.[0] || 0
+    )
+    const yearB = parseInt(
+      b.querySelector('.watch-card-year').textContent.match(/\d+/)?.[0] || 0
+    )
 
     const getRatings = card => {
       const ratingEl = card.querySelector('.watch-card-ratings')
@@ -1683,7 +1698,9 @@ function sortPassList(sortBy) {
         break
       case 'date':
         const originalOrder = dislikesList.dataset.originalOrder.split(',')
-        result = originalOrder.indexOf(a.dataset.guid) - originalOrder.indexOf(b.dataset.guid)
+        result =
+          originalOrder.indexOf(a.dataset.guid) -
+          originalOrder.indexOf(b.dataset.guid)
         break
       default:
         result = 0
@@ -1719,11 +1736,19 @@ function sortSeenList(sortBy) {
   }
 
   cards.sort((a, b) => {
-    const titleA = a.querySelector('.watch-card-title-compact').textContent.trim()
-    const titleB = b.querySelector('.watch-card-title-compact').textContent.trim()
+    const titleA = a
+      .querySelector('.watch-card-title-compact')
+      .textContent.trim()
+    const titleB = b
+      .querySelector('.watch-card-title-compact')
+      .textContent.trim()
 
-    const yearA = parseInt(a.querySelector('.watch-card-year').textContent.match(/\d+/)?.[0] || 0)
-    const yearB = parseInt(b.querySelector('.watch-card-year').textContent.match(/\d+/)?.[0] || 0)
+    const yearA = parseInt(
+      a.querySelector('.watch-card-year').textContent.match(/\d+/)?.[0] || 0
+    )
+    const yearB = parseInt(
+      b.querySelector('.watch-card-year').textContent.match(/\d+/)?.[0] || 0
+    )
 
     const getRatings = card => {
       const ratingEl = card.querySelector('.watch-card-ratings')
@@ -1771,7 +1796,9 @@ function sortSeenList(sortBy) {
         break
       case 'date':
         const originalOrder = seenList.dataset.originalOrder.split(',')
-        result = originalOrder.indexOf(a.dataset.guid) - originalOrder.indexOf(b.dataset.guid)
+        result =
+          originalOrder.indexOf(a.dataset.guid) -
+          originalOrder.indexOf(b.dataset.guid)
         break
       default:
         result = 0
@@ -1783,6 +1810,24 @@ function sortSeenList(sortBy) {
   cards.forEach(card => seenList.appendChild(card))
 }
 window.sortSeenList = sortSeenList
+
+function applyCurrentWatchListSort() {
+  const sortField = watchSortDropdown?.value || 'date'
+  const direction = watchSortDirectionBtn?.dataset.direction || 'desc'
+  window.sortWatchList(`${sortField}-${direction}`)
+}
+
+function applyCurrentPassListSort() {
+  const sortField = passSortDropdown?.value || 'date'
+  const direction = passSortDirectionBtn?.dataset.direction || 'desc'
+  window.sortPassList(`${sortField}-${direction}`)
+}
+
+function applyCurrentSeenListSort() {
+  const sortField = seenSortDropdown?.value || 'date'
+  const direction = seenSortDirectionBtn?.dataset.direction || 'desc'
+  window.sortSeenList(`${sortField}-${direction}`)
+}
 
 /* ------------- login (prevents page nav) -------- */
 async function login(api) {
@@ -2282,6 +2327,7 @@ async function appendRatedRow(
       const filteredOrder = currentOrder.filter(g => g !== movie.guid)
       filteredOrder.push(movie.guid)
       likesList.dataset.originalOrder = filteredOrder.join(',')
+      applyCurrentWatchListSort()
     }
 
     // Add dropdown toggle handlers (only for enabled buttons)
@@ -2681,6 +2727,16 @@ async function appendRatedRow(
     }
 
     dislikesList?.appendChild(card)
+
+    if (dislikesList) {
+      const currentOrder = dislikesList.dataset.originalOrder
+        ? dislikesList.dataset.originalOrder.split(',').filter(Boolean)
+        : []
+      const filteredOrder = currentOrder.filter(g => g !== movie.guid)
+      filteredOrder.push(movie.guid)
+      dislikesList.dataset.originalOrder = filteredOrder.join(',')
+      applyCurrentPassListSort()
+    }
   } else if (wantsToWatch === null) {
     // Create card for Seen tab (same format as Watch tab but no streaming)
     const card = document.createElement('div')
@@ -2795,6 +2851,16 @@ async function appendRatedRow(
     }
 
     seenList?.appendChild(card)
+
+    if (seenList) {
+      const currentOrder = seenList.dataset.originalOrder
+        ? seenList.dataset.originalOrder.split(',').filter(Boolean)
+        : []
+      const filteredOrder = currentOrder.filter(g => g !== movie.guid)
+      filteredOrder.push(movie.guid)
+      seenList.dataset.originalOrder = filteredOrder.join(',')
+      applyCurrentSeenListSort()
+    }
   }
 }
 
@@ -2899,6 +2965,15 @@ async function moveMovieBetweenLists(guid, fromList, toList) {
 
     // Remove from old list
     console.log('🧠 Removing card from old list')
+    const oldList = oldCard.closest('.watch-list')
+    if (oldList?.dataset.originalOrder) {
+      const updatedOrder = oldList.dataset.originalOrder
+        .split(',')
+        .filter(Boolean)
+        .filter(existingGuid => existingGuid !== guid)
+      oldList.dataset.originalOrder = updatedOrder.join(',')
+    }
+
     oldCard.remove()
 
     // Add to new list
@@ -5176,7 +5251,9 @@ passSortDirectionBtn?.addEventListener('click', e => {
 // =========================================================
 // Pass List Expand/Collapse All Button
 // =========================================================
-const toggleExpandAllPassBtn = document.getElementById('toggle-expand-all-pass-btn')
+const toggleExpandAllPassBtn = document.getElementById(
+  'toggle-expand-all-pass-btn'
+)
 let allPassExpanded = false
 
 toggleExpandAllPassBtn?.addEventListener('click', () => {
@@ -5231,7 +5308,9 @@ seenSortDirectionBtn?.addEventListener('click', e => {
 // =========================================================
 // Seen List Expand/Collapse All Button
 // =========================================================
-const toggleExpandAllSeenBtn = document.getElementById('toggle-expand-all-seen-btn')
+const toggleExpandAllSeenBtn = document.getElementById(
+  'toggle-expand-all-seen-btn'
+)
 let allSeenExpanded = false
 
 toggleExpandAllSeenBtn?.addEventListener('click', () => {
