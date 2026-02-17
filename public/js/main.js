@@ -871,6 +871,8 @@ function applyAdminSettingsTabVisibility() {
   document.querySelectorAll('[data-admin-tab-panel]').forEach(panel => {
     panel.toggleAttribute('hidden', panel.id !== activeAdminSettingsTab)
   })
+
+  updateAdvancedSettingsToggleVisibility()
 }
 
 function initializeAdminSettingsTabs() {
@@ -1009,11 +1011,31 @@ function applyAdvancedSettingsVisibility(forceValue) {
   const shouldShow =
     typeof forceValue === 'boolean'
       ? forceValue
-      : Boolean(toggle && toggle.checked)
+      : Boolean(toggle && toggle.getAttribute('aria-pressed') === 'true')
 
   document.querySelectorAll('[data-advanced-setting]').forEach(field => {
     field.toggleAttribute('hidden', !shouldShow)
   })
+
+  return shouldShow
+}
+
+function updateAdvancedSettingsToggleVisibility() {
+  const toolbar = document.querySelector(
+    '#settings-admin-controls .settings-toolbar'
+  )
+  const toggle = document.getElementById('settings-show-advanced')
+  if (!toolbar || !toggle) return
+
+  const activePanel = document.querySelector(
+    '[data-admin-tab-panel]:not([hidden])'
+  )
+
+  const hasAdvancedSettings = Boolean(
+    activePanel?.querySelector('[data-advanced-setting]')
+  )
+
+  toolbar.toggleAttribute('hidden', !hasAdvancedSettings)
 }
 
 function parseArraySetting(rawValue) {
@@ -1238,12 +1260,15 @@ function initializeAdvancedSettingsToggle() {
 
   const stored = localStorage.getItem('settingsShowAdvanced')
   const shouldShow = stored === 'true'
-  toggle.checked = shouldShow
 
+  toggle.setAttribute('aria-pressed', shouldShow ? 'true' : 'false')
+  toggle.textContent = shouldShow ? 'Advanced' : 'Basic'
   applyAdvancedSettingsVisibility(shouldShow)
 
-  toggle.addEventListener('change', () => {
-    const enabled = toggle.checked
+  toggle.addEventListener('click', () => {
+    const enabled = toggle.getAttribute('aria-pressed') !== 'true'
+    toggle.setAttribute('aria-pressed', enabled ? 'true' : 'false')
+    toggle.textContent = enabled ? 'Advanced' : 'Basic'
     localStorage.setItem('settingsShowAdvanced', enabled ? 'true' : 'false')
     applyAdvancedSettingsVisibility(enabled)
   })
