@@ -4829,6 +4829,7 @@ footer {
   border-radius: var(--radius-md);
   cursor: pointer;
   display: inline-flex;
+  align-self: flex-start;
   align-items: center;
   gap: 0.5rem;
   box-shadow: var(--shadow-sm);
