@@ -1787,16 +1787,16 @@
       <!-- ===== Settings panel ===== -->
       <section class="tab-panel" id="tab-settings" hidden>
         <div class="settings-layout">
-
           <div id="settings-admin-controls" hidden>
             <div class="settings-toolbar">
-              <label class="settings-advanced-toggle">
-                <input type="checkbox" id="settings-show-advanced" />
-                Show advanced settings
-              </label>
-              <span class="settings-helper-text"
-                >Use Test buttons before saving integration changes.</span
+              <button
+                type="button"
+                id="settings-show-advanced"
+                class="settings-mode-toggle"
+                aria-pressed="false"
               >
+                Basic
+              </button>
             </div>
 
             <div class="settings-admin-tabs" id="settings-admin-tabs" hidden>
@@ -2232,7 +2232,11 @@
                 Test OMDb connection
               </button>
             </div>
-            <div class="settings-field">
+            <div
+              class="settings-field settings-field-advanced"
+              data-advanced-setting
+              hidden
+            >
               <label for="setting-movie-batch-size">Movie Batch Size</label>
               <input
                 id="setting-movie-batch-size"
