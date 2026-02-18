@@ -1331,39 +1331,6 @@
                 id="swipe-subscriptions-options"
                 style="padding-left: 1.25rem"
               >
-                <label
-                  class="rating-checkbox"
-                  data-subscription-group="personal"
-                >
-                  <input
-                    type="checkbox"
-                    id="swipe-availability-subscription-plex"
-                    value="plex"
-                  />
-                  Plex
-                </label>
-                <label
-                  class="rating-checkbox"
-                  data-subscription-group="personal"
-                >
-                  <input
-                    type="checkbox"
-                    id="swipe-availability-subscription-emby"
-                    value="emby"
-                  />
-                  Emby
-                </label>
-                <label
-                  class="rating-checkbox"
-                  data-subscription-group="personal"
-                >
-                  <input
-                    type="checkbox"
-                    id="swipe-availability-subscription-jellyfin"
-                    value="jellyfin"
-                  />
-                  Jellyfin
-                </label>
                 <label class="rating-checkbox" data-subscription-group="paid">
                   <input
                     type="checkbox"
@@ -2047,6 +2014,48 @@
                 <div
                   class="settings-checkbox-group settings-paid-services-options"
                 >
+                  <label
+                    class="settings-checkbox-option settings-checkbox-option-host-managed"
+                    data-host-managed-personal-service="plex"
+                    hidden
+                  >
+                    <input
+                      type="checkbox"
+                      class="settings-paid-services-checkbox"
+                      value="plex"
+                      checked
+                      disabled
+                    />
+                    Plex
+                  </label>
+                  <label
+                    class="settings-checkbox-option settings-checkbox-option-host-managed"
+                    data-host-managed-personal-service="emby"
+                    hidden
+                  >
+                    <input
+                      type="checkbox"
+                      class="settings-paid-services-checkbox"
+                      value="emby"
+                      checked
+                      disabled
+                    />
+                    Emby
+                  </label>
+                  <label
+                    class="settings-checkbox-option settings-checkbox-option-host-managed"
+                    data-host-managed-personal-service="jellyfin"
+                    hidden
+                  >
+                    <input
+                      type="checkbox"
+                      class="settings-paid-services-checkbox"
+                      value="jellyfin"
+                      checked
+                      disabled
+                    />
+                    Jellyfin
+                  </label>
                   <label class="settings-checkbox-option">
                     <input
                       type="checkbox"

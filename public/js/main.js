@@ -784,6 +784,7 @@ async function loadClientConfig() {
     if (data?.personalMediaSources !== undefined) {
       window.PERSONAL_MEDIA_SOURCES = data.personalMediaSources
     }
+    updateHostManagedSubscriptionServiceOptions()
   } catch (err) {
     console.warn('Client config fetch failed:', err)
   }
@@ -984,6 +985,8 @@ function hydratePersonalMediaSourcesSetting(rawValue) {
         : 'Select Sources'
   }
 
+  window.PERSONAL_MEDIA_SOURCES = JSON.stringify(parsedSources)
+  updateHostManagedSubscriptionServiceOptions()
   updatePersonalMediaSourceConfigVisibility(parsedSources)
 }
 
@@ -5828,6 +5831,27 @@ function parsePersonalSources() {
   }
 }
 
+function updateHostManagedSubscriptionServiceOptions() {
+  const hostManagedServices = new Set(
+    parsePersonalSources().map(source => String(source).trim().toLowerCase())
+  )
+
+  document
+    .querySelectorAll('[data-host-managed-personal-service]')
+    .forEach(option => {
+      const service = String(
+        option.dataset.hostManagedPersonalService || ''
+      ).toLowerCase()
+      const input = option.querySelector('input[type="checkbox"]')
+      const isEnabled = hostManagedServices.has(service)
+      option.toggleAttribute('hidden', !isEnabled)
+      if (input) {
+        input.checked = isEnabled
+        input.disabled = true
+      }
+    })
+}
+
 function getAvailableSubscriptionOptions() {
   const paidServices = parsePaidServices().map(value => String(value).trim())
   const personalSources = parsePersonalSources().map(value =>
@@ -5876,7 +5900,15 @@ function syncSubscriptionOptionVisibility() {
     ? window.filterState.availability.subscriptionServices
     : []
 
-  const nextSelected = selected.filter(service => availableSet.has(service))
+  const visibleOptionSet = new Set(
+    Array.from(
+      document.querySelectorAll(
+        '#swipe-subscriptions-options input[type="checkbox"][value]'
+      )
+    ).map(input => String(input.value || '').trim())
+  )
+
+  const nextSelected = selected.filter(service => visibleOptionSet.has(service))
   if (window.filterState?.availability) {
     window.filterState.availability.subscriptionServices = nextSelected
     window.filterState.availability.roomPersonalMedia = nextSelected.some(
