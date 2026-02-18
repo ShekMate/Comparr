@@ -795,14 +795,12 @@ function getDefaultAvailabilityState() {
     roomPersonalMedia: false,
     paidSubscriptions: false,
     freeStreaming: false,
+    subscriptionServices: [],
   }
 }
 
 function normalizeAvailabilityState(value, options = {}) {
-  const {
-    enforceSelection = true,
-    enforceAnywhereExclusivity = true,
-  } = options
+  const { enforceSelection = true, enforceAnywhereExclusivity = true } = options
   const fallback = getDefaultAvailabilityState()
   if (!value || typeof value !== 'object') {
     return fallback
@@ -813,7 +811,14 @@ function normalizeAvailabilityState(value, options = {}) {
     roomPersonalMedia: Boolean(value.roomPersonalMedia),
     paidSubscriptions: Boolean(value.paidSubscriptions),
     freeStreaming: Boolean(value.freeStreaming),
+    subscriptionServices: Array.isArray(value.subscriptionServices)
+      ? value.subscriptionServices
+          .map(service => String(service).trim())
+          .filter(Boolean)
+      : [],
   }
+
+  state.subscriptionServices = Array.from(new Set(state.subscriptionServices))
 
   if (
     enforceSelection &&
@@ -829,6 +834,7 @@ function normalizeAvailabilityState(value, options = {}) {
     state.roomPersonalMedia = false
     state.paidSubscriptions = false
     state.freeStreaming = false
+    state.subscriptionServices = []
   }
 
   return state
@@ -5822,46 +5828,128 @@ function parsePersonalSources() {
   }
 }
 
-function updateSwipeAvailabilityUI() {
-  const availability = normalizeAvailabilityState(window.filterState?.availability, {
-    enforceSelection: false,
-  })
-  const anywhereInput = document.getElementById('swipe-availability-anywhere')
-  const roomMediaInput = document.getElementById(
-    'swipe-availability-room-media'
+function getAvailableSubscriptionOptions() {
+  const paidServices = parsePaidServices().map(value => String(value).trim())
+  const personalSources = parsePersonalSources().map(value =>
+    String(value).trim()
   )
-  const paidInput = document.getElementById('swipe-availability-paid')
+
+  return {
+    paidServices: Array.from(new Set(paidServices)),
+    personalSources: Array.from(new Set(personalSources)),
+  }
+}
+
+function getVisibleSubscriptionOptions() {
+  return Array.from(
+    document.querySelectorAll(
+      '#swipe-subscriptions-options input[type="checkbox"][value]'
+    )
+  )
+    .filter(
+      input =>
+        !input.disabled && input.closest('label')?.style.display !== 'none'
+    )
+    .map(input => input.value)
+}
+
+function syncSubscriptionOptionVisibility() {
+  const { paidServices, personalSources } = getAvailableSubscriptionOptions()
+  const availableSet = new Set([...paidServices, ...personalSources])
+
+  document
+    .querySelectorAll(
+      '#swipe-subscriptions-options input[type="checkbox"][value]'
+    )
+    .forEach(input => {
+      const service = String(input.value || '').trim()
+      const isAvailable = availableSet.has(service)
+      const wrapper = input.closest('label')
+      if (wrapper) wrapper.style.display = isAvailable ? '' : 'none'
+      input.disabled = !isAvailable
+      if (!isAvailable) input.checked = false
+    })
+
+  const selected = Array.isArray(
+    window.filterState?.availability?.subscriptionServices
+  )
+    ? window.filterState.availability.subscriptionServices
+    : []
+
+  const nextSelected = selected.filter(service => availableSet.has(service))
+  if (window.filterState?.availability) {
+    window.filterState.availability.subscriptionServices = nextSelected
+    window.filterState.availability.roomPersonalMedia = nextSelected.some(
+      service => personalSources.includes(service)
+    )
+    window.filterState.availability.paidSubscriptions = nextSelected.some(
+      service => paidServices.includes(service)
+    )
+  }
+
+  document
+    .querySelectorAll(
+      '#swipe-subscriptions-options input[type="checkbox"][value]'
+    )
+    .forEach(input => {
+      input.checked = nextSelected.includes(input.value)
+    })
+}
+
+function updateSwipeAvailabilityUI() {
+  syncSubscriptionOptionVisibility()
+
+  const availability = normalizeAvailabilityState(
+    window.filterState?.availability,
+    {
+      enforceSelection: false,
+    }
+  )
+  const anywhereInput = document.getElementById('swipe-availability-anywhere')
+  const subscriptionsInput = document.getElementById(
+    'swipe-availability-subscriptions'
+  )
+  const subscriptionInputs = Array.from(
+    document.querySelectorAll(
+      '#swipe-subscriptions-options input[type="checkbox"][value]'
+    )
+  )
   const freeInput = document.getElementById('swipe-availability-free')
   const hint = document.getElementById('swipe-availability-hint')
 
-  const paidConfigured = parsePaidServices().length > 0
-  const roomMediaConfigured = parsePersonalSources().length > 0
+  const { paidServices, personalSources } = getAvailableSubscriptionOptions()
+  const subscriptionsConfigured =
+    paidServices.length + personalSources.length > 0
+  const selectedSubscriptions = availability.subscriptionServices || []
+  const selectedSubscriptionSet = new Set(selectedSubscriptions)
+  const anySubscriptionSelected = selectedSubscriptions.length > 0
 
   if (anywhereInput) anywhereInput.checked = availability.anywhere
-  if (roomMediaInput) {
-    roomMediaInput.checked = availability.roomPersonalMedia
-    roomMediaInput.disabled = !roomMediaConfigured || availability.anywhere
+  if (subscriptionsInput) {
+    subscriptionsInput.checked = anySubscriptionSelected
+    subscriptionsInput.disabled =
+      !subscriptionsConfigured || availability.anywhere
+    const visibleSubscriptionCount = getVisibleSubscriptionOptions().length
+    subscriptionsInput.indeterminate =
+      anySubscriptionSelected &&
+      selectedSubscriptions.length > 0 &&
+      selectedSubscriptions.length < visibleSubscriptionCount
   }
-  if (paidInput) {
-    paidInput.checked = availability.paidSubscriptions
-    paidInput.disabled = !paidConfigured || availability.anywhere
-  }
+  subscriptionInputs.forEach(input => {
+    input.checked = selectedSubscriptionSet.has(input.value)
+    input.disabled =
+      availability.anywhere || !subscriptionsConfigured || input.disabled
+  })
   if (freeInput) {
     freeInput.checked = availability.freeStreaming
     freeInput.disabled = availability.anywhere
   }
 
-  const messages = []
-  if (!roomMediaConfigured) {
-    messages.push(
-      'Room Personal Media unavailable until a personal media source is configured.'
-    )
-  }
-  if (!paidConfigured) {
-    messages.push(
-      'My Paid Subscriptions unavailable until services are configured in Settings.'
-    )
-  }
+  const messages = !subscriptionsConfigured
+    ? [
+        'My Subscriptions unavailable until at least one service is configured in Settings.',
+      ]
+    : []
   if (hint) {
     hint.textContent = messages.join(' ')
   }
@@ -5871,8 +5959,13 @@ function updateSwipeAvailabilityUI() {
     let label = 'Anywhere'
     if (!availability.anywhere) {
       const selected = []
-      if (availability.roomPersonalMedia) selected.push('Room Personal Media')
-      if (availability.paidSubscriptions) selected.push('My Paid Subscriptions')
+      if (selectedSubscriptions.length > 0) {
+        selected.push(
+          selectedSubscriptions.length > 1
+            ? `My Subscriptions (${selectedSubscriptions.length})`
+            : 'My Subscriptions'
+        )
+      }
       if (availability.freeStreaming) selected.push('Free Streaming')
       label = selected.length > 0 ? selected.join(', ') : 'Anywhere'
     }
@@ -5885,6 +5978,7 @@ function setAvailabilityState(nextState) {
   window.filterState.availability = normalizeAvailabilityState(nextState, {
     enforceSelection: false,
   })
+
   window.filterState.showPlexOnly = deriveShowPlexOnlyFromAvailability(
     window.filterState.availability
   )
@@ -6371,35 +6465,93 @@ document.getElementById('swipe-runtime-max')?.addEventListener('change', e => {
 const swipeAvailabilityAnywhere = document.getElementById(
   'swipe-availability-anywhere'
 )
-const swipeAvailabilityRoomMedia = document.getElementById(
-  'swipe-availability-room-media'
+const swipeAvailabilitySubscriptions = document.getElementById(
+  'swipe-availability-subscriptions'
 )
-const swipeAvailabilityPaid = document.getElementById('swipe-availability-paid')
 const swipeAvailabilityFree = document.getElementById('swipe-availability-free')
+const swipeSubscriptionChildren = Array.from(
+  document.querySelectorAll(
+    '#swipe-subscriptions-options input[type="checkbox"][value]'
+  )
+)
 
 swipeAvailabilityAnywhere?.addEventListener('change', e => {
   if (e.target.checked) {
     setAvailabilityState(getDefaultAvailabilityState())
   } else {
+    const selectedSubscriptionServices = swipeSubscriptionChildren
+      .filter(input => input.checked)
+      .map(input => input.value)
+    const selectedSet = new Set(selectedSubscriptionServices)
+    const personalSet = new Set(parsePersonalSources())
+    const paidSet = new Set(parsePaidServices())
     setAvailabilityState({
       anywhere: false,
-      roomPersonalMedia: Boolean(swipeAvailabilityRoomMedia?.checked),
-      paidSubscriptions: Boolean(swipeAvailabilityPaid?.checked),
+      roomPersonalMedia: selectedSubscriptionServices.some(service =>
+        personalSet.has(service)
+      ),
+      paidSubscriptions: selectedSubscriptionServices.some(service =>
+        paidSet.has(service)
+      ),
       freeStreaming: Boolean(swipeAvailabilityFree?.checked),
+      subscriptionServices: Array.from(selectedSet),
     })
   }
 })
-;[
-  swipeAvailabilityRoomMedia,
-  swipeAvailabilityPaid,
-  swipeAvailabilityFree,
-].forEach(input => {
+;[swipeAvailabilitySubscriptions, swipeAvailabilityFree].forEach(input => {
   input?.addEventListener('change', () => {
+    const selectedSubscriptionServices = swipeSubscriptionChildren
+      .filter(child => child.checked)
+      .map(child => child.value)
+    const personalSet = new Set(parsePersonalSources())
+    const paidSet = new Set(parsePaidServices())
+
+    if (input === swipeAvailabilitySubscriptions) {
+      if (swipeAvailabilitySubscriptions.checked) {
+        const visible = getVisibleSubscriptionOptions()
+        swipeSubscriptionChildren.forEach(child => {
+          if (visible.includes(child.value)) child.checked = true
+        })
+      } else {
+        swipeSubscriptionChildren.forEach(child => {
+          child.checked = false
+        })
+      }
+    }
+
+    const selectedAfterToggle = swipeSubscriptionChildren
+      .filter(child => child.checked)
+      .map(child => child.value)
+
     const next = {
       anywhere: false,
-      roomPersonalMedia: Boolean(swipeAvailabilityRoomMedia?.checked),
-      paidSubscriptions: Boolean(swipeAvailabilityPaid?.checked),
+      roomPersonalMedia: selectedAfterToggle.some(service =>
+        personalSet.has(service)
+      ),
+      paidSubscriptions: selectedAfterToggle.some(service =>
+        paidSet.has(service)
+      ),
       freeStreaming: Boolean(swipeAvailabilityFree?.checked),
+      subscriptionServices: selectedAfterToggle,
+    }
+    setAvailabilityState(next)
+  })
+})
+
+swipeSubscriptionChildren.forEach(input => {
+  input.addEventListener('change', () => {
+    const selected = swipeSubscriptionChildren
+      .filter(child => child.checked)
+      .map(child => child.value)
+    const personalSet = new Set(parsePersonalSources())
+    const paidSet = new Set(parsePaidServices())
+
+    const next = {
+      anywhere: false,
+      roomPersonalMedia: selected.some(service => personalSet.has(service)),
+      paidSubscriptions: selected.some(service => paidSet.has(service)),
+      freeStreaming: Boolean(swipeAvailabilityFree?.checked),
+      subscriptionServices: selected,
     }
     setAvailabilityState(next)
   })
