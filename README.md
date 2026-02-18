@@ -242,7 +242,7 @@ docker-compose up -d
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `LINK_TYPE` | Link behavior for `/movie/*` redirects (`app` uses Plex deep links only on iOS; other clients fall back to web URLs) | `app` |
+| `LINK_TYPE` | Link type for media items | `app` |
 
 ### Getting Your Plex Token
 
