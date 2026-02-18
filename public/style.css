@@ -5090,6 +5090,16 @@ footer {
   color: var(--color-text-primary);
 }
 
+.settings-checkbox-option-host-managed {
+  color: var(--color-text-secondary) !important;
+  opacity: 0.65;
+}
+
+.settings-checkbox-option-host-managed input[type='checkbox'] {
+  accent-color: #6b7280;
+  cursor: not-allowed;
+}
+
 .settings-paid-services-checkbox,
 .settings-personal-media-checkbox {
   width: 0.9375rem;
