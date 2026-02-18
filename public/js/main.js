@@ -5736,6 +5736,7 @@ const swipeFilterOverlay = document.getElementById('swipe-filter-overlay')
 const swipeFilterClose = document.getElementById('swipe-filter-close')
 const swipeFilterApply = document.getElementById('swipe-filter-apply')
 const swipeFilterReset = document.getElementById('swipe-filter-reset')
+let closeSwipeDropdowns = () => {}
 
 // Swipe filter modal sliders
 const swipeImdbRating = document.getElementById('swipe-imdb-rating')
@@ -6150,12 +6151,14 @@ function updateSwipeFilterButtonState() {
 }
 
 function openSwipeFilterModal() {
+  closeSwipeDropdowns()
   syncSwipeFilterModalWithState()
   swipeFilterModal?.classList.add('active')
   swipeFilterOverlay?.classList.add('active')
 }
 
 function closeSwipeFilterModal() {
+  closeSwipeDropdowns()
   swipeFilterModal?.classList.remove('active')
   swipeFilterOverlay?.classList.remove('active')
 }
@@ -6238,6 +6241,8 @@ function setupSwipeFilterDropdowns() {
     })
     currentOpen = null
   }
+
+  closeSwipeDropdowns = closeAllSwipeDropdowns
 
   function openSwipeDropdown(pair) {
     if (!pair.toggle || !pair.list) return
