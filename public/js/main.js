@@ -639,6 +639,7 @@ async function appendRatedRow({ basePath, likesList, dislikesList, seenList }, m
     const streamingServices = getStreamingServices(movie);
     const allServices = [...(streamingServices.subscription || []), ...(streamingServices.free || [])];
     const isInPlex = allServices.some(s => s.name === window.PLEX_LIBRARY_NAME);
+    card.dataset.inPlex = String(isInPlex);
        
     // Check if request service is configured
     const requestServiceConfigured = await checkRequestServiceStatus();
@@ -693,7 +694,7 @@ async function appendRatedRow({ basePath, likesList, dislikesList, seenList }, m
     };
     
     const hasSubscription = streamingServices.subscription && 
-                           streamingServices.subscription.filter(s => s.name !== window.PLEX_LIBRARY_NAME).length > 0;
+                           streamingServices.subscription.length > 0;
     const hasFree = streamingServices.free && streamingServices.free.length > 0;
     
     // DEBUG: Log button rendering conditions
@@ -701,7 +702,7 @@ async function appendRatedRow({ basePath, likesList, dislikesList, seenList }, m
     console.log('  isInPlex:', isInPlex);
     console.log('  movieId:', movieId);
     console.log('  requestServiceConfigured:', requestServiceConfigured);
-    console.log('  Will show:', isInPlex ? 'AllVids badge' : (movieId && requestServiceConfigured) ? 'Add to Plex button' : 'Nothing');
+    console.log('  Will show:', isInPlex ? 'Already in My Subscriptions' : (movieId && requestServiceConfigured) ? 'Add to Plex button' : 'Nothing');
     
     // Get metadata for badges - use the same field names as CardView
     const genres = movie.genres || [];  // Array of genre names like ["Comedy", "Horror"]
@@ -781,11 +782,11 @@ async function appendRatedRow({ basePath, likesList, dislikesList, seenList }, m
         <div class="watch-card-actions">
           <div class="service-dropdown">
             <button class="service-dropdown-btn ${!hasSubscription ? 'disabled' : ''}" type="button" ${!hasSubscription ? 'disabled' : ''}>
-              SUBSCRIPTION
+              MY SUBSCRIPTIONS
             </button>
             ${hasSubscription ? `
               <div class="service-dropdown-menu">
-                ${renderServiceItems(streamingServices.subscription.filter(s => s.name !== window.PLEX_LIBRARY_NAME))}
+                ${renderServiceItems(streamingServices.subscription)}
               </div>
             ` : ''}
           </div>
@@ -801,11 +802,7 @@ async function appendRatedRow({ basePath, likesList, dislikesList, seenList }, m
             ` : ''}
           </div>
           
-          ${isInPlex ? `
-            <div class="plex-status">
-              <i class="fas fa-check-circle"></i> ${window.PLEX_LIBRARY_NAME}
-            </div>
-          ` : tmdbId && requestServiceConfigured ? `
+          ${!isInPlex && tmdbId && requestServiceConfigured ? `
             <button class="add-to-plex-btn" data-movie-id="${movieId}">
               <i class="fas fa-plus"></i> ADD TO PLEX
             </button>
@@ -960,18 +957,15 @@ async function appendRatedRow({ basePath, likesList, dislikesList, seenList }, m
           // Update Plex status / Add to Plex button
           const actionsContainer = card.querySelector('.watch-card-actions');
           const existingBtn = actionsContainer.querySelector('.add-to-plex-btn');
-          const existingStatus = actionsContainer.querySelector('.plex-status');
           
           if (data.inPlex) {
-            // Replace button with Plex status badge
+            card.dataset.inPlex = 'true';
+            // Remove request button when title is already in library.
             if (existingBtn) {
-              existingBtn.outerHTML = `
-                <div class="plex-status">
-                  <i class="fas fa-check-circle"></i> ${window.PLEX_LIBRARY_NAME}
-                </div>
-              `;
+              existingBtn.remove();
             }
-          } else if (!existingBtn && !existingStatus && requestServiceConfigured) {
+          } else if (!existingBtn && requestServiceConfigured) {
+            card.dataset.inPlex = 'false';
             // Add the button if it wasn't there before (use potentially updated tmdbId from card dataset)
             const refreshBtnElement = actionsContainer.querySelector('.refresh-movie-btn');
             if (refreshBtnElement) {
@@ -997,8 +991,7 @@ async function appendRatedRow({ basePath, likesList, dislikesList, seenList }, m
 
             // SUBSCRIPTION
             if (subMenu) {
-              const services = (data.streamingServices.subscription || [])
-                .filter(s => s.name !== window.PLEX_LIBRARY_NAME);
+              const services = data.streamingServices.subscription || [];
               subMenu.innerHTML = renderServiceItems(services, data.streamingLink);
             }
 
@@ -1540,13 +1533,10 @@ async function refreshWatchListStatus() {
             const btnToReplace = actionsContainer.querySelector('.add-to-plex-btn');
 
             if (btnToReplace) {
-              btnToReplace.outerHTML = `
-                <div class="plex-status">
-                  <i class="fas fa-check-circle"></i> ${window.PLEX_LIBRARY_NAME}
-                </div>
-              `;
+              btnToReplace.remove();
               plexUpdated++;
             }
+            card.dataset.inPlex = 'true';
           }
         }
       }
@@ -1588,8 +1578,7 @@ async function refreshWatchListStatus() {
 
         // SUBSCRIPTION
         if (subMenu) {
-          const services = (streamingData.streamingServices?.subscription || [])
-            .filter(s => s.name !== window.PLEX_LIBRARY_NAME);
+          const services = streamingData.streamingServices?.subscription || [];
           subMenu.innerHTML = renderServiceItems(services, streamingData.streamingLink);
           streamingUpdated++;
         }
@@ -3622,9 +3611,8 @@ function applyWatchListFilters(filters) {
     
     // Show Plex Only filter - only show movies that are in Plex
     if (filters.showPlexOnly) {
-      // Check if the card has the plex-status element (indicates movie is in Plex)
-      const hasPlexStatus = card.querySelector('.plex-status') !== null;
-      if (!hasPlexStatus) {
+      const isInPlex = card.dataset.inPlex === 'true';
+      if (!isInPlex) {
         console.log(`  🧩 Failed showPlexOnly check - not in Plex`);
         shouldShow = false;
       }
