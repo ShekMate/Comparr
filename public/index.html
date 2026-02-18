@@ -1324,13 +1324,111 @@
                 Anywhere
               </label>
               <label class="rating-checkbox">
-                <input type="checkbox" id="swipe-availability-room-media" />
-                Room Personal Media
+                <input type="checkbox" id="swipe-availability-subscriptions" />
+                My Subscriptions
               </label>
-              <label class="rating-checkbox">
-                <input type="checkbox" id="swipe-availability-paid" />
-                My Paid Subscriptions
-              </label>
+              <div
+                id="swipe-subscriptions-options"
+                style="padding-left: 1.25rem"
+              >
+                <label
+                  class="rating-checkbox"
+                  data-subscription-group="personal"
+                >
+                  <input
+                    type="checkbox"
+                    id="swipe-availability-subscription-plex"
+                    value="plex"
+                  />
+                  Plex
+                </label>
+                <label
+                  class="rating-checkbox"
+                  data-subscription-group="personal"
+                >
+                  <input
+                    type="checkbox"
+                    id="swipe-availability-subscription-emby"
+                    value="emby"
+                  />
+                  Emby
+                </label>
+                <label
+                  class="rating-checkbox"
+                  data-subscription-group="personal"
+                >
+                  <input
+                    type="checkbox"
+                    id="swipe-availability-subscription-jellyfin"
+                    value="jellyfin"
+                  />
+                  Jellyfin
+                </label>
+                <label class="rating-checkbox" data-subscription-group="paid">
+                  <input
+                    type="checkbox"
+                    id="swipe-availability-subscription-netflix"
+                    value="netflix"
+                  />
+                  Netflix
+                </label>
+                <label class="rating-checkbox" data-subscription-group="paid">
+                  <input
+                    type="checkbox"
+                    id="swipe-availability-subscription-amazon-prime"
+                    value="amazon-prime"
+                  />
+                  Amazon Prime Video
+                </label>
+                <label class="rating-checkbox" data-subscription-group="paid">
+                  <input
+                    type="checkbox"
+                    id="swipe-availability-subscription-disney-plus"
+                    value="disney-plus"
+                  />
+                  Disney+
+                </label>
+                <label class="rating-checkbox" data-subscription-group="paid">
+                  <input
+                    type="checkbox"
+                    id="swipe-availability-subscription-hbo-max"
+                    value="hbo-max"
+                  />
+                  Max
+                </label>
+                <label class="rating-checkbox" data-subscription-group="paid">
+                  <input
+                    type="checkbox"
+                    id="swipe-availability-subscription-hulu"
+                    value="hulu"
+                  />
+                  Hulu
+                </label>
+                <label class="rating-checkbox" data-subscription-group="paid">
+                  <input
+                    type="checkbox"
+                    id="swipe-availability-subscription-paramount-plus"
+                    value="paramount-plus"
+                  />
+                  Paramount+
+                </label>
+                <label class="rating-checkbox" data-subscription-group="paid">
+                  <input
+                    type="checkbox"
+                    id="swipe-availability-subscription-peacock"
+                    value="peacock"
+                  />
+                  Peacock
+                </label>
+                <label class="rating-checkbox" data-subscription-group="paid">
+                  <input
+                    type="checkbox"
+                    id="swipe-availability-subscription-apple-tv-plus"
+                    value="apple-tv-plus"
+                  />
+                  Apple TV+
+                </label>
+              </div>
               <label class="rating-checkbox">
                 <input type="checkbox" id="swipe-availability-free" />
                 Free Streaming
@@ -1923,8 +2021,8 @@
             </div>
             <div class="settings-field">
               <label for="setting-paid-streaming-services"
-                ><i class="fas fa-shield-alt" aria-hidden="true"></i> My Paid
-                Streaming Services</label
+                ><i class="fas fa-shield-alt" aria-hidden="true"></i>
+                Subscription Services</label
               >
               <input
                 id="setting-paid-streaming-services"
@@ -2152,9 +2250,7 @@
                 data-advanced-setting
                 hidden
               >
-                <label for="setting-link-type"
-                  >Link Type</label
-                >
+                <label for="setting-link-type">Link Type</label>
                 <select id="setting-link-type" data-setting-key="LINK_TYPE">
                   <option value="app">Plex app deep links (iOS only)</option>
                   <option value="plex.tv">Plex Web (app.plex.tv)</option>
