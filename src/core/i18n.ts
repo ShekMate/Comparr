@@ -36,8 +36,7 @@ const interpolate = (text: string, context: Record<string, string>) => {
 export const getLinkTypeForRequest = (headers: Headers): 'app' | 'http' => {
   const ua = headers.get('user-agent')!
 
-  // `LINK_TYPE=app` is intentionally iOS-only. Android and desktop clients
-  // consistently handle the Plex web URL more reliably than the custom scheme.
+  // I tried the deep link on Android but it didn't work...
   if (/(iPhone|iPad)/.test(ua) && LINK_TYPE === 'app') {
     return 'app'
   }
