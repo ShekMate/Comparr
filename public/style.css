@@ -5024,6 +5024,11 @@ footer {
   background: var(--color-surface-alt);
 }
 
+
+.settings-checkbox-option[hidden] {
+  display: none !important;
+}
+
 .settings-checkbox-option input[type='checkbox'] {
   width: 1rem;
   height: 1rem;
