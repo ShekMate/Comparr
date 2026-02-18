@@ -5844,7 +5844,10 @@ function updateHostManagedSubscriptionServiceOptions() {
       ).toLowerCase()
       const input = option.querySelector('input[type="checkbox"]')
       const isEnabled = hostManagedServices.has(service)
+
       option.toggleAttribute('hidden', !isEnabled)
+      option.style.display = isEnabled ? '' : 'none'
+
       if (input) {
         input.checked = isEnabled
         input.disabled = true
