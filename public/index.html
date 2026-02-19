@@ -1333,17 +1333,27 @@
               Anywhere <span class="dropdown-arrow">&#9660;</span>
             </button>
             <div class="dropdown-list" id="swipe-availability-list">
-              <label class="rating-checkbox">
+              <label class="rating-checkbox availability-option">
                 <input
                   type="checkbox"
                   id="swipe-availability-anywhere"
                   checked
                 />
-                Anywhere
+                <span class="availability-option-label">Anywhere</span>
+                <i
+                  class="fas fa-info-circle availability-option-info"
+                  title="Include all availability types."
+                  aria-label="Include all availability types"
+                ></i>
               </label>
-              <label class="rating-checkbox">
+              <label class="rating-checkbox availability-option">
                 <input type="checkbox" id="swipe-availability-subscriptions" />
-                My Subscriptions
+                <span class="availability-option-label">My Subscriptions</span>
+                <i
+                  class="fas fa-info-circle availability-option-info"
+                  title="Only include titles from your configured streaming services and personal media sources."
+                  aria-label="Only include configured subscriptions and personal media"
+                ></i>
               </label>
               <div
                 id="swipe-subscriptions-options"
@@ -1414,11 +1424,15 @@
                   Apple TV+
                 </label>
               </div>
-              <label class="rating-checkbox">
+              <label class="rating-checkbox availability-option">
                 <input type="checkbox" id="swipe-availability-free" />
-                Free Streaming
+                <span class="availability-option-label">Free Streaming</span>
+                <i
+                  class="fas fa-info-circle availability-option-info"
+                  title="Only include titles currently available to stream for free."
+                  aria-label="Only include free streaming titles"
+                ></i>
               </label>
-              <p id="swipe-availability-hint" class="settings-helper-text"></p>
             </div>
           </div>
 

@@ -6039,8 +6039,6 @@ function updateSwipeAvailabilityUI() {
     )
   )
   const freeInput = document.getElementById('swipe-availability-free')
-  const hint = document.getElementById('swipe-availability-hint')
-
   const { paidServices, personalSources } = getAvailableSubscriptionOptions()
   const subscriptionsConfigured =
     paidServices.length + personalSources.length > 0
@@ -6067,15 +6065,6 @@ function updateSwipeAvailabilityUI() {
   if (freeInput) {
     freeInput.checked = availability.freeStreaming
     freeInput.disabled = availability.anywhere
-  }
-
-  const messages = !subscriptionsConfigured
-    ? [
-        'My Subscriptions unavailable until at least one service is configured in Settings.',
-      ]
-    : []
-  if (hint) {
-    hint.textContent = messages.join(' ')
   }
 
   const toggle = document.getElementById('swipe-availability-toggle')
