@@ -344,7 +344,7 @@ describe('ComparrAPI', () => {
         message: 'Access password verified.',
       })
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/access-password/verify'),
+        '/comparr/api/access-password/verify',
         expect.objectContaining({ method: 'POST' })
       )
     })

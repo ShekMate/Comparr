@@ -3,11 +3,11 @@
 export class ComparrAPI extends EventTarget {
   constructor() {
     super()
-    const basePath = location.pathname.replace(/\/(index\.html)?$/, '')
+    this._basePath = location.pathname.replace(/\/(index\.html)?$/, '')
 
     const wsUrl = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${
       location.host
-    }${basePath}/ws`
+    }${this._basePath}/ws`
     console.log('🔌 Connecting WebSocket to:', wsUrl)
 
     this.socket = new WebSocket(wsUrl)
@@ -64,11 +64,10 @@ export class ComparrAPI extends EventTarget {
 
     // Missing or closing/closed? recreate it
     if (!this.socket || this.socket.readyState >= WebSocket.CLOSING) {
-      const basePath = location.pathname.replace(/\/(index\.html)?$/, '')
       this.socket = new WebSocket(
-        `${location.protocol === 'https:' ? 'wss' : 'ws'}://${
-          location.host
-        }${basePath}/ws`
+        `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}${
+          this._basePath
+        }/ws`
       )
       this.socket.addEventListener('message', e => this.handleMessage(e))
       // no need to re-add the beforeunload handler; the one in the constructor
@@ -96,7 +95,7 @@ export class ComparrAPI extends EventTarget {
   }
 
   async verifyAccessPassword(accessPassword) {
-    const res = await fetch(`${this._rootPath}/api/access-password/verify`, {
+    const res = await fetch(`${this._basePath}/api/access-password/verify`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ accessPassword }),
