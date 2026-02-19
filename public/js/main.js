@@ -1113,18 +1113,15 @@ function applyAdvancedSettingsVisibility(forceValue) {
 }
 
 function updateAdvancedSettingsToggleVisibility() {
-  const toolbar = document.querySelector(
-    '#settings-admin-controls .settings-toolbar'
-  )
+  const toolbar = document.querySelector('#settings-controls .settings-toolbar')
   const toggle = document.getElementById('settings-show-advanced')
   if (!toolbar || !toggle) return
 
-  const activePanel = document.querySelector(
-    '[data-admin-tab-panel]:not([hidden])'
+  const activeSection = document.querySelector(
+    '.settings-section:not([hidden])'
   )
-
   const hasAdvancedSettings = Boolean(
-    activePanel?.querySelector('[data-advanced-setting]')
+    activeSection?.querySelector('[data-advanced-setting]')
   )
 
   toolbar.toggleAttribute('hidden', !hasAdvancedSettings)
