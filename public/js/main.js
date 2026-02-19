@@ -527,6 +527,12 @@ function initTabs() {
     }
 
     applyAdminSettingsTabVisibility()
+
+    if (targetId === 'settings-defaults') {
+      enterDefaultsInlineEditor()
+    } else {
+      exitDefaultsInlineEditor()
+    }
   }
 
   settingsSubitems.forEach(item => {
@@ -5808,10 +5814,7 @@ const swipeFilterOverlay = document.getElementById('swipe-filter-overlay')
 const swipeFilterClose = document.getElementById('swipe-filter-close')
 const swipeFilterApply = document.getElementById('swipe-filter-apply')
 const swipeFilterReset = document.getElementById('swipe-filter-reset')
-const defaultsEditBtn = document.getElementById('defaults-edit')
-const defaultsApplyNowBtn = document.getElementById('defaults-apply-now')
-const defaultsResetBtn = document.getElementById('defaults-reset')
-const defaultsSummary = document.getElementById('defaults-summary')
+const defaultsInlineEditor = document.getElementById('defaults-inline-editor')
 const swipeFilterTitle = document.getElementById('swipe-filter-title')
 const swipeFilterApplyLabel = document.getElementById(
   'swipe-filter-apply-label'
@@ -5819,6 +5822,9 @@ const swipeFilterApplyLabel = document.getElementById(
 let closeSwipeDropdowns = () => {}
 let swipeFilterMode = 'live'
 let liveSwipeFilterStateRef = null
+let swipeFilterModalHomeParent = swipeFilterModal?.parentElement || null
+let swipeFilterModalHomeNextSibling =
+  swipeFilterModal?.nextElementSibling || null
 
 // Swipe filter modal sliders
 const swipeImdbRating = document.getElementById('swipe-imdb-rating')
@@ -6261,10 +6267,7 @@ function describeSwipeDefaults(defaults) {
 }
 
 function refreshDefaultsSummary() {
-  if (!defaultsSummary) return
-  defaultsSummary.textContent = describeSwipeDefaults(
-    loadSavedSwipeFilterDefaults()
-  )
+  // Defaults are now edited inline, so no summary text is shown.
 }
 
 function applyFilterStatePatch(nextState) {
@@ -6291,12 +6294,67 @@ function updateSwipeFilterModalModeUI() {
   }
   if (swipeFilterApplyLabel) {
     swipeFilterApplyLabel.textContent =
-      swipeFilterMode === 'defaults' ? 'Save Defaults' : 'Apply'
+      swipeFilterMode === 'defaults' ? 'Save Changes' : 'Apply'
   }
+}
+
+function enterDefaultsInlineEditor() {
+  if (!swipeFilterModal || !defaultsInlineEditor || !window.filterState) return
+
+  swipeFilterMode = 'defaults'
+  liveSwipeFilterStateRef = window.filterState
+  const baseState =
+    loadSavedSwipeFilterDefaults() ||
+    normalizeFilterStateForDefaults(liveSwipeFilterStateRef)
+  window.filterState = cloneFilterStateValue(baseState)
+
+  defaultsInlineEditor.appendChild(swipeFilterModal)
+  swipeFilterModal.classList.add('active', 'inline-defaults-mode')
+  swipeFilterOverlay?.classList.remove('active')
+
+  updateSwipeFilterModalModeUI()
+  syncSwipeFilterModalWithState()
+}
+
+function exitDefaultsInlineEditor() {
+  if (!swipeFilterModal) return
+
+  if (
+    swipeFilterModalHomeParent &&
+    swipeFilterModal.parentElement !== swipeFilterModalHomeParent
+  ) {
+    if (
+      swipeFilterModalHomeNextSibling &&
+      swipeFilterModalHomeNextSibling.parentElement ===
+        swipeFilterModalHomeParent
+    ) {
+      swipeFilterModalHomeParent.insertBefore(
+        swipeFilterModal,
+        swipeFilterModalHomeNextSibling
+      )
+    } else {
+      swipeFilterModalHomeParent.appendChild(swipeFilterModal)
+    }
+  }
+
+  if (swipeFilterMode === 'defaults' && liveSwipeFilterStateRef) {
+    window.filterState = liveSwipeFilterStateRef
+    liveSwipeFilterStateRef = null
+  }
+
+  swipeFilterMode = 'live'
+  swipeFilterModal.classList.remove('inline-defaults-mode')
+  swipeFilterModal.classList.remove('active')
+  updateSwipeFilterModalModeUI()
 }
 
 function openSwipeFilterModal(mode = 'live') {
   closeSwipeDropdowns()
+
+  if (mode === 'live') {
+    exitDefaultsInlineEditor()
+  }
+
   swipeFilterMode = mode
 
   if (mode === 'defaults') {
@@ -6315,6 +6373,9 @@ function openSwipeFilterModal(mode = 'live') {
 
 function closeSwipeFilterModal() {
   closeSwipeDropdowns()
+
+  if (swipeFilterModal?.classList.contains('inline-defaults-mode')) return
+
   swipeFilterModal?.classList.remove('active')
   swipeFilterOverlay?.classList.remove('active')
 
@@ -6799,7 +6860,7 @@ swipeFilterReset?.addEventListener('click', () => {
     window.filterState.contentRatings = []
     window.filterState.availability = getDefaultAvailabilityState()
     window.filterState.showPlexOnly = false
-    window.filterState.languages = ['en']
+    window.filterState.languages = swipeFilterMode === 'defaults' ? [] : ['en']
     window.filterState.countries = []
     window.filterState.imdbRating = 0
     window.filterState.tmdbRating = 0
@@ -6819,7 +6880,7 @@ swipeFilterReset?.addEventListener('click', () => {
   document
     .querySelectorAll('#swipe-language-list input[type="checkbox"]')
     .forEach(cb => {
-      cb.checked = cb.value === 'en'
+      cb.checked = swipeFilterMode === 'defaults' ? false : cb.value === 'en'
     })
   document
     .querySelectorAll('#swipe-filter-modal input[type="radio"]')
@@ -6852,7 +6913,7 @@ swipeFilterReset?.addEventListener('click', () => {
 
   // Reset dropdown button texts
   updateSwipeGenreButton([])
-  updateSwipeLanguageButton(['en'])
+  updateSwipeLanguageButton(swipeFilterMode === 'defaults' ? [] : ['en'])
   updateSwipeCountryButton([])
   updateSwipeContentRatingButton([])
   updateSwipeSortButton('popularity.desc')
@@ -6863,30 +6924,11 @@ swipeFilterReset?.addEventListener('click', () => {
     if (oldResetBtn) oldResetBtn.click()
 
     updateSwipeFilterButtonState()
-  }
-})
-
-defaultsEditBtn?.addEventListener('click', () => {
-  openSwipeFilterModal('defaults')
-})
-
-defaultsApplyNowBtn?.addEventListener('click', () => {
-  const savedDefaults = loadSavedSwipeFilterDefaults()
-  if (!savedDefaults) {
+  } else {
+    localStorage.removeItem(SWIPE_DEFAULTS_STORAGE_KEY)
     refreshDefaultsSummary()
-    return
   }
-
-  applyFilterStatePatch(savedDefaults)
-  window.__resetMovies = true
-  if (typeof triggerNewBatch === 'function') triggerNewBatch()
 })
-
-defaultsResetBtn?.addEventListener('click', () => {
-  localStorage.removeItem(SWIPE_DEFAULTS_STORAGE_KEY)
-  refreshDefaultsSummary()
-})
-
 
 // Initialize swipe filter dropdowns
 setupSwipeFilterDropdowns()
