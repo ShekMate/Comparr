@@ -329,6 +329,41 @@ describe('ComparrAPI', () => {
     })
   })
 
+  describe('verifyAccessPassword', () => {
+    it('should resolve when the password is valid', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          message: 'Access password verified.',
+        }),
+      })
+
+      await expect(api.verifyAccessPassword('secret')).resolves.toEqual({
+        success: true,
+        message: 'Access password verified.',
+      })
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/access-password/verify'),
+        expect.objectContaining({ method: 'POST' })
+      )
+    })
+
+    it('should reject with backend message when the password is invalid', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        json: async () => ({
+          success: false,
+          message: 'Incorrect access password. Please try again.',
+        }),
+      })
+
+      await expect(api.verifyAccessPassword('wrong')).rejects.toThrow(
+        'Incorrect access password. Please try again.'
+      )
+    })
+  })
+
   describe('getUserDecisions', () => {
     it('should fetch user decisions from API', async () => {
       global.fetch = vi.fn().mockResolvedValue({

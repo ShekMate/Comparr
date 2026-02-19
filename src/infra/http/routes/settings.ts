@@ -248,6 +248,42 @@ export async function handleSettingsRoutes(
     return true
   }
 
+  if (pathname === '/api/access-password/verify' && req.method === 'POST') {
+    try {
+      const decoder = new TextDecoder()
+      const bodyText = decoder.decode(await Deno.readAll(req.body))
+      const body = bodyText ? JSON.parse(bodyText) : {}
+      const providedPassword = String(body?.accessPassword ?? '')
+      const settings = getSettings()
+      const configuredPassword = String(settings.ACCESS_PASSWORD ?? '').trim()
+
+      const isValid =
+        !configuredPassword || providedPassword === configuredPassword
+
+      await req.respond({
+        status: isValid ? 200 : 401,
+        body: JSON.stringify({
+          success: isValid,
+          message: isValid
+            ? 'Access password verified.'
+            : 'Incorrect access password. Please try again.',
+        }),
+        headers: new Headers({ 'content-type': 'application/json' }),
+      })
+    } catch (err) {
+      log.error(`Failed to verify access password: ${err}`)
+      await req.respond({
+        status: 400,
+        body: JSON.stringify({
+          success: false,
+          message: 'Could not verify access password. Please try again.',
+        }),
+        headers: new Headers({ 'content-type': 'application/json' }),
+      })
+    }
+    return true
+  }
+
   if (pathname === '/api/client-config') {
     const settings = getSettings()
     await req.respond({

@@ -1972,6 +1972,15 @@ async function login(api) {
       const accessPassword = fd.get('accessPassword')
       if (!accessPassword) return
 
+      setPasswordError('')
+
+      try {
+        await api.verifyAccessPassword(accessPassword)
+      } catch (err) {
+        setPasswordError(err.message)
+        return
+      }
+
       // Store password and show login form
       setPasswordError('')
       verifiedPassword = accessPassword
