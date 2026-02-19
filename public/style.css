@@ -4850,6 +4850,34 @@ footer {
   font-size: 0.85rem;
 }
 
+.settings-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+
+.settings-inline-actions .submit-button,
+.settings-inline-actions .secondary-button {
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  padding: 0.55rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.settings-inline-actions .submit-button {
+  background: var(--gradient-primary);
+  border: none;
+  color: #fff;
+}
+
+.settings-inline-actions .secondary-button {
+  background: var(--color-surface-alt);
+  color: var(--color-text-secondary);
+}
+
 .settings-mode-toggle {
   border: 1px solid var(--color-line);
   border-radius: var(--radius-md);
@@ -5023,7 +5051,6 @@ footer {
   border-radius: var(--radius-md);
   background: var(--color-surface-alt);
 }
-
 
 .settings-checkbox-option[hidden] {
   display: none !important;
