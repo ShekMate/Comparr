@@ -6887,30 +6887,6 @@ defaultsResetBtn?.addEventListener('click', () => {
   refreshDefaultsSummary()
 })
 
-defaultsCopyFromCurrentBtn?.addEventListener('click', () => {
-  if (!window.filterState) return
-  const normalized = normalizeFilterStateForDefaults(window.filterState)
-  if (!normalized) return
-  localStorage.setItem(SWIPE_DEFAULTS_STORAGE_KEY, JSON.stringify(normalized))
-  refreshDefaultsSummary()
-})
-
-defaultsApplyNowBtn?.addEventListener('click', () => {
-  const savedDefaults = loadSavedSwipeFilterDefaults()
-  if (!savedDefaults) {
-    refreshDefaultsSummary()
-    return
-  }
-
-  applyFilterStatePatch(savedDefaults)
-  window.__resetMovies = true
-  if (typeof triggerNewBatch === 'function') triggerNewBatch()
-})
-
-defaultsResetBtn?.addEventListener('click', () => {
-  localStorage.removeItem(SWIPE_DEFAULTS_STORAGE_KEY)
-  refreshDefaultsSummary()
-})
 
 // Initialize swipe filter dropdowns
 setupSwipeFilterDropdowns()
