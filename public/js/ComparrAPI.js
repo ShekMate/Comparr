@@ -95,6 +95,23 @@ export class ComparrAPI extends EventTarget {
     })
   }
 
+  async verifyAccessPassword(accessPassword) {
+    const res = await fetch(`${this._rootPath}/api/access-password/verify`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ accessPassword }),
+    })
+
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok || !data.success) {
+      throw new Error(
+        data.message || 'Incorrect access password. Please try again.'
+      )
+    }
+
+    return data
+  }
+
   async login(user, roomCode, accessPassword) {
     await this._waitOpen()
     this.socket.send(
@@ -115,7 +132,13 @@ export class ComparrAPI extends EventTarget {
           if (e.data.success) {
             resolve(e.data)
           } else {
-            reject(new Error(`${user} is already logged in.`))
+            reject(
+              new Error(
+                e.data.message ||
+                  e.data.error ||
+                  'Login failed. Please try again.'
+              )
+            )
           }
         },
         { once: true }

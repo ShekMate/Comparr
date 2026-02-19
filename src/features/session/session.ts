@@ -448,7 +448,7 @@ interface WebSocketMatchMessage {
 interface WebSocketLoginResponseMessage {
   type: 'loginResponse'
   payload:
-    | { success: false }
+    | { success: false; message?: string }
     | {
         success: true
         matches: Array<WebSocketMatchMessage['payload']>
@@ -2582,11 +2582,17 @@ export const handleLogin = (ws: WebSocket): Promise<User> => {
 
           // Check access password
           const accessPassword = getAccessPassword()
-          if (accessPassword && data.payload.accessPassword !== accessPassword) {
+          if (
+            accessPassword &&
+            data.payload.accessPassword !== accessPassword
+          ) {
             log.warning(`Invalid access password from ${data.payload.name}`)
             const response: WebSocketLoginResponseMessage = {
               type: 'loginResponse',
-              payload: { success: false },
+              payload: {
+                success: false,
+                message: 'Incorrect access password. Please try again.',
+              },
             }
             ws.send(JSON.stringify(response))
             return
@@ -2609,7 +2615,10 @@ export const handleLogin = (ws: WebSocket): Promise<User> => {
             )
             const response: WebSocketLoginResponseMessage = {
               type: 'loginResponse',
-              payload: { success: false },
+              payload: {
+                success: false,
+                message: `${existingUser.name} is already logged in. Try another name!`,
+              },
             }
             ws.send(JSON.stringify(response))
             return
@@ -2625,7 +2634,10 @@ export const handleLogin = (ws: WebSocket): Promise<User> => {
             )
             const response: WebSocketLoginResponseMessage = {
               type: 'loginResponse',
-              payload: { success: false },
+              payload: {
+                success: false,
+                message: 'Login is temporarily unavailable. Please try again.',
+              },
             }
             ws.send(JSON.stringify(response))
             return
