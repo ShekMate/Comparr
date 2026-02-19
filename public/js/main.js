@@ -500,7 +500,6 @@ function initTabs() {
       'settings-personal-media',
       'settings-metadata',
       'settings-request-services',
-      'settings-sync',
       'settings-security',
     ])
 
