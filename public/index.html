@@ -2422,8 +2422,55 @@
                 Supports list, ratings, or watchlist URLs. The list must be
                 public on IMDb.
               </p>
+              <div class="imdb-import-panel" style="display: block">
+                <div class="imdb-import-panel-inner">
+                  <div class="imdb-url-row">
+                    <button
+                      id="imdb-url-sync-btn"
+                      class="imdb-url-sync-btn"
+                      type="button"
+                    >
+                      <i class="fas fa-sync-alt"></i> Sync IMDb Now
+                    </button>
+                  </div>
+                  <div class="imdb-import-divider">
+                    <span>or</span>
+                  </div>
+                  <div class="imdb-import-csv-section">
+                    <button
+                      id="imdb-csv-upload-btn"
+                      class="imdb-csv-upload-btn"
+                      type="button"
+                    >
+                      <i class="fas fa-file-upload"></i> Upload IMDb CSV export
+                    </button>
+                    <input
+                      type="file"
+                      id="imdb-csv-input"
+                      accept=".csv"
+                      style="display: none"
+                    />
+                  </div>
+                </div>
+                <div
+                  id="imdb-import-progress"
+                  class="imdb-import-progress"
+                  style="display: none"
+                >
+                  <div class="imdb-import-progress-text">
+                    <span id="imdb-import-status">Importing...</span>
+                  </div>
+                  <div class="imdb-import-progress-bar">
+                    <div id="imdb-import-bar" class="imdb-import-bar"></div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="settings-field">
+            <div
+              class="settings-field settings-field-advanced"
+              data-advanced-setting
+              hidden
+            >
               <label for="setting-imdb-sync-interval"
                 >IMDb Sync Interval (minutes)</label
               >
@@ -2436,54 +2483,6 @@
                 placeholder="0"
               />
               <p>Set to 0 to disable background syncing.</p>
-            </div>
-            <div
-              class="imdb-import-panel"
-              style="display: block; margin-top: 0.75rem"
-            >
-              <div class="imdb-import-panel-inner">
-                <div class="imdb-import-url-section">
-                  <div class="imdb-url-row">
-                    <button
-                      id="imdb-url-sync-btn"
-                      class="imdb-url-sync-btn"
-                      type="button"
-                    >
-                      <i class="fas fa-sync-alt"></i> Sync IMDb Now
-                    </button>
-                  </div>
-                </div>
-                <div class="imdb-import-divider">
-                  <span>or</span>
-                </div>
-                <div class="imdb-import-csv-section">
-                  <button
-                    id="imdb-csv-upload-btn"
-                    class="imdb-csv-upload-btn"
-                    type="button"
-                  >
-                    <i class="fas fa-file-upload"></i> Upload IMDb CSV export
-                  </button>
-                  <input
-                    type="file"
-                    id="imdb-csv-input"
-                    accept=".csv"
-                    style="display: none"
-                  />
-                </div>
-              </div>
-              <div
-                id="imdb-import-progress"
-                class="imdb-import-progress"
-                style="display: none"
-              >
-                <div class="imdb-import-progress-text">
-                  <span id="imdb-import-status">Importing...</span>
-                </div>
-                <div class="imdb-import-progress-bar">
-                  <div id="imdb-import-bar" class="imdb-import-bar"></div>
-                </div>
-              </div>
             </div>
           </div>
 
