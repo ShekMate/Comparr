@@ -89,7 +89,24 @@ describe('ComparrAPI', () => {
         },
       })
 
-      await expect(loginPromise).rejects.toThrow('Alice is already logged in')
+      await expect(loginPromise).rejects.toThrow('Invalid password')
+    })
+
+    it('should use fallback message when login failure has no message', async () => {
+      const loginPromise = api.login('Alice', 'ROOM123', 'wrong-password')
+
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      mockWebSocket.simulateMessage({
+        type: 'loginResponse',
+        payload: {
+          success: false,
+        },
+      })
+
+      await expect(loginPromise).rejects.toThrow(
+        'Login failed. Please try again.'
+      )
     })
 
     it('should send correct login payload', async () => {
@@ -309,6 +326,41 @@ describe('ComparrAPI', () => {
 
       const movie = api.getMovie('nonexistent')
       expect(movie).toBeUndefined()
+    })
+  })
+
+  describe('verifyAccessPassword', () => {
+    it('should resolve when the password is valid', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          message: 'Access password verified.',
+        }),
+      })
+
+      await expect(api.verifyAccessPassword('secret')).resolves.toEqual({
+        success: true,
+        message: 'Access password verified.',
+      })
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/comparr/api/access-password/verify',
+        expect.objectContaining({ method: 'POST' })
+      )
+    })
+
+    it('should reject with backend message when the password is invalid', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        json: async () => ({
+          success: false,
+          message: 'Incorrect access password. Please try again.',
+        }),
+      })
+
+      await expect(api.verifyAccessPassword('wrong')).rejects.toThrow(
+        'Incorrect access password. Please try again.'
+      )
     })
   })
 
