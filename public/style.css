@@ -4662,7 +4662,7 @@ footer {
 
 /* IMDb Import Panel */
 .imdb-import-panel {
-  margin: 0 2rem 1rem;
+  margin: 0.75rem 0 1rem;
   padding: 1rem;
   background: rgba(30, 41, 59, 0.8);
   border-radius: var(--radius-md);
