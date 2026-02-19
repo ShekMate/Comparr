@@ -1751,6 +1751,26 @@ body:not(.is-logged-in) .card-stack:empty::after {
   flex-shrink: 0;
 }
 
+.availability-option {
+  display: flex;
+  align-items: center;
+}
+
+.availability-option-label {
+  flex: 1;
+}
+
+.availability-option-info {
+  margin-left: auto;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  cursor: help;
+}
+
+.availability-option-info:hover {
+  color: var(--color-text-secondary);
+}
+
 .genre-dropdown,
 .language-dropdown,
 .country-dropdown,
