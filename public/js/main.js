@@ -533,6 +533,8 @@ function initTabs() {
     } else {
       exitDefaultsInlineEditor()
     }
+
+    syncSettingsFooterActions()
   }
 
   settingsSubitems.forEach(item => {
@@ -787,6 +789,7 @@ function setSettingsDirty(isDirty) {
   if (settingsDirty) {
     setSettingsStatus('You have unsaved changes.')
   }
+  syncSettingsFooterActions()
 }
 
 let adminPassword = sessionStorage.getItem('comparrAdminPassword') || ''
@@ -917,6 +920,14 @@ function deriveShowPlexOnlyFromAvailability(availability) {
     !normalized.paidSubscriptions &&
     !normalized.freeStreaming
   )
+}
+
+function syncSettingsFooterActions() {
+  const defaultsResetButton = document.getElementById('settings-defaults-reset')
+
+  if (defaultsResetButton) {
+    defaultsResetButton.hidden = currentSettingsTarget !== 'settings-defaults'
+  }
 }
 
 function applyAdminSettingsTabVisibility() {
@@ -1642,9 +1653,22 @@ async function hydrateSettingsUiIfAuthorized() {
 
   document
     .querySelector('.settings-save-btn')
-    ?.addEventListener('click', saveSettingsForm)
+    ?.addEventListener('click', () => {
+      if (currentSettingsTarget === 'settings-defaults') {
+        swipeFilterApply?.click()
+        return
+      }
+      saveSettingsForm()
+    })
+
+  document
+    .getElementById('settings-defaults-reset')
+    ?.addEventListener('click', () => {
+      swipeFilterReset?.click()
+    })
 
   updateAdminOnlySettingsVisibility()
+  syncSettingsFooterActions()
   settingsUiHydrated = true
   settingsHydratedWithAdminAccess = hasAdminSettingsAccess
   return true

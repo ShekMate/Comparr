@@ -2172,9 +2172,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .filter-modal.inline-defaults-mode .modal-actions {
-  position: static;
-  justify-content: flex-end;
-  padding: 1rem 0 0;
+  display: none;
 }
 
 .filter-modal.inline-defaults-mode .modal-body {
@@ -4892,6 +4890,18 @@ footer {
 
 .settings-save-btn:hover {
   opacity: 0.92;
+}
+
+.settings-footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.settings-defaults-reset-btn[hidden] {
+  display: none !important;
 }
 
 .settings-toolbar {
