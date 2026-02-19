@@ -1244,7 +1244,7 @@
       <div class="modal-overlay" id="swipe-filter-overlay"></div>
       <div class="filter-modal" id="swipe-filter-modal">
         <div class="modal-header">
-          <h3>
+          <h3 id="swipe-filter-title">
             <i class="fas fa-filter"></i>
             Movie Filters
           </h3>
@@ -1764,7 +1764,7 @@
           </button>
           <button class="apply-filters-btn" id="swipe-filter-apply">
             <i class="fas fa-search"></i>
-            Apply
+            <span id="swipe-filter-apply-label">Apply</span>
           </button>
         </div>
       </div>
@@ -2156,16 +2156,12 @@
             <div class="settings-field">
               <label>Swipe Filter Defaults</label>
               <p>
-                Set your preferred default filters, then use the Swipe filter
-                modal to override them at any time.
+                Use the exact same filter UI from Swipe to edit your saved
+                defaults.
               </p>
               <div class="settings-inline-actions">
-                <button
-                  type="button"
-                  class="submit-button"
-                  id="defaults-copy-from-current"
-                >
-                  Save Current Swipe Filters as Defaults
+                <button type="button" class="submit-button" id="defaults-edit">
+                  Edit Default Swipe Filters
                 </button>
                 <button
                   type="button"

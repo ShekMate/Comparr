@@ -5808,13 +5808,17 @@ const swipeFilterOverlay = document.getElementById('swipe-filter-overlay')
 const swipeFilterClose = document.getElementById('swipe-filter-close')
 const swipeFilterApply = document.getElementById('swipe-filter-apply')
 const swipeFilterReset = document.getElementById('swipe-filter-reset')
-const defaultsCopyFromCurrentBtn = document.getElementById(
-  'defaults-copy-from-current'
-)
+const defaultsEditBtn = document.getElementById('defaults-edit')
 const defaultsApplyNowBtn = document.getElementById('defaults-apply-now')
 const defaultsResetBtn = document.getElementById('defaults-reset')
 const defaultsSummary = document.getElementById('defaults-summary')
+const swipeFilterTitle = document.getElementById('swipe-filter-title')
+const swipeFilterApplyLabel = document.getElementById(
+  'swipe-filter-apply-label'
+)
 let closeSwipeDropdowns = () => {}
+let swipeFilterMode = 'live'
+let liveSwipeFilterStateRef = null
 
 // Swipe filter modal sliders
 const swipeImdbRating = document.getElementById('swipe-imdb-rating')
@@ -6278,8 +6282,32 @@ function applyFilterStatePatch(nextState) {
   updateSwipeFilterButtonState()
 }
 
-function openSwipeFilterModal() {
+function updateSwipeFilterModalModeUI() {
+  if (swipeFilterTitle) {
+    swipeFilterTitle.innerHTML =
+      swipeFilterMode === 'defaults'
+        ? '<i class="fas fa-filter"></i> Default Swipe Filters'
+        : '<i class="fas fa-filter"></i> Movie Filters'
+  }
+  if (swipeFilterApplyLabel) {
+    swipeFilterApplyLabel.textContent =
+      swipeFilterMode === 'defaults' ? 'Save Defaults' : 'Apply'
+  }
+}
+
+function openSwipeFilterModal(mode = 'live') {
   closeSwipeDropdowns()
+  swipeFilterMode = mode
+
+  if (mode === 'defaults') {
+    liveSwipeFilterStateRef = window.filterState
+    const baseState =
+      loadSavedSwipeFilterDefaults() ||
+      normalizeFilterStateForDefaults(liveSwipeFilterStateRef)
+    window.filterState = cloneFilterStateValue(baseState)
+  }
+
+  updateSwipeFilterModalModeUI()
   syncSwipeFilterModalWithState()
   swipeFilterModal?.classList.add('active')
   swipeFilterOverlay?.classList.add('active')
@@ -6289,9 +6317,17 @@ function closeSwipeFilterModal() {
   closeSwipeDropdowns()
   swipeFilterModal?.classList.remove('active')
   swipeFilterOverlay?.classList.remove('active')
+
+  if (swipeFilterMode === 'defaults' && liveSwipeFilterStateRef) {
+    window.filterState = liveSwipeFilterStateRef
+    liveSwipeFilterStateRef = null
+  }
+
+  swipeFilterMode = 'live'
+  updateSwipeFilterModalModeUI()
 }
 
-swipeFilterBtn?.addEventListener('click', openSwipeFilterModal)
+swipeFilterBtn?.addEventListener('click', () => openSwipeFilterModal('live'))
 swipeFilterClose?.addEventListener('click', closeSwipeFilterModal)
 swipeFilterOverlay?.addEventListener('click', closeSwipeFilterModal)
 
@@ -6732,6 +6768,20 @@ swipeFilterApply?.addEventListener('click', e => {
     window.filterState?.availability
   )
   setAvailabilityState(normalizedForSave)
+
+  if (swipeFilterMode === 'defaults') {
+    const normalized = normalizeFilterStateForDefaults(window.filterState)
+    if (normalized) {
+      localStorage.setItem(
+        SWIPE_DEFAULTS_STORAGE_KEY,
+        JSON.stringify(normalized)
+      )
+      refreshDefaultsSummary()
+    }
+    closeSwipeFilterModal()
+    return
+  }
+
   window.__resetMovies = true
   if (typeof triggerNewBatch === 'function') triggerNewBatch()
   closeSwipeFilterModal()
@@ -6807,11 +6857,34 @@ swipeFilterReset?.addEventListener('click', () => {
   updateSwipeContentRatingButton([])
   updateSwipeSortButton('popularity.desc')
 
-  // Sync with old Filters tab
-  const oldResetBtn = document.getElementById('reset-filters')
-  if (oldResetBtn) oldResetBtn.click()
+  if (swipeFilterMode === 'live') {
+    // Sync with old Filters tab
+    const oldResetBtn = document.getElementById('reset-filters')
+    if (oldResetBtn) oldResetBtn.click()
 
-  updateSwipeFilterButtonState()
+    updateSwipeFilterButtonState()
+  }
+})
+
+defaultsEditBtn?.addEventListener('click', () => {
+  openSwipeFilterModal('defaults')
+})
+
+defaultsApplyNowBtn?.addEventListener('click', () => {
+  const savedDefaults = loadSavedSwipeFilterDefaults()
+  if (!savedDefaults) {
+    refreshDefaultsSummary()
+    return
+  }
+
+  applyFilterStatePatch(savedDefaults)
+  window.__resetMovies = true
+  if (typeof triggerNewBatch === 'function') triggerNewBatch()
+})
+
+defaultsResetBtn?.addEventListener('click', () => {
+  localStorage.removeItem(SWIPE_DEFAULTS_STORAGE_KEY)
+  refreshDefaultsSummary()
 })
 
 defaultsCopyFromCurrentBtn?.addEventListener('click', () => {
