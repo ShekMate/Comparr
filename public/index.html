@@ -175,6 +175,16 @@
               type="button"
               class="dropdown-item mobile-settings-item"
               data-tab="tab-settings"
+              data-settings-target="settings-defaults"
+              data-settings-title="Defaults"
+            >
+              <i class="fas fa-sliders-h"></i>
+              Defaults
+            </button>
+            <button
+              type="button"
+              class="dropdown-item mobile-settings-item"
+              data-tab="tab-settings"
               data-settings-target="settings-admin"
               data-settings-title="Admin"
             >
@@ -237,6 +247,14 @@
                 data-settings-title="Streaming"
               >
                 Streaming
+              </button>
+              <button
+                class="sidebar-subitem"
+                data-tab="tab-settings"
+                data-settings-target="settings-defaults"
+                data-settings-title="Defaults"
+              >
+                Defaults
               </button>
               <button
                 class="sidebar-subitem"
@@ -2129,6 +2147,43 @@
               </div>
               <p>
                 Choose one or more providers used by future filtering modes.
+              </p>
+            </div>
+          </div>
+
+          <div class="settings-section" id="settings-defaults" hidden>
+            <h4>Defaults</h4>
+            <div class="settings-field">
+              <label>Swipe Filter Defaults</label>
+              <p>
+                Set your preferred default filters, then use the Swipe filter
+                modal to override them at any time.
+              </p>
+              <div class="settings-inline-actions">
+                <button
+                  type="button"
+                  class="submit-button"
+                  id="defaults-copy-from-current"
+                >
+                  Save Current Swipe Filters as Defaults
+                </button>
+                <button
+                  type="button"
+                  class="secondary-button"
+                  id="defaults-apply-now"
+                >
+                  Apply Saved Defaults to Swipe Now
+                </button>
+                <button
+                  type="button"
+                  class="secondary-button"
+                  id="defaults-reset"
+                >
+                  Reset Saved Defaults
+                </button>
+              </div>
+              <p id="defaults-summary" class="settings-helper-text">
+                No saved defaults yet.
               </p>
             </div>
           </div>
