@@ -185,6 +185,16 @@
               type="button"
               class="dropdown-item mobile-settings-item"
               data-tab="tab-settings"
+              data-settings-target="settings-imports"
+              data-settings-title="Imports"
+            >
+              <i class="fas fa-file-import"></i>
+              Imports
+            </button>
+            <button
+              type="button"
+              class="dropdown-item mobile-settings-item"
+              data-tab="tab-settings"
               data-settings-target="settings-admin"
               data-settings-title="Admin"
             >
@@ -255,6 +265,14 @@
                 data-settings-title="Defaults"
               >
                 Defaults
+              </button>
+              <button
+                class="sidebar-subitem"
+                data-tab="tab-settings"
+                data-settings-target="settings-imports"
+                data-settings-title="Imports"
+              >
+                Imports
               </button>
               <button
                 class="sidebar-subitem"
@@ -1928,13 +1946,6 @@
               <button
                 type="button"
                 class="settings-admin-tab"
-                data-admin-tab-target="settings-sync"
-              >
-                Imports
-              </button>
-              <button
-                type="button"
-                class="settings-admin-tab"
                 data-admin-tab-target="settings-security"
               >
                 Security
@@ -2396,12 +2407,7 @@
             </div>
           </div>
 
-          <div
-            class="settings-section"
-            id="settings-sync"
-            data-admin-section="true"
-            data-admin-tab-panel="true"
-          >
+          <div class="settings-section" id="settings-imports">
             <h4>Sync & Imports</h4>
             <div class="settings-field">
               <label for="setting-imdb-sync-url">IMDb Seen List URL</label>
