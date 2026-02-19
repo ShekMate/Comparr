@@ -175,6 +175,16 @@
               type="button"
               class="dropdown-item mobile-settings-item"
               data-tab="tab-settings"
+              data-settings-target="settings-defaults"
+              data-settings-title="Defaults"
+            >
+              <i class="fas fa-sliders-h"></i>
+              Defaults
+            </button>
+            <button
+              type="button"
+              class="dropdown-item mobile-settings-item"
+              data-tab="tab-settings"
               data-settings-target="settings-admin"
               data-settings-title="Admin"
             >
@@ -237,6 +247,14 @@
                 data-settings-title="Streaming"
               >
                 Streaming
+              </button>
+              <button
+                class="sidebar-subitem"
+                data-tab="tab-settings"
+                data-settings-target="settings-defaults"
+                data-settings-title="Defaults"
+              >
+                Defaults
               </button>
               <button
                 class="sidebar-subitem"
@@ -1226,7 +1244,7 @@
       <div class="modal-overlay" id="swipe-filter-overlay"></div>
       <div class="filter-modal" id="swipe-filter-modal">
         <div class="modal-header">
-          <h3>
+          <h3 id="swipe-filter-title">
             <i class="fas fa-filter"></i>
             Movie Filters
           </h3>
@@ -1746,7 +1764,7 @@
           </button>
           <button class="apply-filters-btn" id="swipe-filter-apply">
             <i class="fas fa-search"></i>
-            Apply
+            <span id="swipe-filter-apply-label">Apply</span>
           </button>
         </div>
       </div>
@@ -2129,6 +2147,39 @@
               </div>
               <p>
                 Choose one or more providers used by future filtering modes.
+              </p>
+            </div>
+          </div>
+
+          <div class="settings-section" id="settings-defaults" hidden>
+            <h4>Defaults</h4>
+            <div class="settings-field">
+              <label>Swipe Filter Defaults</label>
+              <p>
+                Use the exact same filter UI from Swipe to edit your saved
+                defaults.
+              </p>
+              <div class="settings-inline-actions">
+                <button type="button" class="submit-button" id="defaults-edit">
+                  Edit Default Swipe Filters
+                </button>
+                <button
+                  type="button"
+                  class="secondary-button"
+                  id="defaults-apply-now"
+                >
+                  Apply Saved Defaults to Swipe Now
+                </button>
+                <button
+                  type="button"
+                  class="secondary-button"
+                  id="defaults-reset"
+                >
+                  Reset Saved Defaults
+                </button>
+              </div>
+              <p id="defaults-summary" class="settings-helper-text">
+                No saved defaults yet.
               </p>
             </div>
           </div>

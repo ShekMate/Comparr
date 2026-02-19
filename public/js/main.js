@@ -151,6 +151,7 @@ const filterDisplayNames = {
 const DEFAULT_YEAR_MIN = 2000
 const DEFAULT_VOTE_COUNT = 25
 const DEFAULT_LANGUAGES = [] // Start with no language filter to show all movies
+const SWIPE_DEFAULTS_STORAGE_KEY = 'comparrSwipeFilterDefaults'
 
 // Update dropdown button text based on selected items
 function updateDropdownButtonText(
@@ -249,6 +250,67 @@ function updateContentRatingButton(selectedRatings) {
     'Select Ratings',
     rating => rating
   )
+}
+
+function cloneFilterStateValue(value) {
+  return JSON.parse(JSON.stringify(value))
+}
+
+function normalizeFilterStateForDefaults(raw) {
+  if (!raw || typeof raw !== 'object') return null
+
+  const currentYear = new Date().getFullYear()
+  const normalized = {
+    yearRange: {
+      min: Number.isFinite(raw?.yearRange?.min)
+        ? raw.yearRange.min
+        : DEFAULT_YEAR_MIN,
+      max: Number.isFinite(raw?.yearRange?.max)
+        ? raw.yearRange.max
+        : currentYear,
+    },
+    genres: Array.isArray(raw?.genres)
+      ? raw.genres.map(v => parseInt(v, 10)).filter(Number.isFinite)
+      : [],
+    contentRatings: Array.isArray(raw?.contentRatings)
+      ? raw.contentRatings.map(v => String(v))
+      : [],
+    availability: normalizeAvailabilityState(raw?.availability),
+    showPlexOnly: Boolean(raw?.showPlexOnly),
+    languages: Array.isArray(raw?.languages)
+      ? raw.languages.map(v => String(v))
+      : [...DEFAULT_LANGUAGES],
+    countries: Array.isArray(raw?.countries)
+      ? raw.countries.map(v => String(v))
+      : [],
+    imdbRating: Number.isFinite(raw?.imdbRating) ? raw.imdbRating : 0,
+    tmdbRating: Number.isFinite(raw?.tmdbRating) ? raw.tmdbRating : 0,
+    runtimeRange: {
+      min: Number.isFinite(raw?.runtimeRange?.min) ? raw.runtimeRange.min : 0,
+      max: Number.isFinite(raw?.runtimeRange?.max) ? raw.runtimeRange.max : 300,
+    },
+    voteCount: Number.isFinite(raw?.voteCount) ? raw.voteCount : 0,
+    sortBy: typeof raw?.sortBy === 'string' ? raw.sortBy : 'popularity.desc',
+  }
+
+  normalized.showPlexOnly = deriveShowPlexOnlyFromAvailability(
+    normalized.availability,
+    normalized.showPlexOnly
+  )
+
+  return normalized
+}
+
+function loadSavedSwipeFilterDefaults() {
+  try {
+    const raw = localStorage.getItem(SWIPE_DEFAULTS_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    return normalizeFilterStateForDefaults(parsed)
+  } catch (err) {
+    console.warn('Failed to load saved swipe defaults:', err)
+    return null
+  }
 }
 
 // Watch filter modal content rating button update
@@ -3837,8 +3899,10 @@ const main = async () => {
   const basePath = document.body.dataset.basePath || ''
   const movieByGuid = new Map()
 
+  const savedSwipeDefaults = loadSavedSwipeFilterDefaults()
+
   // Filter state - consolidated into one declaration
-  const filterState = {
+  const filterState = savedSwipeDefaults || {
     yearRange: { min: DEFAULT_YEAR_MIN, max: new Date().getFullYear() },
     genres: [],
     contentRatings: [],
@@ -3853,6 +3917,14 @@ const main = async () => {
     sortBy: 'popularity.desc',
     // rtRating: 0 //COMMENTED OUT
   }
+
+  filterState.availability = normalizeAvailabilityState(
+    filterState.availability
+  )
+  filterState.showPlexOnly = deriveShowPlexOnlyFromAvailability(
+    filterState.availability,
+    filterState.showPlexOnly
+  )
 
   // Expose filterState globally for swipe filter modal
   window.filterState = filterState
@@ -5736,7 +5808,17 @@ const swipeFilterOverlay = document.getElementById('swipe-filter-overlay')
 const swipeFilterClose = document.getElementById('swipe-filter-close')
 const swipeFilterApply = document.getElementById('swipe-filter-apply')
 const swipeFilterReset = document.getElementById('swipe-filter-reset')
+const defaultsEditBtn = document.getElementById('defaults-edit')
+const defaultsApplyNowBtn = document.getElementById('defaults-apply-now')
+const defaultsResetBtn = document.getElementById('defaults-reset')
+const defaultsSummary = document.getElementById('defaults-summary')
+const swipeFilterTitle = document.getElementById('swipe-filter-title')
+const swipeFilterApplyLabel = document.getElementById(
+  'swipe-filter-apply-label'
+)
 let closeSwipeDropdowns = () => {}
+let swipeFilterMode = 'live'
+let liveSwipeFilterStateRef = null
 
 // Swipe filter modal sliders
 const swipeImdbRating = document.getElementById('swipe-imdb-rating')
@@ -6150,8 +6232,82 @@ function updateSwipeFilterButtonState() {
   }
 }
 
-function openSwipeFilterModal() {
+function describeSwipeDefaults(defaults) {
+  if (!defaults) return 'No saved defaults yet.'
+
+  const activeBits = []
+  if (defaults.genres?.length)
+    activeBits.push(`${defaults.genres.length} genres`)
+  if (defaults.languages?.length)
+    activeBits.push(`${defaults.languages.length} languages`)
+  if (defaults.countries?.length)
+    activeBits.push(`${defaults.countries.length} countries`)
+  if (defaults.contentRatings?.length)
+    activeBits.push(`${defaults.contentRatings.length} ratings`)
+  if (!defaults.availability?.anywhere)
+    activeBits.push('availability constrained')
+  if (defaults.imdbRating > 0)
+    activeBits.push(`IMDb ≥ ${defaults.imdbRating.toFixed(1)}`)
+  if (defaults.tmdbRating > 0)
+    activeBits.push(`TMDb ≥ ${defaults.tmdbRating.toFixed(1)}`)
+  if (defaults.voteCount > 0)
+    activeBits.push(`Votes ≥ ${defaults.voteCount.toLocaleString()}`)
+
+  if (activeBits.length === 0) {
+    return 'Saved defaults match broad discovery (minimal filtering).'
+  }
+
+  return `Saved defaults: ${activeBits.join(' • ')}`
+}
+
+function refreshDefaultsSummary() {
+  if (!defaultsSummary) return
+  defaultsSummary.textContent = describeSwipeDefaults(
+    loadSavedSwipeFilterDefaults()
+  )
+}
+
+function applyFilterStatePatch(nextState) {
+  if (!window.filterState || !nextState) return
+  Object.assign(window.filterState, cloneFilterStateValue(nextState))
+  window.filterState.availability = normalizeAvailabilityState(
+    window.filterState.availability
+  )
+  window.filterState.showPlexOnly = deriveShowPlexOnlyFromAvailability(
+    window.filterState.availability,
+    window.filterState.showPlexOnly
+  )
+
+  syncSwipeFilterModalWithState()
+  updateSwipeFilterButtonState()
+}
+
+function updateSwipeFilterModalModeUI() {
+  if (swipeFilterTitle) {
+    swipeFilterTitle.innerHTML =
+      swipeFilterMode === 'defaults'
+        ? '<i class="fas fa-filter"></i> Default Swipe Filters'
+        : '<i class="fas fa-filter"></i> Movie Filters'
+  }
+  if (swipeFilterApplyLabel) {
+    swipeFilterApplyLabel.textContent =
+      swipeFilterMode === 'defaults' ? 'Save Defaults' : 'Apply'
+  }
+}
+
+function openSwipeFilterModal(mode = 'live') {
   closeSwipeDropdowns()
+  swipeFilterMode = mode
+
+  if (mode === 'defaults') {
+    liveSwipeFilterStateRef = window.filterState
+    const baseState =
+      loadSavedSwipeFilterDefaults() ||
+      normalizeFilterStateForDefaults(liveSwipeFilterStateRef)
+    window.filterState = cloneFilterStateValue(baseState)
+  }
+
+  updateSwipeFilterModalModeUI()
   syncSwipeFilterModalWithState()
   swipeFilterModal?.classList.add('active')
   swipeFilterOverlay?.classList.add('active')
@@ -6161,9 +6317,17 @@ function closeSwipeFilterModal() {
   closeSwipeDropdowns()
   swipeFilterModal?.classList.remove('active')
   swipeFilterOverlay?.classList.remove('active')
+
+  if (swipeFilterMode === 'defaults' && liveSwipeFilterStateRef) {
+    window.filterState = liveSwipeFilterStateRef
+    liveSwipeFilterStateRef = null
+  }
+
+  swipeFilterMode = 'live'
+  updateSwipeFilterModalModeUI()
 }
 
-swipeFilterBtn?.addEventListener('click', openSwipeFilterModal)
+swipeFilterBtn?.addEventListener('click', () => openSwipeFilterModal('live'))
 swipeFilterClose?.addEventListener('click', closeSwipeFilterModal)
 swipeFilterOverlay?.addEventListener('click', closeSwipeFilterModal)
 
@@ -6604,6 +6768,20 @@ swipeFilterApply?.addEventListener('click', e => {
     window.filterState?.availability
   )
   setAvailabilityState(normalizedForSave)
+
+  if (swipeFilterMode === 'defaults') {
+    const normalized = normalizeFilterStateForDefaults(window.filterState)
+    if (normalized) {
+      localStorage.setItem(
+        SWIPE_DEFAULTS_STORAGE_KEY,
+        JSON.stringify(normalized)
+      )
+      refreshDefaultsSummary()
+    }
+    closeSwipeFilterModal()
+    return
+  }
+
   window.__resetMovies = true
   if (typeof triggerNewBatch === 'function') triggerNewBatch()
   closeSwipeFilterModal()
@@ -6679,15 +6857,39 @@ swipeFilterReset?.addEventListener('click', () => {
   updateSwipeContentRatingButton([])
   updateSwipeSortButton('popularity.desc')
 
-  // Sync with old Filters tab
-  const oldResetBtn = document.getElementById('reset-filters')
-  if (oldResetBtn) oldResetBtn.click()
+  if (swipeFilterMode === 'live') {
+    // Sync with old Filters tab
+    const oldResetBtn = document.getElementById('reset-filters')
+    if (oldResetBtn) oldResetBtn.click()
 
-  updateSwipeFilterButtonState()
+    updateSwipeFilterButtonState()
+  }
+})
+
+defaultsEditBtn?.addEventListener('click', () => {
+  openSwipeFilterModal('defaults')
+})
+
+defaultsApplyNowBtn?.addEventListener('click', () => {
+  const savedDefaults = loadSavedSwipeFilterDefaults()
+  if (!savedDefaults) {
+    refreshDefaultsSummary()
+    return
+  }
+
+  applyFilterStatePatch(savedDefaults)
+  window.__resetMovies = true
+  if (typeof triggerNewBatch === 'function') triggerNewBatch()
+})
+
+defaultsResetBtn?.addEventListener('click', () => {
+  localStorage.removeItem(SWIPE_DEFAULTS_STORAGE_KEY)
+  refreshDefaultsSummary()
 })
 
 // Initialize swipe filter dropdowns
 setupSwipeFilterDropdowns()
+refreshDefaultsSummary()
 
 // Update filter button state on page load
 setTimeout(updateSwipeFilterButtonState, 100)
