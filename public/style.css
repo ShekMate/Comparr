@@ -2159,6 +2159,14 @@ body:not(.is-logged-in) .card-stack:empty::after {
   margin-top: 0.75rem;
 }
 
+@media (min-width: 1024px) {
+  .filter-modal.inline-defaults-mode {
+    max-width: 760px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
 .filter-modal.inline-defaults-mode .modal-header {
   display: none;
 }
