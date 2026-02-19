@@ -115,7 +115,13 @@ export class ComparrAPI extends EventTarget {
           if (e.data.success) {
             resolve(e.data)
           } else {
-            reject(new Error(`${user} is already logged in.`))
+            reject(
+              new Error(
+                e.data.message ||
+                  e.data.error ||
+                  'Login failed. Please try again.'
+              )
+            )
           }
         },
         { once: true }

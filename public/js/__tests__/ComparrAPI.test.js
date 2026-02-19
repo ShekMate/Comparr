@@ -89,7 +89,24 @@ describe('ComparrAPI', () => {
         },
       })
 
-      await expect(loginPromise).rejects.toThrow('Alice is already logged in')
+      await expect(loginPromise).rejects.toThrow('Invalid password')
+    })
+
+    it('should use fallback message when login failure has no message', async () => {
+      const loginPromise = api.login('Alice', 'ROOM123', 'wrong-password')
+
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      mockWebSocket.simulateMessage({
+        type: 'loginResponse',
+        payload: {
+          success: false,
+        },
+      })
+
+      await expect(loginPromise).rejects.toThrow(
+        'Login failed. Please try again.'
+      )
     })
 
     it('should send correct login payload', async () => {

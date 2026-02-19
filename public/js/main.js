@@ -1952,6 +1952,16 @@ async function login(api) {
   const generateBtn = document.querySelector('.js-generate-room-code')
   const roomCodeLine = document.querySelector('.js-room-code-line')
 
+  const passwordError = document.createElement('p')
+  passwordError.className = 'password-error-message'
+  passwordError.hidden = true
+  passwordForm.appendChild(passwordError)
+
+  const setPasswordError = message => {
+    passwordError.textContent = message
+    passwordError.hidden = !message
+  }
+
   let verifiedPassword = null
 
   // Handle password verification first
@@ -1963,6 +1973,7 @@ async function login(api) {
       if (!accessPassword) return
 
       // Store password and show login form
+      setPasswordError('')
       verifiedPassword = accessPassword
       passwordForm.style.display = 'none'
       loginForm.style.display = 'block'
@@ -2001,6 +2012,7 @@ async function login(api) {
       if (!name || !code) return
 
       try {
+        setPasswordError('')
         const data = await api.login(name, code, verifiedPassword)
         loginForm.removeEventListener('submit', handleSubmit)
 
@@ -2040,7 +2052,7 @@ async function login(api) {
         loginForm.style.display = 'none'
         passwordForm.style.display = 'block'
         passwordForm.elements.accessPassword.value = ''
-        alert(err.message)
+        setPasswordError(err.message)
       }
     }
 
