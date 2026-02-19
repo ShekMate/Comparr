@@ -1982,6 +1982,7 @@ async function login(api) {
       }
 
       // Store password and show login form
+      setPasswordError('')
       verifiedPassword = accessPassword
       passwordForm.style.display = 'none'
       loginForm.style.display = 'block'
