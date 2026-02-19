@@ -2126,6 +2126,33 @@ body:not(.is-logged-in) .card-stack:empty::after {
   display: block;
 }
 
+.filter-modal.inline-defaults-mode {
+  display: block;
+  position: static;
+  top: auto;
+  left: auto;
+  transform: none;
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  overflow: visible;
+  margin-top: 0.75rem;
+}
+
+.filter-modal.inline-defaults-mode .modal-header {
+  display: none;
+}
+
+.filter-modal.inline-defaults-mode .modal-actions {
+  position: static;
+  justify-content: flex-end;
+  padding: 1rem 0 0;
+}
+
+.filter-modal.inline-defaults-mode .modal-body {
+  padding: 1rem 0;
+}
+
 .modal-header {
   display: flex;
   justify-content: space-between;
