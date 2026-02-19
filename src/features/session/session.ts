@@ -2582,10 +2582,7 @@ export const handleLogin = (ws: WebSocket): Promise<User> => {
 
           // Check access password
           const accessPassword = getAccessPassword()
-          if (
-            !accessPassword ||
-            data.payload.accessPassword !== accessPassword
-          ) {
+          if (accessPassword && data.payload.accessPassword !== accessPassword) {
             log.warning(`Invalid access password from ${data.payload.name}`)
             const response: WebSocketLoginResponseMessage = {
               type: 'loginResponse',
