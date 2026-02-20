@@ -27,5 +27,9 @@
   "SETTINGS_METADATA": "元数据",
   "SETTINGS_SYNC": "同步",
   "SETTINGS_REQUEST_SERVICES": "请求服务",
-  "SETTINGS_SECURITY": "安全"
+  "SETTINGS_SECURITY": "安全",
+  "LOGIN_WELCOME_SUBTITLE": "Create or join a room to match movies with friends.",
+  "LOGIN_GENERATE": "Generate",
+  "LOGIN_ROOM_HELPER": "Use a shared code to match with friends, or generate your own private room.",
+  "LOGIN_CONTINUE": "Continue"
 }

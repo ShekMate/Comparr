@@ -27,5 +27,9 @@
   "SETTINGS_METADATA": "Metadados",
   "SETTINGS_SYNC": "Sincronização",
   "SETTINGS_REQUEST_SERVICES": "Serviços de solicitação",
-  "SETTINGS_SECURITY": "Segurança"
+  "SETTINGS_SECURITY": "Segurança",
+  "LOGIN_WELCOME_SUBTITLE": "Create or join a room to match movies with friends.",
+  "LOGIN_GENERATE": "Generate",
+  "LOGIN_ROOM_HELPER": "Use a shared code to match with friends, or generate your own private room.",
+  "LOGIN_CONTINUE": "Continue"
 }
