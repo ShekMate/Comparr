@@ -28,8 +28,9 @@
   "SETTINGS_SYNC": "Sync",
   "SETTINGS_REQUEST_SERVICES": "Request Services",
   "SETTINGS_SECURITY": "Security",
-  "LOGIN_WELCOME_SUBTITLE": "Create or join a room to match movies with friends.",
+  "LOGIN_WELCOME_SUBTITLE": "Find a movie everyone wants to watch.",
   "LOGIN_GENERATE": "Generate",
-  "LOGIN_ROOM_HELPER": "Use a shared code to match with friends, or generate your own private room.",
-  "LOGIN_CONTINUE": "Continue"
+  "LOGIN_ROOM_HELPER": "your name + room code is how we restore your ratings, preferences, and settings.",
+  "LOGIN_CONTINUE": "Continue",
+  "LOGIN_TIP_PREFIX": "TIP:"
 }

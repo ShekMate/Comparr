@@ -80,22 +80,24 @@
           </div>
 
           <div class="login-field-group">
-            <label for="name">${LOGIN_NAME}</label>
+            <label for="name">${LOGIN_STEP_NAME}</label>
             <input
               id="name"
               type="text"
               name="name"
+              placeholder="${LOGIN_NAME}"
               autocomplete="given-name"
               required
             />
           </div>
           <div class="login-field-group">
-            <label for="room-code">${LOGIN_ROOM_CODE}</label>
+            <label for="room-code">${LOGIN_STEP_ROOM}</label>
             <div class="room-code-container">
               <input
                 id="room-code"
                 type="text"
                 name="roomCode"
+                placeholder="${LOGIN_ROOM_CODE}"
                 required
                 pattern="[0-9A-Z]{4}"
               />
@@ -106,7 +108,10 @@
                 ${LOGIN_GENERATE}
               </button>
             </div>
-            <p class="login-helper-copy">${LOGIN_ROOM_HELPER}</p>
+            <p class="login-helper-copy">
+              <span class="login-tip-prefix">${LOGIN_TIP_PREFIX}</span
+              >${LOGIN_ROOM_HELPER}
+            </p>
           </div>
           <button type="submit" class="submit-button">${LOGIN_CONTINUE}</button>
         </form>

@@ -28,8 +28,9 @@
   "SETTINGS_SYNC": "同步",
   "SETTINGS_REQUEST_SERVICES": "请求服务",
   "SETTINGS_SECURITY": "安全",
-  "LOGIN_WELCOME_SUBTITLE": "Create or join a room to match movies with friends.",
+  "LOGIN_WELCOME_SUBTITLE": "找到一部大家都想看的电影。",
   "LOGIN_GENERATE": "Generate",
-  "LOGIN_ROOM_HELPER": "Use a shared code to match with friends, or generate your own private room.",
-  "LOGIN_CONTINUE": "Continue"
+  "LOGIN_ROOM_HELPER": "你的姓名 + 房间代码可用于恢复评分、偏好和设置。",
+  "LOGIN_CONTINUE": "Continue",
+  "LOGIN_TIP_PREFIX": "提示："
 }
