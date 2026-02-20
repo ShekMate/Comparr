@@ -27,5 +27,12 @@
   "SETTINGS_METADATA": "Metadati",
   "SETTINGS_SYNC": "Sincronizzazione",
   "SETTINGS_REQUEST_SERVICES": "Servizi di richiesta",
-  "SETTINGS_SECURITY": "Sicurezza"
+  "SETTINGS_SECURITY": "Sicurezza",
+  "LOGIN_WELCOME_SUBTITLE": "Find a movie everyone wants to watch.",
+  "LOGIN_GENERATE": "Generate",
+  "LOGIN_ROOM_HELPER": "Name + room code restores your ratings, preferences, and settings.",
+  "LOGIN_CONTINUE": "Continue",
+  "LOGIN_NAME_HELPER": "Enter your first name.",
+  "LOGIN_CODE_HELPER": "Have a shared/private code? Enter it. New here? Tap Generate.",
+  "LOGIN_TIP_LABEL": "TIP:"
 }

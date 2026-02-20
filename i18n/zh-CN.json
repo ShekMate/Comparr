@@ -27,5 +27,12 @@
   "SETTINGS_METADATA": "元数据",
   "SETTINGS_SYNC": "同步",
   "SETTINGS_REQUEST_SERVICES": "请求服务",
-  "SETTINGS_SECURITY": "安全"
+  "SETTINGS_SECURITY": "安全",
+  "LOGIN_WELCOME_SUBTITLE": "Find a movie everyone wants to watch.",
+  "LOGIN_GENERATE": "Generate",
+  "LOGIN_ROOM_HELPER": "Name + room code restores your ratings, preferences, and settings.",
+  "LOGIN_CONTINUE": "Continue",
+  "LOGIN_NAME_HELPER": "Enter your first name.",
+  "LOGIN_CODE_HELPER": "Have a shared/private code? Enter it. New here? Tap Generate.",
+  "LOGIN_TIP_LABEL": "TIP:"
 }

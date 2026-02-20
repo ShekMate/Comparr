@@ -27,5 +27,12 @@
   "SETTINGS_METADATA": "메타데이터",
   "SETTINGS_SYNC": "동기화",
   "SETTINGS_REQUEST_SERVICES": "요청 서비스",
-  "SETTINGS_SECURITY": "보안"
+  "SETTINGS_SECURITY": "보안",
+  "LOGIN_WELCOME_SUBTITLE": "Find a movie everyone wants to watch.",
+  "LOGIN_GENERATE": "Generate",
+  "LOGIN_ROOM_HELPER": "Name + room code restores your ratings, preferences, and settings.",
+  "LOGIN_CONTINUE": "Continue",
+  "LOGIN_NAME_HELPER": "Enter your first name.",
+  "LOGIN_CODE_HELPER": "Have a shared/private code? Enter it. New here? Tap Generate.",
+  "LOGIN_TIP_LABEL": "TIP:"
 }

@@ -27,5 +27,12 @@
   "SETTINGS_METADATA": "メタデータ",
   "SETTINGS_SYNC": "同期",
   "SETTINGS_REQUEST_SERVICES": "リクエストサービス",
-  "SETTINGS_SECURITY": "セキュリティ"
+  "SETTINGS_SECURITY": "セキュリティ",
+  "LOGIN_WELCOME_SUBTITLE": "Find a movie everyone wants to watch.",
+  "LOGIN_GENERATE": "Generate",
+  "LOGIN_ROOM_HELPER": "Name + room code restores your ratings, preferences, and settings.",
+  "LOGIN_CONTINUE": "Continue",
+  "LOGIN_NAME_HELPER": "Enter your first name.",
+  "LOGIN_CODE_HELPER": "Have a shared/private code? Enter it. New here? Tap Generate.",
+  "LOGIN_TIP_LABEL": "TIP:"
 }
