@@ -1178,15 +1178,34 @@ body:not(.is-logged-in) .card-stack:empty::after {
   display: grid;
   grid-template-columns: 1fr;
   grid-auto-rows: min-content;
-  row-gap: 2rem;
+  row-gap: 1.75rem;
   width: 100%;
-  max-width: 24rem;
+  max-width: 30rem;
   margin-inline: auto;
+}
+
+.login-field-group {
+  display: grid;
+  gap: 0.625rem;
+}
+
+.login-field-hint {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+}
+
+.login-helper-copy {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
 }
 
 .login-form label {
   display: block;
-  margin: 0 0 0.25rem 0;
+  margin: 0;
   font-size: 1rem;
   font-weight: 600;
   text-align: left;
@@ -1237,22 +1256,23 @@ body:not(.is-logged-in) .card-stack:empty::after {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--gradient-primary);
-  color: white;
-  border: none;
+  background: rgba(139, 92, 246, 0.2);
+  color: var(--color-text-primary);
+  border: 1px solid rgba(139, 92, 246, 0.45);
   border-radius: var(--radius-md);
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   padding: 0.875rem 1rem;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.25s ease;
   min-width: fit-content;
   white-space: nowrap;
 }
 
 .login-form .room-code-container .generate-button:hover {
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  background: rgba(139, 92, 246, 0.32);
+  box-shadow: none;
 }
 
 .login-form .room-code-container .generate-button abbr {
@@ -1273,7 +1293,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   font-weight: 600;
   width: 100%;
   margin: 0;
-  margin-top: 2.5rem;
+  margin-top: 0.5rem;
   display: block;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -1283,55 +1303,6 @@ body:not(.is-logged-in) .card-stack:empty::after {
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4),
     0 4px 10px rgba(139, 92, 246, 0.3);
-}
-
-/* Login Instructions - New */
-.login-instructions {
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-xl);
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-  backdrop-filter: blur(10px);
-}
-
-.login-instructions h3 {
-  margin: 0 0 1rem 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--color-text-primary);
-  text-align: center;
-}
-
-.login-instructions ol {
-  margin: 0;
-  padding: 0 0 0 1.5rem;
-  color: var(--color-text-secondary);
-  line-height: 1.8;
-}
-
-.login-instructions li {
-  margin-bottom: 0.5rem;
-  font-size: 0.8rem;
-}
-
-.login-instructions li:last-child {
-  margin-bottom: 0;
-}
-
-.login-helper-copy {
-  margin: 0.75rem 0 1rem;
-  font-size: 0.9rem;
-  color: #d1d5db;
-}
-
-.login-helper-copy p {
-  margin: 0.25rem 0;
-}
-
-.login-helper-copy .login-helper-microcopy {
-  color: #9ca3af;
-  font-size: 0.82rem;
 }
 
 /* Password Form - Enhanced */
@@ -3495,9 +3466,9 @@ footer {
 
   /* Login Mobile */
   .login-form {
-    width: 90vw;
-    row-gap: 1rem;
-    padding: 0 1rem;
+    width: min(92vw, 30rem);
+    row-gap: 1.5rem;
+    padding: 0 0.5rem;
   }
 
   .login-section .logo {
@@ -3516,45 +3487,8 @@ footer {
   }
 
   .login-form .submit-button {
-    margin: var(--s3) auto 0;
+    margin: 0.75rem auto 0;
     width: 100%;
-  }
-
-  .login-instructions {
-    background: transparent;
-    border: 1px solid transparent;
-    border-radius: var(--radius-xl);
-    padding: 1rem;
-    margin-bottom: 1rem;
-    backdrop-filter: blur(10px);
-  }
-
-  .login-instructions h3 {
-    margin: 0 0 0.75rem 0;
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--color-text-primary);
-    text-align: center;
-  }
-
-  .login-instructions ol {
-    margin: 0;
-    padding: 0 0 0 1.5rem;
-    color: var(--color-text-secondary);
-    line-height: 1.8;
-  }
-
-  .login-instructions li {
-    margin-bottom: 0.35rem;
-    font-size: 0.85rem;
-  }
-
-  .login-instructions li:last-child {
-    margin-bottom: 0;
-  }
-
-  .login-form label {
-    margin: 0 0 0.25rem 0;
   }
 
   .login-form input {
@@ -4009,18 +3943,9 @@ footer {
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   }
 
-  /* Login form instructions - desktop only */
-  .login-form .login-instructions {
-    margin: 0 !important;
-    padding: 0 !important;
-    width: 100%;
-    background: transparent;
-    border: none;
-  }
-
   /* Reduce spacing above submit button - desktop only */
   .login-form .submit-button {
-    margin-top: 1rem !important;
+    margin-top: 0.75rem !important;
   }
 
   /* Increase spacing between ratings - desktop only */
@@ -4396,39 +4321,6 @@ footer {
     left: 1rem;
     right: 1rem;
     max-width: none;
-  }
-}
-
-/* ========================================
-   FORCE Generate Button Inline - DEBUG
-   ======================================== */
-.login-form .room-code-container {
-  display: flex !important;
-  flex-direction: row !important;
-  flex-wrap: nowrap !important;
-  align-items: stretch !important;
-  gap: 0.5rem !important;
-}
-
-.login-form .room-code-container input {
-  flex: 1 1 0 !important;
-  min-width: 0 !important;
-}
-
-.login-form .room-code-container .generate-button {
-  flex: 0 0 auto !important;
-  width: auto !important;
-  min-width: fit-content !important;
-}
-
-@media (max-width: 600px) {
-  .login-form .room-code-container {
-    display: flex !important;
-    flex-direction: row !important;
-  }
-
-  .login-form .room-code-container .generate-button {
-    width: auto !important;
   }
 }
 
