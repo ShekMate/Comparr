@@ -1186,6 +1186,15 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .login-intro {
   text-align: center;
   display: grid;
+  gap: 0.35rem;
+}
+
+.login-intro h1 {
+  margin: 0;
+  font-size: clamp(1.2rem, 3vw, 1.7rem);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  line-height: 1.2;
 }
 
 .login-intro p {
