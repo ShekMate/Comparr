@@ -74,51 +74,41 @@
           name="login"
           style="display: none"
         >
-          <div class="login-instructions">
-            <h3>${LOGIN_WELCOME_TITLE}</h3>
-            <ol>
-              <li>${LOGIN_STEP_NAME}</li>
-              <li>${LOGIN_STEP_ROOM}</li>
-              <li>${LOGIN_STEP_SWIPE}</li>
-            </ol>
+          <div class="login-intro">
+            <h1>${LOGIN_WELCOME_TITLE}</h1>
+            <p>${LOGIN_WELCOME_SUBTITLE}</p>
           </div>
 
-          <label for="name">${LOGIN_NAME}</label>
-          <input
-            id="name"
-            type="text"
-            name="name"
-            autocomplete="given-name"
-            required
-          />
-          <label for="room-code">${LOGIN_ROOM_CODE}</label>
-          <div class="room-code-container">
+          <div class="login-field-group">
+            <label for="name">${LOGIN_NAME}</label>
             <input
-              id="room-code"
+              id="name"
               type="text"
-              name="roomCode"
+              name="name"
+              autocomplete="given-name"
               required
-              pattern="[0-9A-Z]{4}"
             />
-            <button type="button" class="generate-button js-generate-room-code">
-              Generate
-            </button>
           </div>
-          <div class="login-helper-copy">
-            <p>
-              <strong>Want to match with others?</strong> Share your room code,
-              or join with a code someone shared.
-            </p>
-            <p>
-              <strong>Want to keep it personal?</strong> Create your own room
-              code and keep it private.
-            </p>
-            <p class="login-helper-microcopy">
-              Room codes are case-insensitive. Tip: save your private room code
-              to keep your personal list.
-            </p>
+          <div class="login-field-group">
+            <label for="room-code">${LOGIN_ROOM_CODE}</label>
+            <div class="room-code-container">
+              <input
+                id="room-code"
+                type="text"
+                name="roomCode"
+                required
+                pattern="[0-9A-Z]{4}"
+              />
+              <button
+                type="button"
+                class="generate-button js-generate-room-code"
+              >
+                ${LOGIN_GENERATE}
+              </button>
+            </div>
+            <p class="login-helper-copy">${LOGIN_ROOM_HELPER}</p>
           </div>
-          <button type="submit" class="submit-button">Continue</button>
+          <button type="submit" class="submit-button">${LOGIN_CONTINUE}</button>
         </form>
       </section>
 

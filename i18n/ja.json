@@ -27,5 +27,9 @@
   "SETTINGS_METADATA": "メタデータ",
   "SETTINGS_SYNC": "同期",
   "SETTINGS_REQUEST_SERVICES": "リクエストサービス",
-  "SETTINGS_SECURITY": "セキュリティ"
+  "SETTINGS_SECURITY": "セキュリティ",
+  "LOGIN_WELCOME_SUBTITLE": "Create or join a room to match movies with friends.",
+  "LOGIN_GENERATE": "Generate",
+  "LOGIN_ROOM_HELPER": "Use a shared code to match with friends, or generate your own private room.",
+  "LOGIN_CONTINUE": "Continue"
 }
