@@ -28,8 +28,9 @@
   "SETTINGS_SYNC": "Synchronisatie",
   "SETTINGS_REQUEST_SERVICES": "Aanvraagservices",
   "SETTINGS_SECURITY": "Beveiliging",
-  "LOGIN_WELCOME_SUBTITLE": "Create or join a room to match movies with friends.",
+  "LOGIN_WELCOME_SUBTITLE": "Vind een film die iedereen wil kijken.",
   "LOGIN_GENERATE": "Generate",
-  "LOGIN_ROOM_HELPER": "Use a shared code to match with friends, or generate your own private room.",
-  "LOGIN_CONTINUE": "Continue"
+  "LOGIN_ROOM_HELPER": "met je naam + kamercode herstellen we je beoordelingen, voorkeuren en instellingen.",
+  "LOGIN_CONTINUE": "Continue",
+  "LOGIN_TIP_PREFIX": "TIP:"
 }

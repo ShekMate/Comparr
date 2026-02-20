@@ -28,8 +28,9 @@
   "SETTINGS_SYNC": "동기화",
   "SETTINGS_REQUEST_SERVICES": "요청 서비스",
   "SETTINGS_SECURITY": "보안",
-  "LOGIN_WELCOME_SUBTITLE": "Create or join a room to match movies with friends.",
+  "LOGIN_WELCOME_SUBTITLE": "모두가 보고 싶어 하는 영화를 찾아보세요.",
   "LOGIN_GENERATE": "Generate",
-  "LOGIN_ROOM_HELPER": "Use a shared code to match with friends, or generate your own private room.",
-  "LOGIN_CONTINUE": "Continue"
+  "LOGIN_ROOM_HELPER": "이름 + 방 코드는 평점, 선호도, 설정을 복원하는 데 사용됩니다.",
+  "LOGIN_CONTINUE": "Continue",
+  "LOGIN_TIP_PREFIX": "팁:"
 }
