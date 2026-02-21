@@ -1259,7 +1259,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .login-form .login-field-group > input {
-  margin-bottom: 0.4rem;
+  margin-bottom: 1rem;
 }
 
 .login-form input:focus {
@@ -1279,7 +1279,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   width: min(100%, 14rem);
   gap: 0;
   align-items: stretch;
-  margin-bottom: 0.4rem;
+  margin-bottom: 1rem;
 }
 
 .login-form .room-code-container input {
