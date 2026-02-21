@@ -1259,7 +1259,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .login-form .login-field-group > input {
-  margin-bottom: 1rem;
+  margin-bottom: 2.5rem;
 }
 
 .login-form input:focus {
