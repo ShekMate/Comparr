@@ -1552,7 +1552,7 @@ async function hydrateSettingsForm() {
     hydratePaidStreamingServicesSetting(settings.PAID_STREAMING_SERVICES)
     hydratePersonalMediaSourcesSetting(settings.PERSONAL_MEDIA_SOURCES)
     setSettingsDirty(false)
-    setSettingsStatus('Loaded current settings.')
+    clearSettingsStatusAfterDelay()
   } catch (err) {
     if (err?.message && String(err.message).includes('403')) {
       clearCachedAdminPassword()
