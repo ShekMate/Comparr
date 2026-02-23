@@ -33,6 +33,8 @@
     data-i18n-match-likers-template="${MATCHES_SECTION_CARD_LIKERS}"
     data-i18n-room-exists-message="${LOGIN_ROOM_EXISTS_ERROR}"
     data-i18n-room-not-found-message="${LOGIN_ROOM_NOT_FOUND}"
+    data-i18n-room-step-join="${LOGIN_STEP_ROOM}"
+    data-i18n-room-step-create="${LOGIN_STEP_ROOM_CREATE}"
     data-base-path="${ROOT_PATH}"
   >
     <main class="app">
@@ -93,7 +95,7 @@
             />
           </div>
           <div class="login-field-group">
-            <label>${LOGIN_STEP_ROOM}</label>
+            <label class="js-room-step-instruction">${LOGIN_STEP_ROOM}</label>
             <div class="room-mode-tabs" role="tablist" aria-label="Room mode">
               <button
                 type="button"
@@ -160,10 +162,7 @@
             <p class="room-code-error-message js-room-code-error" hidden></p>
             <p class="login-error-message js-login-error" hidden></p>
 
-            <p class="login-helper-copy">
-              <span class="login-tip-prefix">${LOGIN_TIP_PREFIX}</span
-              >${LOGIN_ROOM_HELPER}
-            </p>
+            <p class="login-helper-copy">${LOGIN_ROOM_HELPER}</p>
           </div>
           <button type="submit" class="submit-button">${LOGIN_CONTINUE}</button>
         </form>

@@ -13,7 +13,7 @@
   "ACCESS_PASSWORD_SUBMIT": "Продолжить",
   "LOGIN_WELCOME_TITLE": "Добро пожаловать в Comparr!",
   "LOGIN_STEP_NAME": "Введите своё имя.",
-  "LOGIN_STEP_ROOM": "Присоединитесь к существующей комнате по коду или создайте новый код, чтобы поделиться с друзьями.",
+  "LOGIN_STEP_ROOM": "Have a shared/private code? Enter it.",
   "LOGIN_STEP_SWIPE": "Начните свайпать, чтобы собрать свой список и найти фильмы, которые хотят смотреть все!",
   "NAV_SWIPE": "Свайп",
   "NAV_RATINGS": "Оценки",
@@ -30,12 +30,13 @@
   "SETTINGS_SECURITY": "Безопасность",
   "LOGIN_WELCOME_SUBTITLE": "Найдите фильм, который все хотят посмотреть.",
   "LOGIN_GENERATE": "Generate",
-  "LOGIN_ROOM_HELPER": "имя + код комнаты позволяют восстановить ваши оценки, предпочтения и настройки.",
+  "LOGIN_ROOM_HELPER": "Use the same name and room code to access your previous ratings.",
   "LOGIN_CONTINUE": "Continue",
   "LOGIN_TIP_PREFIX": "СОВЕТ:",
   "LOGIN_JOIN_TAB": "Join",
   "LOGIN_CREATE_TAB": "Create",
   "LOGIN_ROOM_CODE_PLACEHOLDER": "4-digits",
   "LOGIN_ROOM_EXISTS_ERROR": "Room Code already Exists. Try again or click Generate.",
-  "LOGIN_ROOM_NOT_FOUND": "Room code not found. Try again or click Create."
+  "LOGIN_ROOM_NOT_FOUND": "Room code not found. Try again or click Create.",
+  "LOGIN_STEP_ROOM_CREATE": "New here? Tap Generate to create one."
 }

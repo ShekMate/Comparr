@@ -1953,6 +1953,9 @@ async function login(api) {
   const generatedRoomCodeInput = loginForm?.elements?.generatedRoomCode
   const roomCodeError = document.querySelector('.js-room-code-error')
   const loginError = document.querySelector('.js-login-error')
+  const roomStepInstruction = document.querySelector(
+    '.js-room-step-instruction'
+  )
   const roomModeTabs = [...document.querySelectorAll('.js-room-mode-tab')]
   const roomModePanels = [...document.querySelectorAll('.js-room-code-panel')]
   const generateBtn = document.querySelector('.js-generate-room-code')
@@ -1963,6 +1966,12 @@ async function login(api) {
   const i18nRoomNotFoundMessage =
     document.body.dataset.i18nRoomNotFoundMessage ||
     'Room code not found. Try again or click Create.'
+  const i18nRoomStepJoin =
+    document.body.dataset.i18nRoomStepJoin ||
+    'Have a shared/private code? Enter it.'
+  const i18nRoomStepCreate =
+    document.body.dataset.i18nRoomStepCreate ||
+    'New here? Tap Generate to create one.'
 
   const passwordError = document.createElement('p')
   passwordError.className = 'password-error-message'
@@ -2040,6 +2049,11 @@ async function login(api) {
     roomModePanels.forEach(panel => {
       panel.hidden = panel.dataset.roomModePanel !== roomMode
     })
+
+    if (roomStepInstruction) {
+      roomStepInstruction.textContent =
+        roomMode === 'create' ? i18nRoomStepCreate : i18nRoomStepJoin
+    }
 
     setRoomCodeError('')
     setLoginError('')
