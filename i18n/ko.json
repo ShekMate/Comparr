@@ -13,7 +13,7 @@
   "ACCESS_PASSWORD_SUBMIT": "계속",
   "LOGIN_WELCOME_TITLE": "Comparr에 오신 것을 환영합니다!",
   "LOGIN_STEP_NAME": "이름을 입력하세요.",
-  "LOGIN_STEP_ROOM": "코드를 입력해 기존 방에 참여하거나, 새 코드를 생성해 친구들과 공유하세요.",
+  "LOGIN_STEP_ROOM": "Have a shared/private code? Enter it.",
   "LOGIN_STEP_SWIPE": "스와이프를 시작해 목록을 만들고 모두가 보고 싶은 영화를 찾아보세요!",
   "NAV_SWIPE": "스와이프",
   "NAV_RATINGS": "평점",
@@ -30,7 +30,13 @@
   "SETTINGS_SECURITY": "보안",
   "LOGIN_WELCOME_SUBTITLE": "모두가 보고 싶어 하는 영화를 찾아보세요.",
   "LOGIN_GENERATE": "Generate",
-  "LOGIN_ROOM_HELPER": "이름 + 방 코드는 평점, 선호도, 설정을 복원하는 데 사용됩니다.",
+  "LOGIN_ROOM_HELPER": "Use the same name and room code to access your previous ratings.",
   "LOGIN_CONTINUE": "Continue",
-  "LOGIN_TIP_PREFIX": "팁:"
+  "LOGIN_TIP_PREFIX": "팁:",
+  "LOGIN_JOIN_TAB": "Join",
+  "LOGIN_CREATE_TAB": "Create",
+  "LOGIN_ROOM_CODE_PLACEHOLDER": "4-digits",
+  "LOGIN_ROOM_EXISTS_ERROR": "Room Code already Exists. Try again or click Generate.",
+  "LOGIN_ROOM_NOT_FOUND": "Room code not found. Try again or click Create.",
+  "LOGIN_STEP_ROOM_CREATE": "New here? Tap Generate to create one."
 }

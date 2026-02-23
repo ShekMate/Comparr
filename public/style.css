@@ -1217,6 +1217,59 @@ body:not(.is-logged-in) .card-stack:empty::after {
   color: var(--color-text-primary);
 }
 
+.room-mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: min(100%, 22rem);
+  justify-self: center;
+  border: 2px solid #3da5ff;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.room-mode-tab {
+  appearance: none;
+  border: 0;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  background: rgb(17 33 70 / 70%);
+  cursor: pointer;
+}
+
+.room-mode-tab + .room-mode-tab {
+  border-left: 1px solid rgb(61 165 255 / 35%);
+}
+
+.room-mode-tab.is-active {
+  background: #002777;
+}
+
+.room-code-panel {
+  width: min(100%, 22rem);
+  justify-self: center;
+}
+
+.room-code-error-message {
+  margin: -2rem 0 0.5rem;
+  width: min(100%, 22rem);
+  justify-self: center;
+  color: #ff8e8e;
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+.login-error-message {
+  margin: 0;
+  width: min(100%, 22rem);
+  justify-self: center;
+  color: #fca5a5;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
 .login-tip-prefix {
   font-weight: 700;
   margin-right: 0.25rem;
@@ -1279,12 +1332,16 @@ body:not(.is-logged-in) .card-stack:empty::after {
   width: min(100%, 22rem);
   gap: 0;
   align-items: stretch;
-  margin-bottom: 2.5rem;
+  margin-bottom: 1.2rem;
 }
 
 .login-form .room-code-container input {
   flex: 1 1 0;
   min-width: 0;
+  border-radius: var(--radius-md);
+}
+
+.login-form .room-code-container--create input {
   border-radius: var(--radius-md) 0 0 var(--radius-md);
 }
 
@@ -3534,8 +3591,12 @@ footer {
     width: 100%;
   }
 
+  .login-form .room-mode-tabs,
+  .login-form .room-code-panel,
   .login-form .room-code-container,
   .login-form .login-helper-copy,
+  .login-form .room-code-error-message,
+  .login-form .login-error-message,
   .login-form .submit-button {
     width: 100%;
   }

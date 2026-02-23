@@ -13,7 +13,7 @@
   "ACCESS_PASSWORD_SUBMIT": "Continuar",
   "LOGIN_WELCOME_TITLE": "¡Bienvenido a Comparr!",
   "LOGIN_STEP_NAME": "Ingresa tu nombre.",
-  "LOGIN_STEP_ROOM": "Únete a una sala existente ingresando el código, o genera uno nuevo para compartirlo con amigos.",
+  "LOGIN_STEP_ROOM": "Have a shared/private code? Enter it.",
   "LOGIN_STEP_SWIPE": "¡Comienza a deslizar para crear tu lista y encontrar películas que todos quieran ver!",
   "NAV_SWIPE": "Deslizar",
   "NAV_RATINGS": "Valoraciones",
@@ -30,7 +30,13 @@
   "SETTINGS_SECURITY": "Seguridad",
   "LOGIN_WELCOME_SUBTITLE": "Encuentra una película que todos quieran ver.",
   "LOGIN_GENERATE": "Generate",
-  "LOGIN_ROOM_HELPER": "tu nombre + código de sala es cómo restauramos tus valoraciones, preferencias y ajustes.",
+  "LOGIN_ROOM_HELPER": "Use the same name and room code to access your previous ratings.",
   "LOGIN_CONTINUE": "Continue",
-  "LOGIN_TIP_PREFIX": "CONSEJO:"
+  "LOGIN_TIP_PREFIX": "CONSEJO:",
+  "LOGIN_JOIN_TAB": "Join",
+  "LOGIN_CREATE_TAB": "Create",
+  "LOGIN_ROOM_CODE_PLACEHOLDER": "4-digits",
+  "LOGIN_ROOM_EXISTS_ERROR": "Room Code already Exists. Try again or click Generate.",
+  "LOGIN_ROOM_NOT_FOUND": "Room code not found. Try again or click Create.",
+  "LOGIN_STEP_ROOM_CREATE": "New here? Tap Generate to create one."
 }
