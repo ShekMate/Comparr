@@ -1240,7 +1240,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   border: 2px solid #3da5ff;
   border-radius: var(--radius-md);
   padding: 0.65rem 0.85rem;
-  font-size: 0.9rem;
+  font-size: 1.5rem;
   width: min(100%, 22rem);
   height: auto;
   transition: all 0.2s ease;
@@ -3530,7 +3530,7 @@ footer {
 
   .login-form input {
     padding: 0.75rem 1rem;
-    font-size: 1rem;
+    font-size: 1.5rem;
     width: 100%;
   }
 
