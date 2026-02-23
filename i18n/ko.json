@@ -32,5 +32,10 @@
   "LOGIN_GENERATE": "Generate",
   "LOGIN_ROOM_HELPER": "이름 + 방 코드는 평점, 선호도, 설정을 복원하는 데 사용됩니다.",
   "LOGIN_CONTINUE": "Continue",
-  "LOGIN_TIP_PREFIX": "팁:"
+  "LOGIN_TIP_PREFIX": "팁:",
+  "LOGIN_JOIN_TAB": "Join",
+  "LOGIN_CREATE_TAB": "Create",
+  "LOGIN_ROOM_CODE_PLACEHOLDER": "4-digits",
+  "LOGIN_ROOM_EXISTS_ERROR": "Room Code already Exists. Try again or click Generate.",
+  "LOGIN_ROOM_NOT_FOUND": "Room code not found. Try again or click Create."
 }
