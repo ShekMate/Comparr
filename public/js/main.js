@@ -1952,6 +1952,7 @@ async function login(api) {
   const roomCodeInput = loginForm?.elements?.roomCode
   const generatedRoomCodeInput = loginForm?.elements?.generatedRoomCode
   const roomCodeError = document.querySelector('.js-room-code-error')
+  const loginError = document.querySelector('.js-login-error')
   const roomModeTabs = [...document.querySelectorAll('.js-room-mode-tab')]
   const roomModePanels = [...document.querySelectorAll('.js-room-code-panel')]
   const generateBtn = document.querySelector('.js-generate-room-code')
@@ -1977,6 +1978,12 @@ async function login(api) {
     if (!roomCodeError) return
     roomCodeError.textContent = message
     roomCodeError.hidden = !message
+  }
+
+  const setLoginError = message => {
+    if (!loginError) return
+    loginError.textContent = message
+    loginError.hidden = !message
   }
 
   const normalizeRoomCodeInput = value =>
@@ -2035,6 +2042,7 @@ async function login(api) {
     })
 
     setRoomCodeError('')
+    setLoginError('')
     syncRoomCodeInputs()
   }
 
@@ -2049,6 +2057,7 @@ async function login(api) {
     event.target.value = normalized
     syncRoomCodeInputs()
     setRoomCodeError('')
+    setLoginError('')
   }
 
   roomCodeInput?.addEventListener('input', handleRoomCodeInput)
@@ -2075,6 +2084,7 @@ async function login(api) {
 
       // Store password and show login form
       setPasswordError('')
+      setLoginError('')
       verifiedPassword = accessPassword
       passwordForm.style.display = 'none'
       loginForm.style.display = 'block'
@@ -2103,6 +2113,7 @@ async function login(api) {
   // Generate unique code
   generateBtn?.addEventListener('click', async () => {
     setRoomCodeError('')
+    setLoginError('')
     try {
       const code = await api.generateRoomCode()
       setRoomMode('create')
@@ -2133,6 +2144,7 @@ async function login(api) {
       try {
         setPasswordError('')
         setRoomCodeError('')
+        setLoginError('')
 
         const existsResponse = await api.checkRoomExists(code)
         const exists = Boolean(existsResponse?.exists)
@@ -2182,7 +2194,7 @@ async function login(api) {
         initTabs()
         resolve({ ...data, user: name, roomCode: code })
       } catch (err) {
-        setPasswordError(err.message)
+        setLoginError(err.message)
       }
     }
 
