@@ -111,6 +111,43 @@ export class ComparrAPI extends EventTarget {
     return data
   }
 
+  async checkRoomExists(roomCode) {
+    const normalizedCode = String(roomCode || '')
+      .trim()
+      .toUpperCase()
+
+    const res = await fetch(
+      `${this._basePath}/api/rooms/exists?code=${encodeURIComponent(
+        normalizedCode
+      )}`
+    )
+    const data = await res.json().catch(() => ({}))
+
+    if (!res.ok || !data.success) {
+      throw new Error(
+        data.message || 'Unable to check room code. Please try again.'
+      )
+    }
+
+    return data
+  }
+
+  async generateRoomCode() {
+    const res = await fetch(`${this._basePath}/api/rooms/generate`, {
+      method: 'POST',
+    })
+    const data = await res.json().catch(() => ({}))
+
+    if (!res.ok || !data.success || !data.roomCode) {
+      throw new Error(
+        data.message ||
+          'Unable to generate room code right now. Please try again.'
+      )
+    }
+
+    return data.roomCode
+  }
+
   async login(user, roomCode, accessPassword) {
     await this._waitOpen()
     this.socket.send(

@@ -364,6 +364,34 @@ describe('ComparrAPI', () => {
     })
   })
 
+  describe('room code helpers', () => {
+    it('should check if a room exists', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, exists: true, roomCode: 'AB12' }),
+      })
+
+      const result = await api.checkRoomExists('ab12')
+      expect(result.exists).toBe(true)
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/comparr/api/rooms/exists?code=AB12'
+      )
+    })
+
+    it('should generate a unique room code', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, roomCode: 'ZX90' }),
+      })
+
+      const roomCode = await api.generateRoomCode()
+      expect(roomCode).toBe('ZX90')
+      expect(global.fetch).toHaveBeenCalledWith('/comparr/api/rooms/generate', {
+        method: 'POST',
+      })
+    })
+  })
+
   describe('getUserDecisions', () => {
     it('should fetch user decisions from API', async () => {
       global.fetch = vi.fn().mockResolvedValue({

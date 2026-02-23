@@ -2456,6 +2456,42 @@ class Session {
 // -------------------------
 const activeSessions: Map<string, Session> = new Map()
 
+const ROOM_CODE_MAP = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789'
+
+export function normalizeRoomCode(roomCode: string): string {
+  return String(roomCode || '')
+    .trim()
+    .toUpperCase()
+}
+
+export function isValidRoomCode(roomCode: string): boolean {
+  return /^[0-9A-Z]{4}$/.test(normalizeRoomCode(roomCode))
+}
+
+export function doesRoomCodeExist(roomCode: string): boolean {
+  const normalizedCode = normalizeRoomCode(roomCode)
+  if (!normalizedCode) return false
+  if (activeSessions.has(normalizedCode)) return true
+  return Boolean(persistedState.rooms[normalizedCode])
+}
+
+export async function generateUniqueRoomCode(
+  maxAttempts = 200
+): Promise<string> {
+  for (let i = 0; i < maxAttempts; i++) {
+    const code = Array.from(
+      { length: 4 },
+      () => ROOM_CODE_MAP[Math.floor(Math.random() * ROOM_CODE_MAP.length)]
+    ).join('')
+
+    if (!doesRoomCodeExist(code)) {
+      return code
+    }
+  }
+
+  throw new Error('Unable to generate unique room code')
+}
+
 export function getMatchesForUser(roomCode: string, userName: string) {
   const session = activeSessions.get(roomCode)
   if (!session) return null
@@ -2557,9 +2593,11 @@ export function ensurePlexHydrationReady(): Promise<void> {
 }
 
 export const getSession = (roomCode: string, ws: WebSocket): Session => {
-  if (activeSessions.has(roomCode)) return activeSessions.get(roomCode)!
-  const session = new Session(roomCode)
-  activeSessions.set(roomCode, session)
+  const normalizedCode = normalizeRoomCode(roomCode)
+  if (activeSessions.has(normalizedCode))
+    return activeSessions.get(normalizedCode)!
+  const session = new Session(normalizedCode)
+  activeSessions.set(normalizedCode, session)
   log.debug(
     `New session created. Active session ids are: ${[
       ...activeSessions.keys(),
@@ -2599,7 +2637,21 @@ export const handleLogin = (ws: WebSocket): Promise<User> => {
           }
 
           log.info(`Valid login from ${data.payload.name}`)
-          const session = getSession(data.payload.roomCode, ws)
+          const roomCode = normalizeRoomCode(data.payload.roomCode)
+
+          if (!isValidRoomCode(roomCode)) {
+            const response: WebSocketLoginResponseMessage = {
+              type: 'loginResponse',
+              payload: {
+                success: false,
+                message: 'Room code must be 4 characters (A-Z or 0-9).',
+              },
+            }
+            ws.send(JSON.stringify(response))
+            return
+          }
+
+          const session = getSession(roomCode, ws)
 
           const existingUser = [...session.users.keys()].find(
             ({ name }) => name === data.payload.name

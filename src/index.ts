@@ -27,6 +27,7 @@ import { handleRoutes } from './infra/http/router.ts'
 import { handleConfigDebugRoute } from './infra/http/routes/config.ts'
 import { handleMatchesRoute } from './infra/http/routes/matches.ts'
 import { handleRequestServiceRoutes } from './infra/http/routes/request-service.ts'
+import { handleRoomRoutes } from './infra/http/routes/rooms.ts'
 import { WebSocketServer } from './infra/ws/websocketServer.ts'
 import { initializeRadarrCache, refreshRadarrCache } from './api/radarr.ts'
 import { requestMovie } from './api/jellyseerr.ts'
@@ -256,6 +257,7 @@ for await (const req of server) {
             updateSettings,
           }),
         handleRequestServiceRoutes,
+        handleRoomRoutes,
         handleMatchesRoute,
       ])
     ) {

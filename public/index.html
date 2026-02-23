@@ -31,6 +31,8 @@
     "
     data-i18n-list-conjunction="${LIST_CONJUNCTION}"
     data-i18n-match-likers-template="${MATCHES_SECTION_CARD_LIKERS}"
+    data-i18n-room-exists-message="${LOGIN_ROOM_EXISTS_ERROR}"
+    data-i18n-room-not-found-message="${LOGIN_ROOM_NOT_FOUND}"
     data-base-path="${ROOT_PATH}"
   >
     <main class="app">
@@ -91,23 +93,73 @@
             />
           </div>
           <div class="login-field-group">
-            <label for="room-code">${LOGIN_STEP_ROOM}</label>
-            <div class="room-code-container">
-              <input
-                id="room-code"
-                type="text"
-                name="roomCode"
-                placeholder="${LOGIN_ROOM_CODE}"
-                required
-                pattern="[0-9A-Z]{4}"
-              />
+            <label>${LOGIN_STEP_ROOM}</label>
+            <div class="room-mode-tabs" role="tablist" aria-label="Room mode">
               <button
                 type="button"
-                class="generate-button js-generate-room-code"
+                class="room-mode-tab is-active js-room-mode-tab"
+                data-room-mode="join"
+                role="tab"
+                aria-selected="true"
               >
-                ${LOGIN_GENERATE}
+                ${LOGIN_JOIN_TAB}
+              </button>
+              <button
+                type="button"
+                class="room-mode-tab js-room-mode-tab"
+                data-room-mode="create"
+                role="tab"
+                aria-selected="false"
+              >
+                ${LOGIN_CREATE_TAB}
               </button>
             </div>
+
+            <div
+              class="room-code-panel js-room-code-panel"
+              data-room-mode-panel="join"
+            >
+              <div class="room-code-container">
+                <input
+                  id="room-code"
+                  type="text"
+                  name="roomCode"
+                  placeholder="${LOGIN_ROOM_CODE_PLACEHOLDER}"
+                  required
+                  pattern="[0-9A-Z]{4}"
+                  maxlength="4"
+                  autocomplete="off"
+                />
+              </div>
+            </div>
+
+            <div
+              class="room-code-panel js-room-code-panel"
+              data-room-mode-panel="create"
+              hidden
+            >
+              <div class="room-code-container room-code-container--create">
+                <input
+                  id="generated-room-code"
+                  type="text"
+                  name="generatedRoomCode"
+                  placeholder="${LOGIN_ROOM_CODE_PLACEHOLDER}"
+                  pattern="[0-9A-Z]{4}"
+                  maxlength="4"
+                  autocomplete="off"
+                />
+                <button
+                  type="button"
+                  class="generate-button js-generate-room-code"
+                >
+                  ${LOGIN_GENERATE}
+                </button>
+              </div>
+            </div>
+
+            <p class="room-code-error-message js-room-code-error" hidden></p>
+            <p class="login-error-message js-login-error" hidden></p>
+
             <p class="login-helper-copy">
               <span class="login-tip-prefix">${LOGIN_TIP_PREFIX}</span
               >${LOGIN_ROOM_HELPER}
@@ -2641,15 +2693,20 @@
           const btn = e.target.closest('.js-generate-room-code')
           if (!btn) return
 
-          const input = document.querySelector('input[name="roomCode"]')
-          if (!input) return
+          const roomInput = document.querySelector('input[name="roomCode"]')
+          const generatedInput = document.querySelector(
+            'input[name="generatedRoomCode"]'
+          )
+          if (!roomInput && !generatedInput) return
 
           const MAP = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789'
           let code = ''
           for (let i = 0; i < 4; i++) {
             code += MAP[Math.floor(Math.random() * MAP.length)]
           }
-          input.value = code
+
+          if (generatedInput) generatedInput.value = code
+          if (roomInput) roomInput.value = code
           try {
             localStorage.setItem('roomCode', code)
           } catch (_) {}

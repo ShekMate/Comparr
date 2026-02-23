@@ -32,5 +32,10 @@
   "LOGIN_GENERATE": "Generate",
   "LOGIN_ROOM_HELPER": "nome + codice stanza ci permettono di ripristinare valutazioni, preferenze e impostazioni.",
   "LOGIN_CONTINUE": "Continue",
-  "LOGIN_TIP_PREFIX": "SUGGERIMENTO:"
+  "LOGIN_TIP_PREFIX": "SUGGERIMENTO:",
+  "LOGIN_JOIN_TAB": "Join",
+  "LOGIN_CREATE_TAB": "Create",
+  "LOGIN_ROOM_CODE_PLACEHOLDER": "4-digits",
+  "LOGIN_ROOM_EXISTS_ERROR": "Room Code already Exists. Try again or click Generate.",
+  "LOGIN_ROOM_NOT_FOUND": "Room code not found. Try again or click Create."
 }

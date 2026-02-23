@@ -1949,8 +1949,20 @@ async function login(api) {
   const loginSection = document.querySelector('.login-section')
   const passwordForm = document.querySelector('.js-password-form')
   const loginForm = document.querySelector('.js-login-form')
+  const roomCodeInput = loginForm?.elements?.roomCode
+  const generatedRoomCodeInput = loginForm?.elements?.generatedRoomCode
+  const roomCodeError = document.querySelector('.js-room-code-error')
+  const loginError = document.querySelector('.js-login-error')
+  const roomModeTabs = [...document.querySelectorAll('.js-room-mode-tab')]
+  const roomModePanels = [...document.querySelectorAll('.js-room-code-panel')]
   const generateBtn = document.querySelector('.js-generate-room-code')
   const roomCodeLine = document.querySelector('.js-room-code-line')
+  const i18nRoomExistsMessage =
+    document.body.dataset.i18nRoomExistsMessage ||
+    'Room Code already Exists. Try again or click Generate.'
+  const i18nRoomNotFoundMessage =
+    document.body.dataset.i18nRoomNotFoundMessage ||
+    'Room code not found. Try again or click Create.'
 
   const passwordError = document.createElement('p')
   passwordError.className = 'password-error-message'
@@ -1961,6 +1973,95 @@ async function login(api) {
     passwordError.textContent = message
     passwordError.hidden = !message
   }
+
+  const setRoomCodeError = message => {
+    if (!roomCodeError) return
+    roomCodeError.textContent = message
+    roomCodeError.hidden = !message
+  }
+
+  const setLoginError = message => {
+    if (!loginError) return
+    loginError.textContent = message
+    loginError.hidden = !message
+  }
+
+  const normalizeRoomCodeInput = value =>
+    String(value || '')
+      .trim()
+      .toUpperCase()
+      .replace(/[^0-9A-Z]/g, '')
+      .slice(0, 4)
+
+  let roomMode = 'join'
+
+  const getActiveRoomCode = () => {
+    if (roomMode === 'create') {
+      return normalizeRoomCodeInput(generatedRoomCodeInput?.value)
+    }
+
+    return normalizeRoomCodeInput(roomCodeInput?.value)
+  }
+
+  const setActiveRoomCode = code => {
+    const normalized = normalizeRoomCodeInput(code)
+    if (roomMode === 'create') {
+      if (generatedRoomCodeInput) generatedRoomCodeInput.value = normalized
+      if (roomCodeInput) roomCodeInput.value = normalized
+      return
+    }
+
+    if (roomCodeInput) roomCodeInput.value = normalized
+  }
+
+  const syncRoomCodeInputs = () => {
+    const activeCode = getActiveRoomCode()
+    if (roomCodeInput && roomCodeInput.value !== activeCode) {
+      roomCodeInput.value = activeCode
+    }
+    if (
+      generatedRoomCodeInput &&
+      generatedRoomCodeInput.value !== activeCode &&
+      roomMode === 'create'
+    ) {
+      generatedRoomCodeInput.value = activeCode
+    }
+  }
+
+  const setRoomMode = mode => {
+    roomMode = mode === 'create' ? 'create' : 'join'
+
+    roomModeTabs.forEach(tab => {
+      const active = tab.dataset.roomMode === roomMode
+      tab.classList.toggle('is-active', active)
+      tab.setAttribute('aria-selected', active ? 'true' : 'false')
+    })
+
+    roomModePanels.forEach(panel => {
+      panel.hidden = panel.dataset.roomModePanel !== roomMode
+    })
+
+    setRoomCodeError('')
+    setLoginError('')
+    syncRoomCodeInputs()
+  }
+
+  roomModeTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      setRoomMode(tab.dataset.roomMode)
+    })
+  })
+
+  const handleRoomCodeInput = event => {
+    const normalized = normalizeRoomCodeInput(event.target.value)
+    event.target.value = normalized
+    syncRoomCodeInputs()
+    setRoomCodeError('')
+    setLoginError('')
+  }
+
+  roomCodeInput?.addEventListener('input', handleRoomCodeInput)
+  generatedRoomCodeInput?.addEventListener('input', handleRoomCodeInput)
 
   let verifiedPassword = null
 
@@ -1983,6 +2084,7 @@ async function login(api) {
 
       // Store password and show login form
       setPasswordError('')
+      setLoginError('')
       verifiedPassword = accessPassword
       passwordForm.style.display = 'none'
       loginForm.style.display = 'block'
@@ -1994,21 +2096,32 @@ async function login(api) {
       const savedUser = localStorage.getItem('user')
       const savedCode = localStorage.getItem('roomCode')
       if (savedUser) loginForm.elements.name.value = savedUser
-      if (savedCode) loginForm.elements.roomCode.value = savedCode
+      if (savedCode) {
+        const normalizedSavedCode = normalizeRoomCodeInput(savedCode)
+        if (roomCodeInput) roomCodeInput.value = normalizedSavedCode
+        if (generatedRoomCodeInput) {
+          generatedRoomCodeInput.value = normalizedSavedCode
+        }
+      }
 
+      setRoomMode('join')
       resolve()
     }
     passwordForm.addEventListener('submit', handlePasswordSubmit)
   })
 
-  // Generate code
-  generateBtn?.addEventListener('click', () => {
-    const map = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789'
-    const code = Array.from(
-      { length: 4 },
-      () => map[Math.floor(Math.random() * map.length)]
-    ).join('')
-    loginForm.elements.roomCode.value = code
+  // Generate unique code
+  generateBtn?.addEventListener('click', async () => {
+    setRoomCodeError('')
+    setLoginError('')
+    try {
+      const code = await api.generateRoomCode()
+      setRoomMode('create')
+      setActiveRoomCode(code)
+      syncRoomCodeInputs()
+    } catch (err) {
+      setRoomCodeError(err.message)
+    }
   })
 
   return new Promise(resolve => {
@@ -2016,12 +2129,36 @@ async function login(api) {
       e.preventDefault()
 
       const fd = new FormData(loginForm)
-      const name = fd.get('name')
-      const code = fd.get('roomCode')
+      const name = String(fd.get('name') || '').trim()
+      const code = getActiveRoomCode()
+
+      if (roomCodeInput) roomCodeInput.value = code
+      if (generatedRoomCodeInput) generatedRoomCodeInput.value = code
+
       if (!name || !code) return
+      if (!/^[0-9A-Z]{4}$/.test(code)) {
+        setRoomCodeError('Room code must be 4 characters (A-Z or 0-9).')
+        return
+      }
 
       try {
         setPasswordError('')
+        setRoomCodeError('')
+        setLoginError('')
+
+        const existsResponse = await api.checkRoomExists(code)
+        const exists = Boolean(existsResponse?.exists)
+
+        if (roomMode === 'join' && !exists) {
+          setRoomCodeError(i18nRoomNotFoundMessage)
+          return
+        }
+
+        if (roomMode === 'create' && exists) {
+          setRoomCodeError(i18nRoomExistsMessage)
+          return
+        }
+
         const data = await api.login(name, code, verifiedPassword)
         loginForm.removeEventListener('submit', handleSubmit)
 
@@ -2057,11 +2194,7 @@ async function login(api) {
         initTabs()
         resolve({ ...data, user: name, roomCode: code })
       } catch (err) {
-        // Show password form again on login failure
-        loginForm.style.display = 'none'
-        passwordForm.style.display = 'block'
-        passwordForm.elements.accessPassword.value = ''
-        setPasswordError(err.message)
+        setLoginError(err.message)
       }
     }
 
