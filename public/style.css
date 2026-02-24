@@ -1212,6 +1212,11 @@ body:not(.is-logged-in) .card-stack:empty::after {
   justify-self: center;
 }
 
+.login-field-group--room-mode,
+.login-field-group--name {
+  width: min(60%, 13.2rem);
+}
+
 .login-helper-copy {
   margin: 0;
   font-size: 0.75rem;
@@ -1224,9 +1229,9 @@ body:not(.is-logged-in) .card-stack:empty::after {
   align-items: center;
   justify-content: flex-start;
   gap: 0.45rem;
-  width: min(60%, 13.2rem);
+  width: 100%;
   max-width: 100%;
-  justify-self: start;
+  justify-self: stretch;
 }
 
 .room-mode-question {
@@ -1336,7 +1341,11 @@ body:not(.is-logged-in) .card-stack:empty::after {
   transition: all 0.2s ease;
 }
 
-.login-form .login-field-group > input,
+.login-form .login-field-group > input {
+  width: 100%;
+  justify-self: stretch;
+}
+
 .login-form .room-code-panel {
   width: min(60%, 13.2rem);
   justify-self: start;
@@ -3630,6 +3639,12 @@ footer {
     width: 100%;
   }
 
+  .login-field-group--room-mode,
+  .login-field-group--name {
+    width: 60%;
+    justify-self: center;
+  }
+
   .login-form input {
     padding: 0.75rem 1rem;
     font-size: 1.5rem;
@@ -3644,7 +3659,11 @@ footer {
     justify-self: start;
   }
 
-  .login-form .login-field-group > input,
+  .login-form .login-field-group > input {
+    width: 100%;
+    justify-self: stretch;
+  }
+
   .login-form .room-code-panel {
     width: 60%;
     justify-self: start;
@@ -3660,29 +3679,10 @@ footer {
   }
 
   .login-form .room-mode-header {
-    width: 60%;
+    width: 100%;
     max-width: 100%;
     justify-content: flex-start;
-    justify-self: start;
-    gap: 0.4rem;
-  }
-
-  .login-form .login-field-group > input,
-  .login-form .room-code-panel,
-  .login-form .room-code-container {
-    width: 60%;
-    justify-self: start;
-  }
-
-  .login-form .submit-button {
-    width: 50%;
-  }
-
-  .login-form .room-mode-header {
-    width: 60%;
-    max-width: 100%;
-    justify-content: flex-start;
-    justify-self: start;
+    justify-self: stretch;
     gap: 0.4rem;
   }
 
