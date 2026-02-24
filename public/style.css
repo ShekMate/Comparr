@@ -1178,15 +1178,18 @@ body:not(.is-logged-in) .card-stack:empty::after {
   grid-template-columns: 1fr;
   grid-auto-rows: min-content;
   row-gap: 1rem;
+  justify-items: start;
   width: 100%;
   max-width: 28rem;
   margin-inline: auto;
 }
 
 .login-intro {
-  text-align: center;
+  text-align: left;
   display: grid;
   gap: 0.4rem;
+  width: min(60%, 13.2rem);
+  justify-self: start;
 }
 
 .login-intro h1 {
@@ -1358,7 +1361,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .login-form .submit-button {
   width: min(50%, 11rem);
-  justify-self: center;
+  justify-self: start;
 }
 
 .login-form .login-helper-copy {
