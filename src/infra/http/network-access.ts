@@ -1,3 +1,5 @@
+import { getAllowedOrigins, getTrustProxy } from '../../core/config.ts'
+
 export const isPrivateNetwork = (hostname: string) => {
   if (!hostname) return false
   if (hostname.startsWith('::ffff:')) {
@@ -23,7 +25,6 @@ const stripIpFormatting = (value: string) => {
   const trimmed = String(value || '').trim()
   if (!trimmed) return ''
 
-  // [::1]:8000 -> ::1
   if (trimmed.startsWith('[')) {
     const closingIndex = trimmed.indexOf(']')
     if (closingIndex > 1) {
@@ -62,16 +63,72 @@ const getForwardedIp = (req: {
   return ''
 }
 
+const matchAllowedOrigin = (candidate: string, origin: string, host: string) => {
+  const lowered = candidate.toLowerCase()
+  try {
+    const parsed = new URL(lowered)
+    return parsed.origin === origin || parsed.host === host
+  } catch {
+    return lowered === origin || lowered === host
+  }
+}
+
+const getSocketIp = (req: { conn?: { remoteAddr?: Deno.NetAddr } }) => {
+  const remote = req?.conn?.remoteAddr as Deno.NetAddr | undefined
+  return remote?.hostname ?? ''
+}
+
+export const isValidHost = (req: {
+  headers?: { get?: (name: string) => string | null }
+}) => {
+  const allowedOrigins = getAllowedOrigins()
+  if (allowedOrigins.length === 0) return true
+
+  const host = String(req?.headers?.get?.('host') || '')
+    .trim()
+    .toLowerCase()
+  if (!host) return false
+
+  return allowedOrigins.some(candidate => matchAllowedOrigin(candidate, '', host))
+}
+
+export const isValidOrigin = (req: {
+  headers?: { get?: (name: string) => string | null }
+}) => {
+  const origin = String(req?.headers?.get?.('origin') || '')
+    .trim()
+    .toLowerCase()
+  if (!origin) return true
+
+  const host = String(req?.headers?.get?.('host') || '')
+    .trim()
+    .toLowerCase()
+  if (!host) return false
+
+  const allowedOrigins = getAllowedOrigins()
+  if (allowedOrigins.length > 0) {
+    return allowedOrigins.some(candidate =>
+      matchAllowedOrigin(candidate, origin, host)
+    )
+  }
+
+  try {
+    return new URL(origin).host.toLowerCase() === host
+  } catch {
+    return false
+  }
+}
+
 export const isLocalRequest = (req: {
   conn?: { remoteAddr?: Deno.NetAddr }
   headers?: { get?: (name: string) => string | null }
 }) => {
-  const forwardedIp = getForwardedIp(req)
-  if (forwardedIp) {
-    return isPrivateNetwork(forwardedIp)
+  if (getTrustProxy()) {
+    const forwardedIp = getForwardedIp(req)
+    if (forwardedIp) {
+      return isPrivateNetwork(forwardedIp)
+    }
   }
 
-  const remote = req?.conn?.remoteAddr as Deno.NetAddr | undefined
-  const hostname = remote?.hostname ?? ''
-  return isPrivateNetwork(hostname)
+  return isPrivateNetwork(getSocketIp(req))
 }

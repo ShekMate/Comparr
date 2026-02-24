@@ -8,6 +8,7 @@ import {
 } from 'https://deno.land/std@0.79.0/ws/mod.ts'
 
 import type { WebSocket as STDWebSocket } from 'https://deno.land/std@0.79.0/ws/mod.ts'
+import { getAllowedOrigins } from '../../core/config.ts'
 
 export class WebSocketError extends Error {}
 
@@ -18,21 +19,70 @@ export enum WebSocketState {
   CLOSED = 3,
 }
 
+const MAX_WS_MESSAGE_BYTES = 65_536
+const MAX_WS_CONNECTIONS_PER_IP = 10
+
+const matchAllowedOrigin = (candidate: string, origin: string, host: string) => {
+  const lowered = candidate.toLowerCase()
+  try {
+    const parsed = new URL(lowered)
+    return parsed.origin === origin || parsed.host === host
+  } catch {
+    return lowered === origin || lowered === host
+  }
+}
+
 interface Options {
-  onConnection: (ws: WebSocket) => void
+  onConnection: (ws: WebSocket, req: ServerRequest) => void
   onError: (error: Error) => void
 }
 
 export class WebSocketServer {
   clients: Set<WebSocket> = new Set<WebSocket>()
   options: Options
+  ipConnections = new Map<string, number>()
 
   constructor(options: Options) {
     this.options = options
   }
 
+  private isAllowedOrigin(req: ServerRequest) {
+    const origin = String(req.headers.get('origin') || '').trim()
+    if (!origin) return true
+
+    const allowed = getAllowedOrigins()
+    const host = String(req.headers.get('host') || '').trim().toLowerCase()
+
+    if (allowed.length > 0) {
+      const target = origin.toLowerCase()
+      return allowed.some(item => matchAllowedOrigin(item, target, host))
+    }
+    if (!host) return false
+    try {
+      return new URL(origin).host.toLowerCase() === host
+    } catch {
+      return false
+    }
+  }
+
+  private getClientIp(req: ServerRequest) {
+    return String((req.conn.remoteAddr as Deno.NetAddr | undefined)?.hostname || 'unknown')
+  }
+
   async connect(req: ServerRequest) {
     const { conn, r: bufReader, w: bufWriter, headers } = req
+    const clientIp = this.getClientIp(req)
+
+    if (!this.isAllowedOrigin(req)) {
+      await req.respond({ status: 403 })
+      return
+    }
+
+    const openCount = this.ipConnections.get(clientIp) ?? 0
+    if (openCount >= MAX_WS_CONNECTIONS_PER_IP) {
+      await req.respond({ status: 429 })
+      return
+    }
 
     try {
       const sock = await acceptWebSocket({
@@ -41,10 +91,18 @@ export class WebSocketServer {
         bufWriter,
         headers,
       })
+      this.ipConnections.set(clientIp, openCount + 1)
+
       const ws: WebSocket = new WebSocket()
       ws.open(sock)
+      ws.once('close', () => {
+        const current = this.ipConnections.get(clientIp) ?? 0
+        if (current <= 1) this.ipConnections.delete(clientIp)
+        else this.ipConnections.set(clientIp, current - 1)
+      })
+
       this.clients.add(ws)
-      this.options.onConnection(ws)
+      this.options.onConnection(ws, req)
     } catch (err) {
       this.options.onError(err)
       await req.respond({ status: 400 })
@@ -68,22 +126,26 @@ export class WebSocket extends EventEmitter {
     try {
       for await (const ev of sock) {
         if (typeof ev === 'string') {
-          // text message
+          const byteLength = new TextEncoder().encode(ev).byteLength
+          if (byteLength > MAX_WS_MESSAGE_BYTES) {
+            await sock.close(1009, 'Message too big')
+            break
+          }
           this.emit('message', ev)
         } else if (ev instanceof Uint8Array) {
-          // binary message
+          if (ev.byteLength > MAX_WS_MESSAGE_BYTES) {
+            await sock.close(1009, 'Message too big')
+            break
+          }
           this.emit('message', ev)
         } else if (isWebSocketPingEvent(ev)) {
           const [, body] = ev
-          // ping
           this.emit('ping', body)
         } else if (isWebSocketPongEvent(ev)) {
           const [, body] = ev
-          // pong
           this.emit('pong', body)
         } else if (isWebSocketCloseEvent(ev)) {
-          // close
-          const { code, reason } = ev
+          const { code } = ev
           this.state = WebSocketState.CLOSED
           this.emit('close', code)
         }

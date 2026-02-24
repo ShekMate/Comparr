@@ -216,18 +216,32 @@ export class ComparrAPI extends EventTarget {
         // Show user-friendly error notification
         const errorDiv = document.createElement('div')
         errorDiv.className = 'error-notification'
-        errorDiv.innerHTML = `
-          <div class="error-content">
-            <i class="fas fa-exclamation-triangle"></i>
-            <div>
-              <strong>Error</strong>
-              <p>${data.payload.message}</p>
-            </div>
-            <button onclick="this.parentElement.parentElement.remove()" class="error-close">
-              <i class="fas fa-times"></i>
-            </button>
-          </div>
-        `
+
+        const errorContent = document.createElement('div')
+        errorContent.className = 'error-content'
+
+        const icon = document.createElement('i')
+        icon.className = 'fas fa-exclamation-triangle'
+
+        const textWrap = document.createElement('div')
+        const strong = document.createElement('strong')
+        strong.textContent = 'Error'
+        const p = document.createElement('p')
+        p.textContent = String(data?.payload?.message || 'An error occurred.')
+        textWrap.appendChild(strong)
+        textWrap.appendChild(p)
+
+        const closeBtn = document.createElement('button')
+        closeBtn.className = 'error-close'
+        const closeIcon = document.createElement('i')
+        closeIcon.className = 'fas fa-times'
+        closeBtn.appendChild(closeIcon)
+        closeBtn.addEventListener('click', () => errorDiv.remove())
+
+        errorContent.appendChild(icon)
+        errorContent.appendChild(textWrap)
+        errorContent.appendChild(closeBtn)
+        errorDiv.appendChild(errorContent)
 
         document.body.appendChild(errorDiv)
 

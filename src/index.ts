@@ -21,7 +21,7 @@ import {
 } from './features/session/session.ts'
 import { parseImdbCsv } from './features/session/imdb-import.ts'
 import { serveFile } from './infra/http/staticFileServer.ts'
-import { isLocalRequest } from './infra/http/network-access.ts'
+import { isLocalRequest, isValidHost, isValidOrigin } from './infra/http/network-access.ts'
 import { handleSettingsRoutes } from './infra/http/routes/settings.ts'
 import { handleRoutes } from './infra/http/router.ts'
 import { handleConfigDebugRoute } from './infra/http/routes/config.ts'
@@ -29,6 +29,7 @@ import { handleMatchesRoute } from './infra/http/routes/matches.ts'
 import { handleRequestServiceRoutes } from './infra/http/routes/request-service.ts'
 import { handleRoomRoutes } from './infra/http/routes/rooms.ts'
 import { WebSocketServer } from './infra/ws/websocketServer.ts'
+import { addSecurityHeaders } from './infra/http/security-headers.ts'
 import { initializeRadarrCache, refreshRadarrCache } from './api/radarr.ts'
 import { requestMovie } from './api/jellyseerr.ts'
 import { serveCachedPoster } from './services/cache/poster-cache.ts'
@@ -174,8 +175,7 @@ async function savePersistedState(state: any) {
 async function respondFile(req: any, filePath: string, contentType?: string) {
   try {
     const body = await Deno.readFile(filePath)
-    const headers = new Headers()
-    if (contentType) headers.set('content-type', contentType)
+    const headers = makeHeaders(contentType)
     await req.respond({ status: 200, headers, body })
     return true
   } catch (_) {
@@ -183,10 +183,24 @@ async function respondFile(req: any, filePath: string, contentType?: string) {
   }
 }
 
+const makeHeaders = (contentType?: string) => {
+  const headers = new Headers()
+  if (contentType) headers.set('content-type', contentType)
+  addSecurityHeaders(headers)
+  return headers
+}
+
+const bodyTooLarge = (req: any) => {
+  const max = getMaxBodySize()
+  const contentLength = Number(req.headers.get('content-length') || '0')
+  return Number.isFinite(contentLength) && contentLength > max
+}
+
 const server = serve({ port: Number(getPort()) })
 
 const wss = new WebSocketServer({
-  onConnection: handleLogin,
+  onConnection: (ws, req) =>
+    handleLogin(ws, String((req.conn.remoteAddr as Deno.NetAddr)?.hostname || 'unknown')),
   onError: err => log.error(err),
 })
 
@@ -240,6 +254,11 @@ log.info(`  PLEX_TOKEN: ${getPlexToken() ? '✅ Set' : '❌ Missing'}`)
 
 for await (const req of server) {
   try {
+    if (!isValidHost(req)) {
+      await req.respond({ status: 421, headers: makeHeaders('application/json'), body: JSON.stringify({ error: 'Misdirected Request' }) })
+      continue
+    }
+
     const url = new URL(req.url, 'http://local')
     const p = url.pathname
 
@@ -267,6 +286,14 @@ for await (const req of server) {
     // --- API: Request movie via Jellyseerr/Overseerr
     if (p === '/api/request-movie' && req.method === 'POST') {
       try {
+        if (!isValidOrigin(req)) {
+          await req.respond({ status: 403, body: JSON.stringify({ error: 'Invalid request origin.' }), headers: makeHeaders('application/json') })
+          continue
+        }
+        if (bodyTooLarge(req)) {
+          await req.respond({ status: 413, body: JSON.stringify({ error: 'Payload too large' }), headers: makeHeaders('application/json') })
+          continue
+        }
         const decoder = new TextDecoder()
         const body = decoder.decode(await Deno.readAll(req.body))
         const { tmdbId } = JSON.parse(body)
@@ -278,7 +305,7 @@ for await (const req of server) {
               success: false,
               message: 'Invalid TMDb ID',
             }),
-            headers: new Headers({ 'content-type': 'application/json' }),
+            headers: makeHeaders('application/json'),
           })
           continue
         }
@@ -304,7 +331,7 @@ for await (const req of server) {
                 ? 'This title is already in your Radarr library.'
                 : 'This title is already available in Plex.',
             }),
-            headers: new Headers({ 'content-type': 'application/json' }),
+            headers: makeHeaders('application/json'),
           })
           continue
         }
@@ -313,7 +340,7 @@ for await (const req of server) {
         await req.respond({
           status: result.success ? 200 : 500,
           body: JSON.stringify(result),
-          headers: new Headers({ 'content-type': 'application/json' }),
+          headers: makeHeaders('application/json'),
         })
       } catch (err) {
         log.error(`Error handling movie request: ${err}`)
@@ -336,7 +363,7 @@ for await (const req of server) {
         await req.respond({
           status: 500,
           body: JSON.stringify({ success: false, message: errorMessage }),
-          headers: new Headers({ 'content-type': 'application/json' }),
+          headers: makeHeaders('application/json'),
         })
       }
       continue
@@ -350,7 +377,7 @@ for await (const req of server) {
         await req.respond({
           status: 200,
           body: JSON.stringify({ ok: true }),
-          headers: new Headers({ 'content-type': 'application/json' }),
+          headers: makeHeaders('application/json'),
         })
       } catch (err) {
         log.error(`Radarr cache refresh failed: ${err?.message || err}`)
@@ -358,9 +385,9 @@ for await (const req of server) {
           status: 500,
           body: JSON.stringify({
             ok: false,
-            error: err?.message || String(err),
+            error: 'An internal error occurred.',
           }),
-          headers: new Headers({ 'content-type': 'application/json' }),
+          headers: makeHeaders('application/json'),
         })
       }
       continue
@@ -374,14 +401,14 @@ for await (const req of server) {
         await req.respond({
           status: res.status,
           body: JSON.stringify(res.body),
-          headers: new Headers({ 'content-type': 'application/json' }),
+          headers: makeHeaders('application/json'),
         })
       } catch (err) {
         log.error(`Error refreshing streaming data: ${err}`)
         await req.respond({
           status: 500,
           body: JSON.stringify({ error: 'Failed to refresh' }),
-          headers: new Headers({ 'content-type': 'application/json' }),
+          headers: makeHeaders('application/json'),
         })
       }
       continue
@@ -398,14 +425,14 @@ for await (const req of server) {
             tmdbId,
             ...res.body, // includes streamingServices + streamingLink for the card dropdowns
           }),
-          headers: new Headers({ 'content-type': 'application/json' }),
+          headers: makeHeaders('application/json'),
         })
       } catch (err) {
         log.error(`Error updating persisted movie: ${err}`)
         await req.respond({
           status: 500,
           body: JSON.stringify({ error: 'Failed to update persisted movie' }),
-          headers: new Headers({ 'content-type': 'application/json' }),
+          headers: makeHeaders('application/json'),
         })
       }
       continue
@@ -445,7 +472,7 @@ for await (const req of server) {
             await req.respond({
               status: 400,
               body: JSON.stringify({ error: 'Invalid ID', rid }),
-              headers: new Headers({ 'content-type': 'application/json' }),
+              headers: makeHeaders('application/json'),
             })
             continue
           }
@@ -530,7 +557,7 @@ for await (const req of server) {
             await req.respond({
               status: 404,
               body: JSON.stringify({ error: 'Movie not found', rid }),
-              headers: new Headers({ 'content-type': 'application/json' }),
+              headers: makeHeaders('application/json'),
             })
             continue
           }
@@ -561,7 +588,7 @@ for await (const req of server) {
               detail: e?.message || String(e),
               rid,
             }),
-            headers: new Headers({ 'content-type': 'application/json' }),
+            headers: makeHeaders('application/json'),
           })
           continue
         }
@@ -656,7 +683,7 @@ for await (const req of server) {
             imdbId: enriched.imdbId || movieData.imdbId || imdbId,
             rid,
           }),
-          headers: new Headers({ 'content-type': 'application/json' }),
+          headers: makeHeaders('application/json'),
         })
         log.info(`[refresh ${rid}] OK`)
       } catch (err) {
@@ -667,10 +694,10 @@ for await (const req of server) {
           status: 500,
           body: JSON.stringify({
             error: 'Failed to refresh movie data',
-            detail: err?.message || String(err),
+            detail: 'An internal error occurred.',
             rid,
           }),
-          headers: new Headers({ 'content-type': 'application/json' }),
+          headers: makeHeaders('application/json'),
         })
       }
       continue
@@ -679,6 +706,10 @@ for await (const req of server) {
     // --- API: Import IMDb watched movies as "seen" (background processing)
     if (p === '/api/imdb-import' && req.method === 'POST') {
       try {
+        if (bodyTooLarge(req)) {
+          await req.respond({ status: 413, body: JSON.stringify({ error: 'Payload too large' }), headers: makeHeaders('application/json') })
+          continue
+        }
         const TMDB_KEY = getTmdbApiKey()
         if (!TMDB_KEY) {
           await req.respond({
@@ -686,7 +717,7 @@ for await (const req of server) {
             body: JSON.stringify({
               error: 'TMDb API key is required for IMDb import',
             }),
-            headers: new Headers({ 'content-type': 'application/json' }),
+            headers: makeHeaders('application/json'),
           })
           continue
         }
@@ -701,7 +732,7 @@ for await (const req of server) {
             body: JSON.stringify({
               error: 'Missing required fields: csvContent, roomCode, userName',
             }),
-            headers: new Headers({ 'content-type': 'application/json' }),
+            headers: makeHeaders('application/json'),
           })
           continue
         }
@@ -716,7 +747,7 @@ for await (const req of server) {
           await req.respond({
             status: 200,
             body: JSON.stringify({ status: 'completed', total: 0 }),
-            headers: new Headers({ 'content-type': 'application/json' }),
+            headers: makeHeaders('application/json'),
           })
           continue
         }
@@ -739,7 +770,7 @@ for await (const req of server) {
         await req.respond({
           status: 202,
           body: JSON.stringify({ status: 'started', total: rows.length }),
-          headers: new Headers({ 'content-type': 'application/json' }),
+          headers: makeHeaders('application/json'),
         })
 
         log.info(
@@ -751,9 +782,9 @@ for await (const req of server) {
           status: 500,
           body: JSON.stringify({
             error: 'IMDb import failed',
-            detail: err?.message || String(err),
+            detail: 'An internal error occurred.',
           }),
-          headers: new Headers({ 'content-type': 'application/json' }),
+          headers: makeHeaders('application/json'),
         })
       }
       continue
@@ -762,6 +793,10 @@ for await (const req of server) {
     // --- API: Import from a public IMDb list URL (background processing)
     if (p === '/api/imdb-import-url' && req.method === 'POST') {
       try {
+        if (bodyTooLarge(req)) {
+          await req.respond({ status: 413, body: JSON.stringify({ error: 'Payload too large' }), headers: makeHeaders('application/json') })
+          continue
+        }
         const TMDB_KEY = getTmdbApiKey()
         if (!TMDB_KEY) {
           await req.respond({
@@ -769,7 +804,7 @@ for await (const req of server) {
             body: JSON.stringify({
               error: 'TMDb API key is required for IMDb import',
             }),
-            headers: new Headers({ 'content-type': 'application/json' }),
+            headers: makeHeaders('application/json'),
           })
           continue
         }
@@ -784,7 +819,7 @@ for await (const req of server) {
             body: JSON.stringify({
               error: 'Missing required fields: imdbUrl, roomCode, userName',
             }),
-            headers: new Headers({ 'content-type': 'application/json' }),
+            headers: makeHeaders('application/json'),
           })
           continue
         }
@@ -822,7 +857,7 @@ for await (const req of server) {
               error:
                 'Invalid IMDb URL. Please provide a public list URL (e.g. https://www.imdb.com/list/ls123456789/) or ratings URL (e.g. https://www.imdb.com/user/ur12345678/ratings/).',
             }),
-            headers: new Headers({ 'content-type': 'application/json' }),
+            headers: makeHeaders('application/json'),
           })
           continue
         }
@@ -849,7 +884,7 @@ for await (const req of server) {
             body: JSON.stringify({
               error: `Failed to fetch from IMDb (HTTP ${imdbResponse.status}).${hint}`,
             }),
-            headers: new Headers({ 'content-type': 'application/json' }),
+            headers: makeHeaders('application/json'),
           })
           continue
         }
@@ -872,7 +907,7 @@ for await (const req of server) {
           await req.respond({
             status: 200,
             body: JSON.stringify({ status: 'completed', total: 0 }),
-            headers: new Headers({ 'content-type': 'application/json' }),
+            headers: makeHeaders('application/json'),
           })
           continue
         }
@@ -897,7 +932,7 @@ for await (const req of server) {
         await req.respond({
           status: 202,
           body: JSON.stringify({ status: 'started', total: rows.length }),
-          headers: new Headers({ 'content-type': 'application/json' }),
+          headers: makeHeaders('application/json'),
         })
 
         log.info(
@@ -909,9 +944,9 @@ for await (const req of server) {
           status: 500,
           body: JSON.stringify({
             error: 'IMDb URL import failed',
-            detail: err?.message || String(err),
+            detail: 'An internal error occurred.',
           }),
-          headers: new Headers({ 'content-type': 'application/json' }),
+          headers: makeHeaders('application/json'),
         })
       }
       continue
@@ -945,7 +980,7 @@ for await (const req of server) {
 
       await req.respond({
         status: 302,
-        headers: new Headers({ Location: location }),
+        headers: (() => { const h = makeHeaders(); h.set('Location', location); return h })(),
       })
       continue
     }
@@ -971,10 +1006,7 @@ for await (const req of server) {
           await req.respond({
             status: 200,
             body: imageData,
-            headers: new Headers({
-              'content-type': 'image/jpeg',
-              'cache-control': 'public, max-age=604800, immutable', // Cache for 7 days
-            }),
+            headers: (() => { const h = makeHeaders('image/jpeg'); h.set('cache-control', 'public, max-age=604800, immutable'); return h })(),
           })
         } else {
           await req.respond({ status: 404 })
@@ -1006,7 +1038,7 @@ for await (const req of server) {
           await req.respond({
             status: 404,
             body: JSON.stringify({ error: 'Room not found' }),
-            headers: new Headers({ 'content-type': 'application/json' }),
+            headers: makeHeaders('application/json'),
           })
           continue
         }
@@ -1019,14 +1051,14 @@ for await (const req of server) {
         await req.respond({
           status: 200,
           body: JSON.stringify({ success: true, removedCount }),
-          headers: new Headers({ 'content-type': 'application/json' }),
+          headers: makeHeaders('application/json'),
         })
       } catch (err) {
         log.error(`Failed to process match action: ${err}`)
         await req.respond({
           status: 500,
           body: JSON.stringify({ error: 'Failed to process match action' }),
-          headers: new Headers({ 'content-type': 'application/json' }),
+          headers: makeHeaders('application/json'),
         })
       }
       continue

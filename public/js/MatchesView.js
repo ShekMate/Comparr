@@ -1,3 +1,5 @@
+import { escapeHtml } from './utils.js'
+
 // deno-lint-ignore-file
 
 export class MatchesView {
@@ -40,9 +42,10 @@ export class MatchesView {
   }
 
   formatList = users => {
-    if (users.length < 3) return users.join(' and ')
+    const safeUsers = (users || []).map(escapeHtml)
+    if (safeUsers.length < 3) return safeUsers.join(' and ')
 
-    const items = [...users]
+    const items = [...safeUsers]
     const last = items.splice(-1)
     return `${items.join(', ')}, ${
       document.body.dataset.i18nListConjunction
@@ -74,10 +77,10 @@ export class MatchesView {
         <div class="watch-card-collapsed" onclick="this.closest('.watch-card').classList.toggle('expanded')">
           <div class="watch-card-header-compact">
             <div class="watch-card-title-compact">
-              ${movie.title}
+              ${escapeHtml(movie.title)}
               ${
                 movie.year
-                  ? `<span class="watch-card-year">(${movie.year})</span>`
+                  ? `<span class="watch-card-year">(${escapeHtml(movie.year)})</span>`
                   : ''
               }
             </div>
@@ -93,7 +96,7 @@ export class MatchesView {
           <div class="watch-card-poster">
             <img src="${
               posterUrl.startsWith('http') ? posterUrl : basePath + posterUrl
-            }" alt="${movie.title} poster" />
+            }" alt="${escapeHtml(movie.title)} poster" />
           </div>
           `
               : ''
@@ -103,7 +106,7 @@ export class MatchesView {
             ${
               movie.summary
                 ? `
-            <p class="watch-card-summary">${movie.summary}</p>
+            <p class="watch-card-summary">${escapeHtml(movie.summary)}</p>
             `
                 : ''
             }

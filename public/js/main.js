@@ -791,6 +791,8 @@ function setSettingsDirty(isDirty) {
   syncSettingsFooterActions()
 }
 
+// Keep admin password in sessionStorage only (tab-scoped, cleared on close).
+// Do not persist in localStorage. HTTPS is required in production.
 let adminPassword = sessionStorage.getItem('comparrAdminPassword') || ''
 let settingsAccessState = {
   canAccess: false,
@@ -1999,7 +2001,7 @@ async function login(api) {
       .trim()
       .toUpperCase()
       .replace(/[^0-9A-Z]/g, '')
-      .slice(0, 4)
+      .slice(0, 6)
 
   let roomMode = 'join'
 
@@ -2149,8 +2151,8 @@ async function login(api) {
       if (generatedRoomCodeInput) generatedRoomCodeInput.value = code
 
       if (!name || !code) return
-      if (!/^[0-9A-Z]{4}$/.test(code)) {
-        setRoomCodeError('Room code must be 4 characters (A-Z or 0-9).')
+      if (!/^[0-9A-Z]{4,6}$/.test(code)) {
+        setRoomCodeError('Room code must be 4-6 characters (A-Z or 0-9).')
         return
       }
 
