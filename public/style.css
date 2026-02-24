@@ -1208,6 +1208,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .login-field-group {
   display: grid;
   gap: 0.4rem;
+  width: min(100%, 22rem);
+  justify-self: center;
 }
 
 .login-helper-copy {
@@ -1217,11 +1219,45 @@ body:not(.is-logged-in) .card-stack:empty::after {
   color: var(--color-text-primary);
 }
 
+.room-mode-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: fit-content;
+  max-width: 100%;
+  justify-self: center;
+  margin-bottom: 0.45rem;
+}
+
+.room-mode-question {
+  width: auto;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.login-form .room-mode-question {
+  width: auto;
+  justify-self: auto;
+}
+
+.room-mode-instruction {
+  margin: 0.45rem 0 0;
+  width: min(100%, 22rem);
+  justify-self: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: left;
+  color: var(--color-text-primary);
+}
+
 .room-mode-tabs {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  width: min(100%, 22rem);
-  justify-self: center;
+  width: auto;
+  flex: 0 0 auto;
+  justify-self: end;
   border: 2px solid #3da5ff;
   border-radius: var(--radius-md);
   overflow: hidden;
@@ -1230,7 +1266,9 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .room-mode-tab {
   appearance: none;
   border: 0;
-  padding: 0.6rem 0.8rem;
+  padding: 0.45rem 0.8rem;
+  min-width: 4.5rem;
+  text-align: center;
   font-size: 0.9rem;
   font-weight: 700;
   color: var(--color-text-primary);
@@ -1247,8 +1285,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .room-code-panel {
-  width: min(100%, 22rem);
-  justify-self: center;
+  width: min(50%, 11rem);
+  justify-self: start;
 }
 
 .room-code-error-message {
@@ -1283,8 +1321,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
   text-align: left;
   color: var(--color-text-primary);
   line-height: 1.4;
-  width: min(100%, 22rem);
-  justify-self: center;
+  width: 100%;
+  justify-self: stretch;
 }
 
 .login-form input {
@@ -1300,8 +1338,18 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .login-form .login-field-group > input,
-.login-form .room-code-container,
+.login-form .room-code-panel {
+  width: min(50%, 11rem);
+  justify-self: start;
+}
+
+.login-form .room-code-container {
+  width: 100%;
+  justify-self: start;
+}
+
 .login-form .submit-button {
+  width: min(50%, 11rem);
   justify-self: center;
 }
 
@@ -1329,7 +1377,6 @@ body:not(.is-logged-in) .card-stack:empty::after {
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
-  width: min(100%, 22rem);
   gap: 0;
   align-items: stretch;
   margin-bottom: 1.2rem;
@@ -1386,7 +1433,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   border-radius: 0.85rem;
   font-size: 0.9rem;
   font-weight: 700;
-  width: min(100%, 22rem);
+  width: min(50%, 11rem);
   margin: 0.35rem 0 0;
   display: block;
   cursor: pointer;
@@ -3585,20 +3632,44 @@ footer {
     width: 100%;
   }
 
+  .login-field-group {
+    width: 100%;
+  }
+
   .login-form input {
     padding: 0.75rem 1rem;
     font-size: 1.5rem;
     width: 100%;
   }
 
+  .login-form .room-mode-instruction,
   .login-form .room-mode-tabs,
-  .login-form .room-code-panel,
-  .login-form .room-code-container,
   .login-form .login-helper-copy,
   .login-form .room-code-error-message,
-  .login-form .login-error-message,
-  .login-form .submit-button {
+  .login-form .login-error-message {
     width: 100%;
+  }
+
+  .login-form .login-field-group > input,
+  .login-form .room-code-panel {
+    width: 50%;
+    justify-self: start;
+  }
+
+  .login-form .room-code-container {
+    width: 100%;
+    justify-self: start;
+  }
+
+  .login-form .submit-button {
+    width: 50%;
+  }
+
+  .login-form .room-mode-header {
+    width: fit-content;
+    max-width: 100%;
+    justify-content: center;
+    gap: 0.4rem;
   }
 
   /* Password Form - Enhanced */
