@@ -83,18 +83,7 @@
             <p>${LOGIN_WELCOME_SUBTITLE}</p>
           </div>
 
-          <div class="login-field-group">
-            <label for="name">${LOGIN_STEP_NAME}</label>
-            <input
-              id="name"
-              type="text"
-              name="name"
-              placeholder="${LOGIN_NAME}"
-              autocomplete="given-name"
-              required
-            />
-          </div>
-          <div class="login-field-group">
+          <div class="login-field-group login-field-group--room-mode">
             <div class="room-mode-header">
               <label class="room-mode-question">${LOGIN_NEW_HERE}</label>
               <div class="room-mode-tabs" role="tablist" aria-label="Room mode">
@@ -118,6 +107,20 @@
                 </button>
               </div>
             </div>
+          </div>
+
+          <div class="login-field-group login-field-group--name">
+            <label for="name">${LOGIN_STEP_NAME}</label>
+            <input
+              id="name"
+              type="text"
+              name="name"
+              placeholder="${LOGIN_NAME}"
+              autocomplete="given-name"
+              required
+            />
+          </div>
+          <div class="login-field-group">
             <p class="room-mode-instruction js-room-step-instruction">
               ${LOGIN_STEP_ROOM}
             </p>
