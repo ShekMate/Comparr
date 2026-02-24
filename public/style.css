@@ -1339,7 +1339,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .login-form .login-field-group > input,
 .login-form .room-code-panel {
-  width: min(50%, 11rem);
+  width: min(60%, 13.2rem);
   justify-self: start;
 }
 
@@ -3652,7 +3652,7 @@ footer {
 
   .login-form .login-field-group > input,
   .login-form .room-code-panel {
-    width: 50%;
+    width: 60%;
     justify-self: start;
   }
 
@@ -3675,7 +3675,7 @@ footer {
   .login-form .login-field-group > input,
   .login-form .room-code-panel,
   .login-form .room-code-container {
-    width: 50%;
+    width: 60%;
     justify-self: start;
   }
 
