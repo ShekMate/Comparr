@@ -1968,10 +1968,9 @@ async function login(api) {
     'Room code not found. Try again or click Create.'
   const i18nRoomStepJoin =
     document.body.dataset.i18nRoomStepJoin ||
-    'Have a shared/private code? Enter it.'
+    'Enter your shared/private room code'
   const i18nRoomStepCreate =
-    document.body.dataset.i18nRoomStepCreate ||
-    'New here? Tap Generate to create one.'
+    document.body.dataset.i18nRoomStepCreate || 'Create a new room code.'
 
   const passwordError = document.createElement('p')
   passwordError.className = 'password-error-message'
