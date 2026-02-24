@@ -1208,6 +1208,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .login-field-group {
   display: grid;
   gap: 0.4rem;
+  width: min(100%, 22rem);
+  justify-self: center;
 }
 
 .login-helper-copy {
@@ -1284,7 +1286,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .room-code-panel {
   width: min(50%, 11rem);
-  justify-self: center;
+  justify-self: start;
 }
 
 .room-code-error-message {
@@ -1319,8 +1321,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
   text-align: left;
   color: var(--color-text-primary);
   line-height: 1.4;
-  width: min(100%, 22rem);
-  justify-self: center;
+  width: 100%;
+  justify-self: stretch;
 }
 
 .login-form input {
@@ -1336,7 +1338,12 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .login-form .login-field-group > input,
-.login-form .room-code-container,
+.login-form .room-code-panel,
+.login-form .room-code-container {
+  width: min(50%, 11rem);
+  justify-self: start;
+}
+
 .login-form .submit-button {
   width: min(50%, 11rem);
   justify-self: center;
@@ -3622,6 +3629,10 @@ footer {
     width: 100%;
   }
 
+  .login-field-group {
+    width: 100%;
+  }
+
   .login-form input {
     padding: 0.75rem 1rem;
     font-size: 1.5rem;
@@ -3638,7 +3649,11 @@ footer {
 
   .login-form .login-field-group > input,
   .login-form .room-code-panel,
-  .login-form .room-code-container,
+  .login-form .room-code-container {
+    width: 50%;
+    justify-self: start;
+  }
+
   .login-form .submit-button {
     width: 50%;
   }
