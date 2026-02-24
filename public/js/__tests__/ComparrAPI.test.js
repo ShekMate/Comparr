@@ -89,7 +89,24 @@ describe('ComparrAPI', () => {
         },
       })
 
-      await expect(loginPromise).rejects.toThrow('Alice is already logged in')
+      await expect(loginPromise).rejects.toThrow('Invalid password')
+    })
+
+    it('should use fallback message when login failure has no message', async () => {
+      const loginPromise = api.login('Alice', 'ROOM123', 'wrong-password')
+
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      mockWebSocket.simulateMessage({
+        type: 'loginResponse',
+        payload: {
+          success: false,
+        },
+      })
+
+      await expect(loginPromise).rejects.toThrow(
+        'Login failed. Please try again.'
+      )
     })
 
     it('should send correct login payload', async () => {
@@ -312,6 +329,69 @@ describe('ComparrAPI', () => {
     })
   })
 
+  describe('verifyAccessPassword', () => {
+    it('should resolve when the password is valid', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          message: 'Access password verified.',
+        }),
+      })
+
+      await expect(api.verifyAccessPassword('secret')).resolves.toEqual({
+        success: true,
+        message: 'Access password verified.',
+      })
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/comparr/api/access-password/verify',
+        expect.objectContaining({ method: 'POST' })
+      )
+    })
+
+    it('should reject with backend message when the password is invalid', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        json: async () => ({
+          success: false,
+          message: 'Incorrect access password. Please try again.',
+        }),
+      })
+
+      await expect(api.verifyAccessPassword('wrong')).rejects.toThrow(
+        'Incorrect access password. Please try again.'
+      )
+    })
+  })
+
+  describe('room code helpers', () => {
+    it('should check if a room exists', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, exists: true, roomCode: 'AB12' }),
+      })
+
+      const result = await api.checkRoomExists('ab12')
+      expect(result.exists).toBe(true)
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/comparr/api/rooms/exists?code=AB12'
+      )
+    })
+
+    it('should generate a unique room code', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, roomCode: 'ZX90' }),
+      })
+
+      const roomCode = await api.generateRoomCode()
+      expect(roomCode).toBe('ZX90')
+      expect(global.fetch).toHaveBeenCalledWith('/comparr/api/rooms/generate', {
+        method: 'POST',
+      })
+    })
+  })
+
   describe('getUserDecisions', () => {
     it('should fetch user decisions from API', async () => {
       global.fetch = vi.fn().mockResolvedValue({
@@ -395,9 +475,15 @@ describe('ComparrAPI', () => {
     it('should emit events for different message types', () => {
       const events = []
 
-      api.addEventListener('batch', e => events.push({ type: 'batch', data: e.data }))
-      api.addEventListener('match', e => events.push({ type: 'match', data: e.data }))
-      api.addEventListener('error', e => events.push({ type: 'error', data: e.data }))
+      api.addEventListener('batch', e =>
+        events.push({ type: 'batch', data: e.data })
+      )
+      api.addEventListener('match', e =>
+        events.push({ type: 'match', data: e.data })
+      )
+      api.addEventListener('error', e =>
+        events.push({ type: 'error', data: e.data })
+      )
 
       // Send different message types
       mockWebSocket.simulateMessage({

@@ -10,11 +10,13 @@ export const mockOMDbMovie = {
   Director: 'Christopher Nolan',
   Writer: 'Christopher Nolan',
   Actors: 'Leonardo DiCaprio, Joseph Gordon-Levitt, Elliot Page',
-  Plot: 'A thief who steals corporate secrets through the use of dream-sharing technology is given the inverse task of planting an idea into the mind of a C.E.O., but his tragic past may doom the project and his team to disaster.',
+  Plot:
+    'A thief who steals corporate secrets through the use of dream-sharing technology is given the inverse task of planting an idea into the mind of a C.E.O., but his tragic past may doom the project and his team to disaster.',
   Language: 'English, Japanese, French',
   Country: 'United States, United Kingdom',
   Awards: 'Won 4 Oscars. 157 wins & 220 nominations total',
-  Poster: 'https://m.media-amazon.com/images/M/MV5BMjAxMzY3NjcxNF5BMl5BanBnXkFtZTcwNTI5OTM0Mw@@._V1_SX300.jpg',
+  Poster:
+    'https://m.media-amazon.com/images/M/MV5BMjAxMzY3NjcxNF5BMl5BanBnXkFtZTcwNTI5OTM0Mw@@._V1_SX300.jpg',
   Ratings: [
     { Source: 'Internet Movie Database', Value: '8.8/10' },
     { Source: 'Rotten Tomatoes', Value: '87%' },
@@ -42,7 +44,9 @@ export const mockOMDbError = {
   Error: 'Invalid API key!',
 }
 
-export function createMockOMDbMovie(overrides: Partial<typeof mockOMDbMovie> = {}) {
+export function createMockOMDbMovie(
+  overrides: Partial<typeof mockOMDbMovie> = {}
+) {
   return {
     ...mockOMDbMovie,
     ...overrides,

@@ -2,11 +2,10 @@ import { ServerRequest } from 'https://deno.land/std@0.79.0/http/server.ts'
 import { assert } from 'https://deno.land/std@0.79.0/_util/assert.ts'
 import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
 import {
-  DEFAULT_SECTION_TYPE_FILTER,
-  LIBRARY_FILTER,
-  COLLECTION_FILTER,
-  PLEX_TOKEN,
-  PLEX_URL,
+  getCollectionFilter,
+  getLibraryFilter,
+  getPlexToken,
+  getPlexUrl,
 } from '../core/config.ts'
 import {
   PlexDirectory,
@@ -15,23 +14,39 @@ import {
   PlexVideo,
 } from './plex.types.ts'
 
-assert(typeof PLEX_URL === 'string', 'A PLEX_URL is required')
-assert(typeof PLEX_TOKEN === 'string', 'A PLEX_TOKEN is required')
-assert(
-  !PLEX_TOKEN.startsWith('claim-'),
-  'Your PLEX_TOKEN does not look right. Please see: https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/'
-)
+const getPlexConfig = () => {
+  const plexUrl = getPlexUrl()
+  const plexToken = getPlexToken()
+
+  assert(
+    typeof plexUrl === 'string' && plexUrl !== '',
+    'A PLEX_URL is required'
+  )
+  assert(
+    typeof plexToken === 'string' && plexToken !== '',
+    'A PLEX_TOKEN is required'
+  )
+  assert(
+    !plexToken.startsWith('claim-'),
+    'Your PLEX_TOKEN does not look right. Please see: https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/'
+  )
+
+  return { plexUrl, plexToken }
+}
 
 // thrown when the plex token is invalid
 class PlexTokenError extends Error {}
 
+const DEFAULT_SECTION_TYPE_FILTER = 'movie'
+
 export const getSections = async (): Promise<
   PlexMediaContainer<PlexDirectory>
 > => {
-  log.debug(`getSections: ${PLEX_URL}/library/sections`)
+  const { plexUrl, plexToken } = getPlexConfig()
+  log.debug(`getSections: ${plexUrl}/library/sections`)
 
   const req = await fetch(
-    `${PLEX_URL}/library/sections?X-Plex-Token=${PLEX_TOKEN}`,
+    `${plexUrl}/library/sections?X-Plex-Token=${plexToken}`,
     {
       headers: { accept: 'application/json' },
     }
@@ -59,13 +74,13 @@ const getSelectedLibraryTitles = (
   )?.title
 
   const libraryTitles =
-    (LIBRARY_FILTER === '' ? defaultLibraryName : LIBRARY_FILTER)
+    (getLibraryFilter() === '' ? defaultLibraryName : getLibraryFilter())
       ?.split(',')
       .filter(title => availableLibraryNames.includes(title)) ?? []
 
   assert(
     libraryTitles.length !== 0,
-    `${LIBRARY_FILTER} did not match any available library names: ${availableLibraryNames.join(
+    `${getLibraryFilter()} did not match any available library names: ${availableLibraryNames.join(
       ', '
     )}`
   )
@@ -73,7 +88,7 @@ const getSelectedLibraryTitles = (
   return libraryTitles
 }
 
-export const allMovies = (async () => {
+const loadAllMovies = async () => {
   const sections = await getSections()
 
   const selectedLibraryTitles = getSelectedLibraryTitles(sections)
@@ -89,10 +104,11 @@ export const allMovies = (async () => {
   const movies: PlexVideo['Metadata'] = []
 
   for (const movieSection of movieSections) {
+    const { plexUrl, plexToken } = getPlexConfig()
     log.debug(`Loading movies from ${movieSection.title} library`)
 
     const req = await fetch(
-      `${PLEX_URL}/library/sections/${movieSection.key}/all?X-Plex-Token=${PLEX_TOKEN}`,
+      `${plexUrl}/library/sections/${movieSection.key}/all?X-Plex-Token=${plexToken}`,
       {
         headers: { accept: 'application/json' },
       }
@@ -115,8 +131,8 @@ export const allMovies = (async () => {
     const libraryData: PlexMediaContainer<PlexVideo> = await req.json()
     let metadata = libraryData.MediaContainer.Metadata
 
-    if (COLLECTION_FILTER !== '') {
-      const collectionFilter = COLLECTION_FILTER.split(',')
+    if (getCollectionFilter() !== '') {
+      const collectionFilter = getCollectionFilter().split(',')
       metadata = metadata.filter(metadataItem => {
         return metadataItem.Collection?.find(collection =>
           collectionFilter.find(
@@ -145,7 +161,20 @@ export const allMovies = (async () => {
   }
 
   return movies
-})()
+}
+
+let allMoviesPromise: Promise<PlexVideo['Metadata']> | null = null
+
+export const getAllMovies = async (): Promise<PlexVideo['Metadata']> => {
+  if (!allMoviesPromise) {
+    allMoviesPromise = loadAllMovies()
+  }
+  return allMoviesPromise
+}
+
+export const clearAllMoviesCache = () => {
+  allMoviesPromise = null
+}
 
 export class NoMoreMoviesError extends Error {}
 
@@ -169,14 +198,14 @@ const GENRE_MAP: Record<number, string> = {
   10770: 'TV Movie',
   53: 'Thriller',
   10752: 'War',
-  37: 'Western'
-};
+  37: 'Western',
+}
 
 function genreIdsToNames(genreIds: (number | string)[]): string[] {
   return genreIds.map(id => {
-    if (typeof id === 'string') return id;
-    return GENRE_MAP[id] || String(id);
-  });
+    if (typeof id === 'string') return id
+    return GENRE_MAP[id] || String(id)
+  })
 }
 
 export const getRandomMovie = (() => {
@@ -206,7 +235,7 @@ export const getRandomMovie = (() => {
     }
   }
 
-  return async () => getRandom(await allMovies)
+  return async () => getRandom(await getAllMovies())
 })()
 
 // New function to get a random movie with filters applied
@@ -216,45 +245,55 @@ export const getFilteredRandomMovie = (() => {
   const getRandom = (
     movies: PlexVideo['Metadata'],
     filters?: {
-      yearMin?: number;
-      yearMax?: number;
-      genres?: string[];
+      yearMin?: number
+      yearMax?: number
+      genres?: string[]
     }
   ): PlexVideo['Metadata'][number] => {
     // First, filter the movie list based on criteria we can check without enrichment
-    let filteredMovies = movies;
+    let filteredMovies = movies
 
     // Apply year filter
     if (filters?.yearMin || filters?.yearMax) {
       filteredMovies = filteredMovies.filter(movie => {
-        const movieYear = typeof movie.year === 'number' ? movie.year : Number(movie.year);
-        if (filters.yearMin && movieYear < filters.yearMin) return false;
-        if (filters.yearMax && movieYear > filters.yearMax) return false;
-        return true;
-      });
+        const movieYear =
+          typeof movie.year === 'number' ? movie.year : Number(movie.year)
+        if (filters.yearMin && movieYear < filters.yearMin) return false
+        if (filters.yearMax && movieYear > filters.yearMax) return false
+        return true
+      })
     }
 
     // Apply genre filter using Plex's Genre tags
     if (filters?.genres && filters.genres.length > 0) {
-      const filterGenreNames = genreIdsToNames(filters.genres).map(g => g.toLowerCase());
+      const filterGenreNames = genreIdsToNames(filters.genres).map(g =>
+        g.toLowerCase()
+      )
       filteredMovies = filteredMovies.filter(movie => {
-        if (!movie.Genre || movie.Genre.length === 0) return false;
-        const movieGenres = movie.Genre.map(g => g.tag.toLowerCase());
-        return filterGenreNames.some(filterGenre => movieGenres.includes(filterGenre));
-      });
+        if (!movie.Genre || movie.Genre.length === 0) return false
+        const movieGenres = movie.Genre.map(g => g.tag.toLowerCase())
+        return filterGenreNames.some(filterGenre =>
+          movieGenres.includes(filterGenre)
+        )
+      })
     }
 
-    assert(filteredMovies.length !== 0, `No movies match the current filters in your Plex library`)
-    
+    assert(
+      filteredMovies.length !== 0,
+      `No movies match the current filters in your Plex library`
+    )
+
     if (drawnGuids.size === filteredMovies.length) {
-      log.info(`All ${filteredMovies.length} matching Plex movies have been shown`);
+      log.info(
+        `All ${filteredMovies.length} matching Plex movies have been shown`
+      )
       throw new NoMoreMoviesError()
     }
 
     // Pick a random movie from the filtered list that hasn't been drawn yet
-    let attempts = 0;
-    const maxAttempts = filteredMovies.length * 2; // Reasonable limit
-    
+    let attempts = 0
+    const maxAttempts = filteredMovies.length * 2 // Reasonable limit
+
     while (attempts < maxAttempts) {
       const randomIndex = Math.floor(Math.random() * filteredMovies.length)
       const movie = filteredMovies[randomIndex]
@@ -266,22 +305,24 @@ export const getFilteredRandomMovie = (() => {
 
       if (!drawnGuids.has(movie.guid)) {
         drawnGuids.add(movie.guid)
-        log.debug(`✅ Selected movie ${movie.title} from ${filteredMovies.length} filtered Plex movies`)
+        log.debug(
+          `✅ Selected movie ${movie.title} from ${filteredMovies.length} filtered Plex movies`
+        )
         return movie
       }
-      
-      attempts++;
+
+      attempts++
     }
-    
+
     // If we get here, all filtered movies have been drawn
     throw new NoMoreMoviesError()
   }
 
   return async (filters?: {
-    yearMin?: number;
-    yearMax?: number;
-    genres?: string[];
-  }) => getRandom(await allMovies, filters)
+    yearMin?: number
+    yearMax?: number
+    genres?: string[]
+  }) => getRandom(await getAllMovies(), filters)
 })()
 
 export const getServerId = (() => {
@@ -289,9 +330,10 @@ export const getServerId = (() => {
 
   return async () => {
     if (serverId) return serverId
+    const { plexUrl, plexToken } = getPlexConfig()
 
     const req = await fetch(
-      `${PLEX_URL}/media/providers?X-Plex-Token=${PLEX_TOKEN}`,
+      `${plexUrl}/media/providers?X-Plex-Token=${plexToken}`,
       {
         headers: { accept: 'application/json' },
       }
@@ -326,7 +368,8 @@ export const proxyPoster = async (req: ServerRequest, key: string) => {
   const height = width * 1.5
 
   const posterUrl = encodeURIComponent(`/library/metadata/${key}`)
-  const url = `${PLEX_URL}/photo/:/transcode?X-Plex-Token=${PLEX_TOKEN}&width=${width}&height=${height}&minSize=1&upscale=1&url=${posterUrl}`
+  const { plexUrl, plexToken } = getPlexConfig()
+  const url = `${plexUrl}/photo/:/transcode?X-Plex-Token=${plexToken}&width=${width}&height=${height}&minSize=1&upscale=1&url=${posterUrl}`
   try {
     const posterReq = await fetch(url)
 
@@ -343,10 +386,10 @@ export const proxyPoster = async (req: ServerRequest, key: string) => {
     }
 
     const imageData = new Uint8Array(await posterReq.arrayBuffer())
-    
+
     // Cache the downloaded poster
     const { cachePoster } = await import('../services/cache/poster-cache.ts')
-    cachePoster(key, 'plex', url).catch(err => 
+    cachePoster(key, 'plex', url).catch(err =>
       log.error(`Failed to cache Plex poster: ${err}`)
     )
 
@@ -367,9 +410,14 @@ export const proxyPoster = async (req: ServerRequest, key: string) => {
  * Check if a movie exists in the Plex library by title and year
  * This now uses the fast cache instead of scanning the entire library
  */
-export async function isMovieInPlex(title: string, year?: number | null): Promise<boolean> {
+export async function isMovieInPlex(
+  title: string,
+  year?: number | null
+): Promise<boolean> {
   try {
-    const { isMovieInPlex: cachedCheck } = await import('../integrations/plex/cache.ts')
+    const { isMovieInPlex: cachedCheck } = await import(
+      '../integrations/plex/cache.ts'
+    )
     return cachedCheck({ title, year })
   } catch (err) {
     log.error(`Failed to check if movie is in Plex: ${err}`)

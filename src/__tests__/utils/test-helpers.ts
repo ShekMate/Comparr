@@ -1,5 +1,10 @@
 // Test utilities and helpers for Deno tests
-import { assertEquals, assertExists, assertRejects, assertThrows } from 'std/testing/asserts.ts'
+import {
+  assertEquals,
+  assertExists,
+  assertRejects,
+  assertThrows,
+} from 'std/testing/asserts.ts'
 
 export { assertEquals, assertExists, assertRejects, assertThrows }
 
@@ -7,7 +12,10 @@ export { assertEquals, assertExists, assertRejects, assertThrows }
  * Create a mock fetch function that returns predefined responses
  */
 export function createMockFetch(responses: Map<string, any>) {
-  return async (url: string | URL | Request, init?: RequestInit): Promise<Response> => {
+  return async (
+    url: string | URL | Request,
+    init?: RequestInit
+  ): Promise<Response> => {
     const urlString = typeof url === 'string' ? url : url.toString()
 
     // Remove query parameters for matching

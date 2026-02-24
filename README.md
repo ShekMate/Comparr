@@ -1,17 +1,17 @@
 <div align="center">
   <img src="public/assets/logos/comparrlogo.png" alt="Comparr Logo" width="200"/>
 
-  # Comparr
+# Comparr
 
-  **A Modern Tinder-Style Movie Matcher for Plex**
+**A Modern Tinder-Style Movie Matcher for Plex**
 
-  [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-  [![Docker](https://img.shields.io/badge/docker-ready-brightgreen.svg)](https://www.docker.com/)
-  [![Deno](https://img.shields.io/badge/deno-1.38.5-blue.svg)](https://deno.land/)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Docker](https://img.shields.io/badge/docker-ready-brightgreen.svg)](https://www.docker.com/)
+[![Deno](https://img.shields.io/badge/deno-1.38.5-blue.svg)](https://deno.land/)
 
-  Help you and your friends decide what to watch from your Plex library with an intuitive swipe-based interface.
+Help you and your friends decide what to watch from your Plex library with an intuitive swipe-based interface.
 
-  [Features](#features) • [Quick Start](#quick-start) • [Installation](#installation) • [Configuration](#configuration) • [Usage](#usage)
+[Features](#features) • [Quick Start](#quick-start) • [Installation](#installation) • [Configuration](#configuration) • [Usage](#usage)
 
 </div>
 
@@ -72,7 +72,7 @@
 
 ## Screenshots
 
-*Swipe through your Plex library with beautiful movie posters and comprehensive ratings*
+_Swipe through your Plex library with beautiful movie posters and comprehensive ratings_
 
 > **Note:** Screenshots coming soon! The interface features a modern card-based design with movie posters, ratings from multiple sources, and an intuitive swipe interface.
 
@@ -128,7 +128,7 @@ services:
     container_name: comparr
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - '8000:8000'
     environment:
       # Required
       - PLEX_URL=http://192.168.1.100:32400
@@ -185,64 +185,72 @@ docker-compose up -d
 
 ## Configuration
 
+Comparr persists application settings in `/data/settings.json` after you save them in the **Settings** page in the web UI.
+
+- You can use environment variables for first boot (for example, to set `PLEX_URL` and `PLEX_TOKEN`).
+- After saving values in the web UI, those settings will persist from `/data` and no longer need to be kept in your container's environment list.
+- Container/runtime variables (`PUID`, `PGID`, `DATA_DIR`) are still Docker-level settings and should remain in the container configuration.
+
 ### Required Variables
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `PLEX_URL` | Your Plex server URL | `http://192.168.1.100:32400` |
+| Variable     | Description                    | Example                                                 |
+| ------------ | ------------------------------ | ------------------------------------------------------- |
+| `PLEX_URL`   | Your Plex server URL           | `http://192.168.1.100:32400`                            |
 | `PLEX_TOKEN` | Your Plex authentication token | See [Getting Your Plex Token](#getting-your-plex-token) |
 
 ### Optional Variables
 
 #### User & Permissions
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PUID` | User ID to run the container as | `1000` |
-| `PGID` | Group ID to run the container as | `1000` |
+| Variable | Description                      | Default |
+| -------- | -------------------------------- | ------- |
+| `PUID`   | User ID to run the container as  | `1000`  |
+| `PGID`   | Group ID to run the container as | `1000`  |
 
 #### Application Settings
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PORT` | Internal web server port | `8000` |
-| `PLEX_LIBRARY_NAME` | Display name for your Plex library | `My Plex Library` |
-| `ACCESS_PASSWORD` | Password to access the app (leave empty for no password) | *(none)* |
-| `LOG_LEVEL` | Logging verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR` | `INFO` |
-| `MOVIE_BATCH_SIZE` | Number of movies to load at once | `20` |
-| `ROOT_PATH` | Base path if running behind a reverse proxy | *(none)* |
+| Variable                 | Description                                              | Default           |
+| ------------------------ | -------------------------------------------------------- | ----------------- |
+| `PORT`                   | Internal web server port                                 | `8000`            |
+| `PLEX_LIBRARY_NAME`      | Display name for your Plex library                       | `My Plex Library` |
+| `ACCESS_PASSWORD`        | Password to access the app (leave empty for no password) | _(none)_          |
+| `ADMIN_PASSWORD`         | Password required for admin settings                     | _(none)_          |
+| `LOG_LEVEL`              | Logging verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR`   | `INFO`            |
+| `MOVIE_BATCH_SIZE`       | Number of movies to load at once                         | `20`              |
+| `ROOT_PATH`              | Base path if running behind a reverse proxy              | _(none)_          |
+| `STREAMING_PROFILE_MODE` | Availability filtering mode (`anywhere`, etc.)           | `anywhere`        |
+| `LINK_TYPE`              | Movie link behavior (`app` or `plex.tv`)                | `app`             |
 
 #### Library Filtering
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DEFAULT_SECTION_TYPE_FILTER` | Filter by media type: `movie` or `show` | `movie` |
-| `LIBRARY_FILTER` | Comma-separated list of library names to include | *(all)* |
-| `COLLECTION_FILTER` | Comma-separated list of collection names to filter | *(none)* |
+| Variable            | Description                                        | Default  |
+| ------------------- | -------------------------------------------------- | -------- |
+| `LIBRARY_FILTER`    | Comma-separated list of library names to include   | _(all)_  |
+| `COLLECTION_FILTER` | Comma-separated list of collection names to filter | _(none)_ |
 
 #### External API Integrations
 
-| Variable | Description | Required | Get API Key |
-|----------|-------------|----------|-------------|
-| `TMDB_API_KEY` | The Movie Database API key for metadata | No | [Get TMDb Key](https://www.themoviedb.org/settings/api) |
-| `OMDB_API_KEY` | OMDb API key for additional ratings | No | [Get OMDb Key](http://www.omdbapi.com/apikey.aspx) |
+| Variable       | Description                             | Required | Get API Key                                             |
+| -------------- | --------------------------------------- | -------- | ------------------------------------------------------- |
+| `TMDB_API_KEY` | The Movie Database API key for metadata | No       | [Get TMDb Key](https://www.themoviedb.org/settings/api) |
+| `OMDB_API_KEY` | OMDb API key for additional ratings     | No       | [Get OMDb Key](http://www.omdbapi.com/apikey.aspx)      |
 
 #### Media Request Services
 
-| Variable | Description |
-|----------|-------------|
-| `RADARR_URL` | Radarr server URL (e.g., `http://192.168.1.100:7878`) |
-| `RADARR_API_KEY` | Radarr API key |
-| `JELLYSEERR_URL` | Jellyseerr server URL |
-| `JELLYSEERR_API_KEY` | Jellyseerr API key |
-| `OVERSEERR_URL` | Overseerr server URL |
-| `OVERSEERR_API_KEY` | Overseerr API key |
+| Variable             | Description                                           |
+| -------------------- | ----------------------------------------------------- |
+| `RADARR_URL`         | Radarr server URL (e.g., `http://192.168.1.100:7878`) |
+| `RADARR_API_KEY`     | Radarr API key                                        |
+| `JELLYSEERR_URL`     | Jellyseerr server URL                                 |
+| `JELLYSEERR_API_KEY` | Jellyseerr API key                                    |
+| `OVERSEERR_URL`      | Overseerr server URL                                  |
+| `OVERSEERR_API_KEY`  | Overseerr API key                                     |
 
 #### Advanced Options
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `LINK_TYPE` | Link type for media items | `app` |
+| Variable    | Description               | Default |
+| ----------- | ------------------------- | ------- |
+| `LINK_TYPE` | Link type for media items | `app`   |
 
 ### Getting Your Plex Token
 
@@ -256,6 +264,7 @@ Your Plex token is required for Comparr to access your Plex server. Here's how t
 6. Copy everything after `X-Plex-Token=`
 
 **Alternative Method:**
+
 - Open your browser's Developer Tools (F12)
 - Go to the Network tab
 - Refresh Plex
@@ -274,6 +283,7 @@ Comparr stores session data and ratings in `/data` inside the container. To pres
 ```
 
 **What's stored:**
+
 - User voting sessions
 - Match results
 - User preferences
@@ -389,6 +399,8 @@ cp .env.example .env
 
 ## Development
 
+For an incremental refactor plan, see [Repository Architecture Roadmap](docs/repo-architecture-roadmap.md).
+
 ### Running Tests
 
 ```bash
@@ -427,6 +439,7 @@ npm run format
 **Problem:** Container exits immediately after starting
 
 **Solutions:**
+
 - Check logs: `docker logs comparr`
 - Verify `PLEX_URL` is accessible from the container
 - Ensure `PLEX_TOKEN` is valid
@@ -437,6 +450,7 @@ npm run format
 **Problem:** "Failed to connect to Plex server"
 
 **Solutions:**
+
 - Verify Plex server is running
 - Check if `PLEX_URL` uses `http://` (not `https://` unless configured)
 - Ensure Plex server allows connections from the Docker network
@@ -447,6 +461,7 @@ npm run format
 **Problem:** Session created but no movies appear
 
 **Solutions:**
+
 - Verify your Plex library contains movies
 - Check `LIBRARY_FILTER` isn't excluding your library
 - Review logs for API errors: `docker logs comparr`
@@ -457,6 +472,7 @@ npm run format
 **Problem:** "Permission denied" errors in logs
 
 **Solutions:**
+
 - Set `PUID` and `PGID` to match your host user: `id` command
 - Ensure the host `/data` mount point has correct permissions
 - Try: `chown -R 1000:1000 /path/to/comparr/data`
@@ -466,6 +482,7 @@ npm run format
 **Problem:** Container using excessive memory
 
 **Solutions:**
+
 - Reduce `MOVIE_BATCH_SIZE` to a lower value (e.g., `10`)
 - Check if you have large libraries (thousands of movies)
 - Monitor logs for errors that might cause memory leaks
@@ -515,10 +532,10 @@ Heavily rewritten and rebranded as **Comparr** by [ShekMate](https://github.com/
 
 <div align="center">
 
-  **Made with ❤️ for the Plex and Unraid community**
+**Made with ❤️ for the Plex and Unraid community**
 
-  If you find Comparr useful, please consider starring the repository!
+If you find Comparr useful, please consider starring the repository!
 
-  [Report Bug](https://github.com/ShekMate/Comparr/issues) • [Request Feature](https://github.com/ShekMate/Comparr/issues)
+[Report Bug](https://github.com/ShekMate/Comparr/issues) • [Request Feature](https://github.com/ShekMate/Comparr/issues)
 
 </div>

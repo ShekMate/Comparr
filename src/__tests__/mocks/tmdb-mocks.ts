@@ -7,7 +7,8 @@ export const mockTMDbMovie = {
   id: 27205,
   original_language: 'en',
   original_title: 'Inception',
-  overview: 'Cobb, a skilled thief who commits corporate espionage by infiltrating the subconscious of his targets is offered a chance to regain his old life as payment for a task considered to be impossible: "inception", the implantation of another person\'s idea into a target\'s subconscious.',
+  overview:
+    'Cobb, a skilled thief who commits corporate espionage by infiltrating the subconscious of his targets is offered a chance to regain his old life as payment for a task considered to be impossible: "inception", the implantation of another person\'s idea into a target\'s subconscious.',
   popularity: 89.326,
   poster_path: '/ljsZTbVsrQSqZgWeep2B1QiDKuh.jpg',
   release_date: '2010-07-16',
@@ -58,7 +59,8 @@ export const mockTMDbMovieDetails = {
   'watch/providers': {
     results: {
       US: {
-        link: 'https://www.themoviedb.org/movie/27205-inception/watch?locale=US',
+        link:
+          'https://www.themoviedb.org/movie/27205-inception/watch?locale=US',
         flatrate: [
           {
             logo_path: '/pbpMk2JmcoNnQwx5JGpXngfoWtp.jpg',
@@ -122,7 +124,9 @@ export const mockTMDbDiscoverResults = {
   total_results: 10000,
 }
 
-export function createMockTMDbMovie(overrides: Partial<typeof mockTMDbMovie> = {}) {
+export function createMockTMDbMovie(
+  overrides: Partial<typeof mockTMDbMovie> = {}
+) {
   return {
     ...mockTMDbMovie,
     ...overrides,

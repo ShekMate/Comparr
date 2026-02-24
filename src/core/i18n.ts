@@ -1,5 +1,10 @@
 import { Accepts } from 'https://deno.land/x/accepts@2.1.0/mod.ts'
-import { getVersion, LINK_TYPE, ROOT_PATH, PLEX_LIBRARY_NAME } from './config.ts'
+import {
+  getLinkType,
+  getPlexLibraryName,
+  getRootPath,
+  getVersion,
+} from './config.ts'
 
 const translations: Map<string, Record<string, string>> = new Map()
 
@@ -37,7 +42,7 @@ export const getLinkTypeForRequest = (headers: Headers): 'app' | 'http' => {
   const ua = headers.get('user-agent')!
 
   // I tried the deep link on Android but it didn't work...
-  if (/(iPhone|iPad)/.test(ua) && LINK_TYPE === 'app') {
+  if (/(iPhone|iPad)/.test(ua) && getLinkType() === 'app') {
     return 'app'
   }
 
@@ -74,11 +79,11 @@ export const translateHTML = async (
 
   const context = {
     ...translationContext,
-    ROOT_PATH,
+    ROOT_PATH: getRootPath(),
     VERSION: await getVersion(),
     CONFIG_MATCHES_TARGET_TYPE:
       getLinkTypeForRequest(headers) === 'app' ? '_self' : '_blank',
-	PLEX_LIBRARY_NAME,
+    PLEX_LIBRARY_NAME: getPlexLibraryName(),
   }
 
   const interpolatedHtml = interpolate(htmlText, context)
