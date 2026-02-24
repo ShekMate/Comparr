@@ -95,27 +95,32 @@
             />
           </div>
           <div class="login-field-group">
-            <label class="js-room-step-instruction">${LOGIN_STEP_ROOM}</label>
-            <div class="room-mode-tabs" role="tablist" aria-label="Room mode">
-              <button
-                type="button"
-                class="room-mode-tab is-active js-room-mode-tab"
-                data-room-mode="join"
-                role="tab"
-                aria-selected="true"
-              >
-                ${LOGIN_JOIN_TAB}
-              </button>
-              <button
-                type="button"
-                class="room-mode-tab js-room-mode-tab"
-                data-room-mode="create"
-                role="tab"
-                aria-selected="false"
-              >
-                ${LOGIN_CREATE_TAB}
-              </button>
+            <div class="room-mode-header">
+              <label class="room-mode-question">${LOGIN_NEW_HERE}</label>
+              <div class="room-mode-tabs" role="tablist" aria-label="Room mode">
+                <button
+                  type="button"
+                  class="room-mode-tab js-room-mode-tab"
+                  data-room-mode="create"
+                  role="tab"
+                  aria-selected="false"
+                >
+                  ${LOGIN_ROOM_MODE_YES}
+                </button>
+                <button
+                  type="button"
+                  class="room-mode-tab is-active js-room-mode-tab"
+                  data-room-mode="join"
+                  role="tab"
+                  aria-selected="true"
+                >
+                  ${LOGIN_ROOM_MODE_NO}
+                </button>
+              </div>
             </div>
+            <p class="room-mode-instruction js-room-step-instruction">
+              ${LOGIN_STEP_ROOM}
+            </p>
 
             <div
               class="room-code-panel js-room-code-panel"
