@@ -3672,6 +3672,24 @@ footer {
     gap: 0.4rem;
   }
 
+  .login-form .login-field-group > input,
+  .login-form .room-code-panel,
+  .login-form .room-code-container {
+    width: 50%;
+    justify-self: start;
+  }
+
+  .login-form .submit-button {
+    width: 50%;
+  }
+
+  .login-form .room-mode-header {
+    width: fit-content;
+    max-width: 100%;
+    justify-content: center;
+    gap: 0.4rem;
+  }
+
   /* Password Form - Enhanced */
   .password-form {
     display: flex;
