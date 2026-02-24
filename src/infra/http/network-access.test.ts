@@ -12,7 +12,9 @@ Deno.test('isPrivateNetwork supports common private network ranges', () => {
   assertEquals(isPrivateNetwork('8.8.8.8'), false)
 })
 
-Deno.test('isLocalRequest prefers x-forwarded-for when available', () => {
+Deno.test('isLocalRequest ignores forwarded headers unless TRUST_PROXY=true', () => {
+  Deno.env.set('TRUST_PROXY', 'false')
+
   const req = {
     headers: {
       get: (name: string) =>
@@ -25,43 +27,30 @@ Deno.test('isLocalRequest prefers x-forwarded-for when available', () => {
     },
   }
 
+  assertEquals(isLocalRequest(req as any), false)
+})
+
+Deno.test('isLocalRequest trusts forwarded headers only when TRUST_PROXY=true', () => {
+  Deno.env.set('TRUST_PROXY', 'true')
+
+  const req = {
+    headers: {
+      get: (name: string) =>
+        name.toLowerCase() === 'x-real-ip' ? '10.0.0.20' : null,
+    },
+    conn: {
+      remoteAddr: { hostname: '203.0.113.15' },
+    },
+  }
+
   assertEquals(isLocalRequest(req as any), true)
 })
 
 Deno.test(
-  'isLocalRequest supports x-real-ip and bracketed forwarded values',
-  () => {
-    const xRealIpRequest = {
-      headers: {
-        get: (name: string) =>
-          name.toLowerCase() === 'x-real-ip' ? '10.0.0.20' : null,
-      },
-      conn: {
-        remoteAddr: { hostname: '203.0.113.15' },
-      },
-    }
-
-    assertEquals(isLocalRequest(xRealIpRequest as any), true)
-
-    const forwardedRequest = {
-      headers: {
-        get: (name: string) =>
-          name.toLowerCase() === 'forwarded'
-            ? 'for="[192.168.1.7]:1234"'
-            : null,
-      },
-      conn: {
-        remoteAddr: { hostname: '203.0.113.15' },
-      },
-    }
-
-    assertEquals(isLocalRequest(forwardedRequest as any), true)
-  }
-)
-
-Deno.test(
   'isLocalRequest falls back to socket remote address when no forwarded headers',
   () => {
+    Deno.env.set('TRUST_PROXY', 'true')
+
     const req = {
       headers: { get: (_name: string) => null },
       conn: {

@@ -82,6 +82,17 @@ export const getPaidStreamingServices = () =>
   splitCsvSetting(getSettingTrimmed('PAID_STREAMING_SERVICES') ?? '')
 export const getPersonalMediaSources = () =>
   parseJsonArraySetting(getSettingTrimmed('PERSONAL_MEDIA_SOURCES') ?? '[]')
+export const getTrustProxy = () =>
+  (Deno.env.get('TRUST_PROXY') ?? 'false').trim().toLowerCase() === 'true'
+export const getMaxBodySize = () => {
+  const raw = Number((Deno.env.get('MAX_BODY_SIZE') ?? '1048576').trim())
+  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 1_048_576
+}
+export const getAllowedOrigins = () =>
+  (Deno.env.get('ALLOWED_ORIGINS') ?? '')
+    .split(',')
+    .map(value => value.trim().toLowerCase())
+    .filter(Boolean)
 export const getVersion = async () => {
   const pkgText = await Deno.readTextFile(Deno.cwd() + '/package.json')
   const pkg: { version: string } = JSON.parse(pkgText)

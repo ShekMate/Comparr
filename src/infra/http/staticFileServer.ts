@@ -6,6 +6,7 @@ import {
 } from 'https://deno.land/std@0.79.0/path/posix.ts'
 import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
 import { translateHTML } from '../../core/i18n.ts'
+import { addSecurityHeaders } from './security-headers.ts'
 
 function normalizeURL(url: string): string {
   let normalizedUrl = url
@@ -45,11 +46,14 @@ export const serveFile = async (req: ServerRequest, basePath = 'public') => {
       body = await translateHTML(body, req.headers)
     }
 
+    const headers = new Headers({
+      'content-type': getContentType(normalizedPath),
+    })
+    addSecurityHeaders(headers)
+
     return await req.respond({
       body,
-      headers: new Headers({
-        'content-type': getContentType(normalizedPath),
-      }),
+      headers,
     })
   } catch (err) {
     // --- DEBUG for missing posters: show the final filesystem path that caused 404
@@ -64,7 +68,9 @@ export const serveFile = async (req: ServerRequest, basePath = 'public') => {
       // ignore
     }
 
-    return await req.respond({ status: 404, body: 'Not Found' })
+    const headers = new Headers({ 'content-type': 'text/plain' })
+    addSecurityHeaders(headers)
+    return await req.respond({ status: 404, body: 'Not Found', headers })
   }
 }
 

@@ -1,4 +1,11 @@
+import { addSecurityHeaders } from '../security-headers.ts'
 import { getMatchesForUser } from '../../../features/session/session.ts'
+
+const makeJsonHeaders = () => {
+  const headers = new Headers({ 'content-type': 'application/json' })
+  addSecurityHeaders(headers)
+  return headers
+}
 
 export async function handleMatchesRoute(req: any, path: string) {
   if (path !== '/api/matches') {
@@ -13,7 +20,7 @@ export async function handleMatchesRoute(req: any, path: string) {
     await req.respond({
       status: 400,
       body: JSON.stringify({ error: 'Missing room code or user' }),
-      headers: new Headers({ 'content-type': 'application/json' }),
+      headers: makeJsonHeaders(),
     })
     return true
   }
@@ -23,7 +30,7 @@ export async function handleMatchesRoute(req: any, path: string) {
     await req.respond({
       status: 404,
       body: JSON.stringify({ error: 'Room not found' }),
-      headers: new Headers({ 'content-type': 'application/json' }),
+      headers: makeJsonHeaders(),
     })
     return true
   }
@@ -31,7 +38,7 @@ export async function handleMatchesRoute(req: any, path: string) {
   await req.respond({
     status: 200,
     body: JSON.stringify({ matches }),
-    headers: new Headers({ 'content-type': 'application/json' }),
+    headers: makeJsonHeaders(),
   })
 
   return true

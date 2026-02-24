@@ -1,3 +1,5 @@
+import { escapeHtml } from './utils.js'
+
 // deno-lint-ignore-file
 
 export default class CardView {
@@ -90,18 +92,18 @@ export default class CardView {
               : `${this.basePath || ''}${finalArt}`
           }"
           decoding="async"
-          alt="${title} poster"
+          alt="${escapeHtml(title)} poster"
         />
       </div>
 
       <div class="card-meta">
         <div class="card-title">
-          ${title}${type === 'movie' ? ` (${year})` : ''}
+          ${escapeHtml(title)}${type === 'movie' ? ` (${escapeHtml(year)})` : ''}
         </div>
         ${this.renderCrewInfo()}
         ${
           summary
-            ? `<p class="card-plot" onclick="this.closest('.card')._handlePlot(event)">${summary}</p>`
+            ? `<p class="card-plot" onclick="this.closest('.card')._handlePlot(event)">${escapeHtml(summary)}</p>`
             : ''
         }
         ${rating ? `<div class="card-ratings">${rating}</div>` : ''}
@@ -360,7 +362,7 @@ export default class CardView {
     // Add content rating if available
     if (contentRating && contentRating !== 'N/A') {
       ratingGenreParts.push(
-        `<i class="fas fa-shield-alt"></i> ${contentRating}`
+        `<i class="fas fa-shield-alt"></i> ${escapeHtml(contentRating)}`
       )
     }
 
@@ -406,7 +408,7 @@ export default class CardView {
     // Director
     if (director && director !== 'undefined') {
       lines.push(
-        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-video"></i> ${director}</div>`
+        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-video"></i> ${escapeHtml(director)}</div>`
       )
     }
 
@@ -416,7 +418,7 @@ export default class CardView {
       const displayWriters = writers.slice(0, maxWriters)
       const hasMore = writers.length > maxWriters
       lines.push(
-        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-pen"></i> ${displayWriters.join(
+        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-pen"></i> ${displayWriters.map(escapeHtml).join(
           ', '
         )}${hasMore ? ' & more' : ''}</div>`
       )
@@ -428,7 +430,7 @@ export default class CardView {
       const displayCast = cast.slice(0, maxCast)
       const hasMore = cast.length > maxCast
       lines.push(
-        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-users"></i> ${displayCast.join(
+        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-users"></i> ${displayCast.map(escapeHtml).join(
           ', '
         )}${hasMore ? ' & more' : ''}</div>`
       )

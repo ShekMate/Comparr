@@ -8,6 +8,8 @@ import {
   NoMoreMoviesError,
 } from '../../api/plex.ts'
 import { WebSocket } from '../../infra/ws/websocketServer.ts'
+import { loginRateLimiter } from '../../infra/http/ip-rate-limiter.ts'
+import { timingSafeEqual } from '../../core/security.ts'
 import { enrich } from '../catalog/enrich.ts'
 import { discoverMovies } from '../catalog/discover.ts'
 import { isMovieInRadarr } from '../../api/radarr.ts'
@@ -2465,7 +2467,7 @@ export function normalizeRoomCode(roomCode: string): string {
 }
 
 export function isValidRoomCode(roomCode: string): boolean {
-  return /^[0-9A-Z]{4}$/.test(normalizeRoomCode(roomCode))
+  return /^[0-9A-Z]{4,6}$/.test(normalizeRoomCode(roomCode))
 }
 
 export function doesRoomCodeExist(roomCode: string): boolean {
@@ -2480,8 +2482,11 @@ export async function generateUniqueRoomCode(
 ): Promise<string> {
   for (let i = 0; i < maxAttempts; i++) {
     const code = Array.from(
-      { length: 4 },
-      () => ROOM_CODE_MAP[Math.floor(Math.random() * ROOM_CODE_MAP.length)]
+      { length: 6 },
+      () => {
+        const value = crypto.getRandomValues(new Uint32Array(1))[0]
+        return ROOM_CODE_MAP[value % ROOM_CODE_MAP.length]
+      }
     ).join('')
 
     if (!doesRoomCodeExist(code)) {
@@ -2609,7 +2614,7 @@ export const getSession = (roomCode: string, ws: WebSocket): Session => {
 // -------------------------
 // Login flow
 // -------------------------
-export const handleLogin = (ws: WebSocket): Promise<User> => {
+export const handleLogin = (ws: WebSocket, clientIp = 'unknown'): Promise<User> => {
   return new Promise(resolve => {
     const handler = async (msg: string) => {
       try {
@@ -2618,11 +2623,23 @@ export const handleLogin = (ws: WebSocket): Promise<User> => {
         if (data.type === 'login') {
           log.info(`Got a login attempt from ${data.payload.name}`)
 
+          if (!loginRateLimiter.check(clientIp)) {
+            const response: WebSocketLoginResponseMessage = {
+              type: 'loginResponse',
+              payload: {
+                success: false,
+                message: 'Too many login attempts. Please wait.',
+              },
+            }
+            ws.send(JSON.stringify(response))
+            return
+          }
+
           // Check access password
           const accessPassword = getAccessPassword()
           if (
             accessPassword &&
-            data.payload.accessPassword !== accessPassword
+            !timingSafeEqual(data.payload.accessPassword, accessPassword)
           ) {
             log.warning(`Invalid access password from ${data.payload.name}`)
             const response: WebSocketLoginResponseMessage = {
@@ -2644,7 +2661,7 @@ export const handleLogin = (ws: WebSocket): Promise<User> => {
               type: 'loginResponse',
               payload: {
                 success: false,
-                message: 'Room code must be 4 characters (A-Z or 0-9).',
+                message: 'Room code must be 4-6 characters (A-Z or 0-9).',
               },
             }
             ws.send(JSON.stringify(response))

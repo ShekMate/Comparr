@@ -2690,32 +2690,7 @@
 
     <!-- Load JS from site root -->
     <script src="/js/main.js" type="module" defer></script>
-    <script>
-      /* Fallback: make the "Generate" button always work, even if main.js fails */
-      ;(function () {
-        document.addEventListener('click', function (e) {
-          const btn = e.target.closest('.js-generate-room-code')
-          if (!btn) return
+    <script src="/js/room-code-fallback.js" defer></script>
 
-          const roomInput = document.querySelector('input[name="roomCode"]')
-          const generatedInput = document.querySelector(
-            'input[name="generatedRoomCode"]'
-          )
-          if (!roomInput && !generatedInput) return
-
-          const MAP = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789'
-          let code = ''
-          for (let i = 0; i < 4; i++) {
-            code += MAP[Math.floor(Math.random() * MAP.length)]
-          }
-
-          if (generatedInput) generatedInput.value = code
-          if (roomInput) roomInput.value = code
-          try {
-            localStorage.setItem('roomCode', code)
-          } catch (_) {}
-        })
-      })()
-    </script>
   </body>
 </html>
