@@ -1177,7 +1177,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   display: grid;
   grid-template-columns: 1fr;
   grid-auto-rows: min-content;
-  row-gap: 0.75rem;
+  row-gap: 1rem;
   width: 100%;
   max-width: 28rem;
   margin-inline: auto;
@@ -1207,7 +1207,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .login-field-group {
   display: grid;
-  gap: 0.4rem;
+  gap: 0.5rem;
   width: min(100%, 22rem);
   justify-self: center;
 }
@@ -1222,12 +1222,11 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .room-mode-header {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.45rem;
-  width: fit-content;
+  width: min(60%, 13.2rem);
   max-width: 100%;
-  justify-self: center;
-  margin-bottom: 0.45rem;
+  justify-self: start;
 }
 
 .room-mode-question {
@@ -1242,9 +1241,9 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .room-mode-instruction {
-  margin: 0.45rem 0 0;
-  width: min(100%, 22rem);
-  justify-self: center;
+  margin: 0;
+  width: min(60%, 13.2rem);
+  justify-self: start;
   font-size: 0.9rem;
   font-weight: 600;
   line-height: 1.4;
@@ -1354,13 +1353,9 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .login-form .login-helper-copy {
-  width: min(100%, 22rem);
-  justify-self: center;
+  width: min(60%, 13.2rem);
+  justify-self: start;
   text-align: left;
-}
-
-.login-form .login-field-group > input {
-  margin-bottom: 2.5rem;
 }
 
 .login-form input:focus {
@@ -1379,7 +1374,6 @@ body:not(.is-logged-in) .card-stack:empty::after {
   flex-wrap: nowrap;
   gap: 0;
   align-items: stretch;
-  margin-bottom: 1.2rem;
 }
 
 .login-form .room-code-container input {
@@ -3643,11 +3637,11 @@ footer {
   }
 
   .login-form .room-mode-instruction,
-  .login-form .room-mode-tabs,
   .login-form .login-helper-copy,
   .login-form .room-code-error-message,
   .login-form .login-error-message {
-    width: 100%;
+    width: 60%;
+    justify-self: start;
   }
 
   .login-form .login-field-group > input,
@@ -3666,9 +3660,10 @@ footer {
   }
 
   .login-form .room-mode-header {
-    width: fit-content;
+    width: 60%;
     max-width: 100%;
-    justify-content: center;
+    justify-content: flex-start;
+    justify-self: start;
     gap: 0.4rem;
   }
 
@@ -3684,9 +3679,10 @@ footer {
   }
 
   .login-form .room-mode-header {
-    width: fit-content;
+    width: 60%;
     max-width: 100%;
-    justify-content: center;
+    justify-content: flex-start;
+    justify-self: start;
     gap: 0.4rem;
   }
 
