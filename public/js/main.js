@@ -2080,6 +2080,11 @@ async function login(api) {
 
   let verifiedPassword = null
 
+  if (passwordForm && loginForm) {
+    passwordForm.style.display = 'flex'
+    loginForm.style.display = 'none'
+  }
+
   // Handle password verification first
   await new Promise(resolve => {
     const handlePasswordSubmit = async e => {
