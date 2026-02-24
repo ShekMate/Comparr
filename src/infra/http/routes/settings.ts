@@ -17,7 +17,6 @@ export type SettingsRouteDeps = {
   ) => Promise<Record<string, unknown>>
 }
 
-
 const getClientIp = (req: any) => {
   const hostname = req?.conn?.remoteAddr?.hostname
   return String(hostname || 'unknown')
@@ -287,7 +286,8 @@ export async function handleSettingsRoutes(
       const configuredPassword = String(settings.ACCESS_PASSWORD ?? '').trim()
 
       const isValid =
-        !configuredPassword || timingSafeEqual(providedPassword, configuredPassword)
+        !configuredPassword ||
+        timingSafeEqual(providedPassword, configuredPassword)
 
       await req.respond({
         status: isValid ? 200 : 401,
@@ -332,7 +332,10 @@ export async function handleSettingsRoutes(
     if (!apiRateLimiter.check(ip)) {
       await req.respond({
         status: 429,
-        body: JSON.stringify({ ok: false, message: 'Too many requests. Please wait.' }),
+        body: JSON.stringify({
+          ok: false,
+          message: 'Too many requests. Please wait.',
+        }),
         headers: makeJsonHeaders(),
       })
       return true
@@ -385,7 +388,7 @@ export async function handleSettingsRoutes(
         status: 500,
         body: JSON.stringify({
           ok: false,
-          message: 'An internal error occurred.'`,
+          message: 'An internal error occurred.',
         }),
         headers: makeJsonHeaders(),
       })
