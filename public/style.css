@@ -1222,7 +1222,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  width: min(50%, 11rem);
+  width: fit-content;
+  max-width: 100%;
   justify-self: center;
   margin-bottom: 0.45rem;
 }
@@ -1230,6 +1231,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .room-mode-question {
   width: auto;
   margin: 0;
+  white-space: nowrap;
 }
 
 .login-form .room-mode-question {
@@ -1252,6 +1254,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   display: grid;
   grid-template-columns: 1fr 1fr;
   width: auto;
+  flex: 0 0 auto;
   justify-self: end;
   border: 2px solid #3da5ff;
   border-radius: var(--radius-md);
@@ -3625,7 +3628,6 @@ footer {
     width: 100%;
   }
 
-  .login-form .room-mode-header,
   .login-form .room-mode-instruction,
   .login-form .room-mode-tabs,
   .login-form .login-helper-copy,
@@ -3642,6 +3644,8 @@ footer {
   }
 
   .login-form .room-mode-header {
+    width: fit-content;
+    max-width: 100%;
     justify-content: center;
     gap: 0.4rem;
   }
