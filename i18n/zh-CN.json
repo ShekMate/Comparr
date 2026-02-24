@@ -13,7 +13,7 @@
   "ACCESS_PASSWORD_SUBMIT": "继续",
   "LOGIN_WELCOME_TITLE": "欢迎使用 Comparr！",
   "LOGIN_STEP_NAME": "输入你的名字。",
-  "LOGIN_STEP_ROOM": "Have a shared/private code? Enter it.",
+  "LOGIN_STEP_ROOM": "Enter your shared/private room code",
   "LOGIN_STEP_SWIPE": "开始滑动，建立你的片单并找到大家都想看的电影！",
   "NAV_SWIPE": "滑动",
   "NAV_RATINGS": "评分",
@@ -41,5 +41,5 @@
   "LOGIN_ROOM_CODE_PLACEHOLDER": "4-digits",
   "LOGIN_ROOM_EXISTS_ERROR": "Room Code already Exists. Try again or click Generate.",
   "LOGIN_ROOM_NOT_FOUND": "Room code not found. Try again or click Create.",
-  "LOGIN_STEP_ROOM_CREATE": "New here? Tap Generate to create one."
+  "LOGIN_STEP_ROOM_CREATE": "Create a new room code."
 }

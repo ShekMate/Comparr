@@ -13,7 +13,7 @@
   "ACCESS_PASSWORD_SUBMIT": "続行",
   "LOGIN_WELCOME_TITLE": "Comparrへようこそ！",
   "LOGIN_STEP_NAME": "名前を入力してください。",
-  "LOGIN_STEP_ROOM": "Have a shared/private code? Enter it.",
+  "LOGIN_STEP_ROOM": "Enter your shared/private room code",
   "LOGIN_STEP_SWIPE": "スワイプしてウォッチリストを作り、みんなが見たい映画を見つけましょう！",
   "NAV_SWIPE": "スワイプ",
   "NAV_RATINGS": "評価",
@@ -41,5 +41,5 @@
   "LOGIN_ROOM_CODE_PLACEHOLDER": "4-digits",
   "LOGIN_ROOM_EXISTS_ERROR": "Room Code already Exists. Try again or click Generate.",
   "LOGIN_ROOM_NOT_FOUND": "Room code not found. Try again or click Create.",
-  "LOGIN_STEP_ROOM_CREATE": "New here? Tap Generate to create one."
+  "LOGIN_STEP_ROOM_CREATE": "Create a new room code."
 }

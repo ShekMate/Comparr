@@ -13,7 +13,7 @@
   "ACCESS_PASSWORD_SUBMIT": "Weiter",
   "LOGIN_WELCOME_TITLE": "Willkommen bei Comparr!",
   "LOGIN_STEP_NAME": "Gib deinen Namen ein.",
-  "LOGIN_STEP_ROOM": "Have a shared/private code? Enter it.",
+  "LOGIN_STEP_ROOM": "Enter your shared/private room code",
   "LOGIN_STEP_SWIPE": "Starte mit dem Swipen, um deine Liste aufzubauen und Filme zu finden, die alle sehen wollen!",
   "NAV_SWIPE": "Swipen",
   "NAV_RATINGS": "Bewertungen",
@@ -41,5 +41,5 @@
   "LOGIN_ROOM_CODE_PLACEHOLDER": "4-digits",
   "LOGIN_ROOM_EXISTS_ERROR": "Room Code already Exists. Try again or click Generate.",
   "LOGIN_ROOM_NOT_FOUND": "Room code not found. Try again or click Create.",
-  "LOGIN_STEP_ROOM_CREATE": "New here? Tap Generate to create one."
+  "LOGIN_STEP_ROOM_CREATE": "Create a new room code."
 }

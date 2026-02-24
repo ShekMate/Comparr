@@ -1220,10 +1220,11 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .room-mode-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
+  justify-content: center;
+  gap: 0.45rem;
   width: min(100%, 22rem);
   justify-self: center;
+  margin-bottom: 0.45rem;
 }
 
 .room-mode-question {
@@ -1237,7 +1238,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .room-mode-instruction {
-  margin: 0;
+  margin: 0.45rem 0 0;
   width: min(100%, 22rem);
   justify-self: center;
   font-size: 0.9rem;
@@ -3623,6 +3624,8 @@ footer {
     width: 100%;
   }
 
+  .login-form .room-mode-header,
+  .login-form .room-mode-instruction,
   .login-form .room-mode-tabs,
   .login-form .room-code-panel,
   .login-form .room-code-container,
@@ -3631,6 +3634,11 @@ footer {
   .login-form .login-error-message,
   .login-form .submit-button {
     width: 100%;
+  }
+
+  .login-form .room-mode-header {
+    justify-content: center;
+    gap: 0.4rem;
   }
 
   /* Password Form - Enhanced */
