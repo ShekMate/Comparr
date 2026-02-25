@@ -1221,6 +1221,14 @@ body:not(.is-logged-in) .card-stack:empty::after {
   justify-self: start;
 }
 
+.login-field-group--name {
+  margin-top: 5rem;
+}
+
+.login-field-group--room-details {
+  margin-top: 5rem;
+}
+
 .login-helper-copy {
   margin: 0;
   font-size: 0.75rem;
@@ -1253,6 +1261,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   margin: 0;
   width: min(60%, 13.2rem);
   justify-self: start;
+  white-space: nowrap;
   font-size: 0.9rem;
   font-weight: 600;
   line-height: 1.4;
@@ -1366,6 +1375,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .login-form .login-helper-copy {
+  margin-top: 5rem;
   width: min(60%, 13.2rem);
   justify-self: center;
   text-align: center;
@@ -3615,7 +3625,7 @@ footer {
   /* Login Mobile */
   .login-form {
     width: min(92vw, 28rem);
-    row-gap: 1.1rem;
+    row-gap: 1rem;
     padding: 0;
   }
 
