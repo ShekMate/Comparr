@@ -72,6 +72,38 @@
           </div>
         </form>
 
+        <!-- Mode picker (hidden until password is verified) -->
+        <form class="mode-form js-mode-form" name="mode" style="display: none">
+          <div class="login-intro">
+            <h1>Choose your experience</h1>
+            <p>Pick how you want to use Comparr right now.</p>
+          </div>
+          <div class="mode-card-grid">
+            <button
+              type="submit"
+              class="mode-card"
+              name="appMode"
+              value="personal"
+            >
+              <span class="mode-card-title">Personal Discovery</span>
+              <span class="mode-card-copy"
+                >Find something to watch from your library.</span
+              >
+            </button>
+            <button
+              type="submit"
+              class="mode-card"
+              name="appMode"
+              value="group"
+            >
+              <span class="mode-card-title">Group Match</span>
+              <span class="mode-card-copy"
+                >Create or join a room and decide together.</span
+              >
+            </button>
+          </div>
+        </form>
+
         <!-- Login form (hidden initially) -->
         <form
           class="login-form js-login-form"
@@ -2694,6 +2726,5 @@
     <!-- Load JS from site root -->
     <script src="/js/main.js" type="module" defer></script>
     <script src="/js/room-code-fallback.js" defer></script>
-
   </body>
 </html>

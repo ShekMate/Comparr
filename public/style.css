@@ -1599,6 +1599,55 @@ body:not(.is-logged-in) .card-stack:empty::after {
   font-weight: 600;
 }
 
+.mode-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 36rem;
+  margin-inline: auto;
+  justify-items: center;
+}
+
+.mode-card-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.mode-card {
+  appearance: none;
+  border: 2px solid #3da5ff;
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  background: rgb(17 33 70 / 70%);
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+  display: grid;
+  gap: 0.45rem;
+  min-height: 8.5rem;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.mode-card:hover,
+.mode-card:focus-visible {
+  border-color: #5db8ff;
+  background: #002777;
+}
+
+.mode-card-title {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.mode-card-copy {
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+  line-height: 1.35;
+}
+
 /* =========================================================
    9) FILTERS SECTION - Enhanced
    ========================================================= */
@@ -5311,4 +5360,10 @@ footer {
   height: 0.9375rem;
   margin: 0;
   flex-shrink: 0;
+}
+
+@media (max-width: 700px) {
+  .mode-card-grid {
+    grid-template-columns: 1fr;
+  }
 }

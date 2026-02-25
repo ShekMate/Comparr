@@ -376,6 +376,17 @@ function initTabs() {
     ? tabbar.querySelectorAll('[data-tab]:not(.mobile-settings-item)')
     : []
   const allButtons = [...sidebarButtons, ...tabbarButtons]
+  const isPersonalMode = document.body.dataset.appMode === 'personal'
+
+  if (isPersonalMode) {
+    document.querySelectorAll('[data-tab="tab-matches"]').forEach(node => {
+      node.style.display = 'none'
+    })
+    const matchesPanel = document.getElementById('tab-matches')
+    if (matchesPanel) {
+      matchesPanel.hidden = true
+    }
+  }
 
   // Dropdown support (for mobile tabbar)
   const dropdown = document.querySelector(
@@ -1951,6 +1962,7 @@ async function login(api) {
   const loginSection = document.querySelector('.login-section')
   const passwordForm = document.querySelector('.js-password-form')
   const loginForm = document.querySelector('.js-login-form')
+  const modeForm = document.querySelector('.js-mode-form')
   const roomCodeInput = loginForm?.elements?.roomCode
   const generatedRoomCodeInput = loginForm?.elements?.generatedRoomCode
   const roomCodeError = document.querySelector('.js-room-code-error')
@@ -2080,8 +2092,9 @@ async function login(api) {
 
   let verifiedPassword = null
 
-  if (passwordForm && loginForm) {
+  if (passwordForm && loginForm && modeForm) {
     passwordForm.style.display = 'flex'
+    modeForm.style.display = 'none'
     loginForm.style.display = 'none'
   }
 
@@ -2102,12 +2115,12 @@ async function login(api) {
         return
       }
 
-      // Store password and show login form
+      // Store password and show mode picker
       setPasswordError('')
       setLoginError('')
       verifiedPassword = accessPassword
       passwordForm.style.display = 'none'
-      loginForm.style.display = 'block'
+      modeForm.style.display = 'grid'
 
       // Scroll to top of page
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -2129,6 +2142,83 @@ async function login(api) {
     }
     passwordForm.addEventListener('submit', handlePasswordSubmit)
   })
+
+  const selectedMode = await new Promise(resolve => {
+    const handleModeSubmit = e => {
+      e.preventDefault()
+      const submitter = e.submitter
+      const mode = submitter?.value === 'group' ? 'group' : 'personal'
+      modeForm.removeEventListener('submit', handleModeSubmit)
+      resolve(mode)
+    }
+    modeForm.addEventListener('submit', handleModeSubmit)
+  })
+
+  if (selectedMode === 'personal') {
+    modeForm.style.display = 'none'
+    const personalUser =
+      (
+        localStorage.getItem('personalUser') ||
+        localStorage.getItem('user') ||
+        'Solo'
+      ).trim() || 'Solo'
+    const personalRoomCode = normalizeRoomCodeInput(
+      localStorage.getItem('personalRoomCode') || 'SOLO'
+    )
+
+    try {
+      const data = await api.login(
+        personalUser,
+        personalRoomCode,
+        verifiedPassword
+      )
+
+      await loginSection.animate(
+        { opacity: ['1', '0'] },
+        { duration: 250, easing: 'ease-in-out', fill: 'both' }
+      ).finished
+      loginSection.hidden = true
+
+      localStorage.setItem('personalUser', personalUser)
+      localStorage.setItem('personalRoomCode', personalRoomCode)
+      localStorage.setItem('user', personalUser)
+      localStorage.setItem('roomCode', personalRoomCode)
+
+      if (roomCodeLine) {
+        roomCodeLine.dataset.roomCode = personalRoomCode
+      }
+
+      document.body.dataset.appMode = 'personal'
+
+      await Promise.all(
+        [
+          ...document.querySelectorAll(
+            '.rate-section, #tab-likes, #tab-dislikes, #tab-seen, #tab-settings'
+          ),
+        ].map(node => {
+          node.hidden = false
+          return node.animate(
+            { opacity: ['0', '1'] },
+            { duration: 250, easing: 'ease-in-out', fill: 'both' }
+          ).finished
+        })
+      )
+
+      initTabs()
+      return {
+        ...data,
+        user: personalUser,
+        roomCode: personalRoomCode,
+        appMode: 'personal',
+      }
+    } catch (err) {
+      modeForm.style.display = 'grid'
+      setLoginError(err.message)
+    }
+  }
+
+  modeForm.style.display = 'none'
+  loginForm.style.display = 'grid'
 
   // Generate unique code
   generateBtn?.addEventListener('click', async () => {
@@ -2212,7 +2302,7 @@ async function login(api) {
         )
 
         initTabs()
-        resolve({ ...data, user: name, roomCode: code })
+        resolve({ ...data, user: name, roomCode: code, appMode: 'group' })
       } catch (err) {
         setLoginError(err.message)
       }
@@ -3920,9 +4010,16 @@ const main = async () => {
   console.log('⏳ Waiting for login...')
   const loginData = await login(api)
   console.log('✅ Login successful:', loginData)
-  const { matches, rated, user: userName, roomCode } = loginData
+  const {
+    matches,
+    rated,
+    user: userName,
+    roomCode,
+    appMode = 'group',
+  } = loginData
 
   document.body.classList.add('is-logged-in')
+  document.body.dataset.appMode = appMode
 
   sessionStorage.setItem('userName', userName)
   sessionStorage.setItem('roomCode', roomCode)
