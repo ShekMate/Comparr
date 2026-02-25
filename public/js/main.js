@@ -2029,7 +2029,6 @@ async function login(api) {
     const normalized = normalizeRoomCodeInput(code)
     if (roomMode === 'create') {
       if (generatedRoomCodeInput) generatedRoomCodeInput.value = normalized
-      if (roomCodeInput) roomCodeInput.value = normalized
       return
     }
 
@@ -2037,16 +2036,17 @@ async function login(api) {
   }
 
   const syncRoomCodeInputs = () => {
-    const activeCode = getActiveRoomCode()
-    if (roomCodeInput && roomCodeInput.value !== activeCode) {
-      roomCodeInput.value = activeCode
+    if (roomMode === 'create') {
+      if (generatedRoomCodeInput) {
+        generatedRoomCodeInput.value = normalizeRoomCodeInput(
+          generatedRoomCodeInput.value
+        )
+      }
+      return
     }
-    if (
-      generatedRoomCodeInput &&
-      generatedRoomCodeInput.value !== activeCode &&
-      roomMode === 'create'
-    ) {
-      generatedRoomCodeInput.value = activeCode
+
+    if (roomCodeInput) {
+      roomCodeInput.value = normalizeRoomCodeInput(roomCodeInput.value)
     }
   }
 
@@ -2136,9 +2136,6 @@ async function login(api) {
       if (hasMeaningfulSavedGroupCredentials) {
         loginForm.elements.name.value = savedUser
         if (roomCodeInput) roomCodeInput.value = normalizedSavedCode
-        if (generatedRoomCodeInput) {
-          generatedRoomCodeInput.value = normalizedSavedCode
-        }
       }
 
       setRoomMode('join')
