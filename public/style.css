@@ -1260,7 +1260,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .room-mode-instruction {
   margin: 0;
-  width: min(60%, 13.2rem);
+  width: min(70%, 15.4rem);
   justify-self: center;
   white-space: nowrap;
   font-size: 0.9rem;
@@ -1305,7 +1305,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .room-code-error-message {
   margin: 0.5rem 0 0.5rem;
-  width: min(50%, 11rem);
+  width: min(70%, 15.4rem);
   justify-self: center;
   text-align: center;
   color: #ff8e8e;
@@ -1315,7 +1315,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .login-error-message {
   margin: 0;
-  width: min(100%, 22rem);
+  width: min(70%, 15.4rem);
   justify-self: center;
   color: #fca5a5;
   font-size: 0.9rem;
@@ -1374,7 +1374,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .login-form .login-helper-copy {
   margin-top: 2.5rem;
-  width: min(60%, 13.2rem);
+  width: min(70%, 15.4rem);
   justify-self: center;
   text-align: center;
 }
@@ -3666,12 +3666,12 @@ footer {
   .login-form .room-mode-instruction,
   .login-form .room-code-error-message,
   .login-form .login-error-message {
-    width: 60%;
+    width: 70%;
     justify-self: center;
   }
 
   .login-form .login-helper-copy {
-    width: 60%;
+    width: 70%;
     justify-self: center;
     text-align: center;
   }
