@@ -1967,7 +1967,7 @@ async function login(api) {
     'Room Code already Exists. Try again or click Generate.'
   const i18nRoomNotFoundMessage =
     document.body.dataset.i18nRoomNotFoundMessage ||
-    'Room code not found. Try again or click Create.'
+    'Room code not found, try again or create a new one by toggling to YES for "New here?".'
   const i18nRoomStepJoin =
     document.body.dataset.i18nRoomStepJoin ||
     'Enter your shared/private room code'
