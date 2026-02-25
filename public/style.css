@@ -1185,7 +1185,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .login-intro {
-  text-align: left;
+  text-align: center;
   display: grid;
   gap: 0.4rem;
   width: 100%;
@@ -1212,12 +1212,13 @@ body:not(.is-logged-in) .card-stack:empty::after {
   display: grid;
   gap: 0.5rem;
   width: min(100%, 22rem);
-  justify-self: center;
+  justify-self: start;
 }
 
 .login-field-group--room-mode,
 .login-field-group--name {
   width: min(60%, 13.2rem);
+  justify-self: start;
 }
 
 .login-helper-copy {
@@ -1361,7 +1362,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .login-form .submit-button {
   width: min(50%, 11rem);
-  justify-self: start;
+  justify-self: center;
 }
 
 .login-form .login-helper-copy {
@@ -3645,7 +3646,7 @@ footer {
   .login-field-group--room-mode,
   .login-field-group--name {
     width: 60%;
-    justify-self: center;
+    justify-self: start;
   }
 
   .login-form input {
@@ -3684,6 +3685,7 @@ footer {
 
   .login-form .submit-button {
     width: 50%;
+    justify-self: center;
   }
 
   .login-form .room-mode-header {
