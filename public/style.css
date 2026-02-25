@@ -1178,6 +1178,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   grid-template-columns: 1fr;
   grid-auto-rows: min-content;
   row-gap: 1rem;
+  justify-items: start;
   width: 100%;
   max-width: 28rem;
   margin-inline: auto;
@@ -1187,6 +1188,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
   text-align: center;
   display: grid;
   gap: 0.4rem;
+  width: 100%;
+  justify-self: center;
 }
 
 .login-intro h1 {
@@ -1363,8 +1366,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .login-form .login-helper-copy {
   width: min(60%, 13.2rem);
-  justify-self: start;
-  text-align: left;
+  justify-self: center;
+  text-align: center;
 }
 
 .login-form input:focus {
@@ -3652,11 +3655,16 @@ footer {
   }
 
   .login-form .room-mode-instruction,
-  .login-form .login-helper-copy,
   .login-form .room-code-error-message,
   .login-form .login-error-message {
     width: 60%;
     justify-self: start;
+  }
+
+  .login-form .login-helper-copy {
+    width: 60%;
+    justify-self: center;
+    text-align: center;
   }
 
   .login-form .login-field-group > input {
