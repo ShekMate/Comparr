@@ -1178,7 +1178,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   grid-template-columns: 1fr;
   grid-auto-rows: min-content;
   row-gap: 1.35rem;
-  justify-items: start;
+  justify-items: center;
   width: 100%;
   max-width: 28rem;
   margin-inline: auto;
@@ -1212,13 +1212,13 @@ body:not(.is-logged-in) .card-stack:empty::after {
   display: grid;
   gap: 0.5rem;
   width: min(100%, 22rem);
-  justify-self: start;
+  justify-self: center;
 }
 
 .login-field-group--room-mode,
 .login-field-group--name {
   width: min(60%, 13.2rem);
-  justify-self: start;
+  justify-self: center;
 }
 
 .login-field-group--name {
@@ -1261,12 +1261,12 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .room-mode-instruction {
   margin: 0;
   width: min(60%, 13.2rem);
-  justify-self: start;
+  justify-self: center;
   white-space: nowrap;
   font-size: 0.9rem;
   font-weight: 600;
   line-height: 1.4;
-  text-align: left;
+  text-align: center;
   color: var(--color-text-primary);
 }
 
@@ -1304,7 +1304,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .room-code-panel {
   width: min(50%, 11rem);
-  justify-self: start;
+  justify-self: center;
 }
 
 .room-code-error-message {
@@ -1336,11 +1336,11 @@ body:not(.is-logged-in) .card-stack:empty::after {
   margin: 0;
   font-size: 0.9rem;
   font-weight: 600;
-  text-align: left;
+  text-align: center;
   color: var(--color-text-primary);
   line-height: 1.4;
   width: 100%;
-  justify-self: stretch;
+  justify-self: center;
 }
 
 .login-form input {
@@ -1357,17 +1357,17 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .login-form .login-field-group > input {
   width: 100%;
-  justify-self: stretch;
+  justify-self: center;
 }
 
 .login-form .room-code-panel {
   width: min(60%, 13.2rem);
-  justify-self: start;
+  justify-self: center;
 }
 
 .login-form .room-code-container {
   width: 100%;
-  justify-self: start;
+  justify-self: center;
 }
 
 .login-form .submit-button {
@@ -3657,7 +3657,7 @@ footer {
   .login-field-group--room-mode,
   .login-field-group--name {
     width: 60%;
-    justify-self: start;
+    justify-self: center;
   }
 
   .login-form input {
@@ -3670,7 +3670,7 @@ footer {
   .login-form .room-code-error-message,
   .login-form .login-error-message {
     width: 60%;
-    justify-self: start;
+    justify-self: center;
   }
 
   .login-form .login-helper-copy {
@@ -3686,12 +3686,12 @@ footer {
 
   .login-form .room-code-panel {
     width: 60%;
-    justify-self: start;
+    justify-self: center;
   }
 
   .login-form .room-code-container {
     width: 100%;
-    justify-self: start;
+    justify-self: center;
   }
 
   .login-form .submit-button {
