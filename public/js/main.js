@@ -2128,9 +2128,13 @@ async function login(api) {
       // restore cached values
       const savedUser = localStorage.getItem('user')
       const savedCode = localStorage.getItem('roomCode')
-      if (savedUser) loginForm.elements.name.value = savedUser
-      if (savedCode) {
-        const normalizedSavedCode = normalizeRoomCodeInput(savedCode)
+      const normalizedSavedCode = normalizeRoomCodeInput(savedCode)
+      const hasMeaningfulSavedGroupCredentials =
+        Boolean(savedUser && normalizedSavedCode) &&
+        !(savedUser.trim() === 'Solo' && normalizedSavedCode === 'SOLO')
+
+      if (hasMeaningfulSavedGroupCredentials) {
+        loginForm.elements.name.value = savedUser
         if (roomCodeInput) roomCodeInput.value = normalizedSavedCode
         if (generatedRoomCodeInput) {
           generatedRoomCodeInput.value = normalizedSavedCode
@@ -2181,8 +2185,6 @@ async function login(api) {
 
       localStorage.setItem('personalUser', personalUser)
       localStorage.setItem('personalRoomCode', personalRoomCode)
-      localStorage.setItem('user', personalUser)
-      localStorage.setItem('roomCode', personalRoomCode)
 
       if (roomCodeLine) {
         roomCodeLine.dataset.roomCode = personalRoomCode
