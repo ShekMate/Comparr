@@ -4129,6 +4129,19 @@ const main = async () => {
   const imdbImportProgress = document.getElementById('imdb-import-progress')
   const imdbImportStatus = document.getElementById('imdb-import-status')
   const imdbImportBar = document.getElementById('imdb-import-bar')
+  let isImdbImportActive = false
+
+  function resetImdbImportProgress() {
+    if (imdbImportProgress) imdbImportProgress.style.display = 'none'
+    if (imdbImportStatus) imdbImportStatus.textContent = 'Importing...'
+    if (imdbImportBar) {
+      imdbImportBar.style.width = '0%'
+      imdbImportBar.classList.remove('error')
+    }
+  }
+
+  // Ensure stale UI state does not survive navigation/reconnect.
+  resetImdbImportProgress()
 
   api.addEventListener('message', e => {
     const data = e.data
@@ -4137,9 +4150,13 @@ const main = async () => {
     if (data.type === 'imdbImportProgress') {
       const { status, total, processed, imported, skipped } = data.payload
 
-      if (imdbImportProgress) imdbImportProgress.style.display = 'block'
+      if (!['started', 'processing', 'completed'].includes(status)) {
+        return
+      }
 
       if (status === 'started') {
+        isImdbImportActive = true
+        if (imdbImportProgress) imdbImportProgress.style.display = 'block'
         if (imdbImportStatus)
           imdbImportStatus.textContent = `Starting import of ${total} movies...`
         if (imdbImportBar) {
@@ -4147,11 +4164,15 @@ const main = async () => {
           imdbImportBar.classList.remove('error')
         }
       } else if (status === 'processing') {
+        isImdbImportActive = true
+        if (imdbImportProgress) imdbImportProgress.style.display = 'block'
         const pct = total > 0 ? Math.round((processed / total) * 100) : 0
         if (imdbImportStatus)
           imdbImportStatus.textContent = `Processing: ${processed}/${total} (${imported} added, ${skipped} skipped)`
         if (imdbImportBar) imdbImportBar.style.width = `${pct}%`
       } else if (status === 'completed') {
+        if (!isImdbImportActive) return
+
         if (imdbImportStatus)
           imdbImportStatus.textContent = `Done! ${imported} imported, ${skipped} skipped.`
         if (imdbImportBar) imdbImportBar.style.width = '100%'
@@ -4167,7 +4188,8 @@ const main = async () => {
 
         // Hide progress after delay
         setTimeout(() => {
-          if (imdbImportProgress) imdbImportProgress.style.display = 'none'
+          isImdbImportActive = false
+          resetImdbImportProgress()
         }, 5000)
       }
     }
@@ -4928,6 +4950,7 @@ const main = async () => {
   const imdbCsvInput = document.getElementById('imdb-csv-input')
 
   function showImdbProgress(text) {
+    isImdbImportActive = true
     if (imdbImportProgress) imdbImportProgress.style.display = 'block'
     if (imdbImportStatus) imdbImportStatus.textContent = text
     if (imdbImportBar) {
