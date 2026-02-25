@@ -1185,7 +1185,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .login-intro {
-  text-align: center;
+  text-align: left;
   display: grid;
   gap: 0.4rem;
   width: 100%;
@@ -1361,7 +1361,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .login-form .submit-button {
   width: min(50%, 11rem);
-  justify-self: center;
+  justify-self: start;
 }
 
 .login-form .login-helper-copy {
