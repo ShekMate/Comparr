@@ -1222,11 +1222,11 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .login-field-group--name {
-  margin-top: 5rem;
+  margin-top: 2.5rem;
 }
 
 .login-field-group--room-details {
-  margin-top: 5rem;
+  margin-top: 2.5rem;
 }
 
 .login-helper-copy {
@@ -1375,7 +1375,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .login-form .login-helper-copy {
-  margin-top: 5rem;
+  margin-top: 2.5rem;
   width: min(60%, 13.2rem);
   justify-self: center;
   text-align: center;
