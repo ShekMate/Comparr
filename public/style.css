@@ -1294,10 +1294,6 @@ body:not(.is-logged-in) .card-stack:empty::after {
   cursor: pointer;
 }
 
-.room-mode-tab + .room-mode-tab {
-  border-left: 0;
-}
-
 .room-mode-tab.is-active {
   background: #002777;
 }
