@@ -4770,6 +4770,39 @@ footer {
   padding: 0.4rem !important;
 }
 
+.watch-list-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--color-primary-light);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.3s ease;
+}
+
+.watch-list-icon-btn:hover:not(:disabled) {
+  border-color: transparent;
+  color: var(--color-text-primary);
+  transform: translateY(-1px);
+}
+
+.watch-list-icon-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.watch-list-icon-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.watch-list-icon-btn i.fa-spin {
+  animation: spin 1s linear infinite;
+}
+
 /* =========================================================
    IMDb Import - Seen List Header
    ========================================================= */
