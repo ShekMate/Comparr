@@ -19,9 +19,16 @@ import {
   ensurePlexHydrationReady,
   processImdbImportBackground,
 } from './features/session/session.ts'
-import { parseImdbCsv } from './features/session/imdb-import.ts'
+import {
+  parseImdbCsv,
+  resolveImdbImportTarget,
+} from './features/session/imdb-import.ts'
 import { serveFile } from './infra/http/staticFileServer.ts'
-import { isLocalRequest, isValidHost, isValidOrigin } from './infra/http/network-access.ts'
+import {
+  isLocalRequest,
+  isValidHost,
+  isValidOrigin,
+} from './infra/http/network-access.ts'
 import { handleSettingsRoutes } from './infra/http/routes/settings.ts'
 import { handleRoutes } from './infra/http/router.ts'
 import { handleConfigDebugRoute } from './infra/http/routes/config.ts'
@@ -200,7 +207,10 @@ const server = serve({ port: Number(getPort()) })
 
 const wss = new WebSocketServer({
   onConnection: (ws, req) =>
-    handleLogin(ws, String((req.conn.remoteAddr as Deno.NetAddr)?.hostname || 'unknown')),
+    handleLogin(
+      ws,
+      String((req.conn.remoteAddr as Deno.NetAddr)?.hostname || 'unknown')
+    ),
   onError: err => log.error(err),
 })
 
@@ -255,7 +265,11 @@ log.info(`  PLEX_TOKEN: ${getPlexToken() ? '✅ Set' : '❌ Missing'}`)
 for await (const req of server) {
   try {
     if (!isValidHost(req)) {
-      await req.respond({ status: 421, headers: makeHeaders('application/json'), body: JSON.stringify({ error: 'Misdirected Request' }) })
+      await req.respond({
+        status: 421,
+        headers: makeHeaders('application/json'),
+        body: JSON.stringify({ error: 'Misdirected Request' }),
+      })
       continue
     }
 
@@ -287,11 +301,19 @@ for await (const req of server) {
     if (p === '/api/request-movie' && req.method === 'POST') {
       try {
         if (!isValidOrigin(req)) {
-          await req.respond({ status: 403, body: JSON.stringify({ error: 'Invalid request origin.' }), headers: makeHeaders('application/json') })
+          await req.respond({
+            status: 403,
+            body: JSON.stringify({ error: 'Invalid request origin.' }),
+            headers: makeHeaders('application/json'),
+          })
           continue
         }
         if (bodyTooLarge(req)) {
-          await req.respond({ status: 413, body: JSON.stringify({ error: 'Payload too large' }), headers: makeHeaders('application/json') })
+          await req.respond({
+            status: 413,
+            body: JSON.stringify({ error: 'Payload too large' }),
+            headers: makeHeaders('application/json'),
+          })
           continue
         }
         const decoder = new TextDecoder()
@@ -707,7 +729,11 @@ for await (const req of server) {
     if (p === '/api/imdb-import' && req.method === 'POST') {
       try {
         if (bodyTooLarge(req)) {
-          await req.respond({ status: 413, body: JSON.stringify({ error: 'Payload too large' }), headers: makeHeaders('application/json') })
+          await req.respond({
+            status: 413,
+            body: JSON.stringify({ error: 'Payload too large' }),
+            headers: makeHeaders('application/json'),
+          })
           continue
         }
         const TMDB_KEY = getTmdbApiKey()
@@ -794,7 +820,11 @@ for await (const req of server) {
     if (p === '/api/imdb-import-url' && req.method === 'POST') {
       try {
         if (bodyTooLarge(req)) {
-          await req.respond({ status: 413, body: JSON.stringify({ error: 'Payload too large' }), headers: makeHeaders('application/json') })
+          await req.respond({
+            status: 413,
+            body: JSON.stringify({ error: 'Payload too large' }),
+            headers: makeHeaders('application/json'),
+          })
           continue
         }
         const TMDB_KEY = getTmdbApiKey()
@@ -824,43 +854,27 @@ for await (const req of server) {
           continue
         }
 
-        // Extract list ID from various IMDb URL formats
-        // More lenient regex patterns to handle various URL formats
-        const listMatch = imdbUrl.match(/\/list\/(ls\d+)/i)
-        const ratingsMatch = imdbUrl.match(/\/user\/(ur\d+)\/ratings/i)
-        const watchlistMatch = imdbUrl.match(/\/user\/(ur\d+)\/watchlist/i)
-        // Also match just the user profile URL (assume ratings)
-        const userOnlyMatch = imdbUrl.match(/\/user\/(ur\d+)\/?(?:\?|$)/i)
+        const importTarget = resolveImdbImportTarget(imdbUrl)
 
-        log.info(
-          `IMDb URL parsing: url="${imdbUrl}" list=${!!listMatch} ratings=${!!ratingsMatch} watchlist=${!!watchlistMatch} userOnly=${!!userOnlyMatch}`
-        )
-
-        let exportUrl: string
-        if (listMatch) {
-          exportUrl = `https://www.imdb.com/list/${listMatch[1]}/export`
-        } else if (ratingsMatch) {
-          exportUrl = `https://www.imdb.com/user/${ratingsMatch[1]}/ratings/export`
-        } else if (watchlistMatch) {
-          exportUrl = `https://www.imdb.com/user/${watchlistMatch[1]}/watchlist/export`
-        } else if (userOnlyMatch) {
-          // User just pasted their profile URL, assume they want ratings
-          exportUrl = `https://www.imdb.com/user/${userOnlyMatch[1]}/ratings/export`
-          log.info(
-            `IMDb URL: User profile URL detected, assuming ratings export`
+        if (!importTarget) {
+          log.warning(
+            `IMDb sync input: No supported pattern matched for "${imdbUrl}"`
           )
-        } else {
-          log.warning(`IMDb URL: No pattern matched for "${imdbUrl}"`)
           await req.respond({
             status: 400,
             body: JSON.stringify({
               error:
-                'Invalid IMDb URL. Please provide a public list URL (e.g. https://www.imdb.com/list/ls123456789/) or ratings URL (e.g. https://www.imdb.com/user/ur12345678/ratings/).',
+                'Invalid IMDb input. Enter a public IMDb list/user URL or just the list/user ID (e.g. ls123456789 or ur12345678).',
             }),
             headers: makeHeaders('application/json'),
           })
           continue
         }
+
+        const exportUrl = importTarget.exportUrl
+        log.info(
+          `IMDb sync input resolved: input="${imdbUrl}" normalized="${importTarget.normalizedInput}" source=${importTarget.sourceType}`
+        )
 
         log.info(
           `IMDb URL import requested by ${userName} in room ${roomCode}: ${exportUrl}`
@@ -980,7 +994,11 @@ for await (const req of server) {
 
       await req.respond({
         status: 302,
-        headers: (() => { const h = makeHeaders(); h.set('Location', location); return h })(),
+        headers: (() => {
+          const h = makeHeaders()
+          h.set('Location', location)
+          return h
+        })(),
       })
       continue
     }
@@ -1006,7 +1024,11 @@ for await (const req of server) {
           await req.respond({
             status: 200,
             body: imageData,
-            headers: (() => { const h = makeHeaders('image/jpeg'); h.set('cache-control', 'public, max-age=604800, immutable'); return h })(),
+            headers: (() => {
+              const h = makeHeaders('image/jpeg')
+              h.set('cache-control', 'public, max-age=604800, immutable')
+              return h
+            })(),
           })
         } else {
           await req.respond({ status: 404 })

@@ -9,6 +9,53 @@ export interface ImdbCsvRow {
   titleType: string
 }
 
+export interface ImdbImportTarget {
+  exportUrl: string
+  sourceType: 'list' | 'ratings' | 'watchlist'
+  normalizedInput: string
+}
+
+/**
+ * Resolve user-provided IMDb sync input into an export CSV URL.
+ * Supports full URLs as well as bare IDs (e.g. ls123456789, ur12345678).
+ */
+export function resolveImdbImportTarget(
+  input: string
+): ImdbImportTarget | null {
+  const value = String(input || '').trim()
+  if (!value) return null
+
+  const listIdMatch = value.match(/\b(ls\d+)\b/i)
+  if (listIdMatch) {
+    const listId = listIdMatch[1].toLowerCase()
+    return {
+      exportUrl: `https://www.imdb.com/list/${listId}/export`,
+      sourceType: 'list',
+      normalizedInput: listId,
+    }
+  }
+
+  const userIdMatch = value.match(/\b(ur\d+)\b/i)
+  if (!userIdMatch) return null
+
+  const userId = userIdMatch[1].toLowerCase()
+  const lowerValue = value.toLowerCase()
+
+  if (lowerValue.includes('/watchlist')) {
+    return {
+      exportUrl: `https://www.imdb.com/user/${userId}/watchlist/export`,
+      sourceType: 'watchlist',
+      normalizedInput: userId,
+    }
+  }
+
+  return {
+    exportUrl: `https://www.imdb.com/user/${userId}/ratings/export`,
+    sourceType: 'ratings',
+    normalizedInput: userId,
+  }
+}
+
 /**
  * Parse an IMDb CSV export (ratings or watchlist) and extract movie entries.
  * Handles both the "Your Ratings" and "Watchlist" export formats.
