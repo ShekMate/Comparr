@@ -148,8 +148,8 @@ const filterDisplayNames = {
   DK: 'Denmark',
 }
 
-const DEFAULT_YEAR_MIN = 2000
-const DEFAULT_VOTE_COUNT = 25
+const DEFAULT_YEAR_MIN = 1895
+const DEFAULT_VOTE_COUNT = 0
 const DEFAULT_LANGUAGES = [] // Start with no language filter to show all movies
 const SWIPE_DEFAULTS_STORAGE_KEY = 'comparrSwipeFilterDefaults'
 
