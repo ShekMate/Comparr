@@ -4975,14 +4975,8 @@ const main = async () => {
       const imdbUrl = imdbUrlInput?.value?.trim() || ''
       if (!imdbUrl) {
         showNotification(
-          'Please set an IMDb list URL in Settings → Sync first.'
+          'Please set an IMDb list or user ID in Settings → Sync first.'
         )
-        return
-      }
-
-      // Basic URL validation
-      if (!imdbUrl.includes('imdb.com/')) {
-        showNotification('Please enter a valid IMDb URL.')
         return
       }
 
