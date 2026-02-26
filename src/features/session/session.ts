@@ -1816,7 +1816,11 @@ class Session {
           }
 
           if (filters?.voteCount && filters.voteCount > 0) {
-            const voteCount = extra?.voteCount || 0
+            const voteCount =
+              extra?.voteCount ??
+              plexMovie.vote_count ??
+              plexMovie.voteCount ??
+              0
             if (voteCount < filters.voteCount) {
               log.debug(
                 `⛔️ Skipping ${plexMovie.title} - vote count ${voteCount} below minimum ${filters.voteCount}`
