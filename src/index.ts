@@ -881,12 +881,26 @@ for await (const req of server) {
         )
 
         // Fetch CSV from IMDb (do this synchronously so we can return error if URL is bad)
-        const imdbResponse = await fetch(exportUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; Comparr/1.0)',
-            Accept: 'text/csv, */*',
-          },
-        })
+        let imdbResponse: Response
+        try {
+          imdbResponse = await fetch(exportUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (compatible; Comparr/1.0)',
+              Accept: 'text/csv, */*',
+            },
+          })
+        } catch (err) {
+          log.error(`IMDb fetch request failed: ${err?.message || err}`)
+          await req.respond({
+            status: 502,
+            body: JSON.stringify({
+              error:
+                'Unable to reach IMDb export endpoint right now. Please try again in a moment.',
+            }),
+            headers: makeHeaders('application/json'),
+          })
+          continue
+        }
 
         if (!imdbResponse.ok) {
           const hint =
@@ -953,11 +967,12 @@ for await (const req of server) {
           `IMDb URL import started in background: ${rows.length} movies to process`
         )
       } catch (err) {
-        log.error(`IMDb URL import failed: ${err?.message || err}`)
+        const errorMessage = err?.message || String(err)
+        log.error(`IMDb URL import failed: ${errorMessage}`)
         await req.respond({
           status: 500,
           body: JSON.stringify({
-            error: 'IMDb URL import failed',
+            error: `IMDb URL import failed: ${errorMessage}`,
             detail: 'An internal error occurred.',
           }),
           headers: makeHeaders('application/json'),
