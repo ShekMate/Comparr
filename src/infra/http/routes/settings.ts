@@ -321,6 +321,8 @@ export async function handleSettingsRoutes(
         plexLibraryName: getPlexLibraryName(),
         paidStreamingServices: settings.PAID_STREAMING_SERVICES,
         personalMediaSources: settings.PERSONAL_MEDIA_SOURCES,
+        tmdbConfigured: Boolean(settings.TMDB_API_KEY),
+        omdbConfigured: Boolean(settings.OMDB_API_KEY),
       }),
       headers: makeJsonHeaders(),
     })

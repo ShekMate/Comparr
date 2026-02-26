@@ -148,8 +148,8 @@ const filterDisplayNames = {
   DK: 'Denmark',
 }
 
-const DEFAULT_YEAR_MIN = 2000
-const DEFAULT_VOTE_COUNT = 25
+const DEFAULT_YEAR_MIN = 1895
+const DEFAULT_VOTE_COUNT = 0
 const DEFAULT_LANGUAGES = [] // Start with no language filter to show all movies
 const SWIPE_DEFAULTS_STORAGE_KEY = 'comparrSwipeFilterDefaults'
 
@@ -867,6 +867,21 @@ async function loadClientConfig() {
     if (data?.personalMediaSources !== undefined) {
       window.PERSONAL_MEDIA_SOURCES = data.personalMediaSources
     }
+
+    window.TMDB_CONFIGURED = Boolean(data?.tmdbConfigured)
+    window.OMDB_CONFIGURED = Boolean(data?.omdbConfigured)
+
+    if (!window.TMDB_CONFIGURED) {
+      console.warn('⚠️ TMDb API key is not configured on this instance.')
+      showNotification(
+        'TMDb API key is missing. Swipe results can be empty without TMDb discovery. Ask your admin to add TMDB_API_KEY in Settings.'
+      )
+    }
+
+    if (!window.OMDB_CONFIGURED) {
+      console.warn('⚠️ OMDb API key is not configured on this instance.')
+    }
+
     updateHostManagedSubscriptionServiceOptions()
   } catch (err) {
     console.warn('Client config fetch failed:', err)

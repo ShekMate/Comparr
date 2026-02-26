@@ -82,12 +82,17 @@ export async function getBestPosterPath(
   }
 
   // Try existing thumb URL for TMDb movies
-  if (movie.thumb && movie.thumb.startsWith('/tmdb-poster/')) {
+  if (movie.thumb && movie.thumb.startsWith('/tmdb-poster')) {
     return movie.thumb
   }
 
-  // Use unified TMDB poster path only (legacy Plex fallback removed)
-  return `/tmdb-poster/${posterPath}`
+  // Fallback to existing poster/thumb paths for Plex/library movies
+  if (typeof movie.thumb === 'string' && movie.thumb.trim() !== '') {
+    return movie.thumb
+  }
+  if (typeof movie.art === 'string' && movie.art.trim() !== '') {
+    return movie.art
+  }
 
   // No valid poster found
   return null
