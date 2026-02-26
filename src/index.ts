@@ -11,6 +11,7 @@ import {
   getRootPath,
   getTmdbApiKey,
   getOmdbApiKey,
+  getMaxBodySize,
 } from './core/config.ts'
 import { getSettings, updateSettings } from './core/settings.ts'
 import { getLinkTypeForRequest } from './core/i18n.ts'
