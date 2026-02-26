@@ -82,12 +82,9 @@ export async function getBestPosterPath(
   }
 
   // Try existing thumb URL for TMDb movies
-  if (movie.thumb && movie.thumb.startsWith('/tmdb-poster/')) {
+  if (movie.thumb && movie.thumb.startsWith('/tmdb-poster')) {
     return movie.thumb
   }
-
-  // Use unified TMDB poster path only (legacy Plex fallback removed)
-  return `/tmdb-poster/${posterPath}`
 
   // No valid poster found
   return null

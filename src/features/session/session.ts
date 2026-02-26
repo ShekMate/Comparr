@@ -1547,19 +1547,26 @@ class Session {
           return await this.formatTMDbMovie(tmdbMovie)
         }
 
-        return await this.getTMDbMovie(attemptNumber - 1, {
-          yearMin: filters?.yearMin,
-          yearMax: filters?.yearMax,
-          genres: filters?.genres,
-          tmdbRating: filters?.tmdbRating,
-          languages: filters?.languages,
-          countries: filters?.countries,
-          runtimeMin: filters?.runtimeMin,
-          runtimeMax: filters?.runtimeMax,
-          voteCount: filters?.voteCount,
-          sortBy: filters?.sortBy,
-          streamingServices: effectiveStreamingServices,
-        })
+        try {
+          return await this.getTMDbMovie(attemptNumber - 1, {
+            yearMin: filters?.yearMin,
+            yearMax: filters?.yearMax,
+            genres: filters?.genres,
+            tmdbRating: filters?.tmdbRating,
+            languages: filters?.languages,
+            countries: filters?.countries,
+            runtimeMin: filters?.runtimeMin,
+            runtimeMax: filters?.runtimeMax,
+            voteCount: filters?.voteCount,
+            sortBy: filters?.sortBy,
+            streamingServices: effectiveStreamingServices,
+          })
+        } catch (err) {
+          log.warning(
+            `TMDb candidate fetch failed at attempt ${attemptNumber}; trying room library fallback: ${err}`
+          )
+          return await fetchPlexCandidate()
+        }
       }
 
       const queueNextCandidate = () => {
@@ -1816,7 +1823,11 @@ class Session {
           }
 
           if (filters?.voteCount && filters.voteCount > 0) {
-            const voteCount = extra?.voteCount || 0
+            const voteCount =
+              extra?.voteCount ??
+              plexMovie.vote_count ??
+              plexMovie.voteCount ??
+              0
             if (voteCount < filters.voteCount) {
               log.debug(
                 `⛔️ Skipping ${plexMovie.title} - vote count ${voteCount} below minimum ${filters.voteCount}`
