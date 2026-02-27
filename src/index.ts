@@ -21,6 +21,7 @@ import {
   processImdbImportBackground,
 } from './features/session/session.ts'
 import {
+  extractImdbExportUrlFromHtml,
   parseImdbCsv,
   resolveImdbImportTarget,
 } from './features/session/imdb-import.ts'
@@ -881,62 +882,170 @@ for await (const req of server) {
           `IMDb URL import requested by ${userName} in room ${roomCode}: ${exportUrl}`
         )
 
-        // Fetch CSV from IMDb (do this synchronously so we can return error if URL is bad)
-        let imdbResponse: Response
-        try {
-          imdbResponse = await fetch(exportUrl, {
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (compatible; Comparr/1.0)',
-              Accept: 'text/csv, */*',
-            },
-          })
-        } catch (err) {
-          log.error(`IMDb fetch request failed: ${err?.message || err}`)
-          await req.respond({
-            status: 502,
-            body: JSON.stringify({
+        const imdbHeaders = {
+          'User-Agent': 'Mozilla/5.0 (compatible; Comparr/1.0)',
+          Accept: 'text/csv, */*',
+        }
+
+        const fetchImdbCsv = async (targetUrl: string, pageUrl: string) => {
+          let response: Response
+          try {
+            response = await fetch(targetUrl, { headers: imdbHeaders })
+          } catch (err) {
+            log.error(`IMDb fetch request failed: ${err?.message || err}`)
+            return {
               error:
                 'Unable to reach IMDb export endpoint right now. Please try again in a moment.',
-            }),
-            headers: makeHeaders('application/json'),
-          })
-          continue
+            }
+          }
+
+          if (!response.ok) {
+            const hint =
+              response.status === 403 || response.status === 404
+                ? ' Make sure the list is set to public on IMDb.'
+                : ''
+            return {
+              error: `Failed to fetch from IMDb (HTTP ${response.status}).${hint}`,
+            }
+          }
+
+          const bodyText = await response.text()
+          const contentType = response.headers.get('content-type') || ''
+          const looksLikeHtml =
+            contentType.toLowerCase().includes('text/html') ||
+            /^\s*</.test(bodyText)
+
+          if (!looksLikeHtml) {
+            log.info(`IMDb CSV fetched: ${bodyText.length} bytes`)
+            return { csv: bodyText }
+          }
+
+          // IMDb sometimes returns the ratings/watchlist page HTML first; try to discover
+          // the live export link and retry once using that URL.
+          const discoveredExportUrl = extractImdbExportUrlFromHtml(bodyText)
+          if (!discoveredExportUrl || discoveredExportUrl === targetUrl) {
+            return {
+              error:
+                'IMDb returned an HTML page instead of CSV. Ensure the list is public and try again.',
+            }
+          }
+
+          log.info(
+            `IMDb returned HTML for ${targetUrl}; discovered export URL ${discoveredExportUrl}`
+          )
+
+          let discoveredResponse: Response
+          try {
+            discoveredResponse = await fetch(discoveredExportUrl, {
+              headers: imdbHeaders,
+            })
+          } catch (err) {
+            log.error(
+              `IMDb discovered export fetch failed for ${discoveredExportUrl}: ${
+                err?.message || err
+              }`
+            )
+            return {
+              error:
+                'Unable to reach IMDb export endpoint right now. Please try again in a moment.',
+            }
+          }
+
+          if (!discoveredResponse.ok) {
+            const hint =
+              discoveredResponse.status === 403 ||
+              discoveredResponse.status === 404
+                ? ' Make sure the list is set to public on IMDb.'
+                : ''
+            return {
+              error: `Failed to fetch from IMDb (HTTP ${discoveredResponse.status}).${hint}`,
+            }
+          }
+
+          const discoveredContent = await discoveredResponse.text()
+          const discoveredContentType =
+            discoveredResponse.headers.get('content-type') || ''
+          const discoveredLooksLikeHtml =
+            discoveredContentType.toLowerCase().includes('text/html') ||
+            /^\s*</.test(discoveredContent)
+
+          if (discoveredLooksLikeHtml) {
+            // As a final attempt, load the page URL and extract again in case cookies/redirects changed.
+            try {
+              const pageResponse = await fetch(pageUrl, {
+                headers: {
+                  ...imdbHeaders,
+                  Accept: 'text/html,application/xhtml+xml,*/*',
+                },
+              })
+              if (pageResponse.ok) {
+                const pageHtml = await pageResponse.text()
+                const pageDiscoveredExportUrl = extractImdbExportUrlFromHtml(
+                  pageHtml
+                )
+
+                if (
+                  pageDiscoveredExportUrl &&
+                  pageDiscoveredExportUrl !== discoveredExportUrl
+                ) {
+                  const retryResp = await fetch(pageDiscoveredExportUrl, {
+                    headers: imdbHeaders,
+                  })
+                  if (retryResp.ok) {
+                    const retryContent = await retryResp.text()
+                    const retryContentType =
+                      retryResp.headers.get('content-type') || ''
+                    const retryLooksLikeHtml =
+                      retryContentType.toLowerCase().includes('text/html') ||
+                      /^\s*</.test(retryContent)
+
+                    if (!retryLooksLikeHtml) {
+                      log.info(
+                        `IMDb CSV fetched via page-discovered export URL: ${pageDiscoveredExportUrl}`
+                      )
+                      return { csv: retryContent }
+                    }
+                  }
+                }
+              }
+            } catch (pageErr) {
+              log.warning(
+                `IMDb page discovery fallback failed: ${
+                  pageErr?.message || pageErr
+                }`
+              )
+            }
+
+            return {
+              error:
+                'IMDb returned an HTML page instead of CSV. Ensure the list is public and try again.',
+            }
+          }
+
+          log.info(
+            `IMDb CSV fetched via discovered export URL: ${discoveredExportUrl} (${discoveredContent.length} bytes)`
+          )
+          return { csv: discoveredContent }
         }
 
-        if (!imdbResponse.ok) {
-          const hint =
-            imdbResponse.status === 403 || imdbResponse.status === 404
-              ? ' Make sure the list is set to public on IMDb.'
-              : ''
-          await req.respond({
-            status: 502,
-            body: JSON.stringify({
-              error: `Failed to fetch from IMDb (HTTP ${imdbResponse.status}).${hint}`,
-            }),
-            headers: makeHeaders('application/json'),
-          })
-          continue
-        }
-
-        const csvContent = await imdbResponse.text()
-        log.info(`IMDb CSV fetched: ${csvContent.length} bytes`)
-
-        const contentType = imdbResponse.headers.get('content-type') || ''
-        const looksLikeHtml =
-          contentType.toLowerCase().includes('text/html') ||
-          /^\s*</.test(csvContent)
-
-        if (looksLikeHtml) {
+        const primaryImport = await fetchImdbCsv(
+          exportUrl,
+          importTarget.pageUrl
+        )
+        if (primaryImport.error || !primaryImport.csv) {
           await req.respond({
             status: 502,
             body: JSON.stringify({
               error:
-                'IMDb returned an HTML page instead of CSV. Ensure the list is public and try again.',
+                primaryImport.error ||
+                'Unable to fetch IMDb CSV export at this time.',
             }),
             headers: makeHeaders('application/json'),
           })
           continue
         }
+
+        const csvContent = primaryImport.csv
 
         // Debug: log first 500 chars to see what we got
         log.info(
@@ -959,39 +1068,24 @@ for await (const req of server) {
           )
 
           try {
-            const watchlistResponse = await fetch(watchlistExportUrl, {
-              headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; Comparr/1.0)',
-                Accept: 'text/csv, */*',
-              },
-            })
+            const watchlistImport = await fetchImdbCsv(
+              watchlistExportUrl,
+              `https://www.imdb.com/user/${importTarget.normalizedInput}/watchlist`
+            )
 
-            if (watchlistResponse.ok) {
-              const watchlistCsv = await watchlistResponse.text()
-              const watchlistContentType =
-                watchlistResponse.headers.get('content-type') || ''
-              const watchlistLooksLikeHtml =
-                watchlistContentType.toLowerCase().includes('text/html') ||
-                /^\s*</.test(watchlistCsv)
-
-              if (!watchlistLooksLikeHtml) {
-                const watchlistRows = parseImdbCsv(watchlistCsv)
-                if (watchlistRows.length > 0) {
-                  rows = watchlistRows
-                  log.info(
-                    `IMDb watchlist fallback succeeded: ${rows.length} movie entries found`
-                  )
-                } else {
-                  log.info('IMDb watchlist fallback returned 0 movie entries')
-                }
-              } else {
-                log.warning(
-                  'IMDb watchlist fallback returned HTML instead of CSV'
+            if (watchlistImport.csv) {
+              const watchlistRows = parseImdbCsv(watchlistImport.csv)
+              if (watchlistRows.length > 0) {
+                rows = watchlistRows
+                log.info(
+                  `IMDb watchlist fallback succeeded: ${rows.length} movie entries found`
                 )
+              } else {
+                log.info('IMDb watchlist fallback returned 0 movie entries')
               }
             } else {
               log.info(
-                `IMDb watchlist fallback request failed: HTTP ${watchlistResponse.status}`
+                `IMDb watchlist fallback request did not return CSV: ${watchlistImport.error}`
               )
             }
           } catch (watchlistErr) {

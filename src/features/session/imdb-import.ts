@@ -11,6 +11,7 @@ export interface ImdbCsvRow {
 
 export interface ImdbImportTarget {
   exportUrl: string
+  pageUrl: string
   sourceType: 'list' | 'ratings' | 'watchlist'
   normalizedInput: string
 }
@@ -30,6 +31,7 @@ export function resolveImdbImportTarget(
     const listId = listIdMatch[1].toLowerCase()
     return {
       exportUrl: `https://www.imdb.com/list/${listId}/export`,
+      pageUrl: `https://www.imdb.com/list/${listId}`,
       sourceType: 'list',
       normalizedInput: listId,
     }
@@ -44,6 +46,7 @@ export function resolveImdbImportTarget(
   if (lowerValue.includes('/watchlist')) {
     return {
       exportUrl: `https://www.imdb.com/user/${userId}/watchlist/export`,
+      pageUrl: `https://www.imdb.com/user/${userId}/watchlist`,
       sourceType: 'watchlist',
       normalizedInput: userId,
     }
@@ -51,9 +54,47 @@ export function resolveImdbImportTarget(
 
   return {
     exportUrl: `https://www.imdb.com/user/${userId}/ratings/export`,
+    pageUrl: `https://www.imdb.com/user/${userId}/ratings`,
     sourceType: 'ratings',
     normalizedInput: userId,
   }
+}
+
+/**
+ * Attempt to discover an IMDb CSV export URL from a ratings/watchlist/list HTML page.
+ */
+export function extractImdbExportUrlFromHtml(html: string): string | null {
+  const text = String(html || '')
+
+  const patterns: RegExp[] = [
+    // Relative paths typically found in href attributes.
+    /\/(?:list\/[a-z0-9]+|user\/ur\d+\/(?:ratings|watchlist))\/export\/?(?:\?[^"'\s<>]*)?/i,
+    // Absolute URLs embedded directly in markup or scripts.
+    /https:\/\/www\.imdb\.com\/(?:list\/[a-z0-9]+|user\/ur\d+\/(?:ratings|watchlist))\/export\/?(?:\?[^"'\s<>]*)?/i,
+    // Escaped absolute URLs embedded in JSON/script payloads.
+    new RegExp(
+      String.raw`https:\\\/\\\/www\\.imdb\\.com\\\/(?:list\\\/[a-z0-9]+|user\\\/ur\\d+\\\/(?:ratings|watchlist))\\\/export\\\/?(?:\?[^"'\\]*)?`,
+      'i'
+    ),
+  ]
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern)
+    const rawValue = match?.[0]
+    if (!rawValue) continue
+
+    const unescaped = rawValue.replace(/\\\//g, '/')
+
+    if (unescaped.startsWith('http')) {
+      return unescaped
+    }
+
+    if (unescaped.startsWith('/')) {
+      return `https://www.imdb.com${unescaped}`
+    }
+  }
+
+  return null
 }
 
 /**
