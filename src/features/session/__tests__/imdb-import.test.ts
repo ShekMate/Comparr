@@ -47,6 +47,38 @@ Deno.test('resolveImdbImportTarget rejects invalid input', () => {
   assertEquals(resolveImdbImportTarget('not-valid'), null)
 })
 
+Deno.test('extractImdbIdsFromHtml picks up data-tconst attributes', () => {
+  const html = `
+    <div data-tconst="tt0111161" class="lister-item">The Shawshank Redemption</div>
+    <div data-tconst="tt0068646" class="lister-item">The Godfather</div>
+    <div data-tconst="tt0111161" class="lister-item">duplicate</div>
+  `
+  assertEquals(extractImdbIdsFromHtml(html), ['tt0111161', 'tt0068646'])
+})
+
+Deno.test('extractImdbIdsFromHtml picks up IDs from __NEXT_DATA__ JSON', () => {
+  const html = `
+    <script id="__NEXT_DATA__" type="application/json">
+      {"props":{"pageProps":{"items":[{"id":"tt0137523"},{"id":"tt0110912"}]}}}
+    </script>
+  `
+  assertEquals(extractImdbIdsFromHtml(html), ['tt0137523', 'tt0110912'])
+})
+
+Deno.test('extractImdbIdsFromHtml merges and deduplicates both sources', () => {
+  const html = `
+    <div data-tconst="tt0111161"></div>
+    <script id="__NEXT_DATA__" type="application/json">
+      {"items":[{"id":"tt0111161"},{"id":"tt0068646"}]}
+    </script>
+  `
+  assertEquals(extractImdbIdsFromHtml(html), ['tt0111161', 'tt0068646'])
+})
+
+Deno.test('extractImdbIdsFromHtml returns empty array for no IDs', () => {
+  assertEquals(extractImdbIdsFromHtml('<html><body>No movies here</body></html>'), [])
+})
+
 Deno.test('extractImdbExportUrlFromHtml parses direct export href', () => {
   const html =
     '<a href="/user/ur24069733/ratings/export?ref_=something">Export</a>'
