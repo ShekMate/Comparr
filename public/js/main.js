@@ -5002,7 +5002,8 @@ const main = async () => {
         // Handle immediate completion (0 movies) or started status
         if (result.status === 'completed' && result.total === 0) {
           if (imdbImportStatus)
-            imdbImportStatus.textContent = 'No movies found in the IMDb list.'
+            imdbImportStatus.textContent =
+              result.detail || 'No movies found in the IMDb list.'
           if (imdbImportBar) imdbImportBar.style.width = '100%'
           imdbUrlSyncBtn.disabled = false
           if (imdbCsvUploadBtn) imdbCsvUploadBtn.disabled = false

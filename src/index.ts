@@ -921,6 +921,23 @@ for await (const req of server) {
         const csvContent = await imdbResponse.text()
         log.info(`IMDb CSV fetched: ${csvContent.length} bytes`)
 
+        const contentType = imdbResponse.headers.get('content-type') || ''
+        const looksLikeHtml =
+          contentType.toLowerCase().includes('text/html') ||
+          /^\s*</.test(csvContent)
+
+        if (looksLikeHtml) {
+          await req.respond({
+            status: 502,
+            body: JSON.stringify({
+              error:
+                'IMDb returned an HTML page instead of CSV. Ensure the list is public and try again.',
+            }),
+            headers: makeHeaders('application/json'),
+          })
+          continue
+        }
+
         // Debug: log first 500 chars to see what we got
         log.info(
           `IMDb CSV preview: ${csvContent
@@ -929,13 +946,74 @@ for await (const req of server) {
         )
 
         // Parse the CSV
-        const rows = parseImdbCsv(csvContent)
-        log.info(`IMDb CSV parsed: ${rows.length} movie entries found`)
+        let rows = parseImdbCsv(csvContent)
+        log.info(
+          `IMDb CSV parsed from ${importTarget.sourceType}: ${rows.length} movie entries found`
+        )
+
+        // For user ratings imports, retry watchlist automatically when ratings are empty.
+        if (rows.length === 0 && importTarget.sourceType === 'ratings') {
+          const watchlistExportUrl = `https://www.imdb.com/user/${importTarget.normalizedInput}/watchlist/export`
+          log.info(
+            `IMDb ratings export had no movies, trying watchlist fallback: ${watchlistExportUrl}`
+          )
+
+          try {
+            const watchlistResponse = await fetch(watchlistExportUrl, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (compatible; Comparr/1.0)',
+                Accept: 'text/csv, */*',
+              },
+            })
+
+            if (watchlistResponse.ok) {
+              const watchlistCsv = await watchlistResponse.text()
+              const watchlistContentType =
+                watchlistResponse.headers.get('content-type') || ''
+              const watchlistLooksLikeHtml =
+                watchlistContentType.toLowerCase().includes('text/html') ||
+                /^\s*</.test(watchlistCsv)
+
+              if (!watchlistLooksLikeHtml) {
+                const watchlistRows = parseImdbCsv(watchlistCsv)
+                if (watchlistRows.length > 0) {
+                  rows = watchlistRows
+                  log.info(
+                    `IMDb watchlist fallback succeeded: ${rows.length} movie entries found`
+                  )
+                } else {
+                  log.info('IMDb watchlist fallback returned 0 movie entries')
+                }
+              } else {
+                log.warning(
+                  'IMDb watchlist fallback returned HTML instead of CSV'
+                )
+              }
+            } else {
+              log.info(
+                `IMDb watchlist fallback request failed: HTTP ${watchlistResponse.status}`
+              )
+            }
+          } catch (watchlistErr) {
+            log.warning(
+              `IMDb watchlist fallback failed: ${
+                watchlistErr?.message || watchlistErr
+              }`
+            )
+          }
+        }
 
         if (rows.length === 0) {
           await req.respond({
             status: 200,
-            body: JSON.stringify({ status: 'completed', total: 0 }),
+            body: JSON.stringify({
+              status: 'completed',
+              total: 0,
+              detail:
+                importTarget.sourceType === 'ratings'
+                  ? 'No movies found in ratings or watchlist exports.'
+                  : 'No movies found in the IMDb export.',
+            }),
             headers: makeHeaders('application/json'),
           })
           continue
