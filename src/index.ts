@@ -22,6 +22,7 @@ import {
 } from './features/session/session.ts'
 import {
   extractImdbExportUrlFromHtml,
+  extractImdbIdsFromHtml,
   parseImdbCsv,
   resolveImdbImportTarget,
 } from './features/session/imdb-import.ts'
@@ -889,36 +890,7 @@ for await (const req of server) {
 
         const fetchImdbCsv = async (targetUrl: string, pageUrl: string) => {
           let response: Response
-          try {
-            response = await fetch(targetUrl, { headers: imdbHeaders })
-          } catch (err) {
-            log.error(`IMDb fetch request failed: ${err?.message || err}`)
-            return {
-              error:
-                'Unable to reach IMDb export endpoint right now. Please try again in a moment.',
-            }
-          }
-
-          if (!response.ok) {
-            const hint =
-              response.status === 403 || response.status === 404
-                ? ' Make sure the list is set to public on IMDb.'
-                : ''
-            return {
-              error: `Failed to fetch from IMDb (HTTP ${response.status}).${hint}`,
-            }
-          }
-
-          const bodyText = await response.text()
-          const contentType = response.headers.get('content-type') || ''
-          const looksLikeHtml =
-            contentType.toLowerCase().includes('text/html') ||
-            /^\s*</.test(bodyText)
-
-          if (!looksLikeHtml) {
-            log.info(`IMDb CSV fetched: ${bodyText.length} bytes`)
-            return { csv: bodyText }
-          }
+          let initialStatus: number | null = null
 
           const tryPageFallback = async (knownExportUrl?: string) => {
             // Load the canonical page directly and retry with any export URL discovered there.
@@ -939,13 +911,15 @@ for await (const req of server) {
                 !pageDiscoveredExportUrl ||
                 pageDiscoveredExportUrl === knownExportUrl
               ) {
-                return null
+                return { html: pageHtml, sourceType: 'page' as const }
               }
 
               const retryResp = await fetch(pageDiscoveredExportUrl, {
                 headers: imdbHeaders,
               })
-              if (!retryResp.ok) return null
+              if (!retryResp.ok) {
+                return { html: pageHtml, sourceType: 'page' as const }
+              }
 
               const retryContent = await retryResp.text()
               const retryContentType =
@@ -954,12 +928,14 @@ for await (const req of server) {
                 retryContentType.toLowerCase().includes('text/html') ||
                 /^\s*</.test(retryContent)
 
-              if (retryLooksLikeHtml) return null
+              if (retryLooksLikeHtml) {
+                return { html: retryContent, sourceType: 'export' as const }
+              }
 
               log.info(
                 `IMDb CSV fetched via page-discovered export URL: ${pageDiscoveredExportUrl}`
               )
-              return retryContent
+              return { csv: retryContent, sourceType: 'export' as const }
             } catch (pageErr) {
               log.warning(
                 `IMDb page discovery fallback failed: ${
@@ -970,11 +946,63 @@ for await (const req of server) {
             }
           }
 
+          try {
+            response = await fetch(targetUrl, { headers: imdbHeaders })
+            initialStatus = response.status
+          } catch (err) {
+            log.error(`IMDb fetch request failed: ${err?.message || err}`)
+            return {
+              error:
+                'Unable to reach IMDb export endpoint right now. Please try again in a moment.',
+            }
+          }
+
+          if (!response.ok) {
+            const hint =
+              response.status === 403 || response.status === 404
+                ? ' Make sure the list is set to public on IMDb.'
+                : ''
+
+            if (response.status === 403 || response.status === 404) {
+              const pageFallback = await tryPageFallback(undefined)
+              if (pageFallback?.csv) return { csv: pageFallback.csv }
+              if (pageFallback?.html) {
+                return {
+                  html: pageFallback.html,
+                  sourceType: pageFallback.sourceType,
+                  sourceStatus: response.status,
+                }
+              }
+            }
+
+            return {
+              error: `Failed to fetch from IMDb (HTTP ${response.status}).${hint}`,
+            }
+          }
+
+          const bodyText = await response.text()
+          const contentType = response.headers.get('content-type') || ''
+          const looksLikeHtml =
+            contentType.toLowerCase().includes('text/html') ||
+            /^\s*</.test(bodyText)
+
+          if (!looksLikeHtml) {
+            log.info(`IMDb CSV fetched: ${bodyText.length} bytes`)
+            return { csv: bodyText }
+          }
+
           // IMDb sometimes returns the ratings/watchlist/list HTML for /export first.
           const discoveredExportUrl = extractImdbExportUrlFromHtml(bodyText)
           if (!discoveredExportUrl || discoveredExportUrl === targetUrl) {
-            const pageFallbackCsv = await tryPageFallback(discoveredExportUrl)
-            if (pageFallbackCsv) return { csv: pageFallbackCsv }
+            const pageFallback = await tryPageFallback(discoveredExportUrl)
+            if (pageFallback?.csv) return { csv: pageFallback.csv }
+            if (pageFallback?.html) {
+              return {
+                html: pageFallback.html,
+                sourceType: pageFallback.sourceType,
+                sourceStatus: initialStatus,
+              }
+            }
 
             return {
               error:
@@ -1022,8 +1050,15 @@ for await (const req of server) {
             /^\s*</.test(discoveredContent)
 
           if (discoveredLooksLikeHtml) {
-            const pageFallbackCsv = await tryPageFallback(discoveredExportUrl)
-            if (pageFallbackCsv) return { csv: pageFallbackCsv }
+            const pageFallback = await tryPageFallback(discoveredExportUrl)
+            if (pageFallback?.csv) return { csv: pageFallback.csv }
+            if (pageFallback?.html) {
+              return {
+                html: pageFallback.html,
+                sourceType: pageFallback.sourceType,
+                sourceStatus: initialStatus,
+              }
+            }
 
             return {
               error:
@@ -1042,6 +1077,46 @@ for await (const req of server) {
           importTarget.pageUrl
         )
         if (primaryImport.error || !primaryImport.csv) {
+          if (primaryImport.html) {
+            const fallbackIds = extractImdbIdsFromHtml(primaryImport.html)
+            if (fallbackIds.length > 0) {
+              log.info(
+                `IMDb HTML fallback extracted ${
+                  fallbackIds.length
+                } title IDs (source=${
+                  primaryImport.sourceType || 'unknown'
+                }, status=${primaryImport.sourceStatus || 'n/a'})`
+              )
+
+              const imdbRows = fallbackIds.map(imdbId => ({
+                imdbId,
+                title: '',
+                year: null,
+              }))
+
+              processImdbImportBackground({
+                roomCode,
+                userName,
+                imdbRows,
+              }).catch(err => {
+                log.error(
+                  `Background IMDb URL import failed: ${err?.message || err}`
+                )
+              })
+
+              await req.respond({
+                status: 202,
+                body: JSON.stringify({
+                  status: 'started',
+                  total: imdbRows.length,
+                }),
+                headers: makeHeaders('application/json'),
+              })
+
+              continue
+            }
+          }
+
           await req.respond({
             status: 502,
             body: JSON.stringify({
