@@ -924,6 +924,47 @@ for await (const req of server) {
           // the live export link and retry once using that URL.
           const discoveredExportUrl = extractImdbExportUrlFromHtml(bodyText)
           if (!discoveredExportUrl || discoveredExportUrl === targetUrl) {
+            // No new export URL found (or it equals the URL we already tried).
+            // Try fetching the page URL directly — it may contain an export link
+            // with query params (e.g. ?ref_=sl_all_export) that triggers a real CSV response.
+            try {
+              const earlyPageResp = await fetch(pageUrl, {
+                headers: {
+                  ...imdbHeaders,
+                  Accept: 'text/html,application/xhtml+xml,*/*',
+                },
+              })
+              if (earlyPageResp.ok) {
+                const earlyPageHtml = await earlyPageResp.text()
+                const earlyPageExportUrl =
+                  extractImdbExportUrlFromHtml(earlyPageHtml)
+                if (earlyPageExportUrl && earlyPageExportUrl !== targetUrl) {
+                  const earlyExportResp = await fetch(earlyPageExportUrl, {
+                    headers: imdbHeaders,
+                  })
+                  if (earlyExportResp.ok) {
+                    const earlyExportContent = await earlyExportResp.text()
+                    const earlyExportIsHtml =
+                      (earlyExportResp.headers.get('content-type') || '')
+                        .toLowerCase()
+                        .includes('text/html') ||
+                      /^\s*</.test(earlyExportContent)
+                    if (!earlyExportIsHtml) {
+                      log.info(
+                        `IMDb CSV fetched via page-fallback export URL: ${earlyPageExportUrl}`
+                      )
+                      return { csv: earlyExportContent }
+                    }
+                  }
+                }
+              }
+            } catch (earlyPageErr) {
+              log.warning(
+                `IMDb early page fallback failed: ${
+                  earlyPageErr?.message || earlyPageErr
+                }`
+              )
+            }
             return {
               error:
                 'IMDb returned an HTML page instead of CSV. Ensure the list is public and try again.',
