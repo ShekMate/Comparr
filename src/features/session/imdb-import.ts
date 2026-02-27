@@ -61,51 +61,6 @@ export function resolveImdbImportTarget(
 }
 
 /**
- * Extract IMDb title IDs directly from a list/watchlist/ratings HTML page.
- * Used as a last-resort fallback when the CSV export endpoint is inaccessible.
- *
- * Looks in two places:
- *   1. `data-tconst` attributes (classic IMDb list markup)
- *   2. `__NEXT_DATA__` script JSON (modern Next.js IMDb pages)
- *
- * Returns deduplicated IDs in discovery order.  The caller is responsible for
- * enriching them via TMDb — title/year are not available from this path.
- */
-export function extractImdbIdsFromHtml(html: string): string[] {
-  const text = String(html || '')
-  const ids: string[] = []
-  const seen = new Set<string>()
-
-  const add = (id: string) => {
-    if (!seen.has(id)) {
-      seen.add(id)
-      ids.push(id)
-    }
-  }
-
-  // 1. data-tconst="tt..." attributes — present in classic IMDb list pages.
-  const tconstRe = /\bdata-tconst="(tt\d{4,12})"/g
-  let m: RegExpExecArray | null
-  while ((m = tconstRe.exec(text)) !== null) {
-    add(m[1])
-  }
-
-  // 2. __NEXT_DATA__ JSON — present in modern Next.js IMDb pages.
-  //    The JSON contains all server-side-rendered page data including list items.
-  const nextDataMatch = text.match(
-    /<script[^>]+id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/
-  )
-  if (nextDataMatch) {
-    const ttRe = /"(tt\d{4,12})"/g
-    while ((m = ttRe.exec(nextDataMatch[1])) !== null) {
-      add(m[1])
-    }
-  }
-
-  return ids
-}
-
-/**
  * Attempt to discover an IMDb CSV export URL from a ratings/watchlist/list HTML page.
  */
 export function extractImdbExportUrlFromHtml(html: string): string | null {
