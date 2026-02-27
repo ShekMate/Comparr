@@ -893,8 +893,65 @@ for await (const req of server) {
 
         const fetchImdbCsv = async (targetUrl: string, pageUrl: string) => {
           let response: Response
+          let initialStatus: number | null = null
+
+          const tryPageFallback = async (knownExportUrl?: string) => {
+            // Load the canonical page directly and retry with any export URL discovered there.
+            try {
+              const pageResponse = await fetch(pageUrl, {
+                headers: {
+                  ...imdbHeaders,
+                  Accept: 'text/html,application/xhtml+xml,*/*',
+                },
+              })
+              if (!pageResponse.ok) return null
+
+              const pageHtml = await pageResponse.text()
+              const pageDiscoveredExportUrl = extractImdbExportUrlFromHtml(
+                pageHtml
+              )
+              if (
+                !pageDiscoveredExportUrl ||
+                pageDiscoveredExportUrl === knownExportUrl
+              ) {
+                return { html: pageHtml, sourceType: 'page' as const }
+              }
+
+              const retryResp = await fetch(pageDiscoveredExportUrl, {
+                headers: imdbHeaders,
+              })
+              if (!retryResp.ok) {
+                return { html: pageHtml, sourceType: 'page' as const }
+              }
+
+              const retryContent = await retryResp.text()
+              const retryContentType =
+                retryResp.headers.get('content-type') || ''
+              const retryLooksLikeHtml =
+                retryContentType.toLowerCase().includes('text/html') ||
+                /^\s*</.test(retryContent)
+
+              if (retryLooksLikeHtml) {
+                return { html: retryContent, sourceType: 'export' as const }
+              }
+
+              log.info(
+                `IMDb CSV fetched via page-discovered export URL: ${pageDiscoveredExportUrl}`
+              )
+              return { csv: retryContent, sourceType: 'export' as const }
+            } catch (pageErr) {
+              log.warning(
+                `IMDb page discovery fallback failed: ${
+                  pageErr?.message || pageErr
+                }`
+              )
+              return null
+            }
+          }
+
           try {
             response = await fetch(targetUrl, { headers: imdbHeaders })
+            initialStatus = response.status
           } catch (err) {
             log.error(`IMDb fetch request failed: ${err?.message || err}`)
             return {
@@ -908,6 +965,19 @@ for await (const req of server) {
               response.status === 403 || response.status === 404
                 ? ' Make sure the list is set to public on IMDb.'
                 : ''
+
+            if (response.status === 403 || response.status === 404) {
+              const pageFallback = await tryPageFallback(undefined)
+              if (pageFallback?.csv) return { csv: pageFallback.csv }
+              if (pageFallback?.html) {
+                return {
+                  html: pageFallback.html,
+                  sourceType: pageFallback.sourceType,
+                  sourceStatus: response.status,
+                }
+              }
+            }
+
             return {
               error: `Failed to fetch from IMDb (HTTP ${response.status}).${hint}`,
             }
@@ -933,8 +1003,7 @@ for await (const req of server) {
             }
           }
 
-          // IMDb sometimes returns the ratings/watchlist page HTML first; try to discover
-          // the live export link and retry once using that URL.
+          // IMDb sometimes returns the ratings/watchlist/list HTML for /export first.
           const discoveredExportUrl = extractImdbExportUrlFromHtml(bodyText)
           if (!discoveredExportUrl || discoveredExportUrl === targetUrl) {
             // No new export URL found (or it equals the URL we already tried).
@@ -1024,50 +1093,14 @@ for await (const req of server) {
             /^\s*</.test(discoveredContent)
 
           if (discoveredLooksLikeHtml) {
-            // As a final attempt, load the page URL and extract again in case cookies/redirects changed.
-            try {
-              const pageResponse = await fetch(pageUrl, {
-                headers: {
-                  ...imdbHeaders,
-                  Accept: 'text/html,application/xhtml+xml,*/*',
-                },
-              })
-              if (pageResponse.ok) {
-                const pageHtml = await pageResponse.text()
-                const pageDiscoveredExportUrl = extractImdbExportUrlFromHtml(
-                  pageHtml
-                )
-
-                if (
-                  pageDiscoveredExportUrl &&
-                  pageDiscoveredExportUrl !== discoveredExportUrl
-                ) {
-                  const retryResp = await fetch(pageDiscoveredExportUrl, {
-                    headers: imdbHeaders,
-                  })
-                  if (retryResp.ok) {
-                    const retryContent = await retryResp.text()
-                    const retryContentType =
-                      retryResp.headers.get('content-type') || ''
-                    const retryLooksLikeHtml =
-                      retryContentType.toLowerCase().includes('text/html') ||
-                      /^\s*</.test(retryContent)
-
-                    if (!retryLooksLikeHtml) {
-                      log.info(
-                        `IMDb CSV fetched via page-discovered export URL: ${pageDiscoveredExportUrl}`
-                      )
-                      return { csv: retryContent }
-                    }
-                  }
-                }
+            const pageFallback = await tryPageFallback(discoveredExportUrl)
+            if (pageFallback?.csv) return { csv: pageFallback.csv }
+            if (pageFallback?.html) {
+              return {
+                html: pageFallback.html,
+                sourceType: pageFallback.sourceType,
+                sourceStatus: initialStatus,
               }
-            } catch (pageErr) {
-              log.warning(
-                `IMDb page discovery fallback failed: ${
-                  pageErr?.message || pageErr
-                }`
-              )
             }
 
             return {
