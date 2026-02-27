@@ -2481,17 +2481,20 @@
           <div class="settings-section" id="settings-imports">
             <h4>Sync & Imports</h4>
             <div class="settings-field">
-              <label for="setting-imdb-sync-url">IMDb Seen List URL</label>
+              <label for="setting-imdb-sync-url"
+                >IMDb Seen List / User ID</label
+              >
               <input
                 id="setting-imdb-sync-url"
-                type="url"
+                type="text"
                 data-setting-key="IMDB_SYNC_URL"
                 class="imdb-url-input"
-                placeholder="https://www.imdb.com/list/ls012345678/"
+                placeholder="i.e., ls123456789 or ur12345678"
               />
               <p>
-                Supports list, ratings, or watchlist URLs. The list must be
-                public on IMDb.
+                Supports IMDb list/user URLs or bare IDs (e.g. ls012345678,
+                ur24069733). For ur IDs, ratings are imported by default. The
+                list must be public on IMDb.
               </p>
               <div class="imdb-import-panel" style="display: block">
                 <div class="imdb-import-panel-inner">

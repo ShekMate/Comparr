@@ -4975,14 +4975,8 @@ const main = async () => {
       const imdbUrl = imdbUrlInput?.value?.trim() || ''
       if (!imdbUrl) {
         showNotification(
-          'Please set an IMDb list URL in Settings → Sync first.'
+          'Please set an IMDb list or user ID in Settings → Sync first.'
         )
-        return
-      }
-
-      // Basic URL validation
-      if (!imdbUrl.includes('imdb.com/')) {
-        showNotification('Please enter a valid IMDb URL.')
         return
       }
 
@@ -5008,7 +5002,8 @@ const main = async () => {
         // Handle immediate completion (0 movies) or started status
         if (result.status === 'completed' && result.total === 0) {
           if (imdbImportStatus)
-            imdbImportStatus.textContent = 'No movies found in the IMDb list.'
+            imdbImportStatus.textContent =
+              result.detail || 'No movies found in the IMDb list.'
           if (imdbImportBar) imdbImportBar.style.width = '100%'
           imdbUrlSyncBtn.disabled = false
           if (imdbCsvUploadBtn) imdbCsvUploadBtn.disabled = false
