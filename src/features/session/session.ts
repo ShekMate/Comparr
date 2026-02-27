@@ -506,13 +506,27 @@ type WebSocketMessage =
   | WebSocketResponseMessage
   | WebSocketNextBatchMessage
 
+export interface ImdbImportHistoryEntry {
+  id: string
+  fileName: string
+  uploadedAt: number
+  movieCount: number
+  status: 'successful' | 'failed'
+}
+
 // -------------------------
 // Persistence (rooms + movie index) - ENHANCED VERSION
 // -------------------------
+type PersistedRoomUser = {
+  name: string
+  responses: Response[]
+  importHistory?: ImdbImportHistoryEntry[]
+}
+
 type PersistedRooms = Record<
   string,
   {
-    users: { name: string; responses: Response[] }[]
+    users: PersistedRoomUser[]
   }
 >
 
@@ -558,17 +572,62 @@ async function loadState(): Promise<PersistedState> {
       const roomVal: any = roomsIn[roomCode] || {}
       const usersRaw: any = roomVal.users
 
-      let usersArr: { name: string; responses: Response[] }[] = []
+      let usersArr: PersistedRoomUser[] = []
       if (Array.isArray(usersRaw)) {
-        usersArr = usersRaw as { name: string; responses: Response[] }[]
+        usersArr = usersRaw.map((user: any) => ({
+          name: String(user?.name || ''),
+          responses: Array.isArray(user?.responses)
+            ? user.responses
+                .filter(
+                  (r: any) => typeof r?.guid === 'string' && r.guid.length > 0
+                )
+                .map((r: any) => ({
+                  guid: r.guid,
+                  wantsToWatch: r?.wantsToWatch ?? null,
+                  tmdbId:
+                    typeof r?.tmdbId === 'number'
+                      ? r.tmdbId
+                      : r?.tmdbId == null
+                      ? null
+                      : Number.isFinite(Number(r.tmdbId))
+                      ? Number(r.tmdbId)
+                      : null,
+                }))
+            : [],
+          importHistory: Array.isArray(user?.importHistory)
+            ? user.importHistory
+                .filter((entry: any) => typeof entry?.id === 'string')
+                .map((entry: any) => ({
+                  id: entry.id,
+                  fileName:
+                    typeof entry.fileName === 'string' &&
+                    entry.fileName.trim().length > 0
+                      ? entry.fileName.trim()
+                      : 'IMDb CSV',
+                  uploadedAt:
+                    typeof entry.uploadedAt === 'number' &&
+                    Number.isFinite(entry.uploadedAt)
+                      ? entry.uploadedAt
+                      : Date.now(),
+                  movieCount:
+                    typeof entry.movieCount === 'number' &&
+                    Number.isFinite(entry.movieCount)
+                      ? entry.movieCount
+                      : 0,
+                  status: entry.status === 'failed' ? 'failed' : 'successful',
+                }))
+            : [],
+        }))
       } else if (usersRaw && typeof usersRaw === 'object') {
         usersArr = []
         for (const name in usersRaw) {
           const val: any = usersRaw[name]
           const responses: Response[] = Array.isArray(val?.responses)
             ? val.responses
-                .filter(r => typeof r?.guid === 'string' && r.guid.length > 0)
-                .map(r => ({
+                .filter(
+                  (r: any) => typeof r?.guid === 'string' && r.guid.length > 0
+                )
+                .map((r: any) => ({
                   guid: r.guid,
                   wantsToWatch: r?.wantsToWatch ?? null,
                   tmdbId:
@@ -581,7 +640,7 @@ async function loadState(): Promise<PersistedState> {
                       : null,
                 }))
             : []
-          usersArr.push({ name, responses })
+          usersArr.push({ name, responses, importHistory: [] })
         }
       }
 
@@ -708,6 +767,62 @@ function removeRoomUser(roomCode: string, userName: string) {
   const room = persistedState.rooms[roomCode]
   if (!room) return
   room.users = room.users.filter(u => u.name !== userName)
+}
+
+function getRoomUser(roomCode: string, userName: string): PersistedRoomUser {
+  const room = (persistedState.rooms[roomCode] ??= { users: [] })
+  let user = room.users.find(u => u.name === userName)
+  if (!user) {
+    user = { name: userName, responses: [], importHistory: [] }
+    room.users.push(user)
+  }
+  if (!Array.isArray(user.importHistory)) {
+    user.importHistory = []
+  }
+  return user
+}
+
+export function recordImdbImportHistoryStart(
+  roomCode: string,
+  userName: string,
+  fileName: string,
+  movieCount: number
+): string {
+  const user = getRoomUser(roomCode, userName)
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  user.importHistory!.unshift({
+    id,
+    fileName: fileName.trim() || 'IMDb CSV',
+    uploadedAt: Date.now(),
+    movieCount,
+    status: 'successful',
+  })
+  user.importHistory = user.importHistory!.slice(0, 25)
+  return id
+}
+
+export function finalizeImdbImportHistory(
+  roomCode: string,
+  userName: string,
+  importId: string,
+  status: 'successful' | 'failed'
+) {
+  const user = getRoomUser(roomCode, userName)
+  const entry = user.importHistory?.find(item => item.id === importId)
+  if (entry) {
+    entry.status = status
+  }
+}
+
+export function getImdbImportHistory(
+  roomCode: string,
+  userName: string
+): ImdbImportHistoryEntry[] {
+  const room = persistedState.rooms[roomCode]
+  if (!room) return []
+  const user = room.users.find(u => u.name === userName)
+  if (!user?.importHistory) return []
+  return [...user.importHistory]
 }
 
 function addMoviesToIndex(movies: MediaItem[]) {
@@ -2492,13 +2607,10 @@ export async function generateUniqueRoomCode(
   maxAttempts = 200
 ): Promise<string> {
   for (let i = 0; i < maxAttempts; i++) {
-    const code = Array.from(
-      { length: 6 },
-      () => {
-        const value = crypto.getRandomValues(new Uint32Array(1))[0]
-        return ROOM_CODE_MAP[value % ROOM_CODE_MAP.length]
-      }
-    ).join('')
+    const code = Array.from({ length: 6 }, () => {
+      const value = crypto.getRandomValues(new Uint32Array(1))[0]
+      return ROOM_CODE_MAP[value % ROOM_CODE_MAP.length]
+    }).join('')
 
     if (!doesRoomCodeExist(code)) {
       return code
@@ -2625,7 +2737,10 @@ export const getSession = (roomCode: string, ws: WebSocket): Session => {
 // -------------------------
 // Login flow
 // -------------------------
-export const handleLogin = (ws: WebSocket, clientIp = 'unknown'): Promise<User> => {
+export const handleLogin = (
+  ws: WebSocket,
+  clientIp = 'unknown'
+): Promise<User> => {
   return new Promise(resolve => {
     const handler = async (msg: string) => {
       try {
@@ -2980,6 +3095,7 @@ export interface ImdbImportJob {
   roomCode: string
   userName: string
   imdbRows: Array<{ imdbId: string; title: string; year: number | null }>
+  importHistoryId?: string
 }
 
 /**
@@ -3023,7 +3139,7 @@ function sendToUser(roomCode: string, userName: string, message: any): boolean {
 export async function processImdbImportBackground(
   job: ImdbImportJob
 ): Promise<void> {
-  const { roomCode, userName, imdbRows } = job
+  const { roomCode, userName, imdbRows, importHistoryId } = job
   const total = imdbRows.length
 
   log.info(
@@ -3253,6 +3369,13 @@ export async function processImdbImportBackground(
   await saveState(persistedState).catch(err =>
     log.warning(`Failed to save state after import: ${err}`)
   )
+
+  if (importHistoryId) {
+    finalizeImdbImportHistory(roomCode, userName, importHistoryId, 'successful')
+    await saveState(persistedState).catch(err =>
+      log.warning(`Failed to save import history state: ${err}`)
+    )
+  }
 
   // Send completion message
   sendToUser(roomCode, userName, {

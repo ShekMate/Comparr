@@ -5009,6 +5009,59 @@ footer {
   background: linear-gradient(135deg, #ef4444, #dc2626);
 }
 
+.imdb-import-history {
+  margin-top: 0.9rem;
+  border-top: 1px solid rgba(51, 65, 85, 0.3);
+  padding-top: 0.75rem;
+}
+
+.imdb-import-history summary {
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.imdb-import-history-table-wrap {
+  margin-top: 0.6rem;
+  overflow-x: auto;
+}
+
+.imdb-import-history table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.imdb-import-history th,
+.imdb-import-history td {
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.35);
+  text-align: left;
+  color: var(--color-text-secondary);
+}
+
+.imdb-import-history th {
+  color: var(--color-text-primary);
+}
+
+.imdb-import-status-pill {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+}
+
+.imdb-import-status-pill.successful {
+  color: #86efac;
+  background: rgba(22, 101, 52, 0.3);
+}
+
+.imdb-import-status-pill.failed {
+  color: #fca5a5;
+  background: rgba(127, 29, 29, 0.3);
+}
+
 /* Mobile responsive for seen list header & import panel */
 @media (max-width: 600px) {
   .seen-header-actions {

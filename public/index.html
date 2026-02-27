@@ -2481,35 +2481,10 @@
           <div class="settings-section" id="settings-imports">
             <h4>Sync & Imports</h4>
             <div class="settings-field">
-              <label for="setting-imdb-sync-url"
-                >IMDb Seen List / User ID</label
-              >
-              <input
-                id="setting-imdb-sync-url"
-                type="text"
-                data-setting-key="IMDB_SYNC_URL"
-                class="imdb-url-input"
-                placeholder="i.e., ls123456789 or ur12345678"
-              />
-              <p>
-                Supports IMDb list/user URLs or bare IDs (e.g. ls012345678,
-                ur24069733). For ur IDs, ratings are imported by default. The
-                list must be public on IMDb.
-              </p>
+              <label>IMDb CSV Import</label>
+              <p>Upload an IMDb CSV export to import movies into Seen.</p>
               <div class="imdb-import-panel" style="display: block">
                 <div class="imdb-import-panel-inner">
-                  <div class="imdb-url-row">
-                    <button
-                      id="imdb-url-sync-btn"
-                      class="imdb-url-sync-btn"
-                      type="button"
-                    >
-                      <i class="fas fa-sync-alt"></i> Sync IMDb Now
-                    </button>
-                  </div>
-                  <div class="imdb-import-divider">
-                    <span>or</span>
-                  </div>
                   <div class="imdb-import-csv-section">
                     <button
                       id="imdb-csv-upload-btn"
@@ -2538,6 +2513,26 @@
                     <div id="imdb-import-bar" class="imdb-import-bar"></div>
                   </div>
                 </div>
+                <details class="imdb-import-history" id="imdb-import-history">
+                  <summary>History</summary>
+                  <div class="imdb-import-history-table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Filename</th>
+                          <th>Upload date</th>
+                          <th># of movies</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody id="imdb-import-history-body">
+                        <tr>
+                          <td colspan="4">No imports yet.</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
               </div>
             </div>
             <div

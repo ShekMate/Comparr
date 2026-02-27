@@ -19,13 +19,11 @@ import {
   handleLogin,
   ensurePlexHydrationReady,
   processImdbImportBackground,
+  recordImdbImportHistoryStart,
+  finalizeImdbImportHistory,
+  getImdbImportHistory,
 } from './features/session/session.ts'
-import {
-  extractImdbExportUrlFromHtml,
-  extractImdbIdsFromHtml,
-  parseImdbCsv,
-  resolveImdbImportTarget,
-} from './features/session/imdb-import.ts'
+import { parseImdbCsv } from './features/session/imdb-import.ts'
 import { serveFile } from './infra/http/staticFileServer.ts'
 import {
   isLocalRequest,
@@ -728,6 +726,42 @@ for await (const req of server) {
       continue
     }
 
+    // --- API: Get IMDb import history
+    if (p === '/api/imdb-import-history' && req.method === 'GET') {
+      try {
+        const roomCode = url.searchParams.get('roomCode')?.trim() || ''
+        const userName = url.searchParams.get('userName')?.trim() || ''
+
+        if (!roomCode || !userName) {
+          await req.respond({
+            status: 400,
+            body: JSON.stringify({
+              error: 'Missing required query params: roomCode, userName',
+            }),
+            headers: makeHeaders('application/json'),
+          })
+          continue
+        }
+
+        const history = getImdbImportHistory(roomCode, userName)
+        await req.respond({
+          status: 200,
+          body: JSON.stringify({ history }),
+          headers: makeHeaders('application/json'),
+        })
+      } catch (err) {
+        log.error(`IMDb history fetch failed: ${err?.message || err}`)
+        await req.respond({
+          status: 500,
+          body: JSON.stringify({
+            error: 'Failed to fetch IMDb import history',
+          }),
+          headers: makeHeaders('application/json'),
+        })
+      }
+      continue
+    }
+
     // --- API: Import IMDb watched movies as "seen" (background processing)
     if (p === '/api/imdb-import' && req.method === 'POST') {
       try {
@@ -753,7 +787,7 @@ for await (const req of server) {
 
         const decoder = new TextDecoder()
         const body = decoder.decode(await Deno.readAll(req.body))
-        const { csvContent, roomCode, userName } = JSON.parse(body)
+        const { csvContent, roomCode, userName, fileName } = JSON.parse(body)
 
         if (!csvContent || !roomCode || !userName) {
           await req.respond({
@@ -772,7 +806,20 @@ for await (const req of server) {
         const rows = parseImdbCsv(csvContent)
         log.info(`IMDb CSV parsed: ${rows.length} movie entries found`)
 
+        const importHistoryId = recordImdbImportHistoryStart(
+          roomCode,
+          userName,
+          typeof fileName === 'string' ? fileName : 'IMDb CSV',
+          rows.length
+        )
+
         if (rows.length === 0) {
+          finalizeImdbImportHistory(
+            roomCode,
+            userName,
+            importHistoryId,
+            'successful'
+          )
           await req.respond({
             status: 200,
             body: JSON.stringify({ status: 'completed', total: 0 }),
@@ -789,11 +836,20 @@ for await (const req of server) {
         }))
 
         // Start background processing (non-blocking)
-        processImdbImportBackground({ roomCode, userName, imdbRows }).catch(
-          err => {
-            log.error(`Background IMDb import failed: ${err?.message || err}`)
-          }
-        )
+        processImdbImportBackground({
+          roomCode,
+          userName,
+          imdbRows,
+          importHistoryId,
+        }).catch(err => {
+          finalizeImdbImportHistory(
+            roomCode,
+            userName,
+            importHistoryId,
+            'failed'
+          )
+          log.error(`Background IMDb import failed: ${err?.message || err}`)
+        })
 
         // Return immediately - movies will arrive via WebSocket
         await req.respond({
@@ -819,422 +875,16 @@ for await (const req of server) {
       continue
     }
 
-    // --- API: Import from a public IMDb list URL (background processing)
+    // --- API: Import from a public IMDb list URL (disabled for now)
     if (p === '/api/imdb-import-url' && req.method === 'POST') {
-      try {
-        if (bodyTooLarge(req)) {
-          await req.respond({
-            status: 413,
-            body: JSON.stringify({ error: 'Payload too large' }),
-            headers: makeHeaders('application/json'),
-          })
-          continue
-        }
-        const TMDB_KEY = getTmdbApiKey()
-        if (!TMDB_KEY) {
-          await req.respond({
-            status: 400,
-            body: JSON.stringify({
-              error: 'TMDb API key is required for IMDb import',
-            }),
-            headers: makeHeaders('application/json'),
-          })
-          continue
-        }
-
-        const decoder = new TextDecoder()
-        const body = decoder.decode(await Deno.readAll(req.body))
-        const { imdbUrl, roomCode, userName } = JSON.parse(body)
-
-        if (!imdbUrl || !roomCode || !userName) {
-          await req.respond({
-            status: 400,
-            body: JSON.stringify({
-              error: 'Missing required fields: imdbUrl, roomCode, userName',
-            }),
-            headers: makeHeaders('application/json'),
-          })
-          continue
-        }
-
-        const importTarget = resolveImdbImportTarget(imdbUrl)
-
-        if (!importTarget) {
-          log.warning(
-            `IMDb sync input: No supported pattern matched for "${imdbUrl}"`
-          )
-          await req.respond({
-            status: 400,
-            body: JSON.stringify({
-              error:
-                'Invalid IMDb input. Enter a public IMDb list/user URL or just the list/user ID (e.g. ls123456789 or ur12345678).',
-            }),
-            headers: makeHeaders('application/json'),
-          })
-          continue
-        }
-
-        const exportUrl = importTarget.exportUrl
-        log.info(
-          `IMDb sync input resolved: input="${imdbUrl}" normalized="${importTarget.normalizedInput}" source=${importTarget.sourceType}`
-        )
-
-        log.info(
-          `IMDb URL import requested by ${userName} in room ${roomCode}: ${exportUrl}`
-        )
-
-        const imdbHeaders = {
-          'User-Agent': 'Mozilla/5.0 (compatible; Comparr/1.0)',
-          Accept: 'text/csv, */*',
-        }
-
-        const fetchImdbCsv = async (targetUrl: string, pageUrl: string) => {
-          let response: Response
-          let initialStatus: number | null = null
-
-          const tryPageFallback = async (knownExportUrl?: string) => {
-            // Load the canonical page directly and retry with any export URL discovered there.
-            try {
-              const pageResponse = await fetch(pageUrl, {
-                headers: {
-                  ...imdbHeaders,
-                  Accept: 'text/html,application/xhtml+xml,*/*',
-                },
-              })
-              if (!pageResponse.ok) return null
-
-              const pageHtml = await pageResponse.text()
-              const pageDiscoveredExportUrl = extractImdbExportUrlFromHtml(
-                pageHtml
-              )
-              if (
-                !pageDiscoveredExportUrl ||
-                pageDiscoveredExportUrl === knownExportUrl
-              ) {
-                return { html: pageHtml, sourceType: 'page' as const }
-              }
-
-              const retryResp = await fetch(pageDiscoveredExportUrl, {
-                headers: imdbHeaders,
-              })
-              if (!retryResp.ok) {
-                return { html: pageHtml, sourceType: 'page' as const }
-              }
-
-              const retryContent = await retryResp.text()
-              const retryContentType =
-                retryResp.headers.get('content-type') || ''
-              const retryLooksLikeHtml =
-                retryContentType.toLowerCase().includes('text/html') ||
-                /^\s*</.test(retryContent)
-
-              if (retryLooksLikeHtml) {
-                return { html: retryContent, sourceType: 'export' as const }
-              }
-
-              log.info(
-                `IMDb CSV fetched via page-discovered export URL: ${pageDiscoveredExportUrl}`
-              )
-              return { csv: retryContent, sourceType: 'export' as const }
-            } catch (pageErr) {
-              log.warning(
-                `IMDb page discovery fallback failed: ${
-                  pageErr?.message || pageErr
-                }`
-              )
-              return null
-            }
-          }
-
-          try {
-            response = await fetch(targetUrl, { headers: imdbHeaders })
-            initialStatus = response.status
-          } catch (err) {
-            log.error(`IMDb fetch request failed: ${err?.message || err}`)
-            return {
-              error:
-                'Unable to reach IMDb export endpoint right now. Please try again in a moment.',
-            }
-          }
-
-          if (!response.ok) {
-            const hint =
-              response.status === 403 || response.status === 404
-                ? ' Make sure the list is set to public on IMDb.'
-                : ''
-
-            if (response.status === 403 || response.status === 404) {
-              const pageFallback = await tryPageFallback(undefined)
-              if (pageFallback?.csv) return { csv: pageFallback.csv }
-              if (pageFallback?.html) {
-                return {
-                  html: pageFallback.html,
-                  sourceType: pageFallback.sourceType,
-                  sourceStatus: response.status,
-                }
-              }
-            }
-
-            return {
-              error: `Failed to fetch from IMDb (HTTP ${response.status}).${hint}`,
-            }
-          }
-
-          const bodyText = await response.text()
-          const contentType = response.headers.get('content-type') || ''
-          const looksLikeHtml =
-            contentType.toLowerCase().includes('text/html') ||
-            /^\s*</.test(bodyText)
-
-          if (!looksLikeHtml) {
-            log.info(`IMDb CSV fetched: ${bodyText.length} bytes`)
-            return { csv: bodyText }
-          }
-
-          // IMDb sometimes returns the ratings/watchlist/list HTML for /export first.
-          const discoveredExportUrl = extractImdbExportUrlFromHtml(bodyText)
-          if (!discoveredExportUrl || discoveredExportUrl === targetUrl) {
-            const pageFallback = await tryPageFallback(discoveredExportUrl)
-            if (pageFallback?.csv) return { csv: pageFallback.csv }
-            if (pageFallback?.html) {
-              return {
-                html: pageFallback.html,
-                sourceType: pageFallback.sourceType,
-                sourceStatus: initialStatus,
-              }
-            }
-
-            return {
-              error:
-                'IMDb returned an HTML page instead of CSV. Ensure the list is public and try again.',
-            }
-          }
-
-          log.info(
-            `IMDb returned HTML for ${targetUrl}; discovered export URL ${discoveredExportUrl}`
-          )
-
-          let discoveredResponse: Response
-          try {
-            discoveredResponse = await fetch(discoveredExportUrl, {
-              headers: imdbHeaders,
-            })
-          } catch (err) {
-            log.error(
-              `IMDb discovered export fetch failed for ${discoveredExportUrl}: ${
-                err?.message || err
-              }`
-            )
-            return {
-              error:
-                'Unable to reach IMDb export endpoint right now. Please try again in a moment.',
-            }
-          }
-
-          if (!discoveredResponse.ok) {
-            const hint =
-              discoveredResponse.status === 403 ||
-              discoveredResponse.status === 404
-                ? ' Make sure the list is set to public on IMDb.'
-                : ''
-            return {
-              error: `Failed to fetch from IMDb (HTTP ${discoveredResponse.status}).${hint}`,
-            }
-          }
-
-          const discoveredContent = await discoveredResponse.text()
-          const discoveredContentType =
-            discoveredResponse.headers.get('content-type') || ''
-          const discoveredLooksLikeHtml =
-            discoveredContentType.toLowerCase().includes('text/html') ||
-            /^\s*</.test(discoveredContent)
-
-          if (discoveredLooksLikeHtml) {
-            const pageFallback = await tryPageFallback(discoveredExportUrl)
-            if (pageFallback?.csv) return { csv: pageFallback.csv }
-            if (pageFallback?.html) {
-              return {
-                html: pageFallback.html,
-                sourceType: pageFallback.sourceType,
-                sourceStatus: initialStatus,
-              }
-            }
-
-            return {
-              error:
-                'IMDb returned an HTML page instead of CSV. Ensure the list is public and try again.',
-            }
-          }
-
-          log.info(
-            `IMDb CSV fetched via discovered export URL: ${discoveredExportUrl} (${discoveredContent.length} bytes)`
-          )
-          return { csv: discoveredContent }
-        }
-
-        const primaryImport = await fetchImdbCsv(
-          exportUrl,
-          importTarget.pageUrl
-        )
-        if (primaryImport.error || !primaryImport.csv) {
-          if (primaryImport.html) {
-            const fallbackIds = extractImdbIdsFromHtml(primaryImport.html)
-            if (fallbackIds.length > 0) {
-              log.info(
-                `IMDb HTML fallback extracted ${
-                  fallbackIds.length
-                } title IDs (source=${
-                  primaryImport.sourceType || 'unknown'
-                }, status=${primaryImport.sourceStatus || 'n/a'})`
-              )
-
-              const imdbRows = fallbackIds.map(imdbId => ({
-                imdbId,
-                title: '',
-                year: null,
-              }))
-
-              processImdbImportBackground({
-                roomCode,
-                userName,
-                imdbRows,
-              }).catch(err => {
-                log.error(
-                  `Background IMDb URL import failed: ${err?.message || err}`
-                )
-              })
-
-              await req.respond({
-                status: 202,
-                body: JSON.stringify({
-                  status: 'started',
-                  total: imdbRows.length,
-                }),
-                headers: makeHeaders('application/json'),
-              })
-
-              continue
-            }
-          }
-
-          await req.respond({
-            status: 502,
-            body: JSON.stringify({
-              error:
-                primaryImport.error ||
-                'Unable to fetch IMDb CSV export at this time.',
-            }),
-            headers: makeHeaders('application/json'),
-          })
-          continue
-        }
-
-        const csvContent = primaryImport.csv
-
-        // Debug: log first 500 chars to see what we got
-        log.info(
-          `IMDb CSV preview: ${csvContent
-            .substring(0, 500)
-            .replace(/\n/g, '\\n')}`
-        )
-
-        // Parse the CSV
-        let rows = parseImdbCsv(csvContent)
-        log.info(
-          `IMDb CSV parsed from ${importTarget.sourceType}: ${rows.length} movie entries found`
-        )
-
-        // For user ratings imports, retry watchlist automatically when ratings are empty.
-        if (rows.length === 0 && importTarget.sourceType === 'ratings') {
-          const watchlistExportUrl = `https://www.imdb.com/user/${importTarget.normalizedInput}/watchlist/export`
-          log.info(
-            `IMDb ratings export had no movies, trying watchlist fallback: ${watchlistExportUrl}`
-          )
-
-          try {
-            const watchlistImport = await fetchImdbCsv(
-              watchlistExportUrl,
-              `https://www.imdb.com/user/${importTarget.normalizedInput}/watchlist`
-            )
-
-            if (watchlistImport.csv) {
-              const watchlistRows = parseImdbCsv(watchlistImport.csv)
-              if (watchlistRows.length > 0) {
-                rows = watchlistRows
-                log.info(
-                  `IMDb watchlist fallback succeeded: ${rows.length} movie entries found`
-                )
-              } else {
-                log.info('IMDb watchlist fallback returned 0 movie entries')
-              }
-            } else {
-              log.info(
-                `IMDb watchlist fallback request did not return CSV: ${watchlistImport.error}`
-              )
-            }
-          } catch (watchlistErr) {
-            log.warning(
-              `IMDb watchlist fallback failed: ${
-                watchlistErr?.message || watchlistErr
-              }`
-            )
-          }
-        }
-
-        if (rows.length === 0) {
-          await req.respond({
-            status: 200,
-            body: JSON.stringify({
-              status: 'completed',
-              total: 0,
-              detail:
-                importTarget.sourceType === 'ratings'
-                  ? 'No movies found in ratings or watchlist exports.'
-                  : 'No movies found in the IMDb export.',
-            }),
-            headers: makeHeaders('application/json'),
-          })
-          continue
-        }
-
-        // Convert to the format expected by background processor
-        const imdbRows = rows.map(r => ({
-          imdbId: r.imdbId,
-          title: r.title,
-          year: r.year,
-        }))
-
-        // Start background processing (non-blocking)
-        processImdbImportBackground({ roomCode, userName, imdbRows }).catch(
-          err => {
-            log.error(
-              `Background IMDb URL import failed: ${err?.message || err}`
-            )
-          }
-        )
-
-        // Return immediately - movies will arrive via WebSocket
-        await req.respond({
-          status: 202,
-          body: JSON.stringify({ status: 'started', total: rows.length }),
-          headers: makeHeaders('application/json'),
-        })
-
-        log.info(
-          `IMDb URL import started in background: ${rows.length} movies to process`
-        )
-      } catch (err) {
-        const errorMessage = err?.message || String(err)
-        log.error(`IMDb URL import failed: ${errorMessage}`)
-        await req.respond({
-          status: 500,
-          body: JSON.stringify({
-            error: `IMDb URL import failed: ${errorMessage}`,
-            detail: 'An internal error occurred.',
-          }),
-          headers: makeHeaders('application/json'),
-        })
-      }
+      await req.respond({
+        status: 410,
+        body: JSON.stringify({
+          error:
+            'IMDb URL import is temporarily disabled. Please use CSV import.',
+        }),
+        headers: makeHeaders('application/json'),
+      })
       continue
     }
 
