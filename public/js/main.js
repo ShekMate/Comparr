@@ -5007,6 +5007,7 @@ const main = async () => {
   let isLoadingBatch = false
   let ensureMovieBufferPromise = null
   const BUFFER_MIN_SIZE = 8
+  const INITIAL_BUFFER_MIN_SIZE = 2
   const BATCH_SIZE = 20
 
   // Track if initial load has completed (to prevent showing filter notification on startup)
@@ -5021,7 +5022,7 @@ const main = async () => {
   // Prime request-service status and the initial swipe buffer in parallel
   console.log('🧊 Priming request status and initial movie batch...')
   const requestServiceStatusPromise = checkRequestServiceStatus()
-  const initialBufferWarmPromise = ensureMovieBuffer()
+  const initialBufferWarmPromise = ensureMovieBuffer(INITIAL_BUFFER_MIN_SIZE)
 
   await requestServiceStatusPromise
   console.log('📦 Request service status cached')
@@ -5213,7 +5214,7 @@ const main = async () => {
     })
   }
 
-  async function ensureMovieBuffer() {
+  async function ensureMovieBuffer(targetSize = BUFFER_MIN_SIZE) {
     // If already loading, return the existing promise with timeout
     if (ensureMovieBufferPromise) {
       console.log('⏳ Already ensuring buffer, waiting...')
@@ -5232,7 +5233,7 @@ const main = async () => {
           isLoadingBatch = false
           window.isLoadingBatch = isLoadingBatch
           // Retry the buffer load
-          return ensureMovieBuffer()
+          return ensureMovieBuffer(targetSize)
         }
         throw e
       }
@@ -5250,7 +5251,7 @@ const main = async () => {
       window.__resetMovies = false
     }
 
-    if (isLoadingBatch || movieBuffer.length >= BUFFER_MIN_SIZE) {
+    if (isLoadingBatch || movieBuffer.length >= targetSize) {
       return
     }
 
@@ -5274,7 +5275,7 @@ const main = async () => {
 
         while (
           attempts < MAX_BATCH_ATTEMPTS &&
-          movieBuffer.length < BUFFER_MIN_SIZE
+          movieBuffer.length < targetSize
         ) {
           attempts += 1
           console.log(
@@ -5548,7 +5549,9 @@ const main = async () => {
         }
       }
 
-      await ensureMovieBuffer()
+      ensureMovieBuffer().catch(error => {
+        console.warn('⚠️ Background buffer refill failed:', error)
+      })
     } catch (error) {
       console.error('❌Error in initial movie loading:', error)
     }
