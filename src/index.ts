@@ -22,6 +22,7 @@ import {
 } from './features/session/session.ts'
 import {
   extractImdbExportUrlFromHtml,
+  extractImdbIdsFromHtml,
   parseImdbCsv,
   resolveImdbImportTarget,
 } from './features/session/imdb-import.ts'
@@ -883,8 +884,11 @@ for await (const req of server) {
         )
 
         const imdbHeaders = {
-          'User-Agent': 'Mozilla/5.0 (compatible; Comparr/1.0)',
-          Accept: 'text/csv, */*',
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          Accept:
+            'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
         }
 
         const fetchImdbCsv = async (targetUrl: string, pageUrl: string) => {
@@ -916,8 +920,17 @@ for await (const req of server) {
             /^\s*</.test(bodyText)
 
           if (!looksLikeHtml) {
-            log.info(`IMDb CSV fetched: ${bodyText.length} bytes`)
-            return { csv: bodyText }
+            if (!bodyText.trim()) {
+              // Empty body (e.g. 204-equivalent 200 or stripped response).
+              // Don't surface an empty CSV — fall through and let the page
+              // URL fallback attempt to recover.
+              log.warning(
+                `IMDb export returned empty body for ${targetUrl}; trying page fallback`
+              )
+            } else {
+              log.info(`IMDb CSV fetched: ${bodyText.length} bytes`)
+              return { csv: bodyText }
+            }
           }
 
           // IMDb sometimes returns the ratings/watchlist page HTML first; try to discover
@@ -1074,6 +1087,67 @@ for await (const req of server) {
           importTarget.pageUrl
         )
         if (primaryImport.error || !primaryImport.csv) {
+          // Last-resort fallback for public list imports: fetch the list page
+          // and extract IMDb IDs directly from the HTML / __NEXT_DATA__ JSON.
+          // This sidesteps the CSV export endpoint entirely and works even when
+          // IMDB blocks the /export path from server IPs.
+          if (importTarget.sourceType === 'list') {
+            try {
+              log.info(
+                `IMDb CSV export failed for list ${importTarget.normalizedInput}; attempting HTML page scrape`
+              )
+              const listPageResp = await fetch(importTarget.pageUrl, {
+                headers: {
+                  ...imdbHeaders,
+                  Accept: 'text/html,application/xhtml+xml,*/*',
+                },
+              })
+              if (listPageResp.ok) {
+                const listHtml = await listPageResp.text()
+                const htmlIds = extractImdbIdsFromHtml(listHtml)
+                if (htmlIds.length > 0) {
+                  log.info(
+                    `IMDb HTML scrape found ${htmlIds.length} IDs for list ${importTarget.normalizedInput}`
+                  )
+                  const imdbRows = htmlIds.map(id => ({
+                    imdbId: id,
+                    title: '',
+                    year: null as number | null,
+                  }))
+                  processImdbImportBackground({
+                    roomCode,
+                    userName,
+                    imdbRows,
+                  }).catch(err => {
+                    log.error(
+                      `Background IMDb HTML import failed: ${
+                        err?.message || err
+                      }`
+                    )
+                  })
+                  await req.respond({
+                    status: 202,
+                    body: JSON.stringify({
+                      status: 'started',
+                      total: imdbRows.length,
+                    }),
+                    headers: makeHeaders('application/json'),
+                  })
+                  log.info(
+                    `IMDb HTML scrape import started: ${imdbRows.length} IDs to process`
+                  )
+                  continue
+                }
+              }
+            } catch (htmlScrapeErr) {
+              log.warning(
+                `IMDb HTML page scrape failed: ${
+                  htmlScrapeErr?.message || htmlScrapeErr
+                }`
+              )
+            }
+          }
+
           await req.respond({
             status: 502,
             body: JSON.stringify({
