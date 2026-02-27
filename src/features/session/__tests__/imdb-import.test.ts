@@ -1,6 +1,7 @@
 import { assertEquals } from 'https://deno.land/std@0.79.0/testing/asserts.ts'
 import {
   extractImdbExportUrlFromHtml,
+  extractImdbIdsFromHtml,
   resolveImdbImportTarget,
 } from '../imdb-import.ts'
 
@@ -77,4 +78,20 @@ Deno.test('extractImdbExportUrlFromHtml parses escaped export url', () => {
     extractImdbExportUrlFromHtml(html),
     'https://www.imdb.com/user/ur24069733/ratings/export/'
   )
+})
+
+Deno.test('extractImdbIdsFromHtml parses title links and deduplicates', () => {
+  const html = `
+    <a href="/title/tt0111161/">The Shawshank Redemption</a>
+    <a href="/title/tt0068646/">The Godfather</a>
+    <a href="/title/tt0111161/">Duplicate</a>
+  `
+
+  assertEquals(extractImdbIdsFromHtml(html), ['tt0111161', 'tt0068646'])
+})
+
+Deno.test('extractImdbIdsFromHtml parses json-like payloads', () => {
+  const html = `{"items":[{"tconst":"tt0468569"},{"titleId":"tt1375666"}]}`
+
+  assertEquals(extractImdbIdsFromHtml(html), ['tt0468569', 'tt1375666'])
 })
