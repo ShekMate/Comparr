@@ -1,6 +1,8 @@
 import { assertEquals } from 'https://deno.land/std@0.79.0/testing/asserts.ts'
 import {
   extractImdbExportUrlFromHtml,
+  extractImdbIdsFromHtml,
+  extractImdbNextPageUrlFromHtml,
   resolveImdbImportTarget,
 } from '../imdb-import.ts'
 
@@ -76,5 +78,42 @@ Deno.test('extractImdbExportUrlFromHtml parses escaped export url', () => {
   assertEquals(
     extractImdbExportUrlFromHtml(html),
     'https://www.imdb.com/user/ur24069733/ratings/export/'
+  )
+})
+
+Deno.test('extractImdbIdsFromHtml parses title links and deduplicates', () => {
+  const html = `
+    <a href="/title/tt0111161/">The Shawshank Redemption</a>
+    <a href="/title/tt0068646/">The Godfather</a>
+    <a href="/title/tt0111161/">Duplicate</a>
+  `
+
+  assertEquals(extractImdbIdsFromHtml(html), ['tt0111161', 'tt0068646'])
+})
+
+Deno.test('extractImdbIdsFromHtml parses json-like payloads', () => {
+  const html = `{"items":[{"tconst":"tt0468569"},{"titleId":"tt1375666"}]}`
+
+  assertEquals(extractImdbIdsFromHtml(html), ['tt0468569', 'tt1375666'])
+})
+
+Deno.test(
+  'extractImdbIdsFromHtml parses plain tt ids from script payloads',
+  () => {
+    const html = `<script>window.__NEXT_DATA__={"ids":["tt4154796","tt7286456"]}</script>`
+
+    assertEquals(extractImdbIdsFromHtml(html), ['tt4154796', 'tt7286456'])
+  }
+)
+
+Deno.test('extractImdbNextPageUrlFromHtml parses relative next links', () => {
+  const html = '<a rel="next" href="/list/ls123456789/?page=2">Next</a>'
+
+  assertEquals(
+    extractImdbNextPageUrlFromHtml(
+      html,
+      'https://www.imdb.com/list/ls123456789/'
+    ),
+    'https://www.imdb.com/list/ls123456789/?page=2'
   )
 })

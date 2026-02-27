@@ -98,6 +98,63 @@ export function extractImdbExportUrlFromHtml(html: string): string | null {
 }
 
 /**
+ * Extract IMDb title IDs from list/watchlist/ratings HTML when CSV export is blocked.
+ */
+export function extractImdbIdsFromHtml(html: string): string[] {
+  const text = String(html || '')
+  const seen = new Set<string>()
+  const ids: string[] = []
+
+  const patterns: RegExp[] = [
+    /\/title\/(tt\d+)\//gi,
+    /titleId\s*[:=]\s*['"](tt\d+)['"]/gi,
+    /['"]tconst['"]\s*:\s*['"](tt\d+)['"]/gi,
+    /\b(tt\d{7,10})\b/gi,
+  ]
+
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null
+    while ((match = pattern.exec(text)) !== null) {
+      const imdbId = (match[1] || '').trim()
+      if (!imdbId || seen.has(imdbId)) continue
+      seen.add(imdbId)
+      ids.push(imdbId)
+    }
+  }
+
+  return ids
+}
+
+/**
+ * Extract rel="next" pagination URL from IMDb HTML pages.
+ */
+export function extractImdbNextPageUrlFromHtml(
+  html: string,
+  currentUrl: string
+): string | null {
+  const text = String(html || '')
+
+  const patterns: RegExp[] = [
+    /<a[^>]+rel=["']next["'][^>]+href=["']([^"']+)["']/i,
+    /<a[^>]+href=["']([^"']+)["'][^>]+rel=["']next["']/i,
+  ]
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern)
+    const href = match?.[1]?.trim()
+    if (!href) continue
+
+    try {
+      return new URL(href, currentUrl).toString()
+    } catch {
+      // ignore malformed url and continue
+    }
+  }
+
+  return null
+}
+
+/**
  * Parse an IMDb CSV export (ratings or watchlist) and extract movie entries.
  * Handles both the "Your Ratings" and "Watchlist" export formats.
  */
