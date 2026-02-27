@@ -920,10 +920,62 @@ for await (const req of server) {
             return { csv: bodyText }
           }
 
-          // IMDb sometimes returns the ratings/watchlist page HTML first; try to discover
-          // the live export link and retry once using that URL.
+          const tryPageFallback = async (knownExportUrl?: string) => {
+            // Load the canonical page directly and retry with any export URL discovered there.
+            try {
+              const pageResponse = await fetch(pageUrl, {
+                headers: {
+                  ...imdbHeaders,
+                  Accept: 'text/html,application/xhtml+xml,*/*',
+                },
+              })
+              if (!pageResponse.ok) return null
+
+              const pageHtml = await pageResponse.text()
+              const pageDiscoveredExportUrl = extractImdbExportUrlFromHtml(
+                pageHtml
+              )
+              if (
+                !pageDiscoveredExportUrl ||
+                pageDiscoveredExportUrl === knownExportUrl
+              ) {
+                return null
+              }
+
+              const retryResp = await fetch(pageDiscoveredExportUrl, {
+                headers: imdbHeaders,
+              })
+              if (!retryResp.ok) return null
+
+              const retryContent = await retryResp.text()
+              const retryContentType =
+                retryResp.headers.get('content-type') || ''
+              const retryLooksLikeHtml =
+                retryContentType.toLowerCase().includes('text/html') ||
+                /^\s*</.test(retryContent)
+
+              if (retryLooksLikeHtml) return null
+
+              log.info(
+                `IMDb CSV fetched via page-discovered export URL: ${pageDiscoveredExportUrl}`
+              )
+              return retryContent
+            } catch (pageErr) {
+              log.warning(
+                `IMDb page discovery fallback failed: ${
+                  pageErr?.message || pageErr
+                }`
+              )
+              return null
+            }
+          }
+
+          // IMDb sometimes returns the ratings/watchlist/list HTML for /export first.
           const discoveredExportUrl = extractImdbExportUrlFromHtml(bodyText)
           if (!discoveredExportUrl || discoveredExportUrl === targetUrl) {
+            const pageFallbackCsv = await tryPageFallback(discoveredExportUrl)
+            if (pageFallbackCsv) return { csv: pageFallbackCsv }
+
             return {
               error:
                 'IMDb returned an HTML page instead of CSV. Ensure the list is public and try again.',
@@ -970,51 +1022,8 @@ for await (const req of server) {
             /^\s*</.test(discoveredContent)
 
           if (discoveredLooksLikeHtml) {
-            // As a final attempt, load the page URL and extract again in case cookies/redirects changed.
-            try {
-              const pageResponse = await fetch(pageUrl, {
-                headers: {
-                  ...imdbHeaders,
-                  Accept: 'text/html,application/xhtml+xml,*/*',
-                },
-              })
-              if (pageResponse.ok) {
-                const pageHtml = await pageResponse.text()
-                const pageDiscoveredExportUrl = extractImdbExportUrlFromHtml(
-                  pageHtml
-                )
-
-                if (
-                  pageDiscoveredExportUrl &&
-                  pageDiscoveredExportUrl !== discoveredExportUrl
-                ) {
-                  const retryResp = await fetch(pageDiscoveredExportUrl, {
-                    headers: imdbHeaders,
-                  })
-                  if (retryResp.ok) {
-                    const retryContent = await retryResp.text()
-                    const retryContentType =
-                      retryResp.headers.get('content-type') || ''
-                    const retryLooksLikeHtml =
-                      retryContentType.toLowerCase().includes('text/html') ||
-                      /^\s*</.test(retryContent)
-
-                    if (!retryLooksLikeHtml) {
-                      log.info(
-                        `IMDb CSV fetched via page-discovered export URL: ${pageDiscoveredExportUrl}`
-                      )
-                      return { csv: retryContent }
-                    }
-                  }
-                }
-              }
-            } catch (pageErr) {
-              log.warning(
-                `IMDb page discovery fallback failed: ${
-                  pageErr?.message || pageErr
-                }`
-              )
-            }
+            const pageFallbackCsv = await tryPageFallback(discoveredExportUrl)
+            if (pageFallbackCsv) return { csv: pageFallbackCsv }
 
             return {
               error:
