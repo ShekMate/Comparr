@@ -2030,6 +2030,57 @@ async function login(api) {
     loginError.hidden = !message
   }
 
+  const promptActiveSessionTakeover = () => {
+    const overlay = document.getElementById('active-session-overlay')
+    const popup = document.getElementById('active-session-popup')
+    const continueBtn = document.getElementById('active-session-continue-btn')
+    const cancelBtn = document.getElementById('active-session-cancel-btn')
+
+    if (!overlay || !popup || !continueBtn || !cancelBtn) {
+      return Promise.resolve(
+        window.confirm(
+          'You already have an active session. Continue to log out all other active sessions on all devices?'
+        )
+      )
+    }
+
+    const closePrompt = () => {
+      popup.classList.remove('active')
+      overlay.classList.remove('active')
+    }
+
+    return new Promise(resolve => {
+      const cleanup = () => {
+        continueBtn.removeEventListener('click', onContinue)
+        cancelBtn.removeEventListener('click', onCancel)
+        overlay.removeEventListener('click', onCancel)
+      }
+
+      const onContinue = () => {
+        cleanup()
+        closePrompt()
+        resolve(true)
+      }
+
+      const onCancel = () => {
+        cleanup()
+        closePrompt()
+        modeForm.style.display = 'grid'
+        loginForm.style.display = 'none'
+        setLoginError('')
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        resolve(false)
+      }
+
+      continueBtn.addEventListener('click', onContinue)
+      cancelBtn.addEventListener('click', onCancel)
+      overlay.addEventListener('click', onCancel)
+
+      overlay.classList.add('active')
+      popup.classList.add('active')
+    })
+  }
+
   const normalizeRoomCodeInput = value =>
     String(value || '')
       .trim()
@@ -2190,11 +2241,24 @@ async function login(api) {
     )
 
     try {
-      const data = await api.login(
-        personalUser,
-        personalRoomCode,
-        verifiedPassword
-      )
+      let data
+      try {
+        data = await api.login(personalUser, personalRoomCode, verifiedPassword)
+      } catch (err) {
+        if (err.code !== 'ACTIVE_SESSION_EXISTS') {
+          throw err
+        }
+
+        const shouldTakeOver = await promptActiveSessionTakeover()
+        if (!shouldTakeOver) return
+
+        data = await api.login(
+          personalUser,
+          personalRoomCode,
+          verifiedPassword,
+          true
+        )
+      }
 
       await loginSection.animate(
         { opacity: ['1', '0'] },
@@ -2290,7 +2354,21 @@ async function login(api) {
           return
         }
 
-        const data = await api.login(name, code, verifiedPassword)
+        let data
+        try {
+          data = await api.login(name, code, verifiedPassword)
+        } catch (err) {
+          if (err.code !== 'ACTIVE_SESSION_EXISTS') {
+            throw err
+          }
+
+          const shouldTakeOver = await promptActiveSessionTakeover()
+          if (!shouldTakeOver) {
+            return
+          }
+
+          data = await api.login(name, code, verifiedPassword, true)
+        }
         loginForm.removeEventListener('submit', handleSubmit)
 
         // hide login

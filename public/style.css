@@ -2618,6 +2618,15 @@ body:not(.is-logged-in) .card-stack:empty::after {
   box-shadow: var(--shadow-md);
 }
 
+#active-session-overlay {
+  z-index: 10001;
+}
+
+.active-session-popup {
+  z-index: 10002;
+  border-color: var(--color-warning, #f59e0b);
+}
+
 /* Mobile adjustments */
 @media (max-width: 600px) {
   .match-popup {

@@ -148,7 +148,7 @@ export class ComparrAPI extends EventTarget {
     return data.roomCode
   }
 
-  async login(user, roomCode, accessPassword) {
+  async login(user, roomCode, accessPassword, forceTakeover = false) {
     await this._waitOpen()
     this.socket.send(
       JSON.stringify({
@@ -157,6 +157,7 @@ export class ComparrAPI extends EventTarget {
           name: user,
           roomCode,
           accessPassword,
+          forceTakeover,
         },
       })
     )
@@ -168,13 +169,15 @@ export class ComparrAPI extends EventTarget {
           if (e.data.success) {
             resolve(e.data)
           } else {
-            reject(
-              new Error(
-                e.data.message ||
-                  e.data.error ||
-                  'Login failed. Please try again.'
-              )
+            const error = new Error(
+              e.data.message ||
+                e.data.error ||
+                'Login failed. Please try again.'
             )
+            if (e.data.code) {
+              error.code = e.data.code
+            }
+            reject(error)
           }
         },
         { once: true }

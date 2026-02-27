@@ -1016,6 +1016,26 @@
         </div>
       </div>
 
+      <!-- ===== Active Session Takeover Popup ===== -->
+      <div class="modal-overlay" id="active-session-overlay"></div>
+      <div class="match-popup active-session-popup" id="active-session-popup">
+        <div class="match-popup-content">
+          <h2 class="match-popup-title">Active Session Found</h2>
+          <p class="match-popup-message">
+            You already have an active session. By clicking Continue, you will
+            be logged out of all other active sessions on all devices.
+          </p>
+          <div class="match-popup-actions">
+            <button class="btn-primary" id="active-session-continue-btn">
+              Continue
+            </button>
+            <button class="btn-secondary" id="active-session-cancel-btn">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- ===== Watch List Filter Modal ===== -->
       <div class="modal-overlay" id="watch-filter-overlay"></div>
       <div class="filter-modal" id="watch-filter-modal">
