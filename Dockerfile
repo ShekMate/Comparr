@@ -5,7 +5,7 @@ WORKDIR /app
 USER root
 
 # Install gosu (used to drop privileges to PUID/PGID)
-RUN apt-get update && apt-get install -y --no-install-recommends gosu && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends gosu passwd && rm -rf /var/lib/apt/lists/*
 
 # Copy application files
 ADD . .
