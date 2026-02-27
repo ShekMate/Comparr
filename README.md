@@ -219,7 +219,7 @@ Comparr persists application settings in `/data/settings.json` after you save th
 | `MOVIE_BATCH_SIZE`       | Number of movies to load at once                         | `20`              |
 | `ROOT_PATH`              | Base path if running behind a reverse proxy              | _(none)_          |
 | `STREAMING_PROFILE_MODE` | Availability filtering mode (`anywhere`, etc.)           | `anywhere`        |
-| `LINK_TYPE`              | Movie link behavior (`app` or `plex.tv`)                | `app`             |
+| `LINK_TYPE`              | Movie link behavior (`app` or `plex.tv`)                 | `app`             |
 
 #### Library Filtering
 
@@ -486,6 +486,19 @@ npm run format
 - Reduce `MOVIE_BATCH_SIZE` to a lower value (e.g., `10`)
 - Check if you have large libraries (thousands of movies)
 - Monitor logs for errors that might cause memory leaks
+
+### IMDb Sync Debug Captures
+
+If IMDb sync fails intermittently, you can enable capture files that store request/response diagnostics for the `/api/imdb-import-url` flow.
+
+**Enable capture mode:**
+
+- Set environment variable `IMDB_DEBUG_CAPTURE=1` (or `DEBUG_IMDB_IMPORT=1`) on the Comparr container.
+- Trigger IMDb sync again from the UI.
+- On failure or fallback-started responses, the API now includes `debugCaptureId`.
+- Capture files are written to `/data/imdb-debug/<debugCaptureId>.json`.
+
+These captures are designed to help reproduce parser failures against real IMDb payloads without exposing full page contents in logs.
 
 ---
 

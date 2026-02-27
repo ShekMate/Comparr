@@ -845,7 +845,7 @@ for await (const req of server) {
 
         const decoder = new TextDecoder()
         const body = decoder.decode(await Deno.readAll(req.body))
-        const { imdbUrl, roomCode, userName } = JSON.parse(body)
+        const { imdbUrl, roomCode, userName, debugCapture } = JSON.parse(body)
 
         if (!imdbUrl || !roomCode || !userName) {
           await req.respond({
@@ -889,6 +889,65 @@ for await (const req of server) {
           Accept: 'text/csv, */*',
         }
 
+        const imdbDebugEnabled =
+          debugCapture === true ||
+          Deno.env.get('IMDB_DEBUG_CAPTURE') === '1' ||
+          Deno.env.get('DEBUG_IMDB_IMPORT') === '1'
+        const imdbDebugEvents: Array<Record<string, unknown>> = []
+
+        const sanitizeImdbDebugPreview = (text: string, max = 1200) =>
+          String(text || '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, max)
+
+        const pushImdbDebugEvent = (event: Record<string, unknown>) => {
+          if (!imdbDebugEnabled) return
+          imdbDebugEvents.push({
+            ts: new Date().toISOString(),
+            ...event,
+          })
+        }
+
+        const persistImdbDebugCapture = async (outcome: string) => {
+          if (!imdbDebugEnabled || imdbDebugEvents.length === 0) return null
+
+          try {
+            const debugDir = `${DATA_DIR}/imdb-debug`
+            await Deno.mkdir(debugDir, { recursive: true })
+            const captureId = `${Date.now()}-${Math.random()
+              .toString(36)
+              .slice(2, 8)}`
+            const capturePath = `${debugDir}/${captureId}.json`
+            const payload = {
+              captureId,
+              createdAt: new Date().toISOString(),
+              roomCode,
+              userName,
+              input: String(imdbUrl || ''),
+              normalizedInput: importTarget.normalizedInput,
+              sourceType: importTarget.sourceType,
+              outcome,
+              events: imdbDebugEvents,
+            }
+
+            await Deno.writeTextFile(
+              capturePath,
+              JSON.stringify(payload, null, 2)
+            )
+            return captureId
+          } catch (debugErr) {
+            log.warning(`Failed to persist IMDb debug capture: ${debugErr}`)
+            return null
+          }
+        }
+
+        pushImdbDebugEvent({
+          stage: 'start',
+          exportUrl,
+          pageUrl: importTarget.pageUrl,
+        })
+
         const fetchImdbCsv = async (targetUrl: string, pageUrl: string) => {
           let response: Response
           let initialStatus: number | null = null
@@ -905,6 +964,11 @@ for await (const req of server) {
               if (!pageResponse.ok) return null
 
               const pageHtml = await pageResponse.text()
+              pushImdbDebugEvent({
+                stage: 'page-fallback-html',
+                pageUrl,
+                preview: sanitizeImdbDebugPreview(pageHtml),
+              })
               const pageDiscoveredExportUrl = extractImdbExportUrlFromHtml(
                 pageHtml
               )
@@ -950,8 +1014,19 @@ for await (const req of server) {
           try {
             response = await fetch(targetUrl, { headers: imdbHeaders })
             initialStatus = response.status
+            pushImdbDebugEvent({
+              stage: 'fetch-export-response',
+              targetUrl,
+              status: response.status,
+              contentType: response.headers.get('content-type') || '',
+            })
           } catch (err) {
             log.error(`IMDb fetch request failed: ${err?.message || err}`)
+            pushImdbDebugEvent({
+              stage: 'fetch-export-error',
+              targetUrl,
+              error: String(err?.message || err),
+            })
             return {
               error:
                 'Unable to reach IMDb export endpoint right now. Please try again in a moment.',
@@ -980,6 +1055,12 @@ for await (const req of server) {
           }
 
           const bodyText = await response.text()
+          pushImdbDebugEvent({
+            stage: 'fetch-export-body',
+            targetUrl,
+            isHtml: true,
+            preview: sanitizeImdbDebugPreview(bodyText),
+          })
           const contentType = response.headers.get('content-type') || ''
           const looksLikeHtml =
             contentType.toLowerCase().includes('text/html') ||
@@ -987,6 +1068,11 @@ for await (const req of server) {
 
           if (!looksLikeHtml) {
             log.info(`IMDb CSV fetched: ${bodyText.length} bytes`)
+            pushImdbDebugEvent({
+              stage: 'fetch-export-csv',
+              targetUrl,
+              bytes: bodyText.length,
+            })
             return { csv: bodyText }
           }
 
@@ -1114,11 +1200,24 @@ for await (const req of server) {
                 break
               }
 
-              if (!pageResp.ok) break
+              if (!pageResp.ok) {
+                pushImdbDebugEvent({
+                  stage: 'crawl-page-non-ok',
+                  currentUrl,
+                  status: pageResp.status,
+                })
+                break
+              }
               html = await pageResp.text()
             }
 
             const ids = extractImdbIdsFromHtml(html)
+            pushImdbDebugEvent({
+              stage: 'crawl-page-ids',
+              currentUrl,
+              pageIndex: page,
+              idsFound: ids.length,
+            })
             for (const id of ids) {
               if (!orderedIds.includes(id)) orderedIds.push(id)
             }
@@ -1147,6 +1246,10 @@ for await (const req of server) {
           const allIds = [...new Set([...seedIds, ...crawledIds])]
 
           if (allIds.length > 0) {
+            pushImdbDebugEvent({
+              stage: 'html-pagination-success',
+              idsFound: allIds.length,
+            })
             log.info(
               `IMDb HTML pagination fallback extracted ${
                 allIds.length
@@ -1171,12 +1274,17 @@ for await (const req of server) {
               )
             })
 
+            const debugCaptureId = await persistImdbDebugCapture(
+              'started_html_fallback'
+            )
+
             await req.respond({
               status: 202,
               body: JSON.stringify({
                 status: 'started',
                 total: imdbRows.length,
                 source: 'html-pagination-fallback',
+                debugCaptureId,
               }),
               headers: makeHeaders('application/json'),
             })
@@ -1184,12 +1292,24 @@ for await (const req of server) {
             continue
           }
 
+          pushImdbDebugEvent({
+            stage: 'final-failure',
+            error:
+              primaryImport.error ||
+              'Unable to fetch IMDb CSV export at this time.',
+            seedHtmlIds: seedIds.length,
+            crawledIds: crawledIds.length,
+          })
+
+          const debugCaptureId = await persistImdbDebugCapture('failed')
+
           await req.respond({
             status: 502,
             body: JSON.stringify({
               error:
                 primaryImport.error ||
                 'Unable to fetch IMDb CSV export at this time.',
+              debugCaptureId,
             }),
             headers: makeHeaders('application/json'),
           })
@@ -1281,9 +1401,15 @@ for await (const req of server) {
         )
 
         // Return immediately - movies will arrive via WebSocket
+        const debugCaptureId = await persistImdbDebugCapture('started_csv')
+
         await req.respond({
           status: 202,
-          body: JSON.stringify({ status: 'started', total: rows.length }),
+          body: JSON.stringify({
+            status: 'started',
+            total: rows.length,
+            debugCaptureId,
+          }),
           headers: makeHeaders('application/json'),
         })
 
