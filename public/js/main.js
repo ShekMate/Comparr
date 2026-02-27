@@ -4201,11 +4201,13 @@ const main = async () => {
           `IMDb sync complete: ${imported} movies added to Seen list.`
         )
 
-        // Re-enable buttons
-        const imdbUrlSyncBtn = document.getElementById('imdb-url-sync-btn')
+        // Re-enable button
         const imdbCsvUploadBtn = document.getElementById('imdb-csv-upload-btn')
-        if (imdbUrlSyncBtn) imdbUrlSyncBtn.disabled = false
         if (imdbCsvUploadBtn) imdbCsvUploadBtn.disabled = false
+
+        if (typeof window.refreshImdbImportHistory === 'function') {
+          window.refreshImdbImportHistory()
+        }
 
         // Hide progress after delay
         setTimeout(() => {
@@ -4963,12 +4965,13 @@ const main = async () => {
   }
 
   // =========================================================
-  // IMDb Import Handler (URL sync + CSV upload)
+  // IMDb Import Handler (CSV upload + history)
   // =========================================================
-  const imdbUrlInput = document.getElementById('setting-imdb-sync-url')
-  const imdbUrlSyncBtn = document.getElementById('imdb-url-sync-btn')
   const imdbCsvUploadBtn = document.getElementById('imdb-csv-upload-btn')
   const imdbCsvInput = document.getElementById('imdb-csv-input')
+  const imdbImportHistoryBody = document.getElementById(
+    'imdb-import-history-body'
+  )
 
   function showImdbProgress(text) {
     isImdbImportActive = true
@@ -4991,69 +4994,61 @@ const main = async () => {
     showNotification(`IMDb import failed: ${err.message}`)
   }
 
-  // --- URL Sync handler ---
-  if (imdbUrlSyncBtn) {
-    imdbUrlSyncBtn.addEventListener('click', async () => {
-      const imdbUrl = imdbUrlInput?.value?.trim() || ''
-      if (!imdbUrl) {
-        showNotification(
-          'Please set an IMDb list or user ID in Settings → Sync first.'
-        )
+  function escapeCell(value) {
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+  }
+
+  async function loadImdbImportHistory() {
+    if (!imdbImportHistoryBody) return
+
+    try {
+      const apiBase = document.body.dataset.basePath || ''
+      const response = await fetch(
+        `${apiBase}/api/imdb-import-history?roomCode=${encodeURIComponent(
+          roomCode
+        )}&userName=${encodeURIComponent(userName)}`
+      )
+
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`)
+      }
+
+      const { history } = await response.json()
+      if (!Array.isArray(history) || history.length === 0) {
+        imdbImportHistoryBody.innerHTML =
+          '<tr><td colspan="4">No imports yet.</td></tr>'
         return
       }
 
-      showImdbProgress('Fetching list from IMDb...')
-      imdbUrlSyncBtn.disabled = true
-      if (imdbCsvUploadBtn) imdbCsvUploadBtn.disabled = true
-
-      try {
-        const apiBase = document.body.dataset.basePath || ''
-        const response = await fetch(`${apiBase}/api/imdb-import-url`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imdbUrl, roomCode, userName }),
+      imdbImportHistoryBody.innerHTML = history
+        .map(entry => {
+          const uploadDate = new Date(entry.uploadedAt).toLocaleString()
+          const statusClass =
+            entry.status === 'failed' ? 'failed' : 'successful'
+          return `<tr>
+            <td>${escapeCell(entry.fileName || 'IMDb CSV')}</td>
+            <td>${escapeCell(uploadDate)}</td>
+            <td>${escapeCell(entry.movieCount ?? 0)}</td>
+            <td><span class="imdb-import-status-pill ${statusClass}">${escapeCell(
+            entry.status === 'failed' ? 'Failed' : 'Successful'
+          )}</span></td>
+          </tr>`
         })
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          throw new Error(errorData.error || `Server error: ${response.status}`)
-        }
-
-        const result = await response.json()
-
-        // Handle immediate completion (0 movies) or started status
-        if (result.status === 'completed' && result.total === 0) {
-          if (imdbImportStatus)
-            imdbImportStatus.textContent =
-              result.detail || 'No movies found in the IMDb list.'
-          if (imdbImportBar) imdbImportBar.style.width = '100%'
-          imdbUrlSyncBtn.disabled = false
-          if (imdbCsvUploadBtn) imdbCsvUploadBtn.disabled = false
-          setTimeout(() => {
-            if (imdbImportProgress) imdbImportProgress.style.display = 'none'
-          }, 3000)
-        } else if (result.status === 'started') {
-          // Background processing started - progress updates will come via WebSocket
-          if (imdbImportStatus)
-            imdbImportStatus.textContent = `Processing ${result.total} movies in background...`
-          if (imdbImportBar) imdbImportBar.style.width = '10%'
-          // Buttons stay disabled - will be re-enabled by WebSocket completion handler
-        }
-      } catch (err) {
-        showImdbError(err)
-        imdbUrlSyncBtn.disabled = false
-        if (imdbCsvUploadBtn) imdbCsvUploadBtn.disabled = false
-      }
-    })
-
-    // Allow pressing Enter in the URL input
-    imdbUrlInput?.addEventListener('keydown', e => {
-      if (e.key === 'Enter') {
-        e.preventDefault()
-        imdbUrlSyncBtn.click()
-      }
-    })
+        .join('')
+    } catch (err) {
+      console.warn('Failed to load IMDb import history:', err)
+      imdbImportHistoryBody.innerHTML =
+        '<tr><td colspan="4">Unable to load import history.</td></tr>'
+    }
   }
+
+  window.refreshImdbImportHistory = loadImdbImportHistory
+  loadImdbImportHistory()
 
   // --- CSV Upload handler ---
   if (imdbCsvUploadBtn && imdbCsvInput) {
@@ -5073,7 +5068,6 @@ const main = async () => {
 
       showImdbProgress('Reading file...')
       imdbCsvUploadBtn.disabled = true
-      if (imdbUrlSyncBtn) imdbUrlSyncBtn.disabled = true
 
       try {
         const csvContent = await file.text()
@@ -5084,7 +5078,12 @@ const main = async () => {
         const response = await fetch(`${apiBase}/api/imdb-import`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ csvContent, roomCode, userName }),
+          body: JSON.stringify({
+            csvContent,
+            roomCode,
+            userName,
+            fileName: file.name,
+          }),
         })
 
         if (imdbImportBar) imdbImportBar.style.width = '20%'
@@ -5102,7 +5101,7 @@ const main = async () => {
             imdbImportStatus.textContent = 'No movies found in the CSV file.'
           if (imdbImportBar) imdbImportBar.style.width = '100%'
           imdbCsvUploadBtn.disabled = false
-          if (imdbUrlSyncBtn) imdbUrlSyncBtn.disabled = false
+          loadImdbImportHistory()
           setTimeout(() => {
             if (imdbImportProgress) imdbImportProgress.style.display = 'none'
           }, 3000)
@@ -5121,16 +5120,15 @@ const main = async () => {
             ) {
               if (imdbImportStatus)
                 imdbImportStatus.textContent = `Processing ${result.total} movies... (check Seen list, refresh if needed)`
-              // Re-enable buttons so user isn't stuck
+              // Re-enable button so user isn't stuck
               imdbCsvUploadBtn.disabled = false
-              if (imdbUrlSyncBtn) imdbUrlSyncBtn.disabled = false
             }
           }, 30000)
         }
       } catch (err) {
         showImdbError(err)
         imdbCsvUploadBtn.disabled = false
-        if (imdbUrlSyncBtn) imdbUrlSyncBtn.disabled = false
+        loadImdbImportHistory()
       } finally {
         imdbCsvInput.value = '' // Always reset file input
       }
