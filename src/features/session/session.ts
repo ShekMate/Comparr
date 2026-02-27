@@ -445,7 +445,12 @@ if (typeof denoWithUnref.unrefTimer === 'function') {
 
 interface WebSocketLoginMessage {
   type: 'login'
-  payload: { name: string; roomCode: string; accessPassword: string }
+  payload: {
+    name: string
+    roomCode: string
+    accessPassword: string
+    forceTakeover?: boolean
+  }
 }
 
 interface WebSocketMatchMessage {
@@ -456,7 +461,7 @@ interface WebSocketMatchMessage {
 interface WebSocketLoginResponseMessage {
   type: 'loginResponse'
   payload:
-    | { success: false; message?: string }
+    | { success: false; message?: string; code?: string }
     | {
         success: true
         matches: Array<WebSocketMatchMessage['payload']>
@@ -1712,10 +1717,7 @@ class Session {
         pendingCandidate
       ) {
         const elapsedMs = Date.now() - batchBuildStartedAt
-        if (
-          validMovies.length > 0 &&
-          elapsedMs >= SEND_BATCH_SOFT_TIMEOUT_MS
-        ) {
+        if (validMovies.length > 0 && elapsedMs >= SEND_BATCH_SOFT_TIMEOUT_MS) {
           log.info(
             `⏱️ Soft timeout reached after ${elapsedMs}ms; sending ${validMovies.length} movie(s) early to reduce first-load latency.`
           )
@@ -2820,27 +2822,46 @@ export const handleLogin = (
 
           const session = getSession(roomCode, ws)
 
+          const activeUsersWithSameName = [...session.users.entries()].filter(
+            ([sessionUser, sessionSocket]) =>
+              sessionUser.name === data.payload.name &&
+              sessionSocket &&
+              !sessionSocket.isClosed
+          )
+
           const existingUser = [...session.users.keys()].find(
             ({ name }) => name === data.payload.name
           )
 
-          if (
-            existingUser &&
-            session.users.get(existingUser) &&
-            !session.users.get(existingUser)?.isClosed
-          ) {
-            log.info(
-              `${existingUser.name} is already logged in. Try another name!`
-            )
-            const response: WebSocketLoginResponseMessage = {
-              type: 'loginResponse',
-              payload: {
-                success: false,
-                message: `${existingUser.name} is already logged in. Try another name!`,
-              },
+          if (activeUsersWithSameName.length > 0) {
+            if (!data.payload.forceTakeover) {
+              log.info(
+                `${data.payload.name} already has an active session in ${roomCode}`
+              )
+              const response: WebSocketLoginResponseMessage = {
+                type: 'loginResponse',
+                payload: {
+                  success: false,
+                  code: 'ACTIVE_SESSION_EXISTS',
+                  message: `${data.payload.name} is already logged in. Try another name!`,
+                },
+              }
+              ws.send(JSON.stringify(response))
+              return
             }
-            ws.send(JSON.stringify(response))
-            return
+
+            for (const [
+              sessionUser,
+              sessionSocket,
+            ] of activeUsersWithSameName) {
+              log.info(
+                `Force logout for ${sessionUser.name} in room ${roomCode} due to takeover request`
+              )
+              sessionSocket?.close(
+                4001,
+                'Logged out because another session continued login'
+              )
+            }
           }
 
           try {
