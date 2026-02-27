@@ -264,6 +264,12 @@ const DEFAULT_DISCOVER_PREFETCH_PAGES = Number(
 const FILTERED_DISCOVER_PREFETCH_PAGES = Number(
   Deno.env.get('DISCOVER_CACHE_FILTERED_PAGES') ?? '2'
 )
+const SEND_BATCH_SOFT_TIMEOUT_MS = Number(
+  Deno.env.get('SEND_BATCH_SOFT_TIMEOUT_MS') ?? '15000'
+)
+const SEND_BATCH_HARD_TIMEOUT_MS = Number(
+  Deno.env.get('SEND_BATCH_HARD_TIMEOUT_MS') ?? '45000'
+)
 
 interface DiscoverCacheEntry {
   pages: Map<number, any[]>
@@ -1580,6 +1586,7 @@ class Session {
 
       const maxAttempts = attemptBatchSize
       let attempts = 0
+      const batchBuildStartedAt = Date.now()
 
       let hasPersonFilters =
         tmdbConfigured &&
@@ -1704,6 +1711,23 @@ class Session {
         validMovies.length < Number(getMovieBatchSize()) &&
         pendingCandidate
       ) {
+        const elapsedMs = Date.now() - batchBuildStartedAt
+        if (
+          validMovies.length > 0 &&
+          elapsedMs >= SEND_BATCH_SOFT_TIMEOUT_MS
+        ) {
+          log.info(
+            `⏱️ Soft timeout reached after ${elapsedMs}ms; sending ${validMovies.length} movie(s) early to reduce first-load latency.`
+          )
+          break
+        }
+        if (elapsedMs >= SEND_BATCH_HARD_TIMEOUT_MS) {
+          log.warning(
+            `⏱️ Hard timeout reached after ${elapsedMs}ms; ending batch generation with ${validMovies.length} movie(s).`
+          )
+          break
+        }
+
         const { promise, attemptNumber } = pendingCandidate
         let plexMovie: any | null = null
 
