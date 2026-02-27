@@ -270,6 +270,9 @@ const SEND_BATCH_SOFT_TIMEOUT_MS = Number(
 const SEND_BATCH_HARD_TIMEOUT_MS = Number(
   Deno.env.get('SEND_BATCH_HARD_TIMEOUT_MS') ?? '45000'
 )
+const ENRICHMENT_TIMEOUT_MS = Number(
+  Deno.env.get('ENRICHMENT_TIMEOUT_MS') ?? '3500'
+)
 
 interface DiscoverCacheEntry {
   pages: Map<number, any[]>
@@ -1814,7 +1817,18 @@ class Session {
             | undefined
 
           try {
-            extra = await this.getEnrichmentData(plexMovie)
+            extra = await Promise.race([
+              this.getEnrichmentData(plexMovie),
+              new Promise<undefined>(resolve =>
+                setTimeout(() => resolve(undefined), ENRICHMENT_TIMEOUT_MS)
+              ),
+            ])
+
+            if (!extra) {
+              log.debug(
+                `⏱️ Enrichment timed out for ${plexMovie.title} after ${ENRICHMENT_TIMEOUT_MS}ms; using base metadata.`
+              )
+            }
           } catch (e) {
             log.warning(`Enrichment failed for ${plexMovie.title}: ${e}`)
           }

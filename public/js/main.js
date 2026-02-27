@@ -5006,6 +5006,7 @@ const main = async () => {
   let pendingTmdbIds = new Set()
   let isLoadingBatch = false
   let ensureMovieBufferPromise = null
+  let ensureMovieBufferTarget = 0
   const BUFFER_MIN_SIZE = 8
   const INITIAL_BUFFER_MIN_SIZE = 2
   const BATCH_SIZE = 20
@@ -5217,6 +5218,7 @@ const main = async () => {
   async function ensureMovieBuffer(targetSize = BUFFER_MIN_SIZE) {
     // If already loading, return the existing promise with timeout
     if (ensureMovieBufferPromise) {
+      const requestedLargerTarget = targetSize > ensureMovieBufferTarget
       console.log('⏳ Already ensuring buffer, waiting...')
       try {
         await Promise.race([
@@ -5229,6 +5231,7 @@ const main = async () => {
         if (e.message === 'Buffer promise timeout') {
           console.warn('⚠️ Buffer promise timed out, resetting')
           ensureMovieBufferPromise = null
+          ensureMovieBufferTarget = 0
           window.ensureMovieBufferPromise = ensureMovieBufferPromise
           isLoadingBatch = false
           window.isLoadingBatch = isLoadingBatch
@@ -5237,7 +5240,12 @@ const main = async () => {
         }
         throw e
       }
-      return ensureMovieBufferPromise
+
+      if (requestedLargerTarget && movieBuffer.length < targetSize) {
+        return ensureMovieBuffer(targetSize)
+      }
+
+      return
     }
 
     // Clear buffer if filters changed
@@ -5266,6 +5274,7 @@ const main = async () => {
     }
 
     //FIX: Create and store the promise immediately
+    ensureMovieBufferTarget = targetSize
     ensureMovieBufferPromise = (async () => {
       try {
         const MAX_BATCH_ATTEMPTS = 4
@@ -5413,6 +5422,7 @@ const main = async () => {
       } finally {
         isLoadingBatch = false
         ensureMovieBufferPromise = null
+        ensureMovieBufferTarget = 0
         window.isLoadingBatch = isLoadingBatch
         window.ensureMovieBufferPromise = ensureMovieBufferPromise
       }
@@ -5526,7 +5536,7 @@ const main = async () => {
     window.__resetMovies = false
 
     try {
-      await ensureMovieBuffer()
+      await ensureMovieBuffer(INITIAL_BUFFER_MIN_SIZE)
 
       const cardStack = document.querySelector('.js-card-stack')
       if (cardStack) cardStack.innerHTML = ''
