@@ -4189,7 +4189,7 @@ const main = async () => {
         if (imdbImportProgress) imdbImportProgress.style.display = 'block'
         const pct = total > 0 ? Math.round((processed / total) * 100) : 0
         if (imdbImportStatus)
-          imdbImportStatus.textContent = `Processing: ${processed}/${total} (${imported} added, ${skipped} skipped)`
+          imdbImportStatus.textContent = `Imported ${imported} out of ${total} movies (${processed}/${total} processed, ${skipped} skipped)`
         if (imdbImportBar) imdbImportBar.style.width = `${pct}%`
       } else if (status === 'completed') {
         if (!isImdbImportActive) return
