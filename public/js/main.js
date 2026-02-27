@@ -759,7 +759,26 @@ function setSettingsStatus(message) {
   const status = document.querySelector('.settings-status')
   if (status) {
     status.textContent = message
+    if (!message) {
+      status.classList.remove('is-success', 'is-error', 'is-pulsing')
+    }
   }
+}
+
+function pulseSettingsStatus(type = 'info') {
+  const status = document.querySelector('.settings-status')
+  if (!status) return
+
+  status.classList.remove('is-success', 'is-error', 'is-pulsing')
+  if (type === 'success') {
+    status.classList.add('is-success')
+  } else if (type === 'error') {
+    status.classList.add('is-error')
+  }
+
+  // Force reflow so the pulse animation can retrigger each time.
+  void status.offsetWidth
+  status.classList.add('is-pulsing')
 }
 
 function clearSettingsStatusAfterDelay(delayMs = 0) {
@@ -798,6 +817,7 @@ function setSettingsDirty(isDirty) {
   settingsDirty = Boolean(isDirty)
   if (settingsDirty) {
     setSettingsStatus('You have unsaved changes.')
+    pulseSettingsStatus('info')
   }
   syncSettingsFooterActions()
 }
@@ -1624,12 +1644,14 @@ async function saveSettingsForm() {
     setSettingsStatus(
       'Settings saved. Caches are refreshing in the background.'
     )
+    pulseSettingsStatus('success')
     setSettingsDirty(false)
   } catch (err) {
     console.error('Failed to save settings:', err)
     setSettingsStatus(
       `Failed to save settings: ${err?.message || 'Unknown error.'}`
     )
+    pulseSettingsStatus('error')
   }
 }
 
@@ -7135,6 +7157,9 @@ swipeFilterApply?.addEventListener('click', e => {
         JSON.stringify(normalized)
       )
       refreshDefaultsSummary()
+      setSettingsStatus('Default swipe filters saved.')
+      pulseSettingsStatus('success')
+      clearSettingsStatusAfterDelay(3000)
     }
     closeSwipeFilterModal()
     return
