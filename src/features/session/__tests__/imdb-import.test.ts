@@ -97,14 +97,11 @@ Deno.test('extractImdbIdsFromHtml parses json-like payloads', () => {
   assertEquals(extractImdbIdsFromHtml(html), ['tt0468569', 'tt1375666'])
 })
 
-Deno.test(
-  'extractImdbIdsFromHtml parses plain tt ids from script payloads',
-  () => {
-    const html = `<script>window.__NEXT_DATA__={"ids":["tt4154796","tt7286456"]}</script>`
+Deno.test('extractImdbIdsFromHtml ignores unscoped plain tt ids', () => {
+  const html = `<script>window.__NEXT_DATA__={"ids":["tt4154796","tt7286456"]}</script>`
 
-    assertEquals(extractImdbIdsFromHtml(html), ['tt4154796', 'tt7286456'])
-  }
-)
+  assertEquals(extractImdbIdsFromHtml(html), [])
+})
 
 Deno.test('extractImdbNextPageUrlFromHtml parses relative next links', () => {
   const html = '<a rel="next" href="/list/ls123456789/?page=2">Next</a>'

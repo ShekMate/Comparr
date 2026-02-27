@@ -109,7 +109,6 @@ export function extractImdbIdsFromHtml(html: string): string[] {
     /\/title\/(tt\d+)\//gi,
     /titleId\s*[:=]\s*['"](tt\d+)['"]/gi,
     /['"]tconst['"]\s*:\s*['"](tt\d+)['"]/gi,
-    /\b(tt\d{7,10})\b/gi,
   ]
 
   for (const pattern of patterns) {

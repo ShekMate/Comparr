@@ -1170,11 +1170,12 @@ for await (const req of server) {
 
         const fetchImdbIdsFromPages = async (
           startUrl: string,
-          initialHtml?: string
+          initialHtml?: string,
+          initialHtmlIsStartPage = false
         ): Promise<string[]> => {
           const visited = new Set<string>()
           const orderedIds: string[] = []
-          let html = initialHtml || ''
+          let html = initialHtmlIsStartPage ? initialHtml || '' : ''
           let currentUrl = startUrl
           const MAX_PAGES = 20
 
@@ -1238,11 +1239,18 @@ for await (const req of server) {
         )
         if (primaryImport.error || !primaryImport.csv) {
           const htmlSeed = primaryImport.html || ''
+          const htmlSeedFromStartPage = primaryImport.sourceType === 'page'
           const seedIds = htmlSeed ? extractImdbIdsFromHtml(htmlSeed) : []
           const crawledIds = await fetchImdbIdsFromPages(
             importTarget.pageUrl,
-            htmlSeed || undefined
+            htmlSeed || undefined,
+            htmlSeedFromStartPage
           )
+          pushImdbDebugEvent({
+            stage: 'html-seed-source',
+            seedFromStartPage: htmlSeedFromStartPage,
+            seedSourceType: primaryImport.sourceType || 'unknown',
+          })
           const allIds = [...new Set([...seedIds, ...crawledIds])]
 
           if (allIds.length > 0) {
