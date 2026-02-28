@@ -270,6 +270,9 @@ const SEND_BATCH_SOFT_TIMEOUT_MS = Number(
 const SEND_BATCH_HARD_TIMEOUT_MS = Number(
   Deno.env.get('SEND_BATCH_HARD_TIMEOUT_MS') ?? '45000'
 )
+const LOGIN_PREFETCH_SOFT_TIMEOUT_MS = Number(
+  Deno.env.get('LOGIN_PREFETCH_SOFT_TIMEOUT_MS') ?? '2500'
+)
 const ENRICHMENT_TIMEOUT_MS = Number(
   Deno.env.get('ENRICHMENT_TIMEOUT_MS') ?? '3500'
 )
@@ -1452,7 +1455,8 @@ class Session {
     }
   }
 
-  async sendNextBatch(filters?: {
+  async sendNextBatch(
+    filters?: {
     yearMin?: number
     yearMax?: number
     genres?: string[]
@@ -1477,7 +1481,12 @@ class Session {
     sortBy?: string
     imdbRating?: number
     rtRating?: number
-  }) {
+  },
+    options?: {
+      suppressBroadcast?: boolean
+      softTimeoutMs?: number
+    }
+  ) {
     const configuredPaidServices = getPaidStreamingServices()
     const configuredPersonalSources = getPersonalMediaSources()
     const requestedServices = (filters?.streamingServices || [])
@@ -1715,12 +1724,15 @@ class Session {
 
       queueNextCandidate()
 
+      const effectiveSoftTimeoutMs =
+        options?.softTimeoutMs ?? SEND_BATCH_SOFT_TIMEOUT_MS
+
       while (
         validMovies.length < Number(getMovieBatchSize()) &&
         pendingCandidate
       ) {
         const elapsedMs = Date.now() - batchBuildStartedAt
-        if (validMovies.length > 0 && elapsedMs >= SEND_BATCH_SOFT_TIMEOUT_MS) {
+        if (validMovies.length > 0 && elapsedMs >= effectiveSoftTimeoutMs) {
           log.info(
             `⏱️ Soft timeout reached after ${elapsedMs}ms; sending ${validMovies.length} movie(s) early to reduce first-load latency.`
           )
@@ -2323,13 +2335,15 @@ class Session {
             thumb: norm(m, m.thumb),
           }))
 
-          // Send the sanitized batch to the client
-          ws.send(
-            JSON.stringify({
-              type: 'batch',
-              payload: normalizedBatch,
-            })
-          )
+          // Send the sanitized batch to the client unless this call is preloading for login.
+          if (!options?.suppressBroadcast) {
+            ws.send(
+              JSON.stringify({
+                type: 'batch',
+                payload: normalizedBatch,
+              })
+            )
+          }
         }
       }
 
@@ -2341,9 +2355,11 @@ class Session {
     } catch (err) {
       log.error('Error in sendNextBatch:', err)
       // Send empty batch on error
-      for (const ws of this.users.values()) {
-        if (ws && !ws.isClosed) {
-          ws.send(JSON.stringify({ type: 'batch', payload: [] }))
+      if (!options?.suppressBroadcast) {
+        for (const ws of this.users.values()) {
+          if (ws && !ws.isClosed) {
+            ws.send(JSON.stringify({ type: 'batch', payload: [] }))
+          }
         }
       }
     }
@@ -2878,24 +2894,13 @@ export const handleLogin = (
             }
           }
 
-          try {
-            await ensurePlexHydrationReady()
-          } catch (err) {
-            log.error(
-              `Delaying login for ${data.payload.name}: Plex cache not ready (${
+          ensurePlexHydrationReady().catch(err => {
+            log.warning(
+              `Continuing login for ${data.payload.name} while Plex hydration finishes in background: ${
                 err?.message || err
-              })`
+              }`
             )
-            const response: WebSocketLoginResponseMessage = {
-              type: 'loginResponse',
-              payload: {
-                success: false,
-                message: 'Login is temporarily unavailable. Please try again.',
-              },
-            }
-            ws.send(JSON.stringify(response))
-            return
-          }
+          })
 
           const user: User = existingUser ?? {
             name: data.payload.name,
@@ -2910,6 +2915,28 @@ export const handleLogin = (
 
           ws.removeListener('message', handler)
           session.add(user, ws)
+
+          const hasUnratedMoviesForUser = session.movieList.some(movie => {
+            if (user.responses.some(response => response.guid === movie.guid)) {
+              return false
+            }
+            const movieTmdbId = movie.tmdbId ?? extractTmdbIdFromGuid(movie.guid)
+            if (movieTmdbId == null) {
+              return true
+            }
+            return !user.responses.some(response => {
+              const ratedTmdbId =
+                response.tmdbId ?? extractTmdbIdFromGuid(response.guid)
+              return ratedTmdbId === movieTmdbId
+            })
+          })
+
+          if (!hasUnratedMoviesForUser) {
+            await session.sendNextBatch(undefined, {
+              suppressBroadcast: true,
+              softTimeoutMs: LOGIN_PREFETCH_SOFT_TIMEOUT_MS,
+            })
+          }
 
           let responsesMutated = dedupeUserResponses(user, session)
 
