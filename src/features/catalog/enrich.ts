@@ -76,6 +76,24 @@ function buildEnrichmentCacheKey({
   return `title:${title.trim().toLowerCase()}::${year ?? 'noyear'}`
 }
 
+function buildCandidateCacheKeys({
+  title,
+  year,
+  imdbId,
+  tmdbId,
+}: {
+  title: string
+  year?: number | null
+  imdbId?: string | null
+  tmdbId?: number | null
+}): string[] {
+  const keys: string[] = []
+  if (imdbId) keys.push(`imdb:${imdbId}`)
+  if (tmdbId != null) keys.push(`tmdb:${tmdbId}`)
+  keys.push(`title:${title.trim().toLowerCase()}::${year ?? 'noyear'}`)
+  return [...new Set(keys)]
+}
+
 function sanitizeEnrichmentPayload(value: any): EnrichmentPayload {
   return {
     plot: value?.plot ?? null,
@@ -169,6 +187,31 @@ function schedulePersistEnrichmentCache() {
       schedulePersistEnrichmentCache()
     }
   })
+}
+
+function getCachedEnrichmentByKeys(keys: string[]): EnrichmentPayload | null {
+  const now = Date.now()
+  for (const key of keys) {
+    const cached = enrichmentCache.get(key)
+    if (!cached) continue
+    if (now - cached.updatedAt > ENRICH_CACHE_TTL_MS) {
+      enrichmentCache.delete(key)
+      continue
+    }
+
+    cached.updatedAt = now
+    return sanitizeEnrichmentPayload(cached.value)
+  }
+  return null
+}
+
+function storeEnrichmentForKeys(keys: string[], value: EnrichmentPayload): void {
+  const sanitized = sanitizeEnrichmentPayload(value)
+  const updatedAt = Date.now()
+  for (const key of keys) {
+    enrichmentCache.set(key, { value: sanitized, updatedAt })
+  }
+  schedulePersistEnrichmentCache()
 }
 const redactUrl = (u: string) =>
   u.replace(/(api_key|apikey|token|key)=([^&]+)/gi, '$1=***')
@@ -373,10 +416,16 @@ export async function enrich({
     imdbId,
     tmdbId: requestedTmdbId,
   })
-  const cached = enrichmentCache.get(cacheKey)
-  if (cached && Date.now() - cached.updatedAt <= ENRICH_CACHE_TTL_MS) {
-    cached.updatedAt = Date.now()
-    return sanitizeEnrichmentPayload(cached.value)
+  const candidateCacheKeys = buildCandidateCacheKeys({
+    title,
+    year,
+    imdbId,
+    tmdbId: requestedTmdbId,
+  })
+  const cached = getCachedEnrichmentByKeys([cacheKey, ...candidateCacheKeys])
+  if (cached) {
+    storeEnrichmentForKeys([cacheKey, ...candidateCacheKeys], cached)
+    return cached
   }
 
   // 1) Try local IMDb database first for ratings (if we have an IMDb ID)
@@ -578,11 +627,15 @@ export async function enrich({
       tmdbId: hit?.id || null,
     }
 
-    enrichmentCache.set(cacheKey, {
-      value: sanitizeEnrichmentPayload(result),
-      updatedAt: Date.now(),
-    })
-    schedulePersistEnrichmentCache()
+    storeEnrichmentForKeys(
+      buildCandidateCacheKeys({
+        title,
+        year,
+        imdbId: result.imdbId,
+        tmdbId: result.tmdbId,
+      }),
+      result
+    )
 
     return result
   }
@@ -775,11 +828,15 @@ export async function enrich({
     tmdbId: hit?.id || null,
   }
 
-  enrichmentCache.set(cacheKey, {
-    value: sanitizeEnrichmentPayload(result),
-    updatedAt: Date.now(),
-  })
-  schedulePersistEnrichmentCache()
+  storeEnrichmentForKeys(
+    buildCandidateCacheKeys({
+      title,
+      year,
+      imdbId: result.imdbId,
+      tmdbId: result.tmdbId,
+    }),
+    result
+  )
 
   return result
 }
