@@ -1717,6 +1717,14 @@ async function saveSettingsForm() {
     if (data?.settings?.PLEX_LIBRARY_NAME) {
       window.PLEX_LIBRARY_NAME = data.settings.PLEX_LIBRARY_NAME
     }
+    if (data?.settings?.PAID_STREAMING_SERVICES !== undefined) {
+      window.PAID_STREAMING_SERVICES = data.settings.PAID_STREAMING_SERVICES
+    }
+    if (data?.settings?.PERSONAL_MEDIA_SOURCES !== undefined) {
+      window.PERSONAL_MEDIA_SOURCES = data.settings.PERSONAL_MEDIA_SOURCES
+    }
+    updateHostManagedSubscriptionServiceOptions()
+    updateSwipeAvailabilityUI()
     setSettingsStatus(
       'Settings saved. Caches are refreshing in the background.'
     )
@@ -6435,21 +6443,11 @@ function updateSwipeSortButton(sortBy) {
 }
 
 function parsePaidServices() {
-  try {
-    const parsed = JSON.parse(window.PAID_STREAMING_SERVICES || '[]')
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
+  return parseArraySetting(window.PAID_STREAMING_SERVICES)
 }
 
 function parsePersonalSources() {
-  try {
-    const parsed = JSON.parse(window.PERSONAL_MEDIA_SOURCES || '[]')
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
+  return parseArraySetting(window.PERSONAL_MEDIA_SOURCES)
 }
 
 function updateHostManagedSubscriptionServiceOptions() {
