@@ -960,6 +960,9 @@ async function loadClientConfig() {
     if (data?.personalMediaSources !== undefined) {
       window.PERSONAL_MEDIA_SOURCES = data.personalMediaSources
     }
+    if (data?.plexConfigured !== undefined) {
+      window.PLEX_CONFIGURED = Boolean(data.plexConfigured)
+    }
     updateHostManagedSubscriptionServiceOptions()
   } catch (err) {
     console.warn('Client config fetch failed:', err)
@@ -4225,6 +4228,7 @@ const main = async () => {
 
   // Get Plex library name from server config (fallback to default)
   window.PLEX_LIBRARY_NAME = 'My Plex Library'
+  window.PLEX_CONFIGURED = false
   await loadClientConfig()
   await setupSettingsUI()
 
@@ -6478,6 +6482,10 @@ function getAvailableSubscriptionOptions() {
     String(value).trim()
   )
 
+  if (window.PLEX_CONFIGURED && !personalSources.includes('plex')) {
+    personalSources.push('plex')
+  }
+
   return {
     paidServices: Array.from(new Set(paidServices)),
     personalSources: Array.from(new Set(personalSources)),
@@ -7265,7 +7273,7 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
       .filter(input => input.checked)
       .map(input => input.value)
     const selectedSet = new Set(selectedSubscriptionServices)
-    const personalSet = new Set(parsePersonalSources())
+    const personalSet = new Set(getAvailableSubscriptionOptions().personalSources)
     const paidSet = new Set(parsePaidServices())
     setAvailabilityState({
       anywhere: false,
@@ -7285,7 +7293,7 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
     const selectedSubscriptionServices = swipeSubscriptionChildren
       .filter(child => child.checked)
       .map(child => child.value)
-    const personalSet = new Set(parsePersonalSources())
+    const personalSet = new Set(getAvailableSubscriptionOptions().personalSources)
     const paidSet = new Set(parsePaidServices())
 
     if (input === swipeAvailabilitySubscriptions) {
@@ -7325,7 +7333,7 @@ swipeSubscriptionChildren.forEach(input => {
     const selected = swipeSubscriptionChildren
       .filter(child => child.checked)
       .map(child => child.value)
-    const personalSet = new Set(parsePersonalSources())
+    const personalSet = new Set(getAvailableSubscriptionOptions().personalSources)
     const paidSet = new Set(parsePaidServices())
 
     const next = {

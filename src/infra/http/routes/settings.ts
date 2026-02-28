@@ -315,10 +315,14 @@ export async function handleSettingsRoutes(
 
   if (pathname === '/api/client-config') {
     const settings = getSettings()
+    const plexConfigured =
+      Boolean(String(settings.PLEX_URL || '').trim()) &&
+      Boolean(String(settings.PLEX_TOKEN || '').trim())
     await req.respond({
       status: 200,
       body: JSON.stringify({
         plexLibraryName: getPlexLibraryName(),
+        plexConfigured,
         paidStreamingServices: settings.PAID_STREAMING_SERVICES,
         personalMediaSources: settings.PERSONAL_MEDIA_SOURCES,
       }),
