@@ -2249,57 +2249,82 @@ async function login(api) {
 
   let verifiedPassword = null
 
+  const handleVerifiedPassword = accessPassword => {
+    setPasswordError('')
+    setLoginError('')
+    verifiedPassword = accessPassword
+    sessionStorage.setItem('comparrAccessPassword', accessPassword)
+    passwordForm.style.display = 'none'
+    modeForm.style.display = 'grid'
+
+    // Scroll to top of page
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+
+    // restore cached values
+    const savedUser = localStorage.getItem('user')
+    const savedCode = localStorage.getItem('roomCode')
+    const normalizedSavedCode = normalizeRoomCodeInput(savedCode)
+    const hasMeaningfulSavedGroupCredentials =
+      Boolean(savedUser && normalizedSavedCode) &&
+      !(savedUser.trim() === 'Solo' && normalizedSavedCode === 'SOLO')
+
+    if (hasMeaningfulSavedGroupCredentials) {
+      loginForm.elements.name.value = savedUser
+      if (roomCodeInput) roomCodeInput.value = normalizedSavedCode
+    }
+
+    setRoomMode('join')
+  }
+
   if (passwordForm && loginForm && modeForm) {
     passwordForm.style.display = 'flex'
     modeForm.style.display = 'none'
     loginForm.style.display = 'none'
   }
 
-  // Handle password verification first
-  await new Promise(resolve => {
-    const handlePasswordSubmit = async e => {
-      e.preventDefault()
-      const fd = new FormData(passwordForm)
-      const accessPassword = fd.get('accessPassword')
-      if (!accessPassword) return
+  let skipPasswordPrompt = false
+  const shouldReturnToModeSelection =
+    sessionStorage.getItem('comparrReturnToModeSelection') === '1'
+  const storedAccessPassword = sessionStorage.getItem('comparrAccessPassword')
 
-      setPasswordError('')
+  if (shouldReturnToModeSelection) {
+    sessionStorage.removeItem('comparrReturnToModeSelection')
 
+    if (storedAccessPassword) {
       try {
-        await api.verifyAccessPassword(accessPassword)
-      } catch (err) {
-        setPasswordError(err.message)
-        return
+        await api.verifyAccessPassword(storedAccessPassword)
+        handleVerifiedPassword(storedAccessPassword)
+        skipPasswordPrompt = true
+      } catch {
+        sessionStorage.removeItem('comparrAccessPassword')
       }
-
-      // Store password and show mode picker
-      setPasswordError('')
-      setLoginError('')
-      verifiedPassword = accessPassword
-      passwordForm.style.display = 'none'
-      modeForm.style.display = 'grid'
-
-      // Scroll to top of page
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-
-      // restore cached values
-      const savedUser = localStorage.getItem('user')
-      const savedCode = localStorage.getItem('roomCode')
-      const normalizedSavedCode = normalizeRoomCodeInput(savedCode)
-      const hasMeaningfulSavedGroupCredentials =
-        Boolean(savedUser && normalizedSavedCode) &&
-        !(savedUser.trim() === 'Solo' && normalizedSavedCode === 'SOLO')
-
-      if (hasMeaningfulSavedGroupCredentials) {
-        loginForm.elements.name.value = savedUser
-        if (roomCodeInput) roomCodeInput.value = normalizedSavedCode
-      }
-
-      setRoomMode('join')
-      resolve()
     }
-    passwordForm.addEventListener('submit', handlePasswordSubmit)
-  })
+  }
+
+  if (!skipPasswordPrompt) {
+    // Handle password verification first
+    await new Promise(resolve => {
+      const handlePasswordSubmit = async e => {
+        e.preventDefault()
+        const fd = new FormData(passwordForm)
+        const accessPassword = fd.get('accessPassword')
+        if (!accessPassword) return
+
+        setPasswordError('')
+
+        try {
+          await api.verifyAccessPassword(accessPassword)
+        } catch (err) {
+          setPasswordError(err.message)
+          return
+        }
+
+        handleVerifiedPassword(accessPassword)
+        resolve()
+      }
+      passwordForm.addEventListener('submit', handlePasswordSubmit)
+    })
+  }
 
   const selectedMode = await new Promise(resolve => {
     const handleModeSubmit = e => {
@@ -6915,6 +6940,28 @@ swipeFilterBtn?.addEventListener('click', () => openSwipeFilterModal('live'))
 swipeFilterClose?.addEventListener('click', closeSwipeFilterModal)
 swipeFilterOverlay?.addEventListener('click', closeSwipeFilterModal)
 
+function returnToModeSelection() {
+  closeSwipeFilterModal()
+  sessionStorage.setItem('comparrReturnToModeSelection', '1')
+  window.location.reload()
+}
+
+const swipeHeaderHomeButtons = document.querySelectorAll(
+  '.swipe-header .js-home-btn'
+)
+if (swipeHeaderHomeButtons.length > 1) {
+  swipeHeaderHomeButtons.forEach((button, index) => {
+    if (index < swipeHeaderHomeButtons.length - 1) {
+      button.remove()
+    }
+  })
+}
+
+const homeButtons = document.querySelectorAll('.js-home-btn')
+homeButtons.forEach(button => {
+  button.addEventListener('click', returnToModeSelection)
+})
+
 // Setup swipe filter modal dropdowns
 function setupSwipeFilterDropdowns() {
   const overlay =
@@ -7271,7 +7318,9 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
       .filter(input => input.checked)
       .map(input => input.value)
     const selectedSet = new Set(selectedSubscriptionServices)
-    const personalSet = new Set(getAvailableSubscriptionOptions().personalSources)
+    const personalSet = new Set(
+      getAvailableSubscriptionOptions().personalSources
+    )
     const paidSet = new Set(parsePaidServices())
     setAvailabilityState({
       anywhere: false,
@@ -7291,7 +7340,9 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
     const selectedSubscriptionServices = swipeSubscriptionChildren
       .filter(child => child.checked)
       .map(child => child.value)
-    const personalSet = new Set(getAvailableSubscriptionOptions().personalSources)
+    const personalSet = new Set(
+      getAvailableSubscriptionOptions().personalSources
+    )
     const paidSet = new Set(parsePaidServices())
 
     if (input === swipeAvailabilitySubscriptions) {
@@ -7331,7 +7382,9 @@ swipeSubscriptionChildren.forEach(input => {
     const selected = swipeSubscriptionChildren
       .filter(child => child.checked)
       .map(child => child.value)
-    const personalSet = new Set(getAvailableSubscriptionOptions().personalSources)
+    const personalSet = new Set(
+      getAvailableSubscriptionOptions().personalSources
+    )
     const paidSet = new Set(parsePaidServices())
 
     const next = {
