@@ -6349,6 +6349,7 @@ watchFilterReset?.addEventListener('click', () => {
 // Swipe Filter Modal
 // =========================================================
 const swipeFilterBtn = document.getElementById('swipe-filter-btn')
+const swipeHomeBtn = document.getElementById('swipe-home-btn')
 const swipeFilterModal = document.getElementById('swipe-filter-modal')
 const swipeFilterOverlay = document.getElementById('swipe-filter-overlay')
 const swipeFilterClose = document.getElementById('swipe-filter-close')
@@ -6915,6 +6916,36 @@ swipeFilterBtn?.addEventListener('click', () => openSwipeFilterModal('live'))
 swipeFilterClose?.addEventListener('click', closeSwipeFilterModal)
 swipeFilterOverlay?.addEventListener('click', closeSwipeFilterModal)
 
+swipeHomeBtn?.addEventListener('click', () => {
+  closeSwipeFilterModal()
+
+  const loginSection = document.querySelector('.login-section')
+  const modeForm = document.querySelector('.js-mode-form')
+  const loginForm = document.querySelector('.js-login-form')
+  const passwordForm = document.querySelector('.js-password-form')
+
+  document.body.dataset.appMode = ''
+
+  document
+    .querySelectorAll(
+      '.rate-section, #tab-likes, #tab-dislikes, #tab-seen, #tab-settings'
+    )
+    .forEach(node => {
+      node.hidden = true
+    })
+
+  if (loginSection) {
+    loginSection.hidden = false
+    loginSection.style.removeProperty('opacity')
+  }
+
+  if (passwordForm) passwordForm.style.display = 'none'
+  if (loginForm) loginForm.style.display = 'none'
+  if (modeForm) modeForm.style.display = 'grid'
+
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+})
+
 // Setup swipe filter modal dropdowns
 function setupSwipeFilterDropdowns() {
   const overlay =
@@ -7271,7 +7302,9 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
       .filter(input => input.checked)
       .map(input => input.value)
     const selectedSet = new Set(selectedSubscriptionServices)
-    const personalSet = new Set(getAvailableSubscriptionOptions().personalSources)
+    const personalSet = new Set(
+      getAvailableSubscriptionOptions().personalSources
+    )
     const paidSet = new Set(parsePaidServices())
     setAvailabilityState({
       anywhere: false,
@@ -7291,7 +7324,9 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
     const selectedSubscriptionServices = swipeSubscriptionChildren
       .filter(child => child.checked)
       .map(child => child.value)
-    const personalSet = new Set(getAvailableSubscriptionOptions().personalSources)
+    const personalSet = new Set(
+      getAvailableSubscriptionOptions().personalSources
+    )
     const paidSet = new Set(parsePaidServices())
 
     if (input === swipeAvailabilitySubscriptions) {
@@ -7331,7 +7366,9 @@ swipeSubscriptionChildren.forEach(input => {
     const selected = swipeSubscriptionChildren
       .filter(child => child.checked)
       .map(child => child.value)
-    const personalSet = new Set(getAvailableSubscriptionOptions().personalSources)
+    const personalSet = new Set(
+      getAvailableSubscriptionOptions().personalSources
+    )
     const paidSet = new Set(parsePaidServices())
 
     const next = {
