@@ -539,6 +539,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
   top: 1rem;
   right: 1rem;
   z-index: 10;
+  display: flex;
+  gap: 0.5rem;
 }
 
 .swipe-filter-btn {
