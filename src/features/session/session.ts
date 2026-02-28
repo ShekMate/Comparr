@@ -270,6 +270,9 @@ const SEND_BATCH_SOFT_TIMEOUT_MS = Number(
 const SEND_BATCH_HARD_TIMEOUT_MS = Number(
   Deno.env.get('SEND_BATCH_HARD_TIMEOUT_MS') ?? '45000'
 )
+const INITIAL_BATCH_HARD_TIMEOUT_MS = Number(
+  Deno.env.get('INITIAL_BATCH_HARD_TIMEOUT_MS') ?? '12000'
+)
 const LOGIN_PREFETCH_SOFT_TIMEOUT_MS = Number(
   Deno.env.get('LOGIN_PREFETCH_SOFT_TIMEOUT_MS') ?? '2500'
 )
@@ -1485,6 +1488,8 @@ class Session {
     options?: {
       suppressBroadcast?: boolean
       softTimeoutMs?: number
+      hardTimeoutMs?: number
+      stopAfterFirstMovie?: boolean
     }
   ) {
     const configuredPaidServices = getPaidStreamingServices()
@@ -1724,8 +1729,16 @@ class Session {
 
       queueNextCandidate()
 
+      const isInitialRoomBatch = this.movieList.length === 0
       const effectiveSoftTimeoutMs =
         options?.softTimeoutMs ?? SEND_BATCH_SOFT_TIMEOUT_MS
+      const effectiveHardTimeoutMs =
+        options?.hardTimeoutMs ??
+        (isInitialRoomBatch
+          ? INITIAL_BATCH_HARD_TIMEOUT_MS
+          : SEND_BATCH_HARD_TIMEOUT_MS)
+      const stopAfterFirstMovie =
+        options?.stopAfterFirstMovie ?? isInitialRoomBatch
 
       while (
         validMovies.length < Number(getMovieBatchSize()) &&
@@ -1738,7 +1751,7 @@ class Session {
           )
           break
         }
-        if (elapsedMs >= SEND_BATCH_HARD_TIMEOUT_MS) {
+        if (elapsedMs >= effectiveHardTimeoutMs) {
           log.warning(
             `⏱️ Hard timeout reached after ${elapsedMs}ms; ending batch generation with ${validMovies.length} movie(s).`
           )
@@ -2115,6 +2128,12 @@ class Session {
 
           validMovies.push(movie)
           seenGuids.add(movie.guid)
+          if (stopAfterFirstMovie && validMovies.length === 1) {
+            log.info(
+              '🚀 Initial batch fast-path: stopping after first valid movie to unblock client render.'
+            )
+            break
+          }
           if (movie.tmdbId != null) {
             seenTmdbIds.add(movie.tmdbId)
           }
