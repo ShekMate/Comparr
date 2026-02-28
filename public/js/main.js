@@ -6947,6 +6947,17 @@ function returnToModeSelection() {
   window.location.reload()
 }
 
+const swipeHeaderHomeButtons = document.querySelectorAll(
+  '.swipe-header .js-home-btn'
+)
+if (swipeHeaderHomeButtons.length > 1) {
+  swipeHeaderHomeButtons.forEach((button, index) => {
+    if (index < swipeHeaderHomeButtons.length - 1) {
+      button.remove()
+    }
+  })
+}
+
 const homeButtons = document.querySelectorAll('.js-home-btn')
 homeButtons.forEach(button => {
   button.addEventListener('click', returnToModeSelection)
