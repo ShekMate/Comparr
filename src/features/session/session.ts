@@ -279,6 +279,13 @@ const LOGIN_PREFETCH_SOFT_TIMEOUT_MS = Number(
 const ENRICHMENT_TIMEOUT_MS = Number(
   Deno.env.get('ENRICHMENT_TIMEOUT_MS') ?? '5000'
 )
+const DISCOVER_ENRICH_PREWARM_COUNT = Number(
+  Deno.env.get('DISCOVER_ENRICH_PREWARM_COUNT') ?? '6'
+)
+const DISCOVER_ENRICH_PREWARM_CONCURRENCY = Math.max(
+  1,
+  Number(Deno.env.get('DISCOVER_ENRICH_PREWARM_CONCURRENCY') ?? '2')
+)
 
 interface DiscoverCacheEntry {
   pages: Map<number, any[]>
@@ -1195,9 +1202,58 @@ class Session {
     const shuffled = results.slice().sort(() => Math.random() - 0.5)
     queue.buffer.push(...shuffled)
 
+    this.prewarmDiscoverEnrichment(shuffled)
+
     if (exhausted) {
       queue.exhausted = true
     }
+  }
+
+  private prewarmDiscoverEnrichment(tmdbMovies: any[]): void {
+    if (DISCOVER_ENRICH_PREWARM_COUNT <= 0 || tmdbMovies.length === 0) {
+      return
+    }
+
+    const candidates = tmdbMovies
+      .filter(movie => movie && typeof movie.id === 'number')
+      .slice(0, DISCOVER_ENRICH_PREWARM_COUNT)
+
+    if (!candidates.length) return
+
+    const workers = Array.from(
+      { length: Math.min(DISCOVER_ENRICH_PREWARM_CONCURRENCY, candidates.length) },
+      (_, workerIndex) =>
+        (async () => {
+          for (
+            let idx = workerIndex;
+            idx < candidates.length;
+            idx += DISCOVER_ENRICH_PREWARM_CONCURRENCY
+          ) {
+            const movie = candidates[idx]
+
+            try {
+              if (movie.poster_path) {
+                prefetchPoster(movie.poster_path, 'tmdb')
+              }
+
+              await enrich({
+                title: movie.title,
+                year: parseYear(movie.release_date?.slice(0, 4)) ?? null,
+                plexGuid: `tmdb://${movie.id}`,
+                tmdbId: movie.id,
+              })
+            } catch (err) {
+              log.debug(
+                `Discover enrichment prewarm failed for ${movie?.title ?? 'unknown movie'}: ${err}`
+              )
+            }
+          }
+        })()
+    )
+
+    Promise.allSettled(workers).catch(err => {
+      log.debug(`Discover enrichment prewarm scheduling failed: ${err}`)
+    })
   }
 
   private async ensureDiscoverBuffer(
@@ -2591,6 +2647,7 @@ class Session {
             : Number(plexMovie.year) || null,
         plexGuid: plexMovie.guid,
         imdbId: plexMovie.imdbId,
+        tmdbId: plexMovie.tmdbId,
       })
     }
 
@@ -2604,6 +2661,7 @@ class Session {
             : Number(plexMovie.year) || null,
         plexGuid: plexMovie.guid,
         imdbId: plexMovie.imdbId,
+        tmdbId: plexMovie.tmdbId,
       }).catch(err => {
         this.enrichmentCache.delete(cacheKey)
         throw err

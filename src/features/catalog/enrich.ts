@@ -14,6 +14,162 @@ const getOmdbKey = () => getOmdbApiKey()
 const getTmdbKey = () => getTmdbApiKey()
 const tmdbCache = new Map<string, any>()
 const tmdbSearchCache = new Map<string, any>()
+type EnrichmentPayload = {
+  plot: string | null
+  imdbId: string | null
+  rating_imdb: number | null
+  rating_rt: number | null
+  rating_tmdb: number | null
+  rating_comparr: number | null
+  genres: string[]
+  streamingServices: { subscription: any[]; free: any[] }
+  contentRating: string | null
+  tmdbPosterPath: string | null
+  cast: string[]
+  writers: string[]
+  director: string | null
+  runtime: number | null
+  streamingLink: string | null
+  voteCount: number | null
+  tmdbId: number | null
+}
+
+type PersistedEnrichmentEntry = {
+  value: EnrichmentPayload
+  updatedAt: number
+}
+
+const ENRICH_CACHE_TTL_MS = Number(
+  Deno.env.get('ENRICH_CACHE_TTL_MS') ?? `${7 * 24 * 60 * 60 * 1000}`
+)
+const ENRICH_CACHE_MAX_ENTRIES = Number(
+  Deno.env.get('ENRICH_CACHE_MAX_ENTRIES') ?? '5000'
+)
+const ENRICH_DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
+const ENRICH_CACHE_FILE = `${ENRICH_DATA_DIR}/enrichment-cache.json`
+const enrichmentCache = new Map<string, PersistedEnrichmentEntry>()
+let enrichmentCacheLoaded = false
+let persistPromise: Promise<void> | null = null
+let persistRequested = false
+
+function extractTmdbIdFromGuid(guid?: string | null): number | null {
+  if (!guid) return null
+  const match = guid.match(/tmdb:\/\/(\d+)/i)
+  if (!match) return null
+  const parsed = Number(match[1])
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function buildEnrichmentCacheKey({
+  title,
+  year,
+  imdbId,
+  tmdbId,
+}: {
+  title: string
+  year?: number | null
+  imdbId?: string | null
+  tmdbId?: number | null
+}) {
+  if (imdbId) return `imdb:${imdbId}`
+  if (tmdbId != null) return `tmdb:${tmdbId}`
+  return `title:${title.trim().toLowerCase()}::${year ?? 'noyear'}`
+}
+
+function sanitizeEnrichmentPayload(value: any): EnrichmentPayload {
+  return {
+    plot: value?.plot ?? null,
+    imdbId: value?.imdbId ?? null,
+    rating_imdb: value?.rating_imdb ?? null,
+    rating_rt: value?.rating_rt ?? null,
+    rating_tmdb: value?.rating_tmdb ?? null,
+    rating_comparr: value?.rating_comparr ?? null,
+    genres: Array.isArray(value?.genres) ? value.genres : [],
+    streamingServices: {
+      subscription: Array.isArray(value?.streamingServices?.subscription)
+        ? value.streamingServices.subscription
+        : [],
+      free: Array.isArray(value?.streamingServices?.free)
+        ? value.streamingServices.free
+        : [],
+    },
+    contentRating: value?.contentRating ?? null,
+    tmdbPosterPath: value?.tmdbPosterPath ?? null,
+    cast: Array.isArray(value?.cast) ? value.cast : [],
+    writers: Array.isArray(value?.writers) ? value.writers : [],
+    director: value?.director ?? null,
+    runtime: value?.runtime ?? null,
+    streamingLink: value?.streamingLink ?? null,
+    voteCount: value?.voteCount ?? null,
+    tmdbId: value?.tmdbId ?? null,
+  }
+}
+
+async function loadPersistentEnrichmentCache() {
+  if (enrichmentCacheLoaded) return
+  enrichmentCacheLoaded = true
+  try {
+    const raw = await Deno.readTextFile(ENRICH_CACHE_FILE)
+    const parsed = JSON.parse(raw) as Record<string, PersistedEnrichmentEntry>
+    const now = Date.now()
+    for (const [key, entry] of Object.entries(parsed)) {
+      if (
+        !entry ||
+        typeof entry.updatedAt !== 'number' ||
+        now - entry.updatedAt > ENRICH_CACHE_TTL_MS
+      ) {
+        continue
+      }
+      enrichmentCache.set(key, {
+        updatedAt: entry.updatedAt,
+        value: sanitizeEnrichmentPayload(entry.value),
+      })
+    }
+    console.log(
+      `[enrich] loaded ${enrichmentCache.size} persisted enrichment cache entries`
+    )
+  } catch {
+    // no persisted cache yet
+  }
+}
+
+function trimPersistentCacheIfNeeded() {
+  if (enrichmentCache.size <= ENRICH_CACHE_MAX_ENTRIES) return
+  const sorted = [...enrichmentCache.entries()].sort(
+    (a, b) => a[1].updatedAt - b[1].updatedAt
+  )
+  const deleteCount = enrichmentCache.size - ENRICH_CACHE_MAX_ENTRIES
+  for (let i = 0; i < deleteCount; i++) {
+    enrichmentCache.delete(sorted[i][0])
+  }
+}
+
+function schedulePersistEnrichmentCache() {
+  persistRequested = true
+  if (persistPromise) return
+  persistPromise = (async () => {
+    await new Promise(resolve => setTimeout(resolve, 250))
+    if (!persistRequested) return
+    persistRequested = false
+    try {
+      trimPersistentCacheIfNeeded()
+      await Deno.mkdir(ENRICH_DATA_DIR, { recursive: true })
+      const payload = Object.fromEntries(enrichmentCache.entries())
+      const tmp = `${ENRICH_CACHE_FILE}.tmp`
+      await Deno.writeTextFile(tmp, JSON.stringify(payload))
+      await Deno.rename(tmp, ENRICH_CACHE_FILE)
+    } catch (err) {
+      console.error(
+        `[enrich] failed to persist enrichment cache: ${err?.message || err}`
+      )
+    }
+  })().finally(() => {
+    persistPromise = null
+    if (persistRequested) {
+      schedulePersistEnrichmentCache()
+    }
+  })
+}
 const redactUrl = (u: string) =>
   u.replace(/(api_key|apikey|token|key)=([^&]+)/gi, '$1=***')
 async function fetchJsonLogged(
@@ -180,14 +336,20 @@ export async function enrich({
   year,
   plexGuid,
   imdbId: providedImdbId,
+  tmdbId: providedTmdbId,
 }: {
   title: string
   year?: number | null
   plexGuid?: string | null
   imdbId?: string | null
+  tmdbId?: number | null
 }) {
+  await loadPersistentEnrichmentCache()
+
   let plot: string | null = null
   let imdbId: string | null = providedImdbId || imdbFromGuid(plexGuid)
+  const tmdbIdFromGuid = extractTmdbIdFromGuid(plexGuid)
+  const requestedTmdbId = providedTmdbId ?? tmdbIdFromGuid
   let rating_imdb: number | null = null
   let rating_rt: number | null = null
   let rating_tmdb: number | null = null
@@ -204,6 +366,18 @@ export async function enrich({
   let runtime: number | null = null
   let streamingLink: string | null = null
   let voteCount: number | null = null
+
+  const cacheKey = buildEnrichmentCacheKey({
+    title,
+    year,
+    imdbId,
+    tmdbId: requestedTmdbId,
+  })
+  const cached = enrichmentCache.get(cacheKey)
+  if (cached && Date.now() - cached.updatedAt <= ENRICH_CACHE_TTL_MS) {
+    cached.updatedAt = Date.now()
+    return sanitizeEnrichmentPayload(cached.value)
+  }
 
   // 1) Try local IMDb database first for ratings (if we have an IMDb ID)
   if (imdbId) {
@@ -237,11 +411,17 @@ export async function enrich({
     contentRating = om.Rated && om.Rated !== 'N/A' ? om.Rated : null
 
     // ALWAYS get TMDb data even when OMDb succeeds
-    const hit = await tmdbSearchMovie(title, year ?? undefined)
+    const initialDetails =
+      requestedTmdbId != null ? await tmdbMovieDetails(requestedTmdbId) : null
+    const hit =
+      initialDetails || (await tmdbSearchMovie(title, year ?? undefined))
     let tmdbPosterPath = hit?.poster_path || null
 
     if (hit) {
-      const det = await tmdbMovieDetails(hit.id)
+      const det =
+        requestedTmdbId != null && initialDetails
+          ? initialDetails
+          : await tmdbMovieDetails(hit.id)
       rating_tmdb =
         typeof det?.vote_average === 'number'
           ? Number(det.vote_average.toFixed(1))
@@ -378,7 +558,7 @@ export async function enrich({
     }
     */
 
-    return {
+    const result: EnrichmentPayload = {
       plot,
       imdbId,
       rating_imdb,
@@ -397,12 +577,27 @@ export async function enrich({
       voteCount,
       tmdbId: hit?.id || null,
     }
+
+    enrichmentCache.set(cacheKey, {
+      value: sanitizeEnrichmentPayload(result),
+      updatedAt: Date.now(),
+    })
+    schedulePersistEnrichmentCache()
+
+    return result
   }
 
   // 2) TMDb fallback (overview & vote_average); bounce back to OMDb if we get an IMDb id
-  const hit = await tmdbSearchMovie(title, year ?? undefined)
+  const initialDetails =
+    requestedTmdbId != null ? await tmdbMovieDetails(requestedTmdbId) : null
+  const hit = initialDetails || (await tmdbSearchMovie(title, year ?? undefined))
+  let resolvedTmdbDetails: any = initialDetails
   if (hit) {
-    const det = await tmdbMovieDetails(hit.id)
+    const det =
+      requestedTmdbId != null && initialDetails
+        ? initialDetails
+        : await tmdbMovieDetails(hit.id)
+    resolvedTmdbDetails = det
     plot = det?.overview || hit.overview || null
     rating_tmdb =
       typeof det?.vote_average === 'number'
@@ -521,8 +716,8 @@ export async function enrich({
     const { isMovieInPlex } = await import('../../integrations/plex/cache.ts')
 
     // Try to get TMDb ID from the movie details we already fetched
-    const tmdbId = det?.id || hit?.id
-    const imdbFromTmdb = det?.external_ids?.imdb_id
+    const tmdbId = resolvedTmdbDetails?.id || hit?.id
+    const imdbFromTmdb = resolvedTmdbDetails?.external_ids?.imdb_id
 
     const inPlex = isMovieInPlex({
       tmdbId,
@@ -560,7 +755,7 @@ export async function enrich({
   }
   */
 
-  return {
+  const result: EnrichmentPayload = {
     plot,
     imdbId,
     rating_imdb,
@@ -579,4 +774,12 @@ export async function enrich({
     voteCount,
     tmdbId: hit?.id || null,
   }
+
+  enrichmentCache.set(cacheKey, {
+    value: sanitizeEnrichmentPayload(result),
+    updatedAt: Date.now(),
+  })
+  schedulePersistEnrichmentCache()
+
+  return result
 }
