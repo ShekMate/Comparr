@@ -7273,7 +7273,7 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
       .filter(input => input.checked)
       .map(input => input.value)
     const selectedSet = new Set(selectedSubscriptionServices)
-    const personalSet = new Set(parsePersonalSources())
+    const personalSet = new Set(getAvailableSubscriptionOptions().personalSources)
     const paidSet = new Set(parsePaidServices())
     setAvailabilityState({
       anywhere: false,
@@ -7293,7 +7293,7 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
     const selectedSubscriptionServices = swipeSubscriptionChildren
       .filter(child => child.checked)
       .map(child => child.value)
-    const personalSet = new Set(parsePersonalSources())
+    const personalSet = new Set(getAvailableSubscriptionOptions().personalSources)
     const paidSet = new Set(parsePaidServices())
 
     if (input === swipeAvailabilitySubscriptions) {
@@ -7333,7 +7333,7 @@ swipeSubscriptionChildren.forEach(input => {
     const selected = swipeSubscriptionChildren
       .filter(child => child.checked)
       .map(child => child.value)
-    const personalSet = new Set(parsePersonalSources())
+    const personalSet = new Set(getAvailableSubscriptionOptions().personalSources)
     const paidSet = new Set(parsePaidServices())
 
     const next = {
