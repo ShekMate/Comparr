@@ -6374,6 +6374,7 @@ watchFilterReset?.addEventListener('click', () => {
 // Swipe Filter Modal
 // =========================================================
 const swipeFilterBtn = document.getElementById('swipe-filter-btn')
+const swipeHomeBtn = document.getElementById('swipe-home-btn')
 const swipeFilterModal = document.getElementById('swipe-filter-modal')
 const swipeFilterOverlay = document.getElementById('swipe-filter-overlay')
 const swipeFilterClose = document.getElementById('swipe-filter-close')
