@@ -150,6 +150,7 @@ body:not(.is-logged-in) #tab-matches,
 body:not(.is-logged-in) #tab-likes,
 body:not(.is-logged-in) #tab-dislikes,
 body:not(.is-logged-in) #tab-seen,
+body:not(.is-logged-in) #tab-settings,
 body:not(.is-logged-in) #tab-filters,
 body:not(.is-logged-in) .rate-controls {
   display: none !important;
