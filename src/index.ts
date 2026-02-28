@@ -38,7 +38,11 @@ import { handleRequestServiceRoutes } from './infra/http/routes/request-service.
 import { handleRoomRoutes } from './infra/http/routes/rooms.ts'
 import { WebSocketServer } from './infra/ws/websocketServer.ts'
 import { addSecurityHeaders } from './infra/http/security-headers.ts'
-import { initializeRadarrCache, refreshRadarrCache } from './api/radarr.ts'
+import {
+  initializeRadarrCache,
+  isMovieInRadarr,
+  refreshRadarrCache,
+} from './api/radarr.ts'
 import { requestMovie } from './api/jellyseerr.ts'
 import { serveCachedPoster } from './services/cache/poster-cache.ts'
 import {
