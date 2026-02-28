@@ -5006,7 +5006,9 @@ const main = async () => {
   let pendingTmdbIds = new Set()
   let isLoadingBatch = false
   let ensureMovieBufferPromise = null
+  let ensureMovieBufferTarget = 0
   const BUFFER_MIN_SIZE = 8
+  const INITIAL_BUFFER_MIN_SIZE = 2
   const BATCH_SIZE = 20
 
   // Track if initial load has completed (to prevent showing filter notification on startup)
@@ -5021,7 +5023,7 @@ const main = async () => {
   // Prime request-service status and the initial swipe buffer in parallel
   console.log('🧊 Priming request status and initial movie batch...')
   const requestServiceStatusPromise = checkRequestServiceStatus()
-  const initialBufferWarmPromise = ensureMovieBuffer()
+  const initialBufferWarmPromise = ensureMovieBuffer(INITIAL_BUFFER_MIN_SIZE)
 
   await requestServiceStatusPromise
   console.log('📦 Request service status cached')
@@ -5213,9 +5215,10 @@ const main = async () => {
     })
   }
 
-  async function ensureMovieBuffer() {
+  async function ensureMovieBuffer(targetSize = BUFFER_MIN_SIZE) {
     // If already loading, return the existing promise with timeout
     if (ensureMovieBufferPromise) {
+      const requestedLargerTarget = targetSize > ensureMovieBufferTarget
       console.log('⏳ Already ensuring buffer, waiting...')
       try {
         await Promise.race([
@@ -5228,15 +5231,21 @@ const main = async () => {
         if (e.message === 'Buffer promise timeout') {
           console.warn('⚠️ Buffer promise timed out, resetting')
           ensureMovieBufferPromise = null
+          ensureMovieBufferTarget = 0
           window.ensureMovieBufferPromise = ensureMovieBufferPromise
           isLoadingBatch = false
           window.isLoadingBatch = isLoadingBatch
           // Retry the buffer load
-          return ensureMovieBuffer()
+          return ensureMovieBuffer(targetSize)
         }
         throw e
       }
-      return ensureMovieBufferPromise
+
+      if (requestedLargerTarget && movieBuffer.length < targetSize) {
+        return ensureMovieBuffer(targetSize)
+      }
+
+      return
     }
 
     // Clear buffer if filters changed
@@ -5250,7 +5259,7 @@ const main = async () => {
       window.__resetMovies = false
     }
 
-    if (isLoadingBatch || movieBuffer.length >= BUFFER_MIN_SIZE) {
+    if (isLoadingBatch || movieBuffer.length >= targetSize) {
       return
     }
 
@@ -5265,6 +5274,7 @@ const main = async () => {
     }
 
     //FIX: Create and store the promise immediately
+    ensureMovieBufferTarget = targetSize
     ensureMovieBufferPromise = (async () => {
       try {
         const MAX_BATCH_ATTEMPTS = 4
@@ -5274,7 +5284,7 @@ const main = async () => {
 
         while (
           attempts < MAX_BATCH_ATTEMPTS &&
-          movieBuffer.length < BUFFER_MIN_SIZE
+          movieBuffer.length < targetSize
         ) {
           attempts += 1
           console.log(
@@ -5412,6 +5422,7 @@ const main = async () => {
       } finally {
         isLoadingBatch = false
         ensureMovieBufferPromise = null
+        ensureMovieBufferTarget = 0
         window.isLoadingBatch = isLoadingBatch
         window.ensureMovieBufferPromise = ensureMovieBufferPromise
       }
@@ -5525,7 +5536,7 @@ const main = async () => {
     window.__resetMovies = false
 
     try {
-      await ensureMovieBuffer()
+      await ensureMovieBuffer(INITIAL_BUFFER_MIN_SIZE)
 
       const cardStack = document.querySelector('.js-card-stack')
       if (cardStack) cardStack.innerHTML = ''
@@ -5548,7 +5559,9 @@ const main = async () => {
         }
       }
 
-      await ensureMovieBuffer()
+      ensureMovieBuffer().catch(error => {
+        console.warn('⚠️ Background buffer refill failed:', error)
+      })
     } catch (error) {
       console.error('❌Error in initial movie loading:', error)
     }
