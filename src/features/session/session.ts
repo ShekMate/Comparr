@@ -145,6 +145,7 @@ interface Response {
 interface User {
   name: string
   responses: Response[]
+  personalTokenHash?: string
 }
 
 interface MediaItem {
@@ -466,6 +467,8 @@ interface WebSocketLoginMessage {
     roomCode: string
     accessPassword: string
     forceTakeover?: boolean
+    personalMode?: boolean
+    personalToken?: string
   }
 }
 
@@ -483,6 +486,7 @@ interface WebSocketLoginResponseMessage {
         matches: Array<WebSocketMatchMessage['payload']>
         movies: MediaItem[]
         rated: RatedPayloadItem[]
+        personalRecoveryToken?: string
       }
 }
 
@@ -547,6 +551,7 @@ export interface ImdbImportHistoryEntry {
 type PersistedRoomUser = {
   name: string
   responses: Response[]
+  personalTokenHash?: string
   importHistory?: ImdbImportHistoryEntry[]
 }
 
@@ -621,6 +626,11 @@ async function loadState(): Promise<PersistedState> {
                       : null,
                 }))
             : [],
+          personalTokenHash:
+            typeof user?.personalTokenHash === 'string' &&
+            user.personalTokenHash.trim().length > 0
+              ? user.personalTokenHash.trim()
+              : undefined,
           importHistory: Array.isArray(user?.importHistory)
             ? user.importHistory
                 .filter((entry: any) => typeof entry?.id === 'string')
@@ -667,7 +677,12 @@ async function loadState(): Promise<PersistedState> {
                       : null,
                 }))
             : []
-          usersArr.push({ name, responses, importHistory: [] })
+          usersArr.push({
+            name,
+            responses,
+            personalTokenHash: undefined,
+            importHistory: [],
+          })
         }
       }
 
@@ -786,8 +801,13 @@ rebuildMovieIndexMaps()
 function upsertRoomUser(roomCode: string, user: User) {
   const room = (persistedState.rooms[roomCode] ??= { users: [] })
   const idx = room.users.findIndex(u => u.name === user.name)
-  if (idx >= 0) room.users[idx] = { name: user.name, responses: user.responses }
-  else room.users.push({ name: user.name, responses: user.responses })
+  const next = {
+    name: user.name,
+    responses: user.responses,
+    personalTokenHash: user.personalTokenHash,
+  }
+  if (idx >= 0) room.users[idx] = next
+  else room.users.push(next)
 }
 
 function removeRoomUser(roomCode: string, userName: string) {
@@ -800,7 +820,12 @@ function getRoomUser(roomCode: string, userName: string): PersistedRoomUser {
   const room = (persistedState.rooms[roomCode] ??= { users: [] })
   let user = room.users.find(u => u.name === userName)
   if (!user) {
-    user = { name: userName, responses: [], importHistory: [] }
+    user = {
+      name: userName,
+      responses: [],
+      personalTokenHash: undefined,
+      importHistory: [],
+    }
     room.users.push(user)
   }
   if (!Array.isArray(user.importHistory)) {
@@ -1089,6 +1114,7 @@ class Session {
               wantsToWatch: r.wantsToWatch,
               tmdbId: r.tmdbId ?? null,
             })),
+          personalTokenHash: u.personalTokenHash,
         }
         dedupeUserResponses(hydratedUser, this)
         this.users.set(hydratedUser, null)
@@ -1221,7 +1247,12 @@ class Session {
     if (!candidates.length) return
 
     const workers = Array.from(
-      { length: Math.min(DISCOVER_ENRICH_PREWARM_CONCURRENCY, candidates.length) },
+      {
+        length: Math.min(
+          DISCOVER_ENRICH_PREWARM_CONCURRENCY,
+          candidates.length
+        ),
+      },
       (_, workerIndex) =>
         (async () => {
           for (
@@ -1244,7 +1275,9 @@ class Session {
               })
             } catch (err) {
               log.debug(
-                `Discover enrichment prewarm failed for ${movie?.title ?? 'unknown movie'}: ${err}`
+                `Discover enrichment prewarm failed for ${
+                  movie?.title ?? 'unknown movie'
+                }: ${err}`
               )
             }
           }
@@ -2741,6 +2774,30 @@ class Session {
 const activeSessions: Map<string, Session> = new Map()
 
 const ROOM_CODE_MAP = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789'
+const PERSONAL_TOKEN_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+
+function normalizePersonalToken(token: string): string {
+  return String(token || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z2-9]/g, '')
+}
+
+function generatePersonalToken(length = 10): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(length))
+  return Array.from(
+    bytes,
+    value => PERSONAL_TOKEN_ALPHABET[value % PERSONAL_TOKEN_ALPHABET.length]
+  ).join('')
+}
+
+async function hashPersonalToken(token: string): Promise<string> {
+  const payload = new TextEncoder().encode(normalizePersonalToken(token))
+  const digest = await crypto.subtle.digest('SHA-256', payload)
+  return Array.from(new Uint8Array(digest), byte =>
+    byte.toString(16).padStart(2, '0')
+  ).join('')
+}
 
 export function normalizeRoomCode(roomCode: string): string {
   return String(roomCode || '')
@@ -2963,6 +3020,62 @@ export const handleLogin = (
             ({ name }) => name === data.payload.name
           )
 
+          const isPersonalMode = Boolean(data.payload.personalMode)
+          let personalRecoveryToken: string | undefined
+
+          if (isPersonalMode) {
+            const providedPersonalToken = normalizePersonalToken(
+              data.payload.personalToken || ''
+            )
+            const requiresPersonalToken = Boolean(
+              existingUser?.personalTokenHash
+            )
+
+            if (requiresPersonalToken) {
+              if (!providedPersonalToken) {
+                const response: WebSocketLoginResponseMessage = {
+                  type: 'loginResponse',
+                  payload: {
+                    success: false,
+                    code: 'PERSONAL_TOKEN_REQUIRED',
+                    message:
+                      'This personal profile is protected. Enter your personal access key to continue.',
+                  },
+                }
+                ws.send(JSON.stringify(response))
+                return
+              }
+
+              const providedHash = await hashPersonalToken(
+                providedPersonalToken
+              )
+              if (
+                !timingSafeEqual(providedHash, existingUser!.personalTokenHash!)
+              ) {
+                const response: WebSocketLoginResponseMessage = {
+                  type: 'loginResponse',
+                  payload: {
+                    success: false,
+                    code: 'PERSONAL_TOKEN_INVALID',
+                    message: 'Invalid personal access key. Please try again.',
+                  },
+                }
+                ws.send(JSON.stringify(response))
+                return
+              }
+            } else if (existingUser) {
+              const tokenToUse =
+                providedPersonalToken || generatePersonalToken()
+              existingUser.personalTokenHash = await hashPersonalToken(
+                tokenToUse
+              )
+
+              if (!providedPersonalToken) {
+                personalRecoveryToken = tokenToUse
+              }
+            }
+          }
+
           if (activeUsersWithSameName.length > 0) {
             if (!data.payload.forceTakeover) {
               log.info(
@@ -3007,6 +3120,17 @@ export const handleLogin = (
           const user: User = existingUser ?? {
             name: data.payload.name,
             responses: [],
+          }
+
+          if (isPersonalMode && !user.personalTokenHash) {
+            const providedPersonalToken = normalizePersonalToken(
+              data.payload.personalToken || ''
+            )
+            const tokenToUse = providedPersonalToken || generatePersonalToken()
+            user.personalTokenHash = await hashPersonalToken(tokenToUse)
+            if (!providedPersonalToken) {
+              personalRecoveryToken = tokenToUse
+            }
           }
 
           log.debug(
@@ -3136,6 +3260,7 @@ export const handleLogin = (
                 return true
               }),
               rated: ratedItems,
+              personalRecoveryToken,
             },
           }
           log.debug(

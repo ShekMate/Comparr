@@ -123,6 +123,8 @@ describe('ComparrAPI', () => {
         roomCode: 'ROOM456',
         accessPassword: 'secret',
         forceTakeover: false,
+        personalMode: false,
+        personalToken: '',
       })
     })
 

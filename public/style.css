@@ -1229,7 +1229,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .login-field-group--room-details {
-  margin-top: 2.5rem;
+  margin-top: 1.25rem;
 }
 
 .login-helper-copy {

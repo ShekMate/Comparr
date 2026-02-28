@@ -2172,6 +2172,17 @@ async function login(api) {
       .replace(/[^0-9A-Z]/g, '')
       .slice(0, 6)
 
+  const normalizePersonalToken = value =>
+    String(value || '')
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z2-9]/g, '')
+
+  const promptForPersonalToken = () => {
+    const input = window.prompt('Enter your personal access key')
+    return normalizePersonalToken(input)
+  }
+
   let roomMode = 'join'
 
   const getActiveRoomCode = () => {
@@ -2348,25 +2359,75 @@ async function login(api) {
     const personalRoomCode = normalizeRoomCodeInput(
       localStorage.getItem('personalRoomCode') || 'SOLO'
     )
+    let personalAuthToken = normalizePersonalToken(
+      localStorage.getItem('personalAuthToken') || ''
+    )
 
     try {
       let data
       try {
-        data = await api.login(personalUser, personalRoomCode, verifiedPassword)
-      } catch (err) {
-        if (err.code !== 'ACTIVE_SESSION_EXISTS') {
-          throw err
-        }
-
-        const shouldTakeOver = await promptActiveSessionTakeover()
-        if (!shouldTakeOver) return
-
         data = await api.login(
           personalUser,
           personalRoomCode,
           verifiedPassword,
-          true
+          false,
+          {
+            isPersonalMode: true,
+            personalToken: personalAuthToken,
+          }
         )
+      } catch (err) {
+        if (err.code === 'PERSONAL_TOKEN_REQUIRED') {
+          personalAuthToken = promptForPersonalToken()
+          if (!personalAuthToken) {
+            throw new Error('Personal access key is required for this profile.')
+          }
+
+          data = await api.login(
+            personalUser,
+            personalRoomCode,
+            verifiedPassword,
+            false,
+            {
+              isPersonalMode: true,
+              personalToken: personalAuthToken,
+            }
+          )
+        } else if (err.code === 'PERSONAL_TOKEN_INVALID') {
+          personalAuthToken = promptForPersonalToken()
+          if (!personalAuthToken) {
+            throw new Error('Invalid personal access key.')
+          }
+
+          data = await api.login(
+            personalUser,
+            personalRoomCode,
+            verifiedPassword,
+            false,
+            {
+              isPersonalMode: true,
+              personalToken: personalAuthToken,
+            }
+          )
+        } else {
+          if (err.code !== 'ACTIVE_SESSION_EXISTS') {
+            throw err
+          }
+
+          const shouldTakeOver = await promptActiveSessionTakeover()
+          if (!shouldTakeOver) return
+
+          data = await api.login(
+            personalUser,
+            personalRoomCode,
+            verifiedPassword,
+            true,
+            {
+              isPersonalMode: true,
+              personalToken: personalAuthToken,
+            }
+          )
+        }
       }
 
       await loginSection.animate(
@@ -2377,6 +2438,20 @@ async function login(api) {
 
       localStorage.setItem('personalUser', personalUser)
       localStorage.setItem('personalRoomCode', personalRoomCode)
+
+      const issuedPersonalToken = normalizePersonalToken(
+        data.personalRecoveryToken || ''
+      )
+      const tokenToPersist = issuedPersonalToken || personalAuthToken
+      if (tokenToPersist) {
+        localStorage.setItem('personalAuthToken', tokenToPersist)
+      }
+
+      if (issuedPersonalToken) {
+        window.alert(
+          `Your personal access key is ${issuedPersonalToken}. Save this key to recover your profile on a new browser.`
+        )
+      }
 
       if (roomCodeLine) {
         roomCodeLine.dataset.roomCode = personalRoomCode

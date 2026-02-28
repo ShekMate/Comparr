@@ -148,7 +148,13 @@ export class ComparrAPI extends EventTarget {
     return data.roomCode
   }
 
-  async login(user, roomCode, accessPassword, forceTakeover = false) {
+  async login(
+    user,
+    roomCode,
+    accessPassword,
+    forceTakeover = false,
+    personalAuth = null
+  ) {
     await this._waitOpen()
     this.socket.send(
       JSON.stringify({
@@ -158,6 +164,8 @@ export class ComparrAPI extends EventTarget {
           roomCode,
           accessPassword,
           forceTakeover,
+          personalMode: Boolean(personalAuth?.isPersonalMode),
+          personalToken: personalAuth?.personalToken || '',
         },
       })
     )
