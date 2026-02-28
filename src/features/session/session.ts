@@ -277,7 +277,7 @@ const LOGIN_PREFETCH_SOFT_TIMEOUT_MS = Number(
   Deno.env.get('LOGIN_PREFETCH_SOFT_TIMEOUT_MS') ?? '2500'
 )
 const ENRICHMENT_TIMEOUT_MS = Number(
-  Deno.env.get('ENRICHMENT_TIMEOUT_MS') ?? '3500'
+  Deno.env.get('ENRICHMENT_TIMEOUT_MS') ?? '5000'
 )
 
 interface DiscoverCacheEntry {
@@ -1460,31 +1460,31 @@ class Session {
 
   async sendNextBatch(
     filters?: {
-    yearMin?: number
-    yearMax?: number
-    genres?: string[]
-    streamingServices?: string[]
-    showPlexOnly?: boolean
-    availability?: {
-      anywhere?: boolean
-      roomPersonalMedia?: boolean
-      paidSubscriptions?: boolean
-      freeStreaming?: boolean
-    }
-    contentRatings?: string[]
-    imdbRating?: number
-    tmdbRating?: number
-    languages?: string[]
-    countries?: string[]
-    directors?: Array<{ id: number; name: string }>
-    actors?: Array<{ id: number; name: string }>
-    runtimeMin?: number
-    runtimeMax?: number
-    voteCount?: number
-    sortBy?: string
-    imdbRating?: number
-    rtRating?: number
-  },
+      yearMin?: number
+      yearMax?: number
+      genres?: string[]
+      streamingServices?: string[]
+      showPlexOnly?: boolean
+      availability?: {
+        anywhere?: boolean
+        roomPersonalMedia?: boolean
+        paidSubscriptions?: boolean
+        freeStreaming?: boolean
+      }
+      contentRatings?: string[]
+      imdbRating?: number
+      tmdbRating?: number
+      languages?: string[]
+      countries?: string[]
+      directors?: Array<{ id: number; name: string }>
+      actors?: Array<{ id: number; name: string }>
+      runtimeMin?: number
+      runtimeMax?: number
+      voteCount?: number
+      sortBy?: string
+      imdbRating?: number
+      rtRating?: number
+    },
     options?: {
       suppressBroadcast?: boolean
       softTimeoutMs?: number
@@ -1737,8 +1737,7 @@ class Session {
         (isInitialRoomBatch
           ? INITIAL_BATCH_HARD_TIMEOUT_MS
           : SEND_BATCH_HARD_TIMEOUT_MS)
-      const stopAfterFirstMovie =
-        options?.stopAfterFirstMovie ?? isInitialRoomBatch
+      const stopAfterFirstMovie = options?.stopAfterFirstMovie ?? false
 
       while (
         validMovies.length < Number(getMovieBatchSize()) &&
@@ -1853,6 +1852,30 @@ class Session {
               log.debug(
                 `⏱️ Enrichment timed out for ${plexMovie.title} after ${ENRICHMENT_TIMEOUT_MS}ms; using base metadata.`
               )
+
+              const shouldForceMetadataForInitialCard =
+                isInitialRoomBatch && validMovies.length < 2
+
+              if (shouldForceMetadataForInitialCard) {
+                try {
+                  extra = await Promise.race([
+                    this.getEnrichmentData(plexMovie),
+                    new Promise<undefined>(resolve =>
+                      setTimeout(() => resolve(undefined), 10000)
+                    ),
+                  ])
+
+                  if (extra) {
+                    log.info(
+                      `✅ Recovered enrichment for initial card ${plexMovie.title} in forced metadata pass.`
+                    )
+                  }
+                } catch (retryErr) {
+                  log.warning(
+                    `Forced enrichment retry failed for ${plexMovie.title}: ${retryErr}`
+                  )
+                }
+              }
             }
           } catch (e) {
             log.warning(`Enrichment failed for ${plexMovie.title}: ${e}`)
@@ -2915,7 +2938,9 @@ export const handleLogin = (
 
           ensurePlexHydrationReady().catch(err => {
             log.warning(
-              `Continuing login for ${data.payload.name} while Plex hydration finishes in background: ${
+              `Continuing login for ${
+                data.payload.name
+              } while Plex hydration finishes in background: ${
                 err?.message || err
               }`
             )
@@ -2939,7 +2964,8 @@ export const handleLogin = (
             if (user.responses.some(response => response.guid === movie.guid)) {
               return false
             }
-            const movieTmdbId = movie.tmdbId ?? extractTmdbIdFromGuid(movie.guid)
+            const movieTmdbId =
+              movie.tmdbId ?? extractTmdbIdFromGuid(movie.guid)
             if (movieTmdbId == null) {
               return true
             }

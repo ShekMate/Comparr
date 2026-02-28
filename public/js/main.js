@@ -64,6 +64,79 @@ function formatRuntime(minutes) {
   }
   return `${mins}m`
 }
+
+function parseNumericRating(value) {
+  if (value === null || value === undefined || value === '') return null
+  const parsed = Number.parseFloat(String(value).replace(/[^\d.]/g, ''))
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function buildRatingHtml(movie, basePath) {
+  const comparr = parseNumericRating(movie?.rating_comparr)
+  const imdb = parseNumericRating(movie?.rating_imdb)
+  const rt = parseNumericRating(movie?.rating_rt)
+  const tmdb = parseNumericRating(movie?.rating_tmdb)
+
+  const parts = []
+  if (comparr != null) {
+    parts.push(
+      `<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> ${comparr.toFixed(
+        1
+      )}`
+    )
+  }
+  if (imdb != null) {
+    parts.push(
+      `<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> ${imdb.toFixed(
+        1
+      )}`
+    )
+  }
+  if (rt != null) {
+    parts.push(
+      `<img src="${basePath}/assets/logos/rottentomatoes.svg" alt="RT" class="rating-logo"> ${Math.round(
+        rt
+      )}%`
+    )
+  }
+  if (tmdb != null) {
+    parts.push(
+      `<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> ${tmdb.toFixed(
+        1
+      )}`
+    )
+  }
+
+  if (parts.length > 0) {
+    return parts.join(' <span class="rating-separator">&bull;</span> ')
+  }
+
+  const raw = String(movie?.rating || '').trim()
+  if (!raw) return ''
+  if (raw.includes('<img')) return raw
+
+  const parsedFromText = {
+    comparr: parseNumericRating(
+      raw.match(/comparr\s*[:\-]?\s*([\d.]+)/i)?.[1] || null
+    ),
+    imdb: parseNumericRating(raw.match(/imdb\s*[:\-]?\s*([\d.]+)/i)?.[1]),
+    rt: parseNumericRating(
+      raw.match(/(?:rt|rotten\s*tomatoes)\s*[:\-]?\s*([\d.]+)%?/i)?.[1]
+    ),
+    tmdb: parseNumericRating(raw.match(/tmdb\s*[:\-]?\s*([\d.]+)/i)?.[1]),
+  }
+
+  return buildRatingHtml(
+    {
+      rating_comparr: parsedFromText.comparr,
+      rating_imdb: parsedFromText.imdb,
+      rating_rt: parsedFromText.rt,
+      rating_tmdb: parsedFromText.tmdb,
+    },
+    basePath
+  )
+}
+
 // ===== END OF HELPER FUNCTIONS =====
 
 // ===== FUNNY LOADING MESSAGES =====
@@ -2712,11 +2785,12 @@ async function appendRatedRow(
               : ''
           }
           ${metadataBadgesHTML}
-          ${
-            movie.rating
-              ? `<div class="watch-card-ratings">${movie.rating}</div>`
+          ${(() => {
+            const ratingHtml = buildRatingHtml(movie, basePath)
+            return ratingHtml
+              ? `<div class="watch-card-ratings">${ratingHtml}</div>`
               : ''
-          }
+          })()}
     
         <div class="watch-card-actions">
           <div class="service-dropdown">
@@ -2920,41 +2994,11 @@ async function appendRatedRow(
           // Update the rating display - always update even if empty to show that refresh completed
           const ratingEl = card.querySelector('.watch-card-ratings')
           if (ratingEl) {
-            // If we have ratings, update them. If not but rating exists in response, use it
-            if (data.rating) {
-              ratingEl.innerHTML = data.rating
-            } else if (
-              data.rating_imdb ||
-              data.rating_rt ||
-              data.rating_tmdb ||
-              data.rating_comparr
-            ) {
-              // Build rating HTML from individual ratings if rating string not provided
-              const basePath = document.body.dataset.basePath || ''
-              const ratingParts = []
-              if (data.rating_comparr)
-                ratingParts.push(
-                  `<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> ${data.rating_comparr}`
-                )
-              if (data.rating_imdb)
-                ratingParts.push(
-                  `<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> ${data.rating_imdb}`
-                )
-              if (data.rating_rt)
-                ratingParts.push(
-                  `<img src="${basePath}/assets/logos/rottentomatoes.svg" alt="RT" class="rating-logo"> ${data.rating_rt}%`
-                )
-              if (data.rating_tmdb)
-                ratingParts.push(
-                  `<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> ${data.rating_tmdb}`
-                )
-              ratingEl.innerHTML =
-                ratingParts.length > 0
-                  ? ratingParts.join(
-                      ' <span class="rating-separator">&bull;</span> '
-                    )
-                  : ''
-            }
+            const ratingHtml = buildRatingHtml(
+              data,
+              document.body.dataset.basePath || ''
+            )
+            ratingEl.innerHTML = ratingHtml
           }
 
           // Update Plex status / Add to Plex button
@@ -3151,11 +3195,12 @@ async function appendRatedRow(
               ? `<p class="watch-card-summary">${movie.summary}</p>`
               : ''
           }
-          ${
-            movie.rating
-              ? `<div class="watch-card-ratings">${movie.rating}</div>`
+          ${(() => {
+            const ratingHtml = buildRatingHtml(movie, basePath)
+            return ratingHtml
+              ? `<div class="watch-card-ratings">${ratingHtml}</div>`
               : ''
-          }
+          })()}
         
           <!-- Move to other lists buttons -->
           <div class="list-actions">
@@ -3275,11 +3320,12 @@ async function appendRatedRow(
               ? `<p class="watch-card-summary">${movie.summary}</p>`
               : ''
           }
-          ${
-            movie.rating
-              ? `<div class="watch-card-ratings">${movie.rating}</div>`
+          ${(() => {
+            const ratingHtml = buildRatingHtml(movie, basePath)
+            return ratingHtml
+              ? `<div class="watch-card-ratings">${ratingHtml}</div>`
               : ''
-          }
+          })()}
         
           <!-- Move to other lists buttons -->
           <div class="list-actions">
@@ -5043,6 +5089,69 @@ const main = async () => {
       }
     }
   }
+
+  async function hydrateSeenRatingsRetroactively(limit = 30) {
+    if (!seenList) return
+
+    const cards = Array.from(seenList.querySelectorAll('.watch-card'))
+      .filter(card => {
+        const ratingEl = card.querySelector('.watch-card-ratings')
+        if (!ratingEl) return true
+        return !ratingEl.querySelector('.rating-logo')
+      })
+      .slice(0, limit)
+
+    if (cards.length === 0) return
+
+    console.log(
+      `🔄 Retro-rating refresh queued for ${cards.length} Seen card(s)`
+    )
+
+    const workers = 3
+    let index = 0
+
+    const runWorker = async () => {
+      while (index < cards.length) {
+        const card = cards[index]
+        index += 1
+
+        const idOrGuid = card.dataset.tmdbId || card.dataset.guid
+        if (!idOrGuid) continue
+
+        try {
+          const response = await fetch(
+            `/api/refresh-movie/${encodeURIComponent(idOrGuid)}`
+          )
+          if (!response.ok) continue
+
+          const data = await response.json().catch(() => null)
+          if (!data) continue
+
+          const ratingHtml = buildRatingHtml(data, basePath)
+          if (!ratingHtml) continue
+
+          let ratingEl = card.querySelector('.watch-card-ratings')
+          if (!ratingEl) {
+            ratingEl = document.createElement('div')
+            ratingEl.className = 'watch-card-ratings'
+            const content = card.querySelector('.watch-card-content')
+            content?.prepend(ratingEl)
+          }
+          ratingEl.innerHTML = ratingHtml
+        } catch (err) {
+          console.warn('Seen retro refresh failed:', err)
+        }
+      }
+    }
+
+    await Promise.all(
+      Array.from({ length: Math.min(workers, cards.length) }, () => runWorker())
+    )
+  }
+
+  hydrateSeenRatingsRetroactively().catch(err => {
+    console.warn('Retro Seen ratings hydration failed:', err)
+  })
 
   // =========================================================
   // IMDb Import Handler (CSV upload + history)
