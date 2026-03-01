@@ -11,7 +11,6 @@ export type SettingsKey =
   | 'ACCESS_PASSWORD'
   | 'ADMIN_PASSWORD'
   | 'TMDB_API_KEY'
-  | 'OMDB_API_KEY'
   | 'RADARR_URL'
   | 'RADARR_API_KEY'
   | 'JELLYSEERR_URL'
@@ -42,7 +41,6 @@ const SETTINGS_KEYS: SettingsKey[] = [
   'ACCESS_PASSWORD',
   'ADMIN_PASSWORD',
   'TMDB_API_KEY',
-  'OMDB_API_KEY',
   'RADARR_URL',
   'RADARR_API_KEY',
   'JELLYSEERR_URL',

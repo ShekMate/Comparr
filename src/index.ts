@@ -10,7 +10,6 @@ import {
   getPort,
   getRootPath,
   getTmdbApiKey,
-  getOmdbApiKey,
   getMaxBodySize,
 } from './core/config.ts'
 import { getSettings, updateSettings } from './core/settings.ts'
@@ -44,7 +43,10 @@ import {
   refreshRadarrCache,
 } from './api/radarr.ts'
 import { requestMovie } from './api/jellyseerr.ts'
-import { serveCachedPoster } from './services/cache/poster-cache.ts'
+import {
+  getCachedPosterPath,
+  serveCachedPoster,
+} from './services/cache/poster-cache.ts'
 import {
   initIMDbDatabase,
   startBackgroundUpdateJob,
@@ -263,7 +265,6 @@ initPosterCache().catch(err =>
 // DEBUG: Log environment check on startup
 log.info(`🔍 Config check:`)
 log.info(`  TMDB_API_KEY: ${getTmdbApiKey() ? '✅ Set' : '❌ Missing'}`)
-log.info(`  OMDB_API_KEY: ${getOmdbApiKey() ? '✅ Set' : '❌ Missing'}`)
 log.info(`  PLEX_URL: ${getPlexUrl() ? '✅ Set' : '❌ Missing'}`)
 log.info(`  PLEX_TOKEN: ${getPlexToken() ? '✅ Set' : '❌ Missing'}`)
 
@@ -631,10 +632,6 @@ for await (const req of server) {
           ratingParts.push(
             `<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> ${enriched.rating_imdb}`
           )
-        if (enriched.rating_rt)
-          ratingParts.push(
-            `<img src="${basePath}/assets/logos/rottentomatoes.svg" alt="RT" class="rating-logo"> ${enriched.rating_rt}%`
-          )
         if (enriched.rating_tmdb)
           ratingParts.push(
             `<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> ${enriched.rating_tmdb}`
@@ -660,7 +657,6 @@ for await (const req of server) {
             ...persistedState.movieIndex[movieGuid],
             ...movieData,
             rating_imdb: enriched.rating_imdb,
-            rating_rt: enriched.rating_rt,
             rating_tmdb: enriched.rating_tmdb,
             rating_comparr: enriched.rating_comparr,
             rating,
@@ -699,7 +695,6 @@ for await (const req of server) {
           status: 200,
           body: JSON.stringify({
             rating_imdb: enriched.rating_imdb,
-            rating_rt: enriched.rating_rt,
             rating_tmdb: enriched.rating_tmdb,
             rating_comparr: enriched.rating_comparr,
             rating,
@@ -932,7 +927,19 @@ for await (const req of server) {
     // --- Proxy TMDb posters
     if (p.startsWith('/tmdb-poster/')) {
       const posterPath = p.replace('/tmdb-poster', '')
-      const tmdbUrl = `https://image.tmdb.org/t/p/w500${posterPath}`
+      const normalizedPosterPath = posterPath.startsWith('/')
+        ? posterPath
+        : `/${posterPath}`
+
+      // Serve from local disk cache first when available.
+      const cachedPosterPath = getCachedPosterPath(normalizedPosterPath, 'tmdb')
+      if (cachedPosterPath?.startsWith('/cached-poster/')) {
+        const filename = cachedPosterPath.slice('/cached-poster/'.length)
+        const served = await serveCachedPoster(filename, req)
+        if (served) continue
+      }
+
+      const tmdbUrl = `https://image.tmdb.org/t/p/w500${normalizedPosterPath}`
 
       try {
         const posterReq = await fetch(tmdbUrl)
@@ -943,7 +950,7 @@ for await (const req of server) {
           const { cachePoster } = await import(
             './services/cache/poster-cache.ts'
           )
-          cachePoster(posterPath, 'tmdb', tmdbUrl).catch(err =>
+          cachePoster(normalizedPosterPath, 'tmdb', tmdbUrl).catch(err =>
             log.error(`Failed to cache TMDb poster: ${err}`)
           )
 
@@ -952,7 +959,7 @@ for await (const req of server) {
             body: imageData,
             headers: (() => {
               const h = makeHeaders('image/jpeg')
-              h.set('cache-control', 'public, max-age=604800, immutable')
+              h.set('cache-control', 'public, max-age=31536000, immutable')
               return h
             })(),
           })
