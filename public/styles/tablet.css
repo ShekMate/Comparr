@@ -1,0 +1,14 @@
+:root {
+  /* Tablet-specific overrides can be safely isolated here. */
+}
+
+@media (max-width: 1024px) and (min-width: 769px) {
+  .tabbar {
+    gap: 0.35rem;
+  }
+
+  .tabbar button {
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+  }
+}
