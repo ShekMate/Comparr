@@ -646,7 +646,13 @@ body:not(.is-logged-in) .card-stack:empty::after {
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
+  text-overflow: ellipsis;
   margin: 0;
+}
+
+.poster-overlay .card-plot-preview {
+  font-size: 0.75rem;
+  line-height: 1.5;
 }
 
 .card-meta {
@@ -656,6 +662,17 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .card.details-expanded .card-meta {
   display: block;
 }
+
+.card.details-expanded .poster-overlay {
+  display: none;
+}
+
+.card.details-expanded .card-meta .card-plot {
+  -webkit-line-clamp: unset;
+  display: block;
+  overflow: visible;
+}
+
 .card:hover .poster {
   transform: scale(1.02);
 }
@@ -4246,6 +4263,16 @@ footer {
     margin-bottom: 1.5rem !important;
     -webkit-line-clamp: unset !important;
     display: block !important;
+  }
+
+  .poster-overlay .card-plot-preview {
+    font-size: 0.75rem !important;
+    line-height: 1.5 !important;
+    -webkit-line-clamp: 3 !important;
+    display: -webkit-box !important;
+    overflow: hidden !important;
+    -webkit-box-orient: vertical !important;
+    text-overflow: ellipsis;
   }
 
   .card-ratings {
