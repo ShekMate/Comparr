@@ -601,6 +601,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   display: flex;
   justify-content: center;
   align-items: center;
+  cursor: pointer;
 }
 
 .card .poster {
@@ -614,6 +615,47 @@ body:not(.is-logged-in) .card-stack:empty::after {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
+.poster-overlay {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 1rem;
+  background: linear-gradient(to top, rgb(0 0 0 / 90%), rgb(0 0 0 / 10%));
+  color: #fff;
+  z-index: 4;
+}
+
+.poster-title {
+  font-size: 2rem;
+  line-height: 1.1;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+
+.poster-genres {
+  font-size: 0.95rem;
+  opacity: 0.9;
+  margin-bottom: 0.4rem;
+}
+
+.card-ratings.compact {
+  margin: 0.25rem 0 0.45rem;
+}
+
+.card-plot-preview {
+  -webkit-line-clamp: 3;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  margin: 0;
+}
+
+.card-meta {
+  display: none;
+}
+
+.card.details-expanded .card-meta {
+  display: block;
+}
 .card:hover .poster {
   transform: scale(1.02);
 }
@@ -4122,19 +4164,73 @@ footer {
     overflow-x: hidden;
   }
 
-  /* Rate Controls Desktop - now inside card-meta */
+  .card:not(.details-expanded) {
+    width: calc(var(--height) * 0.6666) !important;
+    max-width: none;
+    min-height: auto;
+    display: inline-flex !important;
+    flex-direction: column;
+    background: transparent !important;
+  }
+
+  .card:not(.details-expanded) .poster-wrapper {
+    grid-column: auto;
+    grid-row: auto;
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+    aspect-ratio: 2 / 3;
+  }
+
+  .card:not(.details-expanded) .card .poster,
+  .card:not(.details-expanded) .poster {
+    width: 100% !important;
+    height: auto !important;
+    object-fit: cover !important;
+    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+  }
+
+  .card:not(.details-expanded) .card-meta {
+    display: none !important;
+  }
+
+  .card:not(.details-expanded) > .rate-controls {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .card.details-expanded {
+    grid-template-columns: auto 1fr;
+    grid-template-rows: 1fr auto;
+  }
+
+  .card.details-expanded .poster-wrapper {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .card.details-expanded > .rate-controls {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .card.details-expanded .card-meta {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    display: flex !important;
+  }
+
+  /* Keep action buttons under poster on desktop in both collapsed and expanded states */
   .rate-controls {
-    grid-column: unset;
-    grid-row: unset;
     width: 100%;
     max-width: none;
-    justify-content: flex-start !important;
-    gap: 1.5rem !important;
-    padding: 1.5rem 0 2rem 0 !important;
-    margin-top: auto;
+    justify-content: center !important;
+    gap: 1rem !important;
+    padding: 0.75rem 1rem 1rem !important;
+    margin-top: 0;
     border-radius: 0;
-    background: transparent !important;
-    backdrop-filter: none;
+    background: rgba(15, 23, 42, 0.95) !important;
+    backdrop-filter: blur(10px);
   }
 
   /* Metadata text sizing for desktop */

@@ -35,6 +35,7 @@ export default class CardView {
       guid,
       summary = '',
       rating = '',
+      genres = [],
     } = this.movieData
     node.dataset.guid = guid
 
@@ -79,6 +80,13 @@ export default class CardView {
 
     const finalArt = normalizeArt(art)
 
+    const titleLine = `${escapeHtml(title)}${
+      type === 'movie' ? ` (${escapeHtml(year)})` : ''
+    }`
+    const genreLine = Array.isArray(genres)
+      ? genres.slice(0, 2).map(escapeHtml).join(' • ')
+      : ''
+
     node.innerHTML = `
       <div class="poster-wrapper">
         <button type="button" class="undo-button" aria-label="Undo" title="Undo last rating">
@@ -94,40 +102,51 @@ export default class CardView {
           decoding="async"
           alt="${escapeHtml(title)} poster"
         />
+        <div class="poster-overlay">
+          <div class="poster-title">${titleLine}</div>
+          ${genreLine ? `<div class="poster-genres">${genreLine}</div>` : ''}
+          ${rating ? `<div class="card-ratings compact">${rating}</div>` : ''}
+          ${
+            summary
+              ? `<p class="card-plot card-plot-preview">${escapeHtml(
+                  summary
+                )}</p>`
+              : ''
+          }
+        </div>
+      </div>
+
+      <div class="rate-controls">
+        <div class="button-wrapper">
+          <button type="button" class="rate-thumbs-down" aria-label="Thumbs down" onclick="this.closest('.card')._handleDown(event)">
+            <i class="fas fa-thumbs-down"></i>
+            <span class="button-label">Pass</span>
+          </button>
+        </div>
+        <div class="button-wrapper">
+          <button type="button" class="rate-seen" aria-label="Mark as seen" onclick="this.closest('.card')._handleSeen(event)">
+            <i class="fas fa-eye"></i>
+            <span class="button-label">Seen</span>
+          </button>
+        </div>
+        <div class="button-wrapper">
+          <button type="button" class="rate-thumbs-up" aria-label="Thumbs up" onclick="this.closest('.card')._handleUp(event)">
+            <i class="fas fa-thumbs-up"></i>
+            <span class="button-label">Watch</span>
+          </button>
+        </div>
       </div>
 
       <div class="card-meta">
-        <div class="card-title">
-          ${escapeHtml(title)}${type === 'movie' ? ` (${escapeHtml(year)})` : ''}
-        </div>
         ${this.renderCrewInfo()}
         ${
           summary
-            ? `<p class="card-plot" onclick="this.closest('.card')._handlePlot(event)">${escapeHtml(summary)}</p>`
+            ? `<p class="card-plot" onclick="this.closest('.card')._handlePlot(event)">${escapeHtml(
+                summary
+              )}</p>`
             : ''
         }
         ${rating ? `<div class="card-ratings">${rating}</div>` : ''}
-
-        <div class="rate-controls">
-          <div class="button-wrapper">
-            <button type="button" class="rate-thumbs-down" aria-label="Thumbs down" onclick="this.closest('.card')._handleDown(event)">
-              <i class="fas fa-thumbs-down"></i>
-              <span class="button-label">Pass</span>
-            </button>
-          </div>
-          <div class="button-wrapper">
-            <button type="button" class="rate-seen" aria-label="Mark as seen" onclick="this.closest('.card')._handleSeen(event)">
-              <i class="fas fa-eye"></i>
-              <span class="button-label">Seen</span>
-            </button>
-          </div>
-          <div class="button-wrapper">
-            <button type="button" class="rate-thumbs-up" aria-label="Thumbs up" onclick="this.closest('.card')._handleUp(event)">
-              <i class="fas fa-thumbs-up"></i>
-              <span class="button-label">Watch</span>
-            </button>
-          </div>
-        </div>
       </div>
     `
 
@@ -136,6 +155,7 @@ export default class CardView {
     const downBtn = node.querySelector('.rate-thumbs-down')
     const seenBtn = node.querySelector('.rate-seen')
     const undoBtn = node.querySelector('.undo-button')
+    const posterWrapper = node.querySelector('.poster-wrapper')
 
     const handleRate = value => {
       return e => {
@@ -163,6 +183,11 @@ export default class CardView {
 
     undoBtn?.addEventListener('touchend', handleUndo, { passive: false })
     undoBtn?.addEventListener('click', handleUndo)
+
+    posterWrapper?.addEventListener('click', e => {
+      if (e.target.closest('.undo-button')) return
+      node.classList.toggle('details-expanded')
+    })
 
     // Add handlers for plot expansion
     const plotEl = node.querySelector('.card-plot')
@@ -408,7 +433,9 @@ export default class CardView {
     // Director
     if (director && director !== 'undefined') {
       lines.push(
-        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-video"></i> ${escapeHtml(director)}</div>`
+        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-video"></i> ${escapeHtml(
+          director
+        )}</div>`
       )
     }
 
@@ -418,9 +445,9 @@ export default class CardView {
       const displayWriters = writers.slice(0, maxWriters)
       const hasMore = writers.length > maxWriters
       lines.push(
-        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-pen"></i> ${displayWriters.map(escapeHtml).join(
-          ', '
-        )}${hasMore ? ' & more' : ''}</div>`
+        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-pen"></i> ${displayWriters
+          .map(escapeHtml)
+          .join(', ')}${hasMore ? ' & more' : ''}</div>`
       )
     }
 
@@ -430,9 +457,9 @@ export default class CardView {
       const displayCast = cast.slice(0, maxCast)
       const hasMore = cast.length > maxCast
       lines.push(
-        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-users"></i> ${displayCast.map(escapeHtml).join(
-          ', '
-        )}${hasMore ? ' & more' : ''}</div>`
+        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-users"></i> ${displayCast
+          .map(escapeHtml)
+          .join(', ')}${hasMore ? ' & more' : ''}</div>`
       )
     }
 

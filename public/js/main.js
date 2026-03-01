@@ -2,7 +2,7 @@
 // deno-lint-ignore-file
 
 import { ComparrAPI } from './ComparrAPI.js'
-import CardView from './CardView.js?v=3'
+import CardView from './CardView.js?v=4'
 import { MatchesView } from './MatchesView.js'
 
 // Global API reference so functions outside main() can access it
@@ -26,6 +26,29 @@ function normalizePoster(u) {
     return '/tmdb-poster/' + u.slice('/poster/'.length) // legacy -> canonical
   if (u.startsWith('http://') || u.startsWith('https://')) return u // full CDN URL
   return '/tmdb-poster' + (u.startsWith('/') ? u : '/' + u) // raw TMDB path
+}
+
+const preloadedPosterUrls = new Set()
+
+function getPosterUrlForPreload(movie) {
+  const normalized = normalizePoster(
+    movie?.art || movie?.posterPath || movie?.poster_path || ''
+  )
+  if (!normalized) return ''
+  if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
+    return normalized
+  }
+  return `${document.body?.dataset?.basePath || ''}${normalized}`
+}
+
+function preloadPosterForMovie(movie) {
+  const url = getPosterUrlForPreload(movie)
+  if (!url || preloadedPosterUrls.has(url)) return
+
+  const img = new Image()
+  img.decoding = 'async'
+  img.src = url
+  img.onload = () => preloadedPosterUrls.add(url)
 }
 
 // Helper function to get genre names from IDs
@@ -74,7 +97,6 @@ function parseNumericRating(value) {
 function buildRatingHtml(movie, basePath) {
   const comparr = parseNumericRating(movie?.rating_comparr)
   const imdb = parseNumericRating(movie?.rating_imdb)
-  const rt = parseNumericRating(movie?.rating_rt)
   const tmdb = parseNumericRating(movie?.rating_tmdb)
 
   const parts = []
@@ -90,13 +112,6 @@ function buildRatingHtml(movie, basePath) {
       `<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> ${imdb.toFixed(
         1
       )}`
-    )
-  }
-  if (rt != null) {
-    parts.push(
-      `<img src="${basePath}/assets/logos/rottentomatoes.svg" alt="RT" class="rating-logo"> ${Math.round(
-        rt
-      )}%`
     )
   }
   if (tmdb != null) {
@@ -120,9 +135,6 @@ function buildRatingHtml(movie, basePath) {
       raw.match(/comparr\s*[:\-]?\s*([\d.]+)/i)?.[1] || null
     ),
     imdb: parseNumericRating(raw.match(/imdb\s*[:\-]?\s*([\d.]+)/i)?.[1]),
-    rt: parseNumericRating(
-      raw.match(/(?:rt|rotten\s*tomatoes)\s*[:\-]?\s*([\d.]+)%?/i)?.[1]
-    ),
     tmdb: parseNumericRating(raw.match(/tmdb\s*[:\-]?\s*([\d.]+)/i)?.[1]),
   }
 
@@ -130,7 +142,6 @@ function buildRatingHtml(movie, basePath) {
     {
       rating_comparr: parsedFromText.comparr,
       rating_imdb: parsedFromText.imdb,
-      rating_rt: parsedFromText.rt,
       rating_tmdb: parsedFromText.tmdb,
     },
     basePath
@@ -757,8 +768,7 @@ function sortWatchList(sortBy) {
       const imdb = imdbMatch ? parseFloat(imdbMatch[1]) : 0
 
       // Extract RT rating: <img src="..." alt="RT"> 85%
-      const rtMatch = innerHTML.match(/rottentomatoes\.svg[^>]*>\s*([\d.]+)%/i)
-      const rt = rtMatch ? parseFloat(rtMatch[1]) : 0
+      const rt = 0
 
       // Extract TMDb rating: <img src="..." alt="TMDb"> 7.5
       const tmdbMatch = innerHTML.match(/tmdb\.svg[^>]*>\s*([\d.]+)/i)
@@ -1496,7 +1506,6 @@ function initializeIntegrationTestButtons() {
       key: 'setting-overseerr-api-key',
     },
     tmdb: { key: 'setting-tmdb-key' },
-    omdb: { key: 'setting-omdb-key' },
   }
 
   const targetLabels = {
@@ -1505,7 +1514,6 @@ function initializeIntegrationTestButtons() {
     jellyseerr: 'Jellyseerr',
     overseerr: 'Overseerr',
     tmdb: 'TMDB',
-    omdb: 'OMDb',
   }
 
   document.querySelectorAll('[data-test-target]').forEach(button => {
@@ -1892,8 +1900,7 @@ function sortPassList(sortBy) {
       const innerHTML = ratingEl.innerHTML
       const imdbMatch = innerHTML.match(/imdb\.svg[^>]*>\s*([\d.]+)/i)
       const imdb = imdbMatch ? parseFloat(imdbMatch[1]) : 0
-      const rtMatch = innerHTML.match(/rottentomatoes\.svg[^>]*>\s*([\d.]+)%/i)
-      const rt = rtMatch ? parseFloat(rtMatch[1]) : 0
+      const rt = 0
       const tmdbMatch = innerHTML.match(/tmdb\.svg[^>]*>\s*([\d.]+)/i)
       const tmdb = tmdbMatch ? parseFloat(tmdbMatch[1]) : 0
       return { imdb, rt, tmdb }
@@ -1990,8 +1997,7 @@ function sortSeenList(sortBy) {
       const innerHTML = ratingEl.innerHTML
       const imdbMatch = innerHTML.match(/imdb\.svg[^>]*>\s*([\d.]+)/i)
       const imdb = imdbMatch ? parseFloat(imdbMatch[1]) : 0
-      const rtMatch = innerHTML.match(/rottentomatoes\.svg[^>]*>\s*([\d.]+)%/i)
-      const rt = rtMatch ? parseFloat(rtMatch[1]) : 0
+      const rt = 0
       const tmdbMatch = innerHTML.match(/tmdb\.svg[^>]*>\s*([\d.]+)/i)
       const tmdb = tmdbMatch ? parseFloat(tmdbMatch[1]) : 0
       return { imdb, rt, tmdb }
@@ -4900,14 +4906,7 @@ const main = async () => {
   })
 
   /* COMMENTED OUT - RT Rating Filter
-  const rtRatingSlider = document.getElementById('rt-rating')
-  const rtRatingValue = document.getElementById('rt-rating-value')
-  rtRatingSlider?.addEventListener('input', (e) => {
-    const rating = parseInt(e.target.value)
-    filterState.rtRating = rating
-    rtRatingValue.textContent = rating
-  })
-  */
+   */
 
   // Apply filters button
   const applyFiltersBtn = document.getElementById('apply-filters')
@@ -5090,8 +5089,8 @@ const main = async () => {
   let isLoadingBatch = false
   let ensureMovieBufferPromise = null
   let ensureMovieBufferTarget = 0
-  const BUFFER_MIN_SIZE = 8
-  const INITIAL_BUFFER_MIN_SIZE = 2
+  const BUFFER_MIN_SIZE = 10
+  const INITIAL_BUFFER_MIN_SIZE = 4
   const BATCH_SIZE = 20
 
   // Track if initial load has completed (to prevent showing filter notification on startup)
@@ -5444,7 +5443,6 @@ const main = async () => {
             voteCount: filterState.voteCount,
             sortBy: filterState.sortBy,
             imdbRating: filterState.imdbRating,
-            rtRating: filterState.rtRating,
             batchSize: BATCH_SIZE,
           })
 
@@ -5521,6 +5519,11 @@ const main = async () => {
 
           addedMovies += unseenMovies.length
           movieBuffer.push(...unseenMovies)
+
+          // Warm poster images in the browser cache before cards are rendered.
+          unseenMovies
+            .slice(0, CARD_STACK_SIZE + 2)
+            .forEach(preloadPosterForMovie)
 
           unseenMovies.forEach(movie => {
             const normalizedGuid = normalizeGuid(movie.guid)
