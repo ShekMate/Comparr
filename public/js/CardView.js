@@ -190,6 +190,10 @@ export default class CardView {
 
     posterWrapper?.addEventListener('click', e => {
       if (e.target.closest('.undo-button')) return
+      if (this.didDragCard) {
+        this.didDragCard = false
+        return
+      }
       node.classList.toggle('details-expanded')
     })
 
@@ -205,13 +209,9 @@ export default class CardView {
     plotEl?.addEventListener('click', handlePlotToggle)
 
     // Attach swipe handler ONLY to poster to allow scrolling on text/metadata areas
-    // Only enable swipe on touch-capable devices (mobile/tablet)
+    // Pointer events support touch + mouse, so desktop users can click-and-drag too.
     const posterEl = node.querySelector('.poster')
-    const isTouchDevice =
-      'ontouchstart' in window || navigator.maxTouchPoints > 0
-    if (isTouchDevice) {
-      posterEl?.addEventListener('pointerdown', this.handleSwipe)
-    }
+    posterEl?.addEventListener('pointerdown', this.handleSwipe)
 
     // Append to card stack
     console.log(
@@ -295,6 +295,7 @@ export default class CardView {
 
         // Now we know it's a horizontal swipe, not a tap or scroll
         hasMoved = true
+        this.didDragCard = true
         startEvent.preventDefault()
         this.node.setPointerCapture(startEvent.pointerId)
         this.animationFrameRequestId = requestAnimationFrame(() =>
