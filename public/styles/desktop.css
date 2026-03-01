@@ -1,7 +1,7 @@
 :root {
-  --swipe-rating-font-size: 1.25rem;
-  --swipe-rating-logo-height: 24px;
-  --swipe-card-title-size: 2rem;
+  --swipe-rating-font-size: 0.83rem;
+  --swipe-rating-logo-height: 16px;
+  --swipe-card-title-size: 1.25rem;
 }
 
 @media (min-width: 769px) {
@@ -217,7 +217,7 @@
   }
 
   .card:not(.details-expanded) {
-    width: calc(var(--height) * 0.6666) !important;
+    width: calc(var(--height) * 0.8333) !important;
     max-width: none;
     min-height: auto;
     display: inline-flex !important;
@@ -285,6 +285,19 @@
     backdrop-filter: blur(10px);
   }
 
+  .poster-title {
+    font-size: 1.25rem !important;
+    line-height: 1.15 !important;
+  }
+
+  .poster-year {
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .poster-overlay {
+    padding: 1rem 1rem 0.55rem !important;
+  }
   /* Metadata text sizing for desktop */
   .card-title {
     margin-bottom: 0.5rem !important;
