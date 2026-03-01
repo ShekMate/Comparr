@@ -81,7 +81,9 @@ export default class CardView {
     const finalArt = normalizeArt(art)
 
     const titleLine = `${escapeHtml(title)}${
-      type === 'movie' ? ` (${escapeHtml(year)})` : ''
+      type === 'movie'
+        ? ` <span class="poster-year">(${escapeHtml(year)})</span>`
+        : ''
     }`
     const genreLine = Array.isArray(genres)
       ? genres.slice(0, 2).map(escapeHtml).join(' • ')
