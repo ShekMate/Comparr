@@ -105,16 +105,18 @@ export default class CardView {
           alt="${escapeHtml(title)} poster"
         />
         <div class="poster-overlay">
-          <div class="poster-title">${titleLine}</div>
-          ${genreLine ? `<div class="poster-genres">${genreLine}</div>` : ''}
-          ${rating ? `<div class="card-ratings compact">${rating}</div>` : ''}
-          ${
-            summary
-              ? `<p class="card-plot card-plot-preview">${escapeHtml(
-                  summary
-                )}</p>`
-              : ''
-          }
+          <div class="poster-overlay-content">
+            <div class="poster-title">${titleLine}</div>
+            ${genreLine ? `<div class="poster-genres">${genreLine}</div>` : ''}
+            ${rating ? `<div class="card-ratings compact">${rating}</div>` : ''}
+            ${
+              summary
+                ? `<p class="card-plot card-plot-preview">${escapeHtml(
+                    summary
+                  )}</p>`
+                : ''
+            }
+          </div>
         </div>
       </div>
 

@@ -570,6 +570,15 @@ body:not(.is-logged-in) .card-stack:empty::after {
   z-index: 4;
 }
 
+.poster-overlay-content {
+  background: rgb(8 12 20 / 52%);
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 0.75rem;
+  padding: 0.7rem 0.75rem;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
 .poster-title {
   font-size: 2rem;
   line-height: 1.1;
