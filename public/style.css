@@ -614,6 +614,59 @@ body:not(.is-logged-in) .card-stack:empty::after {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
+.poster-overlay {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 1rem;
+  background: linear-gradient(to top, rgb(0 0 0 / 90%), rgb(0 0 0 / 10%));
+  color: #fff;
+  z-index: 4;
+}
+
+.poster-title {
+  font-size: 2rem;
+  line-height: 1.1;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+
+.poster-genres {
+  font-size: 0.95rem;
+  opacity: 0.9;
+  margin-bottom: 0.4rem;
+}
+
+.card-ratings.compact {
+  margin: 0.25rem 0 0.45rem;
+}
+
+.card-plot-preview {
+  -webkit-line-clamp: 3;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  margin: 0;
+}
+
+.details-toggle {
+  width: 100%;
+  margin-bottom: 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 20%);
+  background: rgb(255 255 255 / 8%);
+  color: #fff;
+  padding: 0.45rem 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.details-panel {
+  display: none;
+}
+
+.card.details-expanded .details-panel {
+  display: block;
+}
 .card:hover .poster {
   transform: scale(1.02);
 }

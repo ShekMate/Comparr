@@ -84,11 +84,7 @@ const runConnectionCheck = async (
       ? normalizePlexToken(token)
       : String(token || '').trim()
 
-  if (
-    normalizedTarget !== 'tmdb' &&
-    normalizedTarget !== 'omdb' &&
-    !isValidHttpUrl(serviceUrl)
-  ) {
+  if (normalizedTarget !== 'tmdb' && !isValidHttpUrl(serviceUrl)) {
     return { ok: false, message: 'Invalid URL.' }
   }
 
@@ -116,10 +112,6 @@ const runConnectionCheck = async (
     endpoint = `https://api.themoviedb.org/3/configuration?api_key=${encodeURIComponent(
       normalizedToken
     )}`
-  } else if (normalizedTarget === 'omdb') {
-    endpoint = `https://www.omdbapi.com/?apikey=${encodeURIComponent(
-      normalizedToken
-    )}&i=tt0133093`
   } else {
     return { ok: false, message: 'Unknown service target.' }
   }
@@ -134,16 +126,6 @@ const runConnectionCheck = async (
       return {
         ok: false,
         message: `Connection failed with status ${response.status}.`,
-      }
-    }
-
-    if (normalizedTarget === 'omdb') {
-      const payload = await response.json().catch(() => ({}))
-      if (payload?.Response === 'False') {
-        return {
-          ok: false,
-          message: payload?.Error || 'OMDb API key validation failed.',
-        }
       }
     }
 
@@ -205,7 +187,6 @@ const ADMIN_ONLY_SETTINGS = new Set([
   'LINK_TYPE',
   'PERSONAL_MEDIA_SOURCES',
   'TMDB_API_KEY',
-  'OMDB_API_KEY',
   'MOVIE_BATCH_SIZE',
   'RADARR_URL',
   'RADARR_API_KEY',

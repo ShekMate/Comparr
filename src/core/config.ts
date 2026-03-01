@@ -75,7 +75,6 @@ export const getOverseerrUrl = () =>
   normalizeUrl(getSettingTrimmed('OVERSEERR_URL'))
 export const getOverseerrApiKey = () => getSettingTrimmed('OVERSEERR_API_KEY')
 export const getTmdbApiKey = () => getSettingTrimmed('TMDB_API_KEY')
-export const getOmdbApiKey = () => getSettingTrimmed('OMDB_API_KEY')
 export const getStreamingProfileMode = () =>
   getSettingTrimmed('STREAMING_PROFILE_MODE') ?? 'anywhere'
 export const getPaidStreamingServices = () =>

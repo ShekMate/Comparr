@@ -35,7 +35,7 @@ import {
   getBestPosterUrl,
   prefetchPoster,
 } from '../../services/cache/poster-cache.ts'
-import { tmdbRateLimiter, omdbRateLimiter } from '../../core/rate-limiter.ts'
+import { tmdbRateLimiter } from '../../core/rate-limiter.ts'
 
 // Genre ID to name mapping (TMDb genre IDs)
 const GENRE_MAP: Record<number, string> = {
@@ -78,10 +78,9 @@ function ensureComparrScore(movie: any): void {
 
     // Skip if movie doesn't have any ratings (null/undefined)
     const hasImdb = typeof movie.rating_imdb === 'number'
-    const hasRt = typeof movie.rating_rt === 'number'
     const hasTmdb = typeof movie.rating_tmdb === 'number'
 
-    if (!hasImdb && !hasRt && !hasTmdb) {
+    if (!hasImdb && !hasTmdb) {
       return
     }
 
@@ -90,7 +89,6 @@ function ensureComparrScore(movie: any): void {
     const ratings = [];
     if (hasImdb) ratings.push(movie.rating_imdb);
     if (hasTmdb) ratings.push(movie.rating_tmdb);
-    if (hasRt) ratings.push(movie.rating_rt / 10);
 
     if (ratings.length >= 2 && (movie.rating_comparr === null || movie.rating_comparr === undefined)) {
       const sum = ratings.reduce((acc, val) => acc + val, 0);
@@ -109,11 +107,6 @@ function ensureComparrScore(movie: any): void {
       if (movie.rating_imdb != null) {
         parts.push(
           `<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> ${movie.rating_imdb}`
-        )
-      }
-      if (movie.rating_rt != null) {
-        parts.push(
-          `<img src="${basePath}/assets/logos/rottentomatoes.svg" alt="RT" class="rating-logo"> ${movie.rating_rt}%`
         )
       }
       if (movie.rating_tmdb != null) {
@@ -186,7 +179,6 @@ type DiscoverFilters = {
   voteCount?: number
   sortBy?: string
   imdbRating?: number
-  rtRating?: number
   streamingServices?: string[]
 }
 
@@ -333,7 +325,6 @@ async function fetchDiscoverPage(
     runtimeMax: filters?.runtimeMax,
     voteCount: filters?.voteCount,
     sortBy: filters?.sortBy,
-    rtRating: filters?.rtRating,
   })
 
   const results = discovered.results ?? []
@@ -517,7 +508,6 @@ interface WebSocketNextBatchMessage {
     voteCount?: number
     sortBy?: string
     imdbRating?: number
-    rtRating?: number
   }
 }
 
@@ -1221,7 +1211,12 @@ class Session {
     if (!candidates.length) return
 
     const workers = Array.from(
-      { length: Math.min(DISCOVER_ENRICH_PREWARM_CONCURRENCY, candidates.length) },
+      {
+        length: Math.min(
+          DISCOVER_ENRICH_PREWARM_CONCURRENCY,
+          candidates.length
+        ),
+      },
       (_, workerIndex) =>
         (async () => {
           for (
@@ -1244,7 +1239,9 @@ class Session {
               })
             } catch (err) {
               log.debug(
-                `Discover enrichment prewarm failed for ${movie?.title ?? 'unknown movie'}: ${err}`
+                `Discover enrichment prewarm failed for ${
+                  movie?.title ?? 'unknown movie'
+                }: ${err}`
               )
             }
           }
@@ -1539,7 +1536,6 @@ class Session {
       voteCount?: number
       sortBy?: string
       imdbRating?: number
-      rtRating?: number
     },
     options?: {
       suppressBroadcast?: boolean
@@ -1880,7 +1876,6 @@ class Session {
                 plot: string | null
                 imdbId: string | null
                 rating_imdb: number | null
-                rating_rt: number | null
                 rating_tmdb: number | null
                 tmdbPosterPath?: string | null
                 genres?: string[]
@@ -1977,11 +1972,6 @@ class Session {
               `<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> ${extra.rating_imdb}`
             )
           }
-          if (extra?.rating_rt != null) {
-            parts.push(
-              `<img src="${basePath}/assets/logos/rottentomatoes.svg" alt="RT" class="rating-logo"> ${extra.rating_rt}%`
-            )
-          }
           if (extra?.rating_tmdb != null) {
             parts.push(
               `<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> ${extra.rating_tmdb}`
@@ -2007,18 +1997,6 @@ class Session {
               continue
             }
           }
-
-          if (filters?.rtRating && filters.rtRating > 0) {
-            if (!extra?.rating_rt || extra.rating_rt < filters.rtRating) {
-              log.debug(
-                `⛔️ Skipping ${plexMovie.title} - RT rating ${
-                  extra?.rating_rt || 'N/A'
-                } below minimum ${filters.rtRating}`
-              )
-              continue
-            }
-          }
-
           if (filters?.yearMin || filters?.yearMax) {
             const movieYear =
               typeof plexMovie.year === 'number'
@@ -2479,7 +2457,6 @@ class Session {
       voteCount?: number
       sortBy?: string
       imdbRating?: number
-      rtRating?: number
       streamingServices?: string[]
     }
   ): Promise<any> {
@@ -2502,7 +2479,6 @@ class Session {
       runtimeMax: filters?.runtimeMax,
       voteCount: filters?.voteCount,
       sortBy: filters?.sortBy,
-      rtRating: filters?.rtRating,
       streamingServices: filters?.streamingServices,
     }
 
@@ -3425,7 +3401,6 @@ export async function processImdbImportBackground(
       }
 
       // 2. Full enrichment using existing pipeline (this respects rate limits internally via caching)
-      await omdbRateLimiter.acquire()
       const enriched = await enrich({
         title: tmdbMovie.title,
         year: tmdbMovie.release_date
@@ -3447,7 +3422,6 @@ export async function processImdbImportBackground(
       const ratingParts: string[] = []
       if (enriched?.rating_imdb)
         ratingParts.push(`IMDb: ${enriched.rating_imdb}`)
-      if (enriched?.rating_rt) ratingParts.push(`RT: ${enriched.rating_rt}%`)
       if (enriched?.rating_tmdb)
         ratingParts.push(`TMDb: ${enriched.rating_tmdb}`)
       if (ratingParts.length > 0) ratingStr = ratingParts.join(' | ')
@@ -3485,7 +3459,6 @@ export async function processImdbImportBackground(
         cast: enriched?.cast || [],
         writers: enriched?.writers || [],
         rating_imdb: enriched?.rating_imdb || null,
-        rating_rt: enriched?.rating_rt || null,
         rating_tmdb: enriched?.rating_tmdb || null,
         rating_comparr: enriched?.rating_comparr || null,
       }
