@@ -116,40 +116,37 @@ export default class CardView {
         </div>
       </div>
 
-      <div class="card-meta">
-        <button type="button" class="details-toggle" aria-label="Toggle details">More details</button>
-        <div class="details-panel">
-          ${this.renderCrewInfo()}
-          ${
-            summary
-              ? `<p class="card-plot" onclick="this.closest('.card')._handlePlot(event)">${escapeHtml(
-                  summary
-                )}</p>`
-              : ''
-          }
-          ${rating ? `<div class="card-ratings">${rating}</div>` : ''}
+      <div class="rate-controls">
+        <div class="button-wrapper">
+          <button type="button" class="rate-thumbs-down" aria-label="Thumbs down" onclick="this.closest('.card')._handleDown(event)">
+            <i class="fas fa-thumbs-down"></i>
+            <span class="button-label">Pass</span>
+          </button>
         </div>
+        <div class="button-wrapper">
+          <button type="button" class="rate-seen" aria-label="Mark as seen" onclick="this.closest('.card')._handleSeen(event)">
+            <i class="fas fa-eye"></i>
+            <span class="button-label">Seen</span>
+          </button>
+        </div>
+        <div class="button-wrapper">
+          <button type="button" class="rate-thumbs-up" aria-label="Thumbs up" onclick="this.closest('.card')._handleUp(event)">
+            <i class="fas fa-thumbs-up"></i>
+            <span class="button-label">Watch</span>
+          </button>
+        </div>
+      </div>
 
-        <div class="rate-controls">
-          <div class="button-wrapper">
-            <button type="button" class="rate-thumbs-down" aria-label="Thumbs down" onclick="this.closest('.card')._handleDown(event)">
-              <i class="fas fa-thumbs-down"></i>
-              <span class="button-label">Pass</span>
-            </button>
-          </div>
-          <div class="button-wrapper">
-            <button type="button" class="rate-seen" aria-label="Mark as seen" onclick="this.closest('.card')._handleSeen(event)">
-              <i class="fas fa-eye"></i>
-              <span class="button-label">Seen</span>
-            </button>
-          </div>
-          <div class="button-wrapper">
-            <button type="button" class="rate-thumbs-up" aria-label="Thumbs up" onclick="this.closest('.card')._handleUp(event)">
-              <i class="fas fa-thumbs-up"></i>
-              <span class="button-label">Watch</span>
-            </button>
-          </div>
-        </div>
+      <div class="card-meta">
+        ${this.renderCrewInfo()}
+        ${
+          summary
+            ? `<p class="card-plot" onclick="this.closest('.card')._handlePlot(event)">${escapeHtml(
+                summary
+              )}</p>`
+            : ''
+        }
+        ${rating ? `<div class="card-ratings">${rating}</div>` : ''}
       </div>
     `
 
@@ -158,7 +155,7 @@ export default class CardView {
     const downBtn = node.querySelector('.rate-thumbs-down')
     const seenBtn = node.querySelector('.rate-seen')
     const undoBtn = node.querySelector('.undo-button')
-    const detailsToggleBtn = node.querySelector('.details-toggle')
+    const posterWrapper = node.querySelector('.poster-wrapper')
 
     const handleRate = value => {
       return e => {
@@ -187,13 +184,9 @@ export default class CardView {
     undoBtn?.addEventListener('touchend', handleUndo, { passive: false })
     undoBtn?.addEventListener('click', handleUndo)
 
-    detailsToggleBtn?.addEventListener('click', e => {
-      e.preventDefault()
-      e.stopPropagation()
+    posterWrapper?.addEventListener('click', e => {
+      if (e.target.closest('.undo-button')) return
       node.classList.toggle('details-expanded')
-      detailsToggleBtn.textContent = node.classList.contains('details-expanded')
-        ? 'Hide details'
-        : 'More details'
     })
 
     // Add handlers for plot expansion

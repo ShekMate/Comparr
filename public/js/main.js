@@ -2,7 +2,7 @@
 // deno-lint-ignore-file
 
 import { ComparrAPI } from './ComparrAPI.js'
-import CardView from './CardView.js?v=3'
+import CardView from './CardView.js?v=4'
 import { MatchesView } from './MatchesView.js'
 
 // Global API reference so functions outside main() can access it
