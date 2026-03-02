@@ -125,27 +125,6 @@ export default class CardView {
         </div>
       </div>
 
-      <div class="rate-controls">
-        <div class="button-wrapper">
-          <button type="button" class="rate-thumbs-down" aria-label="Thumbs down" onclick="this.closest('.card')._handleDown(event)">
-            <i class="fas fa-thumbs-down"></i>
-            <span class="button-label">Pass</span>
-          </button>
-        </div>
-        <div class="button-wrapper">
-          <button type="button" class="rate-seen" aria-label="Mark as seen" onclick="this.closest('.card')._handleSeen(event)">
-            <i class="fas fa-eye"></i>
-            <span class="button-label">Seen</span>
-          </button>
-        </div>
-        <div class="button-wrapper">
-          <button type="button" class="rate-thumbs-up" aria-label="Thumbs up" onclick="this.closest('.card')._handleUp(event)">
-            <i class="fas fa-thumbs-up"></i>
-            <span class="button-label">Watch</span>
-          </button>
-        </div>
-      </div>
-
       <div class="card-meta">
         ${this.renderCrewInfo()}
         ${
@@ -159,36 +138,14 @@ export default class CardView {
       </div>
     `
 
-    // Wire the three buttons to dispatch the "rate" message
-    const upBtn = node.querySelector('.rate-thumbs-up')
-    const downBtn = node.querySelector('.rate-thumbs-down')
-    const seenBtn = node.querySelector('.rate-seen')
     const undoBtn = node.querySelector('.undo-button')
     const posterWrapper = node.querySelector('.poster-wrapper')
-
-    const handleRate = value => {
-      return e => {
-        e.preventDefault()
-        e.stopPropagation()
-        node.dispatchEvent(new MessageEvent('rate', { data: value }))
-      }
-    }
 
     const handleUndo = e => {
       e.preventDefault()
       e.stopPropagation()
       this.eventTarget.dispatchEvent(new Event('undo'))
     }
-
-    // Use touchend for mobile, click for desktop
-    upBtn?.addEventListener('touchend', handleRate(true), { passive: false })
-    upBtn?.addEventListener('click', handleRate(true))
-
-    downBtn?.addEventListener('touchend', handleRate(false), { passive: false })
-    downBtn?.addEventListener('click', handleRate(false))
-
-    seenBtn?.addEventListener('touchend', handleRate(null), { passive: false })
-    seenBtn?.addEventListener('click', handleRate(null))
 
     undoBtn?.addEventListener('touchend', handleUndo, { passive: false })
     undoBtn?.addEventListener('click', handleUndo)
