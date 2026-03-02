@@ -2349,11 +2349,6 @@ async function login(api) {
   if (selectedMode === 'personal') {
     setRoomMode('join')
 
-    roomModeTabs.forEach(tab => {
-      tab.closest('.login-field-group--room-mode')?.setAttribute('hidden', '')
-      tab.disabled = true
-    })
-
     const savedPersonalUser = (
       localStorage.getItem('personalUser') ||
       localStorage.getItem('user') ||
