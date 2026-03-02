@@ -2092,11 +2092,7 @@ async function login(api) {
   const i18nRoomNotFoundMessage =
     document.body.dataset.i18nRoomNotFoundMessage ||
     'Room code not found, try again or create a new one by toggling New here? to YES.'
-  const i18nRoomStepJoin =
-    document.body.dataset.i18nRoomStepJoin ||
-    'Enter your shared/private room code'
-  const i18nRoomStepCreate =
-    document.body.dataset.i18nRoomStepCreate || 'Create a new room code.'
+  const loginHelperCopy = document.querySelector('.login-helper-copy')
 
   const passwordError = document.createElement('p')
   passwordError.className = 'password-error-message'
@@ -2179,6 +2175,7 @@ async function login(api) {
       .slice(0, 6)
 
   let roomMode = 'join'
+  let selectedMode = 'group'
 
   const getActiveRoomCode = () => {
     if (roomMode === 'create') {
@@ -2213,7 +2210,22 @@ async function login(api) {
     }
   }
 
-  const setRoomMode = mode => {
+  const getRoomStepCopy = (mode, selectedMode) => {
+    const isCreate = mode === 'create'
+    const isPersonalMode = selectedMode === 'personal'
+
+    if (isPersonalMode) {
+      return isCreate
+        ? 'Create a new private room code.'
+        : 'Enter your private room code.'
+    }
+
+    return isCreate
+      ? 'Create a new group room code.'
+      : 'Enter your group room code.'
+  }
+
+  const setRoomMode = (mode, selectedMode = 'group') => {
     roomMode = mode === 'create' ? 'create' : 'join'
 
     roomModeTabs.forEach(tab => {
@@ -2227,8 +2239,11 @@ async function login(api) {
     })
 
     if (roomStepInstruction) {
-      roomStepInstruction.textContent =
-        roomMode === 'create' ? i18nRoomStepCreate : i18nRoomStepJoin
+      roomStepInstruction.textContent = getRoomStepCopy(roomMode, selectedMode)
+    }
+
+    if (loginHelperCopy) {
+      loginHelperCopy.hidden = roomMode !== 'join'
     }
 
     setRoomCodeError('')
@@ -2238,7 +2253,7 @@ async function login(api) {
 
   roomModeTabs.forEach(tab => {
     tab.addEventListener('click', () => {
-      setRoomMode(tab.dataset.roomMode)
+      setRoomMode(tab.dataset.roomMode, selectedMode)
     })
   })
 
@@ -2279,7 +2294,7 @@ async function login(api) {
       if (roomCodeInput) roomCodeInput.value = normalizedSavedCode
     }
 
-    setRoomMode('join')
+    setRoomMode('join', selectedMode)
   }
 
   if (passwordForm && loginForm && modeForm) {
@@ -2332,7 +2347,7 @@ async function login(api) {
     })
   }
 
-  const selectedMode = await new Promise(resolve => {
+  selectedMode = await new Promise(resolve => {
     const handleModeSubmit = e => {
       e.preventDefault()
       const submitter = e.submitter
@@ -2347,7 +2362,7 @@ async function login(api) {
   loginForm.style.display = 'grid'
 
   if (selectedMode === 'personal') {
-    setRoomMode('join')
+    setRoomMode('join', selectedMode)
 
     const savedPersonalUser = (
       localStorage.getItem('personalUser') ||
@@ -2366,13 +2381,17 @@ async function login(api) {
     }
   }
 
+  if (selectedMode !== 'personal') {
+    setRoomMode('join', selectedMode)
+  }
+
   // Generate unique code
   generateBtn?.addEventListener('click', async () => {
     setRoomCodeError('')
     setLoginError('')
     try {
       const code = await api.generateRoomCode()
-      setRoomMode('create')
+      setRoomMode('create', selectedMode)
       setActiveRoomCode(code)
       syncRoomCodeInputs()
     } catch (err) {
