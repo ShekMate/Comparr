@@ -509,13 +509,15 @@ export default class CardView {
               }`
             : ''
           return `<article class="cast-card" title="${escapeHtml(member.name)}">
-            ${
-              profileUrl
-                ? `<img class="cast-card-photo" src="${profileUrl}" alt="${escapeHtml(
-                    member.name
-                  )}" loading="lazy" decoding="async" draggable="false" />`
-                : `<div class="cast-card-photo cast-card-photo-fallback" aria-hidden="true"><i class="fas fa-user"></i></div>`
-            }
+            <div class="cast-card-photo-wrap">
+              ${
+                profileUrl
+                  ? `<img class="cast-card-photo" src="${profileUrl}" alt="${escapeHtml(
+                      member.name
+                    )}" loading="lazy" decoding="async" draggable="false" />`
+                  : `<div class="cast-card-photo cast-card-photo-fallback" aria-hidden="true"><i class="fas fa-user"></i></div>`
+              }
+            </div>
             <div class="cast-card-body">
               <div class="cast-card-name">${escapeHtml(member.name)}</div>
               <div class="cast-card-character">${escapeHtml(

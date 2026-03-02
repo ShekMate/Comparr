@@ -939,16 +939,22 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .cast-card {
   flex: 0 0 120px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 0.65rem;
-  overflow: hidden;
   scroll-snap-align: start;
+  display: grid;
+  grid-template-rows: 2fr 1fr;
+  align-items: center;
+}
+
+.cast-card-photo-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .cast-card-photo {
-  width: 100%;
-  aspect-ratio: 2 / 3;
+  width: 80px;
+  height: 80px;
+  border-radius: 999px;
   object-fit: cover;
   display: block;
 }
@@ -958,11 +964,13 @@ body:not(.is-logged-in) .card-stack:empty::after {
   align-items: center;
   justify-content: center;
   color: var(--color-text-muted);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgb(255 255 255 / 8%);
+  font-size: 1.15rem;
 }
 
 .cast-card-body {
-  padding: 0.45rem 0.5rem 0.55rem;
+  padding: 0.25rem 0.2rem 0.4rem;
+  text-align: center;
 }
 
 .cast-card-name {

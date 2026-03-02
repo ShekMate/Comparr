@@ -448,7 +448,12 @@
   }
 
   .cast-card {
-    flex-basis: 105px;
+    flex-basis: 102px;
+  }
+
+  .cast-card-photo {
+    width: 70px;
+    height: 70px;
   }
 
   .cast-card-name {
