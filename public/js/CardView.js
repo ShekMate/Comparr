@@ -398,6 +398,7 @@ export default class CardView {
       director,
       writers,
       cast,
+      castMembers,
       genres,
       contentRating,
     } = this.movieData
@@ -408,6 +409,8 @@ export default class CardView {
       writers: writers?.slice(0, 3),
       castCount: cast?.length,
       cast: cast?.slice(0, 3),
+      castMembersCount: castMembers?.length,
+      castMembers: castMembers?.slice(0, 3),
       genresCount: genres?.length,
       genres,
       contentRating,
@@ -494,8 +497,44 @@ export default class CardView {
       )
     }
 
-    // Cast (show max 3 on mobile, 4 on desktop)
-    if (cast && Array.isArray(cast) && cast.length > 0) {
+    // Cast cards section (TMDb style horizontal scroll)
+    if (castMembers && Array.isArray(castMembers) && castMembers.length > 0) {
+      const castCards = castMembers
+        .filter(member => member?.name)
+        .map(member => {
+          const profilePath = member.profilePath || ''
+          const profileUrl = profilePath
+            ? `${this.basePath || ''}/tmdb-poster${
+                profilePath.startsWith('/') ? profilePath : `/${profilePath}`
+              }`
+            : ''
+          return `<article class="cast-card" title="${escapeHtml(member.name)}">
+            <div class="cast-card-photo-wrap">
+              ${
+                profileUrl
+                  ? `<img class="cast-card-photo" src="${profileUrl}" alt="${escapeHtml(
+                      member.name
+                    )}" loading="lazy" decoding="async" draggable="false" />`
+                  : `<div class="cast-card-photo cast-card-photo-fallback" aria-hidden="true"><i class="fas fa-user"></i></div>`
+              }
+            </div>
+            <div class="cast-card-body">
+              <div class="cast-card-name">${escapeHtml(member.name)}</div>
+              <div class="cast-card-character">${escapeHtml(
+                member.character || ''
+              )}</div>
+            </div>
+          </article>`
+        })
+        .join('')
+
+      if (castCards) {
+        lines.push(`<section class="card-cast-section">
+          <h4 class="cast-header">Cast</h4>
+          <div class="cast-scroll" aria-label="Cast list" onclick="event.stopPropagation()">${castCards}</div>
+        </section>`)
+      }
+    } else if (cast && Array.isArray(cast) && cast.length > 0) {
       const maxCast = window.innerWidth <= 600 ? 3 : 4
       const displayCast = cast.slice(0, maxCast)
       const hasMore = cast.length > maxCast

@@ -146,6 +146,11 @@ interface MediaItem {
   art: string
   director?: string
   cast?: string[]
+  castMembers?: Array<{
+    name: string
+    character?: string
+    profilePath?: string | null
+  }>
   writers?: string[]
   genres?: string[]
   contentRating?: string
@@ -1880,6 +1885,11 @@ class Session {
                 streamingServices?: { subscription: any[]; free: any[] }
                 streamingLink?: string | null
                 cast?: string[]
+                castMembers?: Array<{
+                  name: string
+                  character?: string
+                  profilePath?: string | null
+                }>
                 writers?: string[]
                 director?: string | null
                 runtime?: number | null
@@ -1976,9 +1986,7 @@ class Session {
             )
           }
           const ratingStr =
-            parts.length > 0
-              ? parts.join(' ')
-              : plexMovie.rating ?? ''
+            parts.length > 0 ? parts.join(' ') : plexMovie.rating ?? ''
 
           const summaryStr =
             (extra?.plot && String(extra.plot)) ||
@@ -2166,6 +2174,7 @@ class Session {
               extra?.director ||
               (plexMovie.Director ?? [{ tag: undefined }])[0].tag,
             cast: extra?.cast || [],
+            castMembers: extra?.castMembers || [],
             writers: extra?.writers || [],
             genres: extra?.genres || [],
             contentRating: extra?.contentRating || undefined,
@@ -3455,6 +3464,7 @@ export async function processImdbImportBackground(
         original_language: tmdbMovie.original_language || null,
         director: enriched?.director || null,
         cast: enriched?.cast || [],
+        castMembers: enriched?.castMembers || [],
         writers: enriched?.writers || [],
         rating_imdb: enriched?.rating_imdb || null,
         rating_tmdb: enriched?.rating_tmdb || null,
