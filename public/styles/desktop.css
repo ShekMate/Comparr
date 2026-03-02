@@ -285,6 +285,11 @@
     backdrop-filter: blur(10px);
   }
 
+  .swipe-rate-controls {
+    background: transparent !important;
+    backdrop-filter: none !important;
+  }
+
   .poster-title {
     font-size: 1.25rem !important;
     line-height: 1.15 !important;
