@@ -929,7 +929,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .cast-scroll {
   display: flex;
-  gap: 0.65rem;
+  gap: 0.325rem;
   overflow-x: auto;
   overflow-y: hidden;
   padding: 0.2rem 0.05rem 0.45rem;
@@ -969,7 +969,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .cast-card-body {
-  padding: 0.25rem 0.2rem 0.4rem;
+  padding: 0.125rem 0.2rem 0.4rem;
   text-align: center;
 }
 
@@ -1356,7 +1356,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.65rem;
+  gap: 0.325rem;
   width: 100%;
   max-width: 100%;
   justify-self: stretch;
