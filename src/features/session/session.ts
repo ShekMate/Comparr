@@ -116,9 +116,7 @@ function ensureComparrScore(movie: any): void {
       }
 
       if (parts.length > 0) {
-        movie.rating = parts.join(
-          ' <span class="rating-separator">&bull;</span> '
-        )
+        movie.rating = parts.join(' ')
       }
     }
   } catch (err) {
@@ -1979,7 +1977,7 @@ class Session {
           }
           const ratingStr =
             parts.length > 0
-              ? parts.join(' <span class="rating-separator">&bull;</span> ')
+              ? parts.join(' ')
               : plexMovie.rating ?? ''
 
           const summaryStr =
