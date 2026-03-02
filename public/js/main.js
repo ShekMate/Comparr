@@ -5062,6 +5062,36 @@ const main = async () => {
     }
   })
 
+  const triggerTopCardRate = value => {
+    const activeCard = document.querySelector('.js-card-stack > :first-child')
+    if (!activeCard) {
+      console.log('⚠️ No active card available to rate')
+      return
+    }
+
+    activeCard.dispatchEvent(new MessageEvent('rate', { data: value }))
+  }
+
+  const swipeRateButtons = document.querySelectorAll('.js-swipe-rate')
+  swipeRateButtons.forEach(button => {
+    const handleSwipeRate = event => {
+      event.preventDefault()
+      event.stopPropagation()
+
+      const { rateValue } = button.dataset
+      if (rateValue === 'up') {
+        triggerTopCardRate(true)
+      } else if (rateValue === 'down') {
+        triggerTopCardRate(false)
+      } else {
+        triggerTopCardRate(null)
+      }
+    }
+
+    button.addEventListener('touchend', handleSwipeRate, { passive: false })
+    button.addEventListener('click', handleSwipeRate)
+  })
+
   let movieBuffer = []
   let pendingGuids = new Set()
   let pendingTmdbIds = new Set()

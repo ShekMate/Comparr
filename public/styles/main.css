@@ -767,6 +767,14 @@ body:not(.is-logged-in) .card-stack:empty::after {
   margin-bottom: 0 !important ;
 }
 
+.swipe-rate-controls {
+  margin-top: 1rem;
+  border-radius: var(--radius-xl);
+  padding: 0.6rem 0.8rem;
+  position: relative;
+  z-index: 6;
+}
+
 .rate-controls button:hover:not([disabled]) {
   transform: scale(1.15);
   box-shadow: var(--shadow-lg);
