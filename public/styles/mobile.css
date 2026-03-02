@@ -283,7 +283,7 @@
   /* Login Mobile */
   .login-form {
     width: min(92vw, 28rem);
-    row-gap: 1rem;
+    row-gap: 0.5rem;
     padding: 0;
   }
 
