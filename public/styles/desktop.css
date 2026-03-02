@@ -348,6 +348,19 @@
     text-overflow: clip !important;
   }
 
+  .cast-scroll {
+    gap: 0.375rem;
+  }
+
+  .cast-card {
+    flex-basis: 130px;
+  }
+
+  .cast-card-photo {
+    width: 88px;
+    height: 88px;
+  }
+
   /* Streaming providers desktop styles */
   .card-streaming {
     margin: 1.5rem 0 !important;

@@ -20,6 +20,11 @@ type EnrichmentPayload = {
   contentRating: string | null
   tmdbPosterPath: string | null
   cast: string[]
+  castMembers: Array<{
+    name: string
+    character: string
+    profilePath: string | null
+  }>
   writers: string[]
   director: string | null
   runtime: number | null
@@ -107,6 +112,19 @@ function sanitizeEnrichmentPayload(value: any): EnrichmentPayload {
     contentRating: value?.contentRating ?? null,
     tmdbPosterPath: value?.tmdbPosterPath ?? null,
     cast: Array.isArray(value?.cast) ? value.cast : [],
+    castMembers: Array.isArray(value?.castMembers)
+      ? value.castMembers
+          .map((member: any) => ({
+            name: typeof member?.name === 'string' ? member.name : '',
+            character:
+              typeof member?.character === 'string' ? member.character : '',
+            profilePath:
+              typeof member?.profilePath === 'string'
+                ? member.profilePath
+                : null,
+          }))
+          .filter((member: any) => member.name)
+      : [],
     writers: Array.isArray(value?.writers) ? value.writers : [],
     director: value?.director ?? null,
     runtime: value?.runtime ?? null,
@@ -325,6 +343,11 @@ export async function enrich({
   }
   let contentRating: string | null = null
   let cast: string[] = []
+  let castMembers: Array<{
+    name: string
+    character: string
+    profilePath: string | null
+  }> = []
   let writers: string[] = []
   let director: string | null = null
   let runtime: number | null = null
@@ -428,6 +451,15 @@ export async function enrich({
     }
 
     if (det?.credits) {
+      castMembers = (det.credits.cast || [])
+        .slice(0, 12)
+        .map((c: any) => ({
+          name: c?.name || '',
+          character: c?.character || '',
+          profilePath: c?.profile_path || null,
+        }))
+        .filter((member: any) => member.name)
+
       cast = (det.credits.cast || [])
         .slice(0, 5)
         .map((c: any) => c.name)
@@ -490,6 +522,7 @@ export async function enrich({
     contentRating,
     tmdbPosterPath: hit?.poster_path || null,
     cast,
+    castMembers,
     writers,
     director,
     runtime,

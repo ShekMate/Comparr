@@ -416,7 +416,8 @@
 
   .card .card-plot,
   .card button,
-  .card .rate-controls {
+  .card .rate-controls,
+  .card .cast-scroll {
     pointer-events: auto !important;
   }
 
@@ -436,6 +437,31 @@
 
   .card-crew i {
     font-size: 0.65rem;
+  }
+  .card-cast-section {
+    margin-top: 1rem;
+  }
+
+  .cast-scroll {
+    gap: 0.275rem;
+    padding-bottom: 0.35rem;
+  }
+
+  .cast-card {
+    flex-basis: 102px;
+  }
+
+  .cast-card-photo {
+    width: 70px;
+    height: 70px;
+  }
+
+  .cast-card-name {
+    font-size: 0.75rem;
+  }
+
+  .cast-card-character {
+    font-size: 0.68rem;
   }
 
   /* Rate Controls Mobile */
