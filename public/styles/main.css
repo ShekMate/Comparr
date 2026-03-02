@@ -892,7 +892,6 @@ body:not(.is-logged-in) .card-stack:empty::after {
   height: var(--swipe-rating-logo-height, 15px);
   width: auto;
   vertical-align: middle;
-  margin-right: 0.05rem;
   image-rendering: -webkit-optimize-contrast;
   image-rendering: crisp-edges;
 }
