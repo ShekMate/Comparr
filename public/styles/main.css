@@ -773,6 +773,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
   padding: 0.6rem 0.8rem;
   position: relative;
   z-index: 6;
+  background: transparent;
+  backdrop-filter: none;
 }
 
 .rate-controls button:hover:not([disabled]) {
