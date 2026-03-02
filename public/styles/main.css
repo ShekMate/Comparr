@@ -1229,11 +1229,11 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .login-field-group--name {
-  margin-top: 1.25rem;
+  margin-top: 0.625rem;
 }
 
 .login-field-group--room-details {
-  margin-top: 1.25rem;
+  margin-top: 0.625rem;
 }
 
 .login-helper-copy {
@@ -1384,7 +1384,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .login-form .login-helper-copy {
-  margin-top: 1.25rem;
+  margin-top: 0.625rem;
   width: min(70%, 15.4rem);
   justify-self: center;
   text-align: center;
@@ -1460,7 +1460,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   font-size: 0.9rem;
   font-weight: 700;
   width: min(50%, 11rem);
-  margin: 0.35rem 0 0;
+  margin: 0.175rem 0 0;
   display: block;
   cursor: pointer;
   transition: background-color 0.2s ease;
