@@ -320,6 +320,8 @@
   .poster-overlay .card-plot-preview {
     font-size: 0.75rem !important;
     line-height: 1.5 !important;
+    margin-top: 0.45rem !important;
+    margin-bottom: 0.45rem !important;
     -webkit-line-clamp: 3 !important;
     display: -webkit-box !important;
     overflow: hidden !important;
