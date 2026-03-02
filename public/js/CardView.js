@@ -392,7 +392,15 @@ export default class CardView {
   }
 
   renderCrewInfo() {
-    const { director, writers, cast, genres, contentRating } = this.movieData
+    const {
+      title,
+      year,
+      director,
+      writers,
+      cast,
+      genres,
+      contentRating,
+    } = this.movieData
 
     console.log('DEBUG renderCrewInfo:', {
       director,
@@ -406,6 +414,15 @@ export default class CardView {
     })
 
     const lines = []
+
+    if (title) {
+      const titleWithYear = `${escapeHtml(title)}${
+        year
+          ? ` <span class="crew-title-year">(${escapeHtml(year)})</span>`
+          : ''
+      }`
+      lines.push(`<div class="crew-title">${titleWithYear}</div>`)
+    }
 
     // Content Rating + Genres combined line
     const ratingGenreParts = []
