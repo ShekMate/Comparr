@@ -2343,82 +2343,33 @@ async function login(api) {
     modeForm.addEventListener('submit', handleModeSubmit)
   })
 
-  if (selectedMode === 'personal') {
-    modeForm.style.display = 'none'
-    const personalUser =
-      (
-        localStorage.getItem('personalUser') ||
-        localStorage.getItem('user') ||
-        'Solo'
-      ).trim() || 'Solo'
-    const personalRoomCode = normalizeRoomCodeInput(
-      localStorage.getItem('personalRoomCode') || 'SOLO'
-    )
-
-    try {
-      let data
-      try {
-        data = await api.login(personalUser, personalRoomCode, verifiedPassword)
-      } catch (err) {
-        if (err.code !== 'ACTIVE_SESSION_EXISTS') {
-          throw err
-        }
-
-        const shouldTakeOver = await promptActiveSessionTakeover()
-        if (!shouldTakeOver) return
-
-        data = await api.login(
-          personalUser,
-          personalRoomCode,
-          verifiedPassword,
-          true
-        )
-      }
-
-      await loginSection.animate(
-        { opacity: ['1', '0'] },
-        { duration: 250, easing: 'ease-in-out', fill: 'both' }
-      ).finished
-      loginSection.hidden = true
-
-      localStorage.setItem('personalUser', personalUser)
-      localStorage.setItem('personalRoomCode', personalRoomCode)
-
-      if (roomCodeLine) {
-        roomCodeLine.dataset.roomCode = personalRoomCode
-      }
-
-      document.body.dataset.appMode = 'personal'
-
-      await Promise.all(
-        [
-          ...document.querySelectorAll(
-            '.rate-section, #tab-likes, #tab-dislikes, #tab-seen, #tab-settings'
-          ),
-        ].map(node => {
-          node.hidden = false
-          return node.animate(
-            { opacity: ['0', '1'] },
-            { duration: 250, easing: 'ease-in-out', fill: 'both' }
-          ).finished
-        })
-      )
-
-      initTabs()
-      return {
-        ...data,
-        user: personalUser,
-        roomCode: personalRoomCode,
-        appMode: 'personal',
-      }
-    } catch (err) {
-      modeForm.style.display = 'grid'
-      setLoginError(err.message)
-    }
-  }
-
   modeForm.style.display = 'none'
   loginForm.style.display = 'grid'
+
+  if (selectedMode === 'personal') {
+    setRoomMode('join')
+
+    roomModeTabs.forEach(tab => {
+      tab.closest('.login-field-group--room-mode')?.setAttribute('hidden', '')
+      tab.disabled = true
+    })
+
+    const savedPersonalUser = (
+      localStorage.getItem('personalUser') ||
+      localStorage.getItem('user') ||
+      ''
+    ).trim()
+    const savedPersonalCode = normalizeRoomCodeInput(
+      localStorage.getItem('personalRoomCode') || ''
+    )
+
+    if (savedPersonalUser) {
+      loginForm.elements.name.value = savedPersonalUser
+    }
+    if (savedPersonalCode && roomCodeInput) {
+      roomCodeInput.value = savedPersonalCode
+    }
+  }
 
   // Generate unique code
   generateBtn?.addEventListener('click', async () => {
@@ -2486,6 +2437,8 @@ async function login(api) {
         }
         loginForm.removeEventListener('submit', handleSubmit)
 
+        const isPersonalMode = selectedMode === 'personal'
+
         // hide login
         await loginSection.animate(
           { opacity: ['1', '0'] },
@@ -2493,9 +2446,14 @@ async function login(api) {
         ).finished
         loginSection.hidden = true
 
-        // remember
-        localStorage.setItem('user', name)
-        localStorage.setItem('roomCode', code)
+        if (isPersonalMode) {
+          localStorage.setItem('personalUser', name)
+          localStorage.setItem('personalRoomCode', code)
+          document.body.dataset.appMode = 'personal'
+        } else {
+          localStorage.setItem('user', name)
+          localStorage.setItem('roomCode', code)
+        }
 
         roomCodeLine.dataset.roomCode = code
         document.body.scrollIntoView()
@@ -2504,7 +2462,9 @@ async function login(api) {
         await Promise.all(
           [
             ...document.querySelectorAll(
-              '.rate-section, .matches-section, #tab-likes, #tab-dislikes'
+              isPersonalMode
+                ? '.rate-section, #tab-likes, #tab-dislikes, #tab-seen, #tab-settings'
+                : '.rate-section, .matches-section, #tab-likes, #tab-dislikes'
             ),
           ].map(node => {
             node.hidden = false
@@ -2516,7 +2476,12 @@ async function login(api) {
         )
 
         initTabs()
-        resolve({ ...data, user: name, roomCode: code, appMode: 'group' })
+        resolve({
+          ...data,
+          user: name,
+          roomCode: code,
+          appMode: isPersonalMode ? 'personal' : 'group',
+        })
       } catch (err) {
         setLoginError(err.message)
       }
