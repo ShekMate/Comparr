@@ -1385,7 +1385,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .login-form .login-helper-copy {
   margin-top: 0.625rem;
-  width: min(70%, 15.4rem);
+  width: 100%;
   justify-self: center;
   text-align: center;
 }
