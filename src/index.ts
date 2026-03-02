@@ -665,6 +665,7 @@ for await (const req of server) {
             genres: enriched.genres,
             contentRating: enriched.contentRating,
             cast: enriched.cast,
+            castMembers: enriched.castMembers,
             writers: enriched.writers,
             director: enriched.director,
             runtime: enriched.runtime,

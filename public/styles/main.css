@@ -916,6 +916,69 @@ body:not(.is-logged-in) .card-stack:empty::after {
   font-size: 0.7rem;
 }
 
+.card-cast-section {
+  margin-top: 0.85rem;
+}
+
+.cast-header {
+  margin: 0 0 0.55rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.cast-scroll {
+  display: flex;
+  gap: 0.65rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.2rem 0.05rem 0.45rem;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cast-card {
+  flex: 0 0 120px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.65rem;
+  overflow: hidden;
+  scroll-snap-align: start;
+}
+
+.cast-card-photo {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  display: block;
+}
+
+.cast-card-photo-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.cast-card-body {
+  padding: 0.45rem 0.5rem 0.55rem;
+}
+
+.cast-card-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+
+.cast-card-character {
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+  line-height: 1.35;
+}
+
 .rating-logo {
   height: var(--swipe-rating-logo-height, 15px);
   width: auto;
