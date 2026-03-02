@@ -308,6 +308,8 @@ export default class CardView {
         startEvent.preventDefault()
         this.node.setPointerCapture(startEvent.pointerId)
         this.node.classList.add('is-dragging')
+        this.node.style.transition = 'none'
+        this.node.style.willChange = 'transform, opacity'
       }
 
       currentOffsetX = e.clientX - startEvent.clientX
@@ -318,7 +320,7 @@ export default class CardView {
         0.4,
         1 - Math.min(Math.abs(currentOffsetX) / 350, 0.6)
       )
-      this.node.style.transform = `translate(${currentOffsetX}px, ${currentOffsetY}px) rotate(${rotateDeg}deg)`
+      this.node.style.transform = `translate3d(${currentOffsetX}px, ${currentOffsetY}px, 0) rotate(${rotateDeg}deg)`
       this.node.style.opacity = `${opacity}`
     }
 
@@ -328,6 +330,7 @@ export default class CardView {
       async () => {
         this.node.removeEventListener('pointermove', handleMove)
         this.node.classList.remove('is-dragging')
+        this.node.style.willChange = ''
         if (hasMoved) {
           const elapsedMs = Math.max(1, performance.now() - dragStartTime)
           const velocityX = (currentOffsetX / elapsedMs) * 1000
@@ -356,6 +359,7 @@ export default class CardView {
         } else {
           this.node.style.transform = ''
           this.node.style.opacity = ''
+          this.node.style.transition = ''
         }
       },
       { once: true }
@@ -366,6 +370,7 @@ export default class CardView {
       () => {
         this.node.removeEventListener('pointermove', handleMove)
         this.node.classList.remove('is-dragging')
+        this.node.style.willChange = ''
         this.animateSnapBack()
       },
       { once: true }
@@ -390,6 +395,7 @@ export default class CardView {
     )
     this.node.style.transform = ''
     this.node.style.opacity = ''
+    this.node.style.transition = ''
   }
 
   getThrowAnimation(targetX, targetY) {

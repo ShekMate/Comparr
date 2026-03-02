@@ -547,7 +547,11 @@ body:not(.is-logged-in) .card-stack:empty::after {
   display: flex;
   justify-content: center;
   align-items: center;
-  cursor: pointer;
+  cursor: grab;
+}
+
+.poster-wrapper:active {
+  cursor: grabbing;
 }
 
 .card .poster {
@@ -559,6 +563,21 @@ body:not(.is-logged-in) .card-stack:empty::after {
   border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
   transition: all 0.4s ease;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  cursor: grab;
+}
+
+.card .poster:active {
+  cursor: grabbing;
+}
+
+.card.is-dragging {
+  transition: none !important;
+  cursor: grabbing;
+}
+
+.card.is-dragging .poster-wrapper,
+.card.is-dragging .poster {
+  cursor: grabbing;
 }
 
 .poster-overlay {
@@ -1279,7 +1298,11 @@ body:not(.is-logged-in) .card-stack:empty::after {
   font-weight: 700;
   color: var(--color-text-primary);
   background: rgb(17 33 70 / 70%);
-  cursor: pointer;
+  cursor: grab;
+}
+
+.poster-wrapper:active {
+  cursor: grabbing;
 }
 
 .room-mode-tab.is-active {
@@ -1548,7 +1571,11 @@ body:not(.is-logged-in) .card-stack:empty::after {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
+  cursor: grab;
+}
+
+.poster-wrapper:active {
+  cursor: grabbing;
 }
 
 .password-visibility-toggle:hover {
@@ -2085,7 +2112,11 @@ body:not(.is-logged-in) .card-stack:empty::after {
   border-radius: var(--radius-sm);
   outline: none;
   accent-color: var(--color-primary);
-  cursor: pointer;
+  cursor: grab;
+}
+
+.poster-wrapper:active {
+  cursor: grabbing;
 }
 
 #imdb-rating::-webkit-slider-thumb,
@@ -3990,7 +4021,11 @@ footer {
   padding: 0.55rem 0.85rem;
   font-size: 0.85rem;
   font-weight: 600;
-  cursor: pointer;
+  cursor: grab;
+}
+
+.poster-wrapper:active {
+  cursor: grabbing;
 }
 
 .settings-inline-actions .submit-button {
@@ -4012,7 +4047,11 @@ footer {
   font-size: 0.85rem;
   font-weight: 600;
   padding: 0.45rem 0.75rem;
-  cursor: pointer;
+  cursor: grab;
+}
+
+.poster-wrapper:active {
+  cursor: grabbing;
 }
 
 .settings-mode-toggle:hover {
@@ -4062,7 +4101,11 @@ footer {
   color: var(--color-text-secondary);
   padding: 0.45rem 0.75rem;
   font-size: 0.85rem;
-  cursor: pointer;
+  cursor: grab;
+}
+
+.poster-wrapper:active {
+  cursor: grabbing;
 }
 
 .settings-admin-tab:hover {
