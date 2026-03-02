@@ -7,6 +7,10 @@ export default class CardView {
     this.movieData = movieData
     this.eventTarget = eventTarget
     this.animationDuration = 500
+    this.swipeThreshold = 100
+    this.flickVelocityThreshold = 500
+    this.throwDistance = 300
+    this.dragActivationThreshold = 5
     this.basePath = document.body.dataset.basePath
     this.render()
   }
@@ -103,6 +107,7 @@ export default class CardView {
           }"
           decoding="async"
           alt="${escapeHtml(title)} poster"
+          draggable="false"
         />
         <div class="poster-overlay">
           <div class="poster-overlay-content">
@@ -273,18 +278,22 @@ export default class CardView {
     }
 
     // Don't prevent default or capture yet - wait for movement
-    const maxX = window.innerWidth
     let hasMoved = false
-    let currentDirection
-    let position = 0
+    let currentOffsetX = 0
+    let currentOffsetY = 0
+    const dragStartTime = performance.now()
 
     const handleMove = e => {
       // Only start swipe if moved more than 10px
       if (!hasMoved) {
-        const deltaX = Math.abs(e.x - startEvent.x)
-        const deltaY = Math.abs(e.y - startEvent.y)
+        const deltaX = Math.abs(e.clientX - startEvent.clientX)
+        const deltaY = Math.abs(e.clientY - startEvent.clientY)
 
-        if (deltaX < 10 && deltaY < 10) return // Ignore small movements (could be a tap)
+        if (
+          deltaX < this.dragActivationThreshold &&
+          deltaY < this.dragActivationThreshold
+        )
+          return // Ignore tiny movement (could be a tap)
 
         // Check if movement is primarily vertical (scrolling) or horizontal (swiping)
         if (deltaY > deltaX) {
@@ -298,27 +307,21 @@ export default class CardView {
         this.didDragCard = true
         startEvent.preventDefault()
         this.node.setPointerCapture(startEvent.pointerId)
-        this.animationFrameRequestId = requestAnimationFrame(() =>
-          this.animationLoop()
-        )
+        this.node.classList.add('is-dragging')
+        this.node.style.transition = 'none'
+        this.node.style.willChange = 'transform, opacity'
       }
 
-      const direction = e.x < startEvent.x ? 'left' : 'right'
-      const delta = e.x - startEvent.x
+      currentOffsetX = e.clientX - startEvent.clientX
+      currentOffsetY = e.clientY - startEvent.clientY
 
-      position =
-        direction === 'left'
-          ? Math.abs(delta) / startEvent.x
-          : delta / (maxX - startEvent.x)
-
-      if (currentDirection != direction) {
-        currentDirection = direction
-        this.animation = this.getAnimation(direction)
-        this.animation.pause()
-      }
-
-      this.currentTime =
-        Math.max(0, Math.min(1, position)) * this.animationDuration
+      const rotateDeg = Math.max(-25, Math.min(25, currentOffsetX / 10))
+      const opacity = Math.max(
+        0.4,
+        1 - Math.min(Math.abs(currentOffsetX) / 350, 0.6)
+      )
+      this.node.style.transform = `translate3d(${currentOffsetX}px, ${currentOffsetY}px, 0) rotate(${rotateDeg}deg)`
+      this.node.style.opacity = `${opacity}`
     }
 
     this.node.addEventListener('pointermove', handleMove, { passive: false })
@@ -326,30 +329,91 @@ export default class CardView {
       'pointerup',
       async () => {
         this.node.removeEventListener('pointermove', handleMove)
+        this.node.classList.remove('is-dragging')
+        this.node.style.willChange = ''
         if (hasMoved) {
-          cancelAnimationFrame(this.animationFrameRequestId)
-          if (this.animation) {
-            if (position >= 0.5) {
-              await this.rate(currentDirection === 'right', this.animation)
-            } else {
-              this.animation.reverse()
-            }
+          const elapsedMs = Math.max(1, performance.now() - dragStartTime)
+          const velocityX = (currentOffsetX / elapsedMs) * 1000
+          const velocityY = (currentOffsetY / elapsedMs) * 1000
+          const absX = Math.abs(currentOffsetX)
+          const absY = Math.abs(currentOffsetY)
+          const direction = currentOffsetX < 0 ? 'left' : 'right'
 
-            this.animation = null
-            currentDirection = null
+          // Horizontal-dominance guard + OR thresholds (distance OR flick velocity)
+          const qualifiesSwipe =
+            absX > absY &&
+            (absX > this.swipeThreshold ||
+              Math.abs(velocityX) > this.flickVelocityThreshold)
+
+          if (qualifiesSwipe) {
+            const throwTargetX =
+              direction === 'left' ? -this.throwDistance : this.throwDistance
+            const throwTargetY = currentOffsetY + velocityY * 0.2
+            await this.rate(
+              direction === 'right',
+              this.getThrowAnimation(throwTargetX, throwTargetY)
+            )
+          } else {
+            this.animateSnapBack()
           }
+        } else {
+          this.node.style.transform = ''
+          this.node.style.opacity = ''
+          this.node.style.transition = ''
         }
+      },
+      { once: true }
+    )
+
+    this.node.addEventListener(
+      'pointercancel',
+      () => {
+        this.node.removeEventListener('pointermove', handleMove)
+        this.node.classList.remove('is-dragging')
+        this.node.style.willChange = ''
+        this.animateSnapBack()
       },
       { once: true }
     )
   }
 
-  animationLoop() {
-    if (this.animation) {
-      this.animation.currentTime = this.currentTime
-    }
-    this.animationFrameRequestId = requestAnimationFrame(() =>
-      this.animationLoop()
+  animateSnapBack() {
+    this.node.animate(
+      [
+        {
+          transform:
+            this.node.style.transform || 'translate(0, 0) rotate(0deg)',
+          opacity: this.node.style.opacity || '1',
+        },
+        { transform: 'translate(0, 0) rotate(0deg)', opacity: 1 },
+      ],
+      {
+        duration: 250,
+        easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+        fill: 'forwards',
+      }
+    )
+    this.node.style.transform = ''
+    this.node.style.opacity = ''
+    this.node.style.transition = ''
+  }
+
+  getThrowAnimation(targetX, targetY) {
+    return this.node.animate(
+      {
+        transform: [
+          this.node.style.transform || 'translate(0, 0) rotate(0deg)',
+          `translate(${targetX}px, ${targetY}px) rotate(${
+            targetX < 0 ? -20 : 20
+          }deg)`,
+        ],
+        opacity: [this.node.style.opacity || '1', '0'],
+      },
+      {
+        duration: 250,
+        easing: 'ease-out',
+        fill: 'both',
+      }
     )
   }
 
