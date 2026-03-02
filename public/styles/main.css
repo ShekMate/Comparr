@@ -550,6 +550,20 @@ body:not(.is-logged-in) .card-stack:empty::after {
   cursor: grab;
 }
 
+.poster-wrapper::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgb(0 0 0 / 8%) 20%,
+    rgb(0 0 0 / 38%) 65%,
+    rgb(0 0 0 / 72%) 100%
+  );
+  pointer-events: none;
+  z-index: 3;
+}
+
 .poster-wrapper:active {
   cursor: grabbing;
 }
