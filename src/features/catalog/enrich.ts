@@ -28,6 +28,8 @@ type EnrichmentPayload = {
   writers: string[]
   director: string | null
   runtime: number | null
+  original_language: string | null
+  originalLanguage: string | null
   streamingLink: string | null
   voteCount: number | null
   tmdbId: number | null
@@ -128,6 +130,10 @@ function sanitizeEnrichmentPayload(value: any): EnrichmentPayload {
     writers: Array.isArray(value?.writers) ? value.writers : [],
     director: value?.director ?? null,
     runtime: value?.runtime ?? null,
+    original_language:
+      value?.original_language ?? value?.originalLanguage ?? null,
+    originalLanguage:
+      value?.originalLanguage ?? value?.original_language ?? null,
     streamingLink: value?.streamingLink ?? null,
     voteCount: value?.voteCount ?? null,
     tmdbId: value?.tmdbId ?? null,
@@ -351,6 +357,8 @@ export async function enrich({
   let writers: string[] = []
   let director: string | null = null
   let runtime: number | null = null
+  let original_language: string | null = null
+  let originalLanguage: string | null = null
   let streamingLink: string | null = null
   let voteCount: number | null = null
 
@@ -405,6 +413,8 @@ export async function enrich({
 
     genres = (det?.genres || []).map((g: any) => g.name)
     runtime = det?.runtime || null
+    original_language = det?.original_language || hit?.original_language || null
+    originalLanguage = original_language
     voteCount = det?.vote_count || null
     contentRating = extractUsContentRating(det?.release_dates)
 
@@ -526,6 +536,8 @@ export async function enrich({
     writers,
     director,
     runtime,
+    original_language,
+    originalLanguage,
     streamingLink,
     voteCount,
     tmdbId: hit?.id || null,
