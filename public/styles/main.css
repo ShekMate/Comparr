@@ -935,6 +935,26 @@ body:not(.is-logged-in) .card-stack:empty::after {
   padding: 0.2rem 0.05rem 0.45rem;
   scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-primary) rgb(255 255 255 / 10%);
+}
+
+.cast-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.cast-scroll::-webkit-scrollbar-track {
+  background: rgb(255 255 255 / 10%);
+  border-radius: 999px;
+}
+
+.cast-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: 999px;
+}
+
+.cast-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary-dark);
 }
 
 .cast-card {
