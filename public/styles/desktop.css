@@ -315,8 +315,10 @@
   .card-plot {
     font-size: 0.9rem !important;
     line-height: 1.6 !important;
-    margin-top: 1.5rem !important;
+    margin-top: 0 !important;
     margin-bottom: 1.5rem !important;
+    margin-inline: 0 !important;
+    text-align: left !important;
     -webkit-line-clamp: unset !important;
     display: block !important;
   }
@@ -358,6 +360,8 @@
 
   .storyline-header {
     font-size: 1.05rem !important;
+    margin-top: 1.5rem !important;
+    margin-bottom: 0.35rem !important;
   }
 
   .cast-scroll {

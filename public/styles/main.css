@@ -832,8 +832,9 @@ body:not(.is-logged-in) .card-stack:empty::after {
   font-size: 0.75rem;
   color: var(--color-text-secondary);
   max-width: 70ch;
-  margin-inline: auto;
+  margin-inline: 0;
   margin-bottom: 1rem;
+  text-align: left;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -916,7 +917,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .storyline-header {
-  margin: 0 0 0.55rem;
+  margin: 1rem 0 0.4rem;
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--color-text-primary);

@@ -669,6 +669,10 @@ for await (const req of server) {
             writers: enriched.writers,
             director: enriched.director,
             runtime: enriched.runtime,
+            original_language:
+              enriched.original_language || movieData.original_language || null,
+            originalLanguage:
+              enriched.originalLanguage || movieData.originalLanguage || null,
             voteCount: enriched.voteCount,
             imdbId: enriched.imdbId || movieData.imdbId,
             tmdbId: enriched.tmdbId || movieData.tmdbId,
@@ -704,6 +708,10 @@ for await (const req of server) {
             streamingLink: enriched.streamingLink,
             tmdbId: movieData.tmdbId || tmdbId,
             imdbId: enriched.imdbId || movieData.imdbId || imdbId,
+            original_language:
+              enriched.original_language || movieData.original_language || null,
+            originalLanguage:
+              enriched.originalLanguage || movieData.originalLanguage || null,
             rid,
           }),
           headers: makeHeaders('application/json'),
