@@ -52,7 +52,16 @@ export default class CardView {
       this.rate(e.data, this.getAnimation(e.data ? 'right' : 'left'))
     )
 
-    const { title, type, art, year, guid, summary = '', genres = [] } =
+    const {
+      title,
+      type,
+      art,
+      year,
+      guid,
+      rating = '',
+      summary = '',
+      genres = [],
+    } =
       this.movieData
     node.dataset.guid = guid
 
