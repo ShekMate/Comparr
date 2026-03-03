@@ -913,7 +913,12 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .crew-label {
   font-weight: 700;
+  font-size: 1.05rem;
   margin-right: 0.2rem;
+}
+
+.rating-value {
+  font-size: 0.9rem;
 }
 
 .storyline-header {
