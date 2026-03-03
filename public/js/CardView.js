@@ -52,16 +52,8 @@ export default class CardView {
       this.rate(e.data, this.getAnimation(e.data ? 'right' : 'left'))
     )
 
-    const {
-      title,
-      type,
-      art,
-      year,
-      guid,
-      summary = '',
-      rating = '',
-      genres = [],
-    } = this.movieData
+    const { title, type, art, year, guid, summary = '', genres = [] } =
+      this.movieData
     node.dataset.guid = guid
 
     console.log(
@@ -148,14 +140,6 @@ export default class CardView {
 
       <div class="card-meta">
         ${this.renderCrewInfo()}
-        ${
-          summary
-            ? `<h4 class="storyline-header">Storyline</h4><p class="card-plot" onclick="this.closest('.card')._handlePlot(event)">${escapeHtml(
-                summary
-              )}</p>`
-            : ''
-        }
-        ${rating ? `<div class="card-ratings">${rating}</div>` : ''}
       </div>
     `
 
@@ -422,6 +406,8 @@ export default class CardView {
       castMembers,
       genres,
       contentRating,
+      summary,
+      rating,
       originalLanguage,
       original_language,
       language,
@@ -512,6 +498,11 @@ export default class CardView {
     }
 
     // Director
+    if (rating) {
+      lines.push(`<div class="card-ratings">${rating}</div>`)
+    }
+
+    // Director
     if (director && director !== 'undefined') {
       lines.push(
         `<div class="crew-line" onclick="this.classList.toggle('expanded')"><strong class="crew-label">Director(s)</strong> <i class="fas fa-video"></i>: ${escapeHtml(
@@ -529,6 +520,14 @@ export default class CardView {
         `<div class="crew-line" onclick="this.classList.toggle('expanded')"><strong class="crew-label">Writer(s)</strong> <i class="fas fa-pen"></i>: ${displayWriters
           .map(escapeHtml)
           .join(', ')}${hasMore ? ' & more' : ''}</div>`
+      )
+    }
+
+    if (summary) {
+      lines.push(
+        `<h4 class="storyline-header">Storyline</h4><p class="card-plot" onclick="this.closest('.card')._handlePlot(event)">${escapeHtml(
+          summary
+        )}</p>`
       )
     }
 
