@@ -129,7 +129,7 @@ export default class CardView {
         ${this.renderCrewInfo()}
         ${
           summary
-            ? `<p class="card-plot" onclick="this.closest('.card')._handlePlot(event)">${escapeHtml(
+            ? `<h4 class="storyline-header">Storyline</h4><p class="card-plot" onclick="this.closest('.card')._handlePlot(event)">${escapeHtml(
                 summary
               )}</p>`
             : ''
@@ -401,6 +401,9 @@ export default class CardView {
       castMembers,
       genres,
       contentRating,
+      originalLanguage,
+      original_language,
+      language,
     } = this.movieData
 
     console.log('DEBUG renderCrewInfo:', {
@@ -467,6 +470,16 @@ export default class CardView {
       ratingGenreParts.push(`<i class="fas fa-clock"></i> ${runtimeMin} min`)
     }
 
+    const rawOriginalLanguage =
+      originalLanguage || original_language || language || ''
+    if (rawOriginalLanguage) {
+      ratingGenreParts.push(
+        `<i class="fas fa-language"></i> ${escapeHtml(
+          String(rawOriginalLanguage).toUpperCase()
+        )}`
+      )
+    }
+
     // Combine with separator if both exist
     if (ratingGenreParts.length > 0) {
       lines.push(
@@ -479,7 +492,7 @@ export default class CardView {
     // Director
     if (director && director !== 'undefined') {
       lines.push(
-        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-video"></i> ${escapeHtml(
+        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><strong class="crew-label">Director(s)</strong> <i class="fas fa-video"></i>: ${escapeHtml(
           director
         )}</div>`
       )
@@ -491,7 +504,7 @@ export default class CardView {
       const displayWriters = writers.slice(0, maxWriters)
       const hasMore = writers.length > maxWriters
       lines.push(
-        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-pen"></i> ${displayWriters
+        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><strong class="crew-label">Writer(s)</strong> <i class="fas fa-pen"></i>: ${displayWriters
           .map(escapeHtml)
           .join(', ')}${hasMore ? ' & more' : ''}</div>`
       )

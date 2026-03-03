@@ -308,8 +308,12 @@
     margin-bottom: 0.5rem !important;
   }
 
+  .crew-title {
+    font-size: 1.25rem !important;
+  }
+
   .card-plot {
-    font-size: 1.05rem !important;
+    font-size: 0.9rem !important;
     line-height: 1.6 !important;
     margin-top: 1.5rem !important;
     margin-bottom: 1.5rem !important;
@@ -336,7 +340,7 @@
   }
 
   .card-crew {
-    font-size: 1.05rem !important;
+    font-size: 0.9rem !important;
     margin: 0 !important;
     margin-top: 1.5rem !important;
   }
@@ -346,6 +350,14 @@
     white-space: normal !important;
     overflow: visible !important;
     text-overflow: clip !important;
+  }
+
+  .cast-header {
+    font-size: 1.05rem !important;
+  }
+
+  .storyline-header {
+    font-size: 1.05rem !important;
   }
 
   .cast-scroll {

@@ -910,6 +910,19 @@ body:not(.is-logged-in) .card-stack:empty::after {
   text-overflow: clip;
 }
 
+.crew-label {
+  font-weight: 700;
+  margin-right: 0.2rem;
+}
+
+.storyline-header {
+  margin: 0 0 0.55rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  text-align: left;
+}
+
 .card-crew i {
   color: var(--color-primary);
   margin-right: 0.25rem;
