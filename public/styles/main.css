@@ -620,7 +620,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .poster-genres {
-  font-size: 0.95rem;
+  font-size: 0.75rem;
   opacity: 0.9;
   margin-bottom: 0.4rem;
 }
