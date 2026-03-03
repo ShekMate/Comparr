@@ -2186,7 +2186,11 @@ class Session {
             tmdbId: extra?.tmdbId || null,
             genre_ids: plexMovie.genre_ids || [],
             vote_count: extra?.voteCount || plexMovie.vote_count || 0,
-            original_language: plexMovie.original_language || null,
+            original_language:
+              extra?.original_language ||
+              extra?.originalLanguage ||
+              plexMovie.original_language ||
+              null,
             production_countries: plexMovie.production_countries || [],
           }
 
