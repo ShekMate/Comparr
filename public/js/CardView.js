@@ -2,6 +2,27 @@ import { escapeHtml } from './utils.js'
 
 // deno-lint-ignore-file
 
+function getLanguageDisplayName(value) {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+
+  // Keep plain-language values untouched (e.g., "English")
+  if (!/^[a-z]{2,3}(?:-[a-z]{2})?$/i.test(raw)) return raw
+
+  try {
+    const normalized = raw.replace('_', '-')
+    const languageCode = normalized.split('-')[0].toLowerCase()
+    const region = normalized.split('-')[1]?.toUpperCase()
+    const localeCode = region ? `${languageCode}-${region}` : languageCode
+    const display = new Intl.DisplayNames(['en'], { type: 'language' }).of(
+      localeCode
+    )
+    return display || raw
+  } catch {
+    return raw
+  }
+}
+
 export default class CardView {
   constructor(movieData, eventTarget) {
     this.movieData = movieData
@@ -471,11 +492,12 @@ export default class CardView {
     }
 
     const rawOriginalLanguage =
-      originalLanguage || original_language || language || ''
-    if (rawOriginalLanguage) {
+      originalLanguage || original_language || language
+    const originalLanguageDisplay = getLanguageDisplayName(rawOriginalLanguage)
+    if (originalLanguageDisplay) {
       ratingGenreParts.push(
         `<i class="fas fa-language"></i> ${escapeHtml(
-          String(rawOriginalLanguage).toUpperCase()
+          String(originalLanguageDisplay)
         )}`
       )
     }

@@ -102,16 +102,16 @@ function ensureComparrScore(movie: any): void {
       const parts: string[] = []
 
       parts.push(
-        `<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> ${movie.rating_comparr}`
+        `<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> <span class="rating-value">${movie.rating_comparr}</span>`
       )
       if (movie.rating_imdb != null) {
         parts.push(
-          `<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> ${movie.rating_imdb}`
+          `<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> <span class="rating-value">${movie.rating_imdb}</span>`
         )
       }
       if (movie.rating_tmdb != null) {
         parts.push(
-          `<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> ${movie.rating_tmdb}`
+          `<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> <span class="rating-value">${movie.rating_tmdb}</span>`
         )
       }
 
@@ -1972,17 +1972,17 @@ class Session {
 
           if (extra?.rating_comparr != null) {
             parts.push(
-              `<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> ${extra.rating_comparr}`
+              `<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> <span class="rating-value">${extra.rating_comparr}</span>`
             )
           }
           if (extra?.rating_imdb != null) {
             parts.push(
-              `<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> ${extra.rating_imdb}`
+              `<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> <span class="rating-value">${extra.rating_imdb}</span>`
             )
           }
           if (extra?.rating_tmdb != null) {
             parts.push(
-              `<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> ${extra.rating_tmdb}`
+              `<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> <span class="rating-value">${extra.rating_tmdb}</span>`
             )
           }
           const ratingStr =
