@@ -866,6 +866,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   flex-wrap: nowrap;
   gap: 0.05rem;
   line-height: 1.4;
+  margin-bottom: 0.5rem;
 }
 
 /* Card Crew (Director, Writers, Cast) */
