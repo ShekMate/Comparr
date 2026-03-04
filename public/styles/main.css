@@ -1664,13 +1664,17 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .password-input-container {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: stretch;
   width: 100%;
-  max-width: 310px;
-  gap: 0.5rem;
+  max-width: 460px;
+  gap: 0.4rem;
   margin: 0 auto;
   z-index: 2;
+}
+
+.password-input-container .password-visibility-field {
+  flex: 1;
 }
 
 .password-form input {
@@ -1707,6 +1711,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .password-visibility-field input {
   width: 100%;
+  height: 3.6rem;
   padding-right: 3rem;
 }
 
@@ -1741,7 +1746,30 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .password-form .submit-button {
-  display: none;
+  width: 3.6rem;
+  min-width: 3.6rem;
+  border: none;
+  border-radius: var(--radius-md);
+  background: rgba(99, 102, 241, 1);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.password-form .submit-button:hover {
+  background: #7376ff;
+}
+
+.password-form .submit-button:focus-visible {
+  outline: 2px solid rgba(99, 102, 241, 0.35);
+  outline-offset: 2px;
+}
+
+.password-form .submit-button i {
+  font-size: 1.7rem;
 }
 
 .password-error-message {
