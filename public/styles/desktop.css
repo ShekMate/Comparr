@@ -338,7 +338,7 @@
   .card-ratings {
     gap: 0.75rem !important;
     justify-content: flex-start !important;
-    margin-bottom: 0.45rem !important;
+    margin-bottom: 2rem !important;
   }
 
   .card-crew {
