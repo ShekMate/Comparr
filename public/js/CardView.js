@@ -61,8 +61,7 @@ export default class CardView {
       rating = '',
       summary = '',
       genres = [],
-    } =
-      this.movieData
+    } = this.movieData
     node.dataset.guid = guid
 
     console.log(
@@ -514,7 +513,7 @@ export default class CardView {
     // Director
     if (director && director !== 'undefined') {
       lines.push(
-        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><strong class="crew-label">Director(s)</strong> <i class="fas fa-video"></i>: ${escapeHtml(
+        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-video"></i> <strong class="crew-label">Director:</strong> ${escapeHtml(
           director
         )}</div>`
       )
@@ -526,7 +525,7 @@ export default class CardView {
       const displayWriters = writers.slice(0, maxWriters)
       const hasMore = writers.length > maxWriters
       lines.push(
-        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><strong class="crew-label">Writer(s)</strong> <i class="fas fa-pen"></i>: ${displayWriters
+        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-pen"></i> <strong class="crew-label">Writer:</strong> ${displayWriters
           .map(escapeHtml)
           .join(', ')}${hasMore ? ' & more' : ''}</div>`
       )
