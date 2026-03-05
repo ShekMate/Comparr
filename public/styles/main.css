@@ -1669,7 +1669,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   width: 100%;
   max-width: 430px;
   gap: 0.4rem;
-  margin: 0 auto;
+  margin: 0 0 0 auto;
   z-index: 2;
 }
 
