@@ -1666,10 +1666,11 @@ body:not(.is-logged-in) .card-stack:empty::after {
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  width: 415px;
-  max-width: 100%;
+  width: 100%;
+  max-width: 415px;
   gap: 0.4rem;
-  margin: 0 0 0 auto;
+  margin-left: auto;
+  margin-right: auto;
   z-index: 2;
 }
 
