@@ -1667,7 +1667,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   flex-direction: row;
   align-items: stretch;
   width: 100%;
-  max-width: 400px;
+  max-width: 430px;
   gap: 0.4rem;
   margin: 0 auto;
   z-index: 2;
@@ -1683,8 +1683,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
   color: var(--color-text-primary);
   border: 2px solid rgba(80, 115, 232, 0.45);
   border-radius: var(--radius-md);
-  padding: 0.75rem 1rem;
-  font-size: 1rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 1.25rem;
   text-align: left;
   outline: none;
   transition: all 0.3s ease;
@@ -1711,8 +1711,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 .password-visibility-field input {
   width: 100%;
-  height: 3.6rem;
-  padding-right: 3.9rem;
+  height: 3rem;
+  padding-right: 3rem;
 }
 
 .password-visibility-toggle {
@@ -1720,7 +1720,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
   right: 0;
   top: 0;
   bottom: 0;
-  width: 3.6rem;
+  width: 3rem;
+  height: 3rem;
   border: none;
   border-left: 1px solid var(--color-line);
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
@@ -1746,8 +1747,9 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .password-form .submit-button {
-  width: 3.6rem;
-  min-width: 3.6rem;
+  width: 6rem;
+  min-width: 6rem;
+  height: 3rem;
   border: none;
   border-radius: var(--radius-md);
   background: rgba(99, 102, 241, 1);
