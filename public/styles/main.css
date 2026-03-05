@@ -1328,6 +1328,10 @@ body:not(.is-logged-in) .card-stack:empty::after {
   display: block;
 }
 
+.login-section .logo + .password-form {
+  margin-top: 7rem;
+}
+
 .login-form {
   display: grid;
   grid-template-columns: 1fr;
