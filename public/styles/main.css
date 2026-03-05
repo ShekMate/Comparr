@@ -1669,7 +1669,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   width: 100%;
   max-width: 320px;
   gap: 0.4rem;
-  margin: 0 auto;
+  margin: 0 0 0 auto;
   z-index: 2;
 }
 
@@ -1747,8 +1747,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .password-form .submit-button {
-  width: 4.25rem;
-  min-width: 4.25rem;
+  width: 6rem;
+  min-width: 6rem;
   height: 3rem;
   border: none;
   border-radius: var(--radius-md);
