@@ -1666,8 +1666,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  width: 100%;
-  max-width: 415px;
+  width: 415px;
+  max-width: 100%;
   gap: 0.4rem;
   margin: 0 0 0 auto;
   z-index: 2;
