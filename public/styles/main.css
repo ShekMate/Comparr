@@ -1792,6 +1792,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   gap: 1.25rem;
   width: 100%;
   max-width: 36rem;
+  margin-top: 96px;
   margin-inline: auto;
   justify-items: center;
 }
@@ -1799,7 +1800,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .mode-card-grid {
   width: 100%;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 1rem;
 }
 
