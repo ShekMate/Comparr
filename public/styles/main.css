@@ -1604,7 +1604,9 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .login-form .room-code-container .room-code-submit-button {
-  flex: 0 0 38%;
+  flex: 0 0 auto;
+  align-self: stretch;
+  aspect-ratio: 1 / 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1614,7 +1616,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   border-left: 0;
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
   font-size: 2rem;
-  padding: 0.4rem 0.5rem;
+  padding: 0;
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
