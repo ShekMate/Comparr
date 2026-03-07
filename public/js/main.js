@@ -254,8 +254,8 @@ function getDisplayPreferencesStorageKey() {
 
 function getDefaultDisplayPreferences() {
   return {
-    showSeenList: true,
-    showPassList: true,
+    showSeenList: false,
+    showPassList: false,
   }
 }
 
@@ -293,8 +293,8 @@ function saveDisplayPreferences(preferences) {
 }
 
 function applyDisplayPreferencesToNavigation(preferences) {
-  const showSeenList = preferences?.showSeenList !== false
-  const showPassList = preferences?.showPassList !== false
+  const showSeenList = preferences?.showSeenList === true
+  const showPassList = preferences?.showPassList === true
 
   document.querySelectorAll('[data-tab="tab-seen"]').forEach(el => {
     el.style.display = showSeenList ? '' : 'none'
@@ -305,10 +305,10 @@ function applyDisplayPreferencesToNavigation(preferences) {
 
   const seenPanel = document.getElementById('tab-seen')
   const passPanel = document.getElementById('tab-dislikes')
-  if (seenPanel) {
+  if (seenPanel && !showSeenList) {
     seenPanel.hidden = !showSeenList
   }
-  if (passPanel) {
+  if (passPanel && !showPassList) {
     passPanel.hidden = !showPassList
   }
 
@@ -1011,10 +1011,24 @@ function hydrateDisplaySettingsForm() {
   )
 
   if (showSeenListInput) {
-    showSeenListInput.checked = displayPreferences.showSeenList !== false
+    showSeenListInput.setAttribute(
+      'aria-pressed',
+      displayPreferences.showSeenList === true ? 'true' : 'false'
+    )
+    showSeenListInput.textContent =
+      displayPreferences.showSeenList === true
+        ? 'Hide Seen List'
+        : 'Show Seen List'
   }
   if (showPassListInput) {
-    showPassListInput.checked = displayPreferences.showPassList !== false
+    showPassListInput.setAttribute(
+      'aria-pressed',
+      displayPreferences.showPassList === true ? 'true' : 'false'
+    )
+    showPassListInput.textContent =
+      displayPreferences.showPassList === true
+        ? 'Hide Pass List'
+        : 'Show Pass List'
   }
 }
 
@@ -1027,9 +1041,42 @@ function collectDisplaySettingsForm() {
   )
 
   return {
-    showSeenList: showSeenListInput ? Boolean(showSeenListInput.checked) : true,
-    showPassList: showPassListInput ? Boolean(showPassListInput.checked) : true,
+    showSeenList: showSeenListInput
+      ? showSeenListInput.getAttribute('aria-pressed') === 'true'
+      : false,
+    showPassList: showPassListInput
+      ? showPassListInput.getAttribute('aria-pressed') === 'true'
+      : false,
   }
+}
+
+function initializeDisplaySettingsToggleButtons() {
+  const toggleButtons = [
+    {
+      id: 'setting-display-show-seen-list',
+      enabledLabel: 'Hide Seen List',
+      disabledLabel: 'Show Seen List',
+    },
+    {
+      id: 'setting-display-show-pass-list',
+      enabledLabel: 'Hide Pass List',
+      disabledLabel: 'Show Pass List',
+    },
+  ]
+
+  toggleButtons.forEach(({ id, enabledLabel, disabledLabel }) => {
+    const button = document.getElementById(id)
+    if (!button || button.dataset.displayToggleBound === 'true') return
+
+    button.addEventListener('click', () => {
+      const enabled = button.getAttribute('aria-pressed') !== 'true'
+      button.setAttribute('aria-pressed', enabled ? 'true' : 'false')
+      button.textContent = enabled ? enabledLabel : disabledLabel
+      setSettingsDirty(true)
+    })
+
+    button.dataset.displayToggleBound = 'true'
+  })
 }
 
 function saveDisplaySettingsForm() {
@@ -1897,12 +1944,13 @@ async function hydrateSettingsUiIfAuthorized() {
   initializeAdvancedSettingsToggle()
   initializeAdminSettingsTabs()
   initializeIntegrationTestButtons()
+  initializeDisplaySettingsToggleButtons()
   await hydrateSettingsForm()
   hydrateDisplaySettingsForm()
 
   document
     .querySelectorAll(
-      '[data-setting-key], [data-paid-streaming-service], [data-personal-media-source], #setting-display-show-seen-list, #setting-display-show-pass-list'
+      '[data-setting-key], [data-paid-streaming-service], [data-personal-media-source]'
     )
     .forEach(el => {
       if (el.dataset.boundSettingsDirty === 'true') return
@@ -2623,8 +2671,8 @@ async function login(api) {
           [
             ...document.querySelectorAll(
               isPersonalMode
-                ? '.rate-section, #tab-likes, #tab-dislikes, #tab-seen, #tab-settings'
-                : '.rate-section, .matches-section, #tab-likes, #tab-dislikes'
+                ? '.rate-section'
+                : '.rate-section, .matches-section'
             ),
           ].map(node => {
             node.hidden = false
