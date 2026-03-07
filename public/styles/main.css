@@ -1612,7 +1612,9 @@ body:not(.is-logged-in) .card-stack:empty::after {
   font-size: 0.9rem;
   font-weight: 700;
   width: min(50%, 11rem);
+  justify-self: center;
   margin: 0.175rem 0 0;
+  margin-left: var(--continue-button-left-gap, 0);
   display: block;
   cursor: pointer;
   transition: background-color 0.2s ease;
