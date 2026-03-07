@@ -279,6 +279,16 @@
               type="button"
               class="dropdown-item mobile-settings-item"
               data-tab="tab-settings"
+              data-settings-target="settings-display"
+              data-settings-title="Display"
+            >
+              <i class="fas fa-desktop"></i>
+              Display
+            </button>
+            <button
+              type="button"
+              class="dropdown-item mobile-settings-item"
+              data-tab="tab-settings"
               data-settings-target="settings-defaults"
               data-settings-title="Defaults"
             >
@@ -361,6 +371,14 @@
                 data-settings-title="Streaming"
               >
                 Streaming
+              </button>
+              <button
+                class="sidebar-subitem"
+                data-tab="tab-settings"
+                data-settings-target="settings-display"
+                data-settings-title="Display"
+              >
+                Display
               </button>
               <button
                 class="sidebar-subitem"
@@ -2396,6 +2414,30 @@
                 defaults.
               </p>
               <div id="defaults-inline-editor"></div>
+            </div>
+          </div>
+
+          <div class="settings-section" id="settings-display" hidden>
+            <h4>Display</h4>
+            <div class="settings-field">
+              <label
+                class="settings-checkbox-option"
+                for="setting-display-show-seen-list"
+              >
+                <input id="setting-display-show-seen-list" type="checkbox" />
+                Show Seen List
+              </label>
+              <p>Show or hide the Seen List tab in navigation.</p>
+            </div>
+            <div class="settings-field">
+              <label
+                class="settings-checkbox-option"
+                for="setting-display-show-pass-list"
+              >
+                <input id="setting-display-show-pass-list" type="checkbox" />
+                Show Pass List
+              </label>
+              <p>Show or hide the Pass List tab in navigation.</p>
             </div>
           </div>
 
