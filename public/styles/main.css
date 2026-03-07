@@ -1657,6 +1657,10 @@ body:not(.is-logged-in) .card-stack:empty::after {
   background: #0b3794;
 }
 
+.login-form .submit-button[hidden] {
+  display: none !important;
+}
+
 /* Password Form - Enhanced */
 .password-form {
   display: flex;
