@@ -2173,7 +2173,7 @@ async function login(api) {
       .trim()
       .toUpperCase()
       .replace(/[^0-9A-Z]/g, '')
-      .slice(0, 6)
+      .slice(0, 4)
 
   let roomMode = 'join'
   let selectedMode = 'group'
@@ -2414,8 +2414,8 @@ async function login(api) {
       if (generatedRoomCodeInput) generatedRoomCodeInput.value = code
 
       if (!name || !code) return
-      if (!/^[0-9A-Z]{4,6}$/.test(code)) {
-        setRoomCodeError('Room code must be 4-6 characters (A-Z or 0-9).')
+      if (!/^[0-9A-Z]{4}$/.test(code)) {
+        setRoomCodeError('Room code must be exactly 4 characters (A-Z or 0-9).')
         return
       }
 

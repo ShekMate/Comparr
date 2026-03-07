@@ -2728,6 +2728,7 @@ class Session {
 const activeSessions: Map<string, Session> = new Map()
 
 const ROOM_CODE_MAP = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789'
+const ROOM_CODE_LENGTH = 4
 
 export function normalizeRoomCode(roomCode: string): string {
   return String(roomCode || '')
@@ -2736,7 +2737,9 @@ export function normalizeRoomCode(roomCode: string): string {
 }
 
 export function isValidRoomCode(roomCode: string): boolean {
-  return /^[0-9A-Z]{4,6}$/.test(normalizeRoomCode(roomCode))
+  return new RegExp(`^[0-9A-Z]{${ROOM_CODE_LENGTH}}$`).test(
+    normalizeRoomCode(roomCode)
+  )
 }
 
 export function doesRoomCodeExist(roomCode: string): boolean {
@@ -2750,7 +2753,7 @@ export async function generateUniqueRoomCode(
   maxAttempts = 200
 ): Promise<string> {
   for (let i = 0; i < maxAttempts; i++) {
-    const code = Array.from({ length: 6 }, () => {
+    const code = Array.from({ length: ROOM_CODE_LENGTH }, () => {
       const value = crypto.getRandomValues(new Uint32Array(1))[0]
       return ROOM_CODE_MAP[value % ROOM_CODE_MAP.length]
     }).join('')
@@ -2930,7 +2933,7 @@ export const handleLogin = (
               type: 'loginResponse',
               payload: {
                 success: false,
-                message: 'Room code must be 4-6 characters (A-Z or 0-9).',
+                message: `Room code must be exactly ${ROOM_CODE_LENGTH} characters (A-Z or 0-9).`,
               },
             }
             ws.send(JSON.stringify(response))
