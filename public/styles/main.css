@@ -4282,6 +4282,11 @@ footer {
   background: rgba(99, 102, 241, 0.14);
 }
 
+.settings-display-toggle {
+  align-self: flex-start;
+  cursor: pointer;
+}
+
 .settings-field-advanced {
   border-left: none;
   padding-left: 0;

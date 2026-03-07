@@ -2420,23 +2420,25 @@
           <div class="settings-section" id="settings-display" hidden>
             <h4>Display</h4>
             <div class="settings-field">
-              <label
-                class="settings-checkbox-option"
-                for="setting-display-show-seen-list"
+              <button
+                type="button"
+                class="settings-mode-toggle settings-display-toggle"
+                id="setting-display-show-seen-list"
+                aria-pressed="false"
               >
-                <input id="setting-display-show-seen-list" type="checkbox" />
                 Show Seen List
-              </label>
+              </button>
               <p>Show or hide the Seen List tab in navigation.</p>
             </div>
             <div class="settings-field">
-              <label
-                class="settings-checkbox-option"
-                for="setting-display-show-pass-list"
+              <button
+                type="button"
+                class="settings-mode-toggle settings-display-toggle"
+                id="setting-display-show-pass-list"
+                aria-pressed="false"
               >
-                <input id="setting-display-show-pass-list" type="checkbox" />
                 Show Pass List
-              </label>
+              </button>
               <p>Show or hide the Pass List tab in navigation.</p>
             </div>
           </div>
