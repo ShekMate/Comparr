@@ -2215,15 +2215,13 @@ async function login(api) {
     const isCreate = mode === 'create'
     const isPersonalMode = selectedMode === 'personal'
 
-    if (isPersonalMode) {
-      return isCreate
-        ? 'Create a new private room code.'
-        : 'Enter your private room code.'
+    if (!isCreate) {
+      return 'Room Code'
     }
 
-    return isCreate
-      ? 'Create a new group room code.'
-      : 'Enter your group room code.'
+    return isPersonalMode
+      ? 'Create a new private room code.'
+      : 'Create a new group room code.'
   }
 
   const setRoomMode = (mode, selectedMode = 'group') => {
