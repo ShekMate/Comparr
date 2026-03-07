@@ -236,6 +236,100 @@ const DEFAULT_YEAR_MIN = 1895
 const DEFAULT_VOTE_COUNT = 0
 const DEFAULT_LANGUAGES = [] // Start with no language filter to show all movies
 const SWIPE_DEFAULTS_STORAGE_KEY = 'comparrSwipeFilterDefaults'
+const DISPLAY_PREFERENCES_STORAGE_PREFIX = 'comparrDisplayPreferences'
+
+function getDisplayPreferencesStorageKey() {
+  const userName =
+    sessionStorage.getItem('userName') ||
+    localStorage.getItem('personalUser') ||
+    localStorage.getItem('user') ||
+    'default-user'
+  const roomCode =
+    sessionStorage.getItem('roomCode') ||
+    localStorage.getItem('personalRoomCode') ||
+    localStorage.getItem('roomCode') ||
+    'default-room'
+  return `${DISPLAY_PREFERENCES_STORAGE_PREFIX}:${roomCode}:${userName}`
+}
+
+function getDefaultDisplayPreferences() {
+  return {
+    showSeenList: true,
+    showPassList: true,
+  }
+}
+
+function loadDisplayPreferences() {
+  const defaults = getDefaultDisplayPreferences()
+  try {
+    const raw = localStorage.getItem(getDisplayPreferencesStorageKey())
+    if (!raw) return defaults
+    const parsed = JSON.parse(raw)
+    return {
+      showSeenList:
+        typeof parsed?.showSeenList === 'boolean'
+          ? parsed.showSeenList
+          : defaults.showSeenList,
+      showPassList:
+        typeof parsed?.showPassList === 'boolean'
+          ? parsed.showPassList
+          : defaults.showPassList,
+    }
+  } catch (err) {
+    console.warn('Failed to load display preferences:', err)
+    return defaults
+  }
+}
+
+function saveDisplayPreferences(preferences) {
+  try {
+    localStorage.setItem(
+      getDisplayPreferencesStorageKey(),
+      JSON.stringify(preferences)
+    )
+  } catch (err) {
+    console.warn('Failed to save display preferences:', err)
+  }
+}
+
+function applyDisplayPreferencesToNavigation(preferences) {
+  const showSeenList = preferences?.showSeenList !== false
+  const showPassList = preferences?.showPassList !== false
+
+  document.querySelectorAll('[data-tab="tab-seen"]').forEach(el => {
+    el.style.display = showSeenList ? '' : 'none'
+  })
+  document.querySelectorAll('[data-tab="tab-dislikes"]').forEach(el => {
+    el.style.display = showPassList ? '' : 'none'
+  })
+
+  const seenPanel = document.getElementById('tab-seen')
+  const passPanel = document.getElementById('tab-dislikes')
+  if (seenPanel) {
+    seenPanel.hidden = !showSeenList
+  }
+  if (passPanel) {
+    passPanel.hidden = !showPassList
+  }
+
+  const activePanel = document.querySelector('.tab-panel:not([hidden])')
+  const activePanelId = activePanel?.id
+  const activePanelHiddenByPreference =
+    (activePanelId === 'tab-seen' && !showSeenList) ||
+    (activePanelId === 'tab-dislikes' && !showPassList)
+
+  if (activePanelHiddenByPreference) {
+    const swipeButtons = document.querySelectorAll('[data-tab="tab-swipe"]')
+    swipeButtons.forEach(button => button.classList.add('is-active'))
+    const swipePanel = document.getElementById('tab-swipe')
+    document.querySelectorAll('.tab-panel').forEach(panel => {
+      panel.hidden = panel.id !== 'tab-swipe'
+    })
+    if (swipePanel) {
+      swipePanel.hidden = false
+    }
+  }
+}
 
 // Update dropdown button text based on selected items
 function updateDropdownButtonText(
@@ -461,6 +555,8 @@ function initTabs() {
     : []
   const allButtons = [...sidebarButtons, ...tabbarButtons]
   const isPersonalMode = document.body.dataset.appMode === 'personal'
+
+  applyDisplayPreferencesToNavigation(loadDisplayPreferences())
 
   if (isPersonalMode) {
     document.querySelectorAll('[data-tab="tab-matches"]').forEach(node => {
@@ -905,6 +1001,44 @@ function setSettingsDirty(isDirty) {
   syncSettingsFooterActions()
 }
 
+function hydrateDisplaySettingsForm() {
+  displayPreferences = loadDisplayPreferences()
+  const showSeenListInput = document.getElementById(
+    'setting-display-show-seen-list'
+  )
+  const showPassListInput = document.getElementById(
+    'setting-display-show-pass-list'
+  )
+
+  if (showSeenListInput) {
+    showSeenListInput.checked = displayPreferences.showSeenList !== false
+  }
+  if (showPassListInput) {
+    showPassListInput.checked = displayPreferences.showPassList !== false
+  }
+}
+
+function collectDisplaySettingsForm() {
+  const showSeenListInput = document.getElementById(
+    'setting-display-show-seen-list'
+  )
+  const showPassListInput = document.getElementById(
+    'setting-display-show-pass-list'
+  )
+
+  return {
+    showSeenList: showSeenListInput ? Boolean(showSeenListInput.checked) : true,
+    showPassList: showPassListInput ? Boolean(showPassListInput.checked) : true,
+  }
+}
+
+function saveDisplaySettingsForm() {
+  const nextPreferences = collectDisplaySettingsForm()
+  displayPreferences = nextPreferences
+  saveDisplayPreferences(nextPreferences)
+  applyDisplayPreferencesToNavigation(nextPreferences)
+}
+
 // Keep admin password in sessionStorage only (tab-scoped, cleared on close).
 // Do not persist in localStorage. HTTPS is required in production.
 let adminPassword = sessionStorage.getItem('comparrAdminPassword') || ''
@@ -915,6 +1049,7 @@ let settingsAccessState = {
 let hasAdminSettingsAccess = false
 let currentSettingsTarget = 'settings-availability'
 let activeAdminSettingsTab = 'settings-core'
+let displayPreferences = loadDisplayPreferences()
 
 function getAdminHeaders() {
   return adminPassword ? { 'x-admin-password': adminPassword } : {}
@@ -1763,10 +1898,11 @@ async function hydrateSettingsUiIfAuthorized() {
   initializeAdminSettingsTabs()
   initializeIntegrationTestButtons()
   await hydrateSettingsForm()
+  hydrateDisplaySettingsForm()
 
   document
     .querySelectorAll(
-      '[data-setting-key], [data-paid-streaming-service], [data-personal-media-source]'
+      '[data-setting-key], [data-paid-streaming-service], [data-personal-media-source], #setting-display-show-seen-list, #setting-display-show-pass-list'
     )
     .forEach(el => {
       if (el.dataset.boundSettingsDirty === 'true') return
@@ -1779,6 +1915,13 @@ async function hydrateSettingsUiIfAuthorized() {
     ?.addEventListener('click', () => {
       if (currentSettingsTarget === 'settings-defaults') {
         swipeFilterApply?.click()
+        return
+      }
+      if (currentSettingsTarget === 'settings-display') {
+        saveDisplaySettingsForm()
+        setSettingsStatus('Display settings saved.')
+        pulseSettingsStatus('success')
+        setSettingsDirty(false)
         return
       }
       saveSettingsForm()
@@ -4192,6 +4335,8 @@ const main = async () => {
 
   sessionStorage.setItem('userName', userName)
   sessionStorage.setItem('roomCode', roomCode)
+  displayPreferences = loadDisplayPreferences()
+  applyDisplayPreferencesToNavigation(displayPreferences)
 
   // Track movies this user has already rated (to prevent showing them again)
   const normalizeGuid = value => {
