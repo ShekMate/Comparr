@@ -1611,10 +1611,10 @@ body:not(.is-logged-in) .card-stack:empty::after {
   border-radius: 0.85rem;
   font-size: 0.9rem;
   font-weight: 700;
-  width: min(50%, 11rem);
-  justify-self: center;
+  width: min(50%, 7rem);
+  justify-self: left;
   margin: 0.175rem 0 0;
-  margin-left: var(--continue-button-left-gap, 0);
+  margin-left: var(--continue-button-left-gap, 7.5rem);
   display: block;
   cursor: pointer;
   transition: background-color 0.2s ease;
