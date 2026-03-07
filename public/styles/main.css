@@ -1553,6 +1553,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .login-form .room-code-container {
+  --room-code-control-size: calc(1.5rem + (0.65rem * 2) + 4px);
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
@@ -1563,6 +1564,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .login-form .room-code-container input {
   flex: 1 1 0;
   min-width: 0;
+  min-height: var(--room-code-control-size);
   border-radius: var(--radius-md);
 }
 
@@ -1604,7 +1606,10 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .login-form .room-code-container .room-code-submit-button {
-  flex: 0 0 38%;
+  flex: 0 0 var(--room-code-control-size);
+  width: var(--room-code-control-size);
+  min-width: var(--room-code-control-size);
+  min-height: var(--room-code-control-size);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1614,7 +1619,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   border-left: 0;
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
   font-size: 2rem;
-  padding: 0.4rem 0.5rem;
+  padding: 0;
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
