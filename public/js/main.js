@@ -2084,6 +2084,7 @@ async function login(api) {
   )
   const roomModeTabs = [...document.querySelectorAll('.js-room-mode-tab')]
   const roomModePanels = [...document.querySelectorAll('.js-room-code-panel')]
+  const loginSubmitButton = document.querySelector('.js-login-submit-button')
   const generateBtn = document.querySelector('.js-generate-room-code')
   const roomCodeLine = document.querySelector('.js-room-code-line')
   const i18nRoomExistsMessage =
@@ -2244,6 +2245,10 @@ async function login(api) {
 
     if (loginHelperCopy) {
       loginHelperCopy.hidden = roomMode !== 'join'
+    }
+
+    if (loginSubmitButton) {
+      loginSubmitButton.hidden = roomMode === 'join'
     }
 
     setRoomCodeError('')
