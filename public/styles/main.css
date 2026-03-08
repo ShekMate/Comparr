@@ -1794,8 +1794,8 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .password-form .submit-button {
-  width: 6rem;
-  min-width: 6rem;
+  width: 3rem;
+  min-width: 3rem;
   height: 3rem;
   border: none;
   border-radius: var(--radius-md);
