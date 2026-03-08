@@ -57,6 +57,8 @@ Deno.test('media server URLs normalize trailing slash', async () => {
       JELLYFIN_URL: 'http://localhost:8097/',
       EMBY_API_KEY: 'emby-key',
       JELLYFIN_API_KEY: 'jellyfin-key',
+      EMBY_LIBRARY_NAME: 'Basement Emby',
+      JELLYFIN_LIBRARY_NAME: 'Upstairs Jellyfin',
     })
 
     const configModule = await import(uniqueConfigModulePath())
@@ -64,6 +66,8 @@ Deno.test('media server URLs normalize trailing slash', async () => {
     assertEquals(configModule.getJellyfinUrl(), 'http://localhost:8097')
     assertEquals(configModule.getEmbyApiKey(), 'emby-key')
     assertEquals(configModule.getJellyfinApiKey(), 'jellyfin-key')
+    assertEquals(configModule.getEmbyLibraryName(), 'Basement Emby')
+    assertEquals(configModule.getJellyfinLibraryName(), 'Upstairs Jellyfin')
   } finally {
     if (originalDataDir === undefined) {
       Deno.env.delete('DATA_DIR')
