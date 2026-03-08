@@ -40,3 +40,36 @@ Deno.test('getPlexUrl normalizes Plex web app URLs', async () => {
     await Deno.remove(dataDir, { recursive: true }).catch(() => {})
   }
 })
+
+Deno.test('media server URLs normalize trailing slash', async () => {
+  const dataDir = await Deno.makeTempDir({
+    prefix: 'comparr-config-media-server-url-',
+  })
+  const originalDataDir = Deno.env.get('DATA_DIR')
+
+  Deno.env.set('DATA_DIR', dataDir)
+
+  try {
+    const settingsModule = await import(uniqueSettingsModulePath())
+
+    await settingsModule.updateSettings({
+      EMBY_URL: 'http://localhost:8096/',
+      JELLYFIN_URL: 'http://localhost:8097/',
+      EMBY_API_KEY: 'emby-key',
+      JELLYFIN_API_KEY: 'jellyfin-key',
+    })
+
+    const configModule = await import(uniqueConfigModulePath())
+    assertEquals(configModule.getEmbyUrl(), 'http://localhost:8096')
+    assertEquals(configModule.getJellyfinUrl(), 'http://localhost:8097')
+    assertEquals(configModule.getEmbyApiKey(), 'emby-key')
+    assertEquals(configModule.getJellyfinApiKey(), 'jellyfin-key')
+  } finally {
+    if (originalDataDir === undefined) {
+      Deno.env.delete('DATA_DIR')
+    } else {
+      Deno.env.set('DATA_DIR', originalDataDir)
+    }
+    await Deno.remove(dataDir, { recursive: true }).catch(() => {})
+  }
+})

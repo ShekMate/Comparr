@@ -7,6 +7,10 @@ export type SettingsKey =
   | 'PLEX_URL'
   | 'PLEX_TOKEN'
   | 'PLEX_LIBRARY_NAME'
+  | 'EMBY_URL'
+  | 'EMBY_API_KEY'
+  | 'JELLYFIN_URL'
+  | 'JELLYFIN_API_KEY'
   | 'PORT'
   | 'ACCESS_PASSWORD'
   | 'ADMIN_PASSWORD'
@@ -37,6 +41,10 @@ const SETTINGS_KEYS: SettingsKey[] = [
   'PLEX_URL',
   'PLEX_TOKEN',
   'PLEX_LIBRARY_NAME',
+  'EMBY_URL',
+  'EMBY_API_KEY',
+  'JELLYFIN_URL',
+  'JELLYFIN_API_KEY',
   'PORT',
   'ACCESS_PASSWORD',
   'ADMIN_PASSWORD',

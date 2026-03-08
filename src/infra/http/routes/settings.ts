@@ -102,6 +102,12 @@ const runConnectionCheck = async (
   } else if (normalizedTarget === 'radarr') {
     endpoint = `${serviceUrl}/api/v3/system/status`
     headers = { 'X-Api-Key': normalizedToken }
+  } else if (normalizedTarget === 'emby') {
+    endpoint = `${serviceUrl}/System/Info`
+    headers = { 'X-Emby-Token': normalizedToken }
+  } else if (normalizedTarget === 'jellyfin') {
+    endpoint = `${serviceUrl}/System/Info`
+    headers = { 'X-Emby-Token': normalizedToken }
   } else if (
     normalizedTarget === 'jellyseerr' ||
     normalizedTarget === 'overseerr'
@@ -181,6 +187,10 @@ const ADMIN_ONLY_SETTINGS = new Set([
   'PLEX_URL',
   'PLEX_TOKEN',
   'PLEX_LIBRARY_NAME',
+  'EMBY_URL',
+  'EMBY_API_KEY',
+  'JELLYFIN_URL',
+  'JELLYFIN_API_KEY',
   'LIBRARY_FILTER',
   'COLLECTION_FILTER',
   'STREAMING_PROFILE_MODE',
@@ -299,11 +309,19 @@ export async function handleSettingsRoutes(
     const plexConfigured =
       Boolean(String(settings.PLEX_URL || '').trim()) &&
       Boolean(String(settings.PLEX_TOKEN || '').trim())
+    const embyConfigured =
+      Boolean(String(settings.EMBY_URL || '').trim()) &&
+      Boolean(String(settings.EMBY_API_KEY || '').trim())
+    const jellyfinConfigured =
+      Boolean(String(settings.JELLYFIN_URL || '').trim()) &&
+      Boolean(String(settings.JELLYFIN_API_KEY || '').trim())
     await req.respond({
       status: 200,
       body: JSON.stringify({
         plexLibraryName: getPlexLibraryName(),
         plexConfigured,
+        embyConfigured,
+        jellyfinConfigured,
         paidStreamingServices: settings.PAID_STREAMING_SERVICES,
         personalMediaSources: settings.PERSONAL_MEDIA_SOURCES,
       }),
