@@ -67,9 +67,13 @@ export const getPlexLibraryName = () =>
 
 export const getEmbyUrl = () => normalizeUrl(getSettingTrimmed('EMBY_URL'))
 export const getEmbyApiKey = () => getSettingTrimmed('EMBY_API_KEY')
+export const getEmbyLibraryName = () =>
+  getSettingTrimmed('EMBY_LIBRARY_NAME') ?? 'My Emby Library'
 export const getJellyfinUrl = () =>
   normalizeUrl(getSettingTrimmed('JELLYFIN_URL'))
 export const getJellyfinApiKey = () => getSettingTrimmed('JELLYFIN_API_KEY')
+export const getJellyfinLibraryName = () =>
+  getSettingTrimmed('JELLYFIN_LIBRARY_NAME') ?? 'My Jellyfin Library'
 export const getRadarrUrl = () => normalizeUrl(getSettingTrimmed('RADARR_URL'))
 export const getRadarrApiKey = () => getSettingTrimmed('RADARR_API_KEY')
 export const getAccessPassword = () =>

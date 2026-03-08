@@ -2513,7 +2513,6 @@
               id="settings-personal-media-config-plex"
               data-admin-only="true"
               data-personal-media-config="plex"
-              hidden
             >
               <h5>Plex Configuration</h5>
               <div class="settings-field">
@@ -2611,7 +2610,6 @@
               id="settings-personal-media-config-emby"
               data-admin-only="true"
               data-personal-media-config="emby"
-              hidden
             >
               <h5>Emby Configuration</h5>
               <div class="settings-field">
@@ -2641,6 +2639,17 @@
                   Test Emby connection
                 </button>
               </div>
+              <div class="settings-field">
+                <label for="setting-emby-library-name">Emby Library Name</label>
+                <input
+                  id="setting-emby-library-name"
+                  type="text"
+                  data-setting-key="EMBY_LIBRARY_NAME"
+                  data-required-when-source-selected="emby"
+                  placeholder="My Emby Library"
+                />
+                <p>Label shown for Emby availability in the UI.</p>
+              </div>
             </div>
 
             <div
@@ -2648,7 +2657,6 @@
               id="settings-personal-media-config-jellyfin"
               data-admin-only="true"
               data-personal-media-config="jellyfin"
-              hidden
             >
               <h5>Jellyfin Configuration</h5>
               <div class="settings-field">
@@ -2677,6 +2685,19 @@
                 >
                   Test Jellyfin connection
                 </button>
+              </div>
+              <div class="settings-field">
+                <label for="setting-jellyfin-library-name"
+                  >Jellyfin Library Name</label
+                >
+                <input
+                  id="setting-jellyfin-library-name"
+                  type="text"
+                  data-setting-key="JELLYFIN_LIBRARY_NAME"
+                  data-required-when-source-selected="jellyfin"
+                  placeholder="My Jellyfin Library"
+                />
+                <p>Label shown for Jellyfin availability in the UI.</p>
               </div>
             </div>
           </div>
