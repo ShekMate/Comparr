@@ -9,8 +9,10 @@ export type SettingsKey =
   | 'PLEX_LIBRARY_NAME'
   | 'EMBY_URL'
   | 'EMBY_API_KEY'
+  | 'EMBY_LIBRARY_NAME'
   | 'JELLYFIN_URL'
   | 'JELLYFIN_API_KEY'
+  | 'JELLYFIN_LIBRARY_NAME'
   | 'PORT'
   | 'ACCESS_PASSWORD'
   | 'ADMIN_PASSWORD'
@@ -43,8 +45,10 @@ const SETTINGS_KEYS: SettingsKey[] = [
   'PLEX_LIBRARY_NAME',
   'EMBY_URL',
   'EMBY_API_KEY',
+  'EMBY_LIBRARY_NAME',
   'JELLYFIN_URL',
   'JELLYFIN_API_KEY',
+  'JELLYFIN_LIBRARY_NAME',
   'PORT',
   'ACCESS_PASSWORD',
   'ADMIN_PASSWORD',
@@ -79,6 +83,8 @@ const DEFAULTS: Partial<Settings> = {
   ROOT_PATH: '',
   LINK_TYPE: 'app',
   PLEX_LIBRARY_NAME: 'My Plex Library',
+  EMBY_LIBRARY_NAME: 'My Emby Library',
+  JELLYFIN_LIBRARY_NAME: 'My Jellyfin Library',
   IMDB_SYNC_URL: '',
   IMDB_SYNC_INTERVAL_MINUTES: '0',
   STREAMING_PROFILE_MODE: 'anywhere',

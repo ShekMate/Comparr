@@ -2641,6 +2641,17 @@
                   Test Emby connection
                 </button>
               </div>
+              <div class="settings-field">
+                <label for="setting-emby-library-name">Emby Library Name</label>
+                <input
+                  id="setting-emby-library-name"
+                  type="text"
+                  data-setting-key="EMBY_LIBRARY_NAME"
+                  data-required-when-source-selected="emby"
+                  placeholder="My Emby Library"
+                />
+                <p>Label shown for Emby availability in the UI.</p>
+              </div>
             </div>
 
             <div
@@ -2677,6 +2688,19 @@
                 >
                   Test Jellyfin connection
                 </button>
+              </div>
+              <div class="settings-field">
+                <label for="setting-jellyfin-library-name"
+                  >Jellyfin Library Name</label
+                >
+                <input
+                  id="setting-jellyfin-library-name"
+                  type="text"
+                  data-setting-key="JELLYFIN_LIBRARY_NAME"
+                  data-required-when-source-selected="jellyfin"
+                  placeholder="My Jellyfin Library"
+                />
+                <p>Label shown for Jellyfin availability in the UI.</p>
               </div>
             </div>
           </div>
