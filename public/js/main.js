@@ -4779,12 +4779,18 @@ const main = async () => {
       currentOpen = null
     }
 
+    function positionDropdown(pair) {
+      if (!pair?.toggle || !pair?.list) return
+      const rect = pair.toggle.getBoundingClientRect()
+      pair.list.style.top = `${rect.bottom + 4}px`
+      pair.list.style.left = `${rect.left}px`
+      pair.list.style.width = `${Math.max(rect.width, 200)}px`
+    }
+
     function openDropdown(pair) {
       if (!pair.toggle || !pair.list) return
 
       console.log(`🧠 Opening ${pair.type} dropdown`)
-
-      const rect = pair.toggle.getBoundingClientRect()
 
       // Move to overlay and position
       overlay.appendChild(pair.list)
@@ -4792,9 +4798,9 @@ const main = async () => {
       // Force styles to override CSS
       pair.list.style.cssText = `
         position: fixed !important;
-        top: ${rect.bottom + 4}px !important;
-        left: ${rect.left}px !important;
-        width: ${Math.max(rect.width, 200)}px !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 200px !important;
         max-height: 250px !important;
         display: block !important;
         visibility: visible !important;
@@ -4811,11 +4817,26 @@ const main = async () => {
 
       pair.toggle.classList.add('open')
       currentOpen = pair.type
+      positionDropdown(pair)
 
       console.log(`🧠 ${pair.type} dropdown visible at`, {
         top: pair.list.style.top,
         left: pair.list.style.left,
         display: pair.list.style.display,
+      })
+    }
+
+    let positionUpdateQueued = false
+    function refreshOpenDropdownPosition() {
+      if (positionUpdateQueued) return
+      positionUpdateQueued = true
+
+      requestAnimationFrame(() => {
+        positionUpdateQueued = false
+        if (!currentOpen) return
+        const openPair = pairs.find(p => p.type === currentOpen)
+        if (!openPair) return
+        positionDropdown(openPair)
       })
     }
 
@@ -4956,8 +4977,14 @@ const main = async () => {
       }
     })
 
-    // Close on scroll/resize
-    window.addEventListener('scroll', closeAllDropdowns, { passive: true })
+    // Keep dropdown aligned while scrolling; close on resize to avoid stale layout
+    document.addEventListener('scroll', refreshOpenDropdownPosition, {
+      passive: true,
+      capture: true,
+    })
+    window.addEventListener('scroll', refreshOpenDropdownPosition, {
+      passive: true,
+    })
     window.addEventListener('resize', closeAllDropdowns)
 
     console.log('✅ Dropdown setup complete')
@@ -7250,13 +7277,21 @@ function setupSwipeFilterDropdowns() {
 
   function openSwipeDropdown(pair) {
     if (!pair.toggle || !pair.list) return
-    const rect = pair.toggle.getBoundingClientRect()
+
+    const positionSwipeDropdown = targetPair => {
+      if (!targetPair?.toggle || !targetPair?.list) return
+      const rect = targetPair.toggle.getBoundingClientRect()
+      targetPair.list.style.top = `${rect.bottom + 4}px`
+      targetPair.list.style.left = `${rect.left}px`
+      targetPair.list.style.width = `${Math.max(rect.width, 200)}px`
+    }
+
     overlay.appendChild(pair.list)
     pair.list.style.cssText = `
       position: fixed !important;
-      top: ${rect.bottom + 4}px !important;
-      left: ${rect.left}px !important;
-      width: ${Math.max(rect.width, 200)}px !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 200px !important;
       max-height: 250px !important;
       display: block !important;
       visibility: visible !important;
@@ -7272,6 +7307,32 @@ function setupSwipeFilterDropdowns() {
     `
     pair.toggle.classList.add('open')
     currentOpen = pair.type
+
+    positionSwipeDropdown(pair)
+
+    if (!openSwipeDropdown.refreshPosition) {
+      let positionUpdateQueued = false
+      openSwipeDropdown.refreshPosition = () => {
+        if (positionUpdateQueued) return
+        positionUpdateQueued = true
+        requestAnimationFrame(() => {
+          positionUpdateQueued = false
+          if (!currentOpen) return
+          const openPair = pairs.find(p => p.type === currentOpen)
+          if (!openPair) return
+          positionSwipeDropdown(openPair)
+        })
+      }
+
+      document.addEventListener('scroll', openSwipeDropdown.refreshPosition, {
+        passive: true,
+        capture: true,
+      })
+      window.addEventListener('scroll', openSwipeDropdown.refreshPosition, {
+        passive: true,
+      })
+      window.addEventListener('resize', closeAllSwipeDropdowns)
+    }
   }
 
   pairs.forEach(pair => {
