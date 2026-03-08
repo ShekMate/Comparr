@@ -1924,6 +1924,7 @@ async function saveSettingsForm() {
     if (data?.settings?.PERSONAL_MEDIA_SOURCES !== undefined) {
       window.PERSONAL_MEDIA_SOURCES = data.settings.PERSONAL_MEDIA_SOURCES
     }
+    await loadClientConfig()
     updateHostManagedSubscriptionServiceOptions()
     updateSwipeAvailabilityUI()
     setSettingsStatus(
@@ -6728,6 +6729,18 @@ function updateHostManagedSubscriptionServiceOptions() {
   const hostManagedServices = new Set(
     parsePersonalSources().map(source => String(source).trim().toLowerCase())
   )
+
+  if (window.PLEX_CONFIGURED) {
+    hostManagedServices.add('plex')
+  }
+
+  if (window.EMBY_CONFIGURED) {
+    hostManagedServices.add('emby')
+  }
+
+  if (window.JELLYFIN_CONFIGURED) {
+    hostManagedServices.add('jellyfin')
+  }
 
   document
     .querySelectorAll('[data-host-managed-personal-service]')
