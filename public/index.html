@@ -2605,6 +2605,80 @@
                 <p>Comma-separated collection names to include.</p>
               </div>
             </div>
+
+            <div
+              class="settings-field"
+              id="settings-personal-media-config-emby"
+              data-admin-only="true"
+              data-personal-media-config="emby"
+              hidden
+            >
+              <h5>Emby Configuration</h5>
+              <div class="settings-field">
+                <label for="setting-emby-url">Emby URL</label>
+                <input
+                  id="setting-emby-url"
+                  type="text"
+                  data-setting-key="EMBY_URL"
+                  data-required-when-source-selected="emby"
+                  placeholder="http://192.168.1.100:8096"
+                />
+              </div>
+              <div class="settings-field">
+                <label for="setting-emby-api-key">Emby API Key</label>
+                <input
+                  id="setting-emby-api-key"
+                  type="password"
+                  data-setting-key="EMBY_API_KEY"
+                  data-required-when-source-selected="emby"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  class="settings-test-btn"
+                  data-test-target="emby"
+                >
+                  Test Emby connection
+                </button>
+              </div>
+            </div>
+
+            <div
+              class="settings-field"
+              id="settings-personal-media-config-jellyfin"
+              data-admin-only="true"
+              data-personal-media-config="jellyfin"
+              hidden
+            >
+              <h5>Jellyfin Configuration</h5>
+              <div class="settings-field">
+                <label for="setting-jellyfin-url">Jellyfin URL</label>
+                <input
+                  id="setting-jellyfin-url"
+                  type="text"
+                  data-setting-key="JELLYFIN_URL"
+                  data-required-when-source-selected="jellyfin"
+                  placeholder="http://192.168.1.100:8096"
+                />
+              </div>
+              <div class="settings-field">
+                <label for="setting-jellyfin-api-key">Jellyfin API Key</label>
+                <input
+                  id="setting-jellyfin-api-key"
+                  type="password"
+                  data-setting-key="JELLYFIN_API_KEY"
+                  data-required-when-source-selected="jellyfin"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  class="settings-test-btn"
+                  data-test-target="jellyfin"
+                >
+                  Test Jellyfin connection
+                </button>
+              </div>
+            </div>
           </div>
 
           <div

@@ -1155,6 +1155,12 @@ async function loadClientConfig() {
     if (data?.plexConfigured !== undefined) {
       window.PLEX_CONFIGURED = Boolean(data.plexConfigured)
     }
+    if (data?.embyConfigured !== undefined) {
+      window.EMBY_CONFIGURED = Boolean(data.embyConfigured)
+    }
+    if (data?.jellyfinConfigured !== undefined) {
+      window.JELLYFIN_CONFIGURED = Boolean(data.jellyfinConfigured)
+    }
     updateHostManagedSubscriptionServiceOptions()
   } catch (err) {
     console.warn('Client config fetch failed:', err)
@@ -1678,6 +1684,11 @@ function isValidUrl(value) {
 function initializeIntegrationTestButtons() {
   const mappings = {
     plex: { url: 'setting-plex-url', key: 'setting-plex-token' },
+    emby: { url: 'setting-emby-url', key: 'setting-emby-api-key' },
+    jellyfin: {
+      url: 'setting-jellyfin-url',
+      key: 'setting-jellyfin-api-key',
+    },
     radarr: { url: 'setting-radarr-url', key: 'setting-radarr-api-key' },
     jellyseerr: {
       url: 'setting-jellyseerr-url',
@@ -1692,6 +1703,8 @@ function initializeIntegrationTestButtons() {
 
   const targetLabels = {
     plex: 'Plex',
+    emby: 'Emby',
+    jellyfin: 'Jellyfin',
     radarr: 'Radarr',
     jellyseerr: 'Jellyseerr',
     overseerr: 'Overseerr',
@@ -4443,6 +4456,8 @@ const main = async () => {
   // Get Plex library name from server config (fallback to default)
   window.PLEX_LIBRARY_NAME = 'My Plex Library'
   window.PLEX_CONFIGURED = false
+  window.EMBY_CONFIGURED = false
+  window.JELLYFIN_CONFIGURED = false
   await loadClientConfig()
   await setupSettingsUI()
 
@@ -6743,6 +6758,14 @@ function getAvailableSubscriptionOptions() {
 
   if (window.PLEX_CONFIGURED && !personalSources.includes('plex')) {
     personalSources.push('plex')
+  }
+
+  if (window.EMBY_CONFIGURED && !personalSources.includes('emby')) {
+    personalSources.push('emby')
+  }
+
+  if (window.JELLYFIN_CONFIGURED && !personalSources.includes('jellyfin')) {
+    personalSources.push('jellyfin')
   }
 
   return {
