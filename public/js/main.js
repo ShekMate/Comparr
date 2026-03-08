@@ -1383,11 +1383,9 @@ function updatePersonalMediaSourceConfigVisibility(selectedSources = []) {
   )
 
   document.querySelectorAll('[data-personal-media-config]').forEach(section => {
-    const source = String(
-      section.dataset.personalMediaConfig || ''
-    ).toLowerCase()
-    const isSelected = selected.has(source)
-    section.toggleAttribute('hidden', !isSelected)
+    // Keep all personal media config sections visible so admins can preconfigure
+    // integrations before enabling them as active personal media sources.
+    section.toggleAttribute('hidden', false)
   })
 
   document
