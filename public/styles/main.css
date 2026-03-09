@@ -1769,11 +1769,6 @@ body:not(.is-logged-in) .card-stack:empty::after {
   padding-right: 3rem;
 }
 
-#access-password {
-  margin-left: 96px;
-  width: calc(100% - 96px);
-}
-
 .password-visibility-toggle {
   position: absolute;
   right: 0;
