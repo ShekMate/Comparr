@@ -25,7 +25,7 @@ export async function handleRoomRoutes(req: any, path: string) {
         body: JSON.stringify({
           success: false,
           exists: false,
-          message: 'Room code must be 4-6 characters (A-Z or 0-9).',
+          message: 'Room code must be exactly 4 characters (A-Z or 0-9).',
         }),
       })
       return true

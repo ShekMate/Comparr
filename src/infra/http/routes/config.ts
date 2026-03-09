@@ -1,7 +1,6 @@
 import {
   getJellyseerrApiKey,
   getJellyseerrUrl,
-  getOmdbApiKey,
   getOverseerrApiKey,
   getOverseerrUrl,
   getPlexToken,
@@ -21,7 +20,6 @@ export async function handleConfigDebugRoute(req: any, path: string) {
     body: JSON.stringify(
       {
         tmdb_configured: !!getTmdbApiKey(),
-        omdb_configured: !!getOmdbApiKey(),
         plex_configured: !!(getPlexUrl() && getPlexToken()),
         radarr_configured: !!(getRadarrUrl() && getRadarrApiKey()),
         jellyseerr_configured: !!(getJellyseerrUrl() && getJellyseerrApiKey()),

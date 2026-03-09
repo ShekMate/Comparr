@@ -1,58 +1,245 @@
 // src/features/catalog/enrich.ts
-// Enriches Plex movies with ratings, plot, and metadata.
-// Priority: 1) Local IMDb database, 2) OMDB API, 3) TMDb API
-// The local IMDb database is sourced from daily IMDb dataset dumps.
+// Enriches Plex/TMDb movies with ratings, plot, and metadata.
+// Priority: 1) Local IMDb database, 2) TMDb API
 
 import { getIMDbRating } from './imdb-datasets.ts'
-import {
-  getOmdbApiKey,
-  getPlexLibraryName,
-  getTmdbApiKey,
-} from '../../core/config.ts'
+import { getPlexLibraryName, getTmdbApiKey } from '../../core/config.ts'
 
-const getOmdbKey = () => getOmdbApiKey()
 const getTmdbKey = () => getTmdbApiKey()
 const tmdbCache = new Map<string, any>()
 const tmdbSearchCache = new Map<string, any>()
-const redactUrl = (u: string) =>
-  u.replace(/(api_key|apikey|token|key)=([^&]+)/gi, '$1=***')
-async function fetchJsonLogged(
-  url: string,
-  init?: RequestInit,
-  label = 'fetch'
-) {
-  const t0 = Date.now()
-  const safeUrl = redactUrl(url)
-  try {
-    const res = await fetch(url, init)
-    const text = await res.text()
-    let json: any = null
-    try {
-      json = JSON.parse(text)
-    } catch {}
-    console.log(
-      `[enrich] ${label} ${safeUrl} -> ${res.status} in ${
-        Date.now() - t0
-      }ms sample=${text.slice(0, 300)}…`
-    )
-    if (!res.ok) {
-      throw new Error(`${label} HTTP ${res.status}`)
-    }
-    return json ?? text
-  } catch (e) {
-    console.error(`[enrich] ${label} FAILED ${safeUrl}: ${e?.message || e}`)
-    throw e
+
+type EnrichmentPayload = {
+  plot: string | null
+  imdbId: string | null
+  rating_imdb: number | null
+  rating_tmdb: number | null
+  rating_comparr: number | null
+  genres: string[]
+  streamingServices: { subscription: any[]; free: any[] }
+  contentRating: string | null
+  tmdbPosterPath: string | null
+  cast: string[]
+  castMembers: Array<{
+    name: string
+    character: string
+    profilePath: string | null
+  }>
+  writers: string[]
+  director: string | null
+  runtime: number | null
+  original_language: string | null
+  originalLanguage: string | null
+  streamingLink: string | null
+  voteCount: number | null
+  tmdbId: number | null
+}
+
+type PersistedEnrichmentEntry = {
+  value: EnrichmentPayload
+  updatedAt: number
+}
+
+const ENRICH_CACHE_TTL_MS = Number(
+  Deno.env.get('ENRICH_CACHE_TTL_MS') ?? `${7 * 24 * 60 * 60 * 1000}`
+)
+const ENRICH_CACHE_MAX_ENTRIES = Number(
+  Deno.env.get('ENRICH_CACHE_MAX_ENTRIES') ?? '5000'
+)
+const ENRICH_DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
+const ENRICH_CACHE_FILE = `${ENRICH_DATA_DIR}/enrichment-cache.json`
+const enrichmentCache = new Map<string, PersistedEnrichmentEntry>()
+let enrichmentCacheLoaded = false
+let persistPromise: Promise<void> | null = null
+let persistRequested = false
+
+function extractTmdbIdFromGuid(guid?: string | null): number | null {
+  if (!guid) return null
+  const match = guid.match(/tmdb:\/\/(\d+)/i)
+  if (!match) return null
+  const parsed = Number(match[1])
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function buildEnrichmentCacheKey({
+  title,
+  year,
+  imdbId,
+  tmdbId,
+}: {
+  title: string
+  year?: number | null
+  imdbId?: string | null
+  tmdbId?: number | null
+}) {
+  if (imdbId) return `imdb:${imdbId}`
+  if (tmdbId != null) return `tmdb:${tmdbId}`
+  return `title:${title.trim().toLowerCase()}::${year ?? 'noyear'}`
+}
+
+function buildCandidateCacheKeys({
+  title,
+  year,
+  imdbId,
+  tmdbId,
+}: {
+  title: string
+  year?: number | null
+  imdbId?: string | null
+  tmdbId?: number | null
+}): string[] {
+  const keys: string[] = []
+  if (imdbId) keys.push(`imdb:${imdbId}`)
+  if (tmdbId != null) keys.push(`tmdb:${tmdbId}`)
+  keys.push(`title:${title.trim().toLowerCase()}::${year ?? 'noyear'}`)
+  return [...new Set(keys)]
+}
+
+function sanitizeEnrichmentPayload(value: any): EnrichmentPayload {
+  return {
+    plot: value?.plot ?? null,
+    imdbId: value?.imdbId ?? null,
+    rating_imdb: value?.rating_imdb ?? null,
+    rating_tmdb: value?.rating_tmdb ?? null,
+    rating_comparr: value?.rating_comparr ?? null,
+    genres: Array.isArray(value?.genres) ? value.genres : [],
+    streamingServices: {
+      subscription: Array.isArray(value?.streamingServices?.subscription)
+        ? value.streamingServices.subscription
+        : [],
+      free: Array.isArray(value?.streamingServices?.free)
+        ? value.streamingServices.free
+        : [],
+    },
+    contentRating: value?.contentRating ?? null,
+    tmdbPosterPath: value?.tmdbPosterPath ?? null,
+    cast: Array.isArray(value?.cast) ? value.cast : [],
+    castMembers: Array.isArray(value?.castMembers)
+      ? value.castMembers
+          .map((member: any) => ({
+            name: typeof member?.name === 'string' ? member.name : '',
+            character:
+              typeof member?.character === 'string' ? member.character : '',
+            profilePath:
+              typeof member?.profilePath === 'string'
+                ? member.profilePath
+                : null,
+          }))
+          .filter((member: any) => member.name)
+      : [],
+    writers: Array.isArray(value?.writers) ? value.writers : [],
+    director: value?.director ?? null,
+    runtime: value?.runtime ?? null,
+    original_language:
+      value?.original_language ?? value?.originalLanguage ?? null,
+    originalLanguage:
+      value?.originalLanguage ?? value?.original_language ?? null,
+    streamingLink: value?.streamingLink ?? null,
+    voteCount: value?.voteCount ?? null,
+    tmdbId: value?.tmdbId ?? null,
   }
 }
 
-// Replace the old "j" with a label-aware logger that redacts keys
+async function loadPersistentEnrichmentCache() {
+  if (enrichmentCacheLoaded) return
+  enrichmentCacheLoaded = true
+  try {
+    const raw = await Deno.readTextFile(ENRICH_CACHE_FILE)
+    const parsed = JSON.parse(raw) as Record<string, PersistedEnrichmentEntry>
+    const now = Date.now()
+    for (const [key, entry] of Object.entries(parsed)) {
+      if (
+        !entry ||
+        typeof entry.updatedAt !== 'number' ||
+        now - entry.updatedAt > ENRICH_CACHE_TTL_MS
+      ) {
+        continue
+      }
+      enrichmentCache.set(key, {
+        updatedAt: entry.updatedAt,
+        value: sanitizeEnrichmentPayload(entry.value),
+      })
+    }
+    console.log(
+      `[enrich] loaded ${enrichmentCache.size} persisted enrichment cache entries`
+    )
+  } catch {
+    // no persisted cache yet
+  }
+}
+
+function trimPersistentCacheIfNeeded() {
+  if (enrichmentCache.size <= ENRICH_CACHE_MAX_ENTRIES) return
+  const sorted = [...enrichmentCache.entries()].sort(
+    (a, b) => a[1].updatedAt - b[1].updatedAt
+  )
+  const deleteCount = enrichmentCache.size - ENRICH_CACHE_MAX_ENTRIES
+  for (let i = 0; i < deleteCount; i++) {
+    enrichmentCache.delete(sorted[i][0])
+  }
+}
+
+function schedulePersistEnrichmentCache() {
+  persistRequested = true
+  if (persistPromise) return
+  persistPromise = (async () => {
+    await new Promise(resolve => setTimeout(resolve, 250))
+    if (!persistRequested) return
+    persistRequested = false
+    try {
+      trimPersistentCacheIfNeeded()
+      await Deno.mkdir(ENRICH_DATA_DIR, { recursive: true })
+      const payload = Object.fromEntries(enrichmentCache.entries())
+      const tmp = `${ENRICH_CACHE_FILE}.tmp`
+      await Deno.writeTextFile(tmp, JSON.stringify(payload))
+      await Deno.rename(tmp, ENRICH_CACHE_FILE)
+    } catch (err) {
+      console.error(
+        `[enrich] failed to persist enrichment cache: ${err?.message || err}`
+      )
+    }
+  })().finally(() => {
+    persistPromise = null
+    if (persistRequested) {
+      schedulePersistEnrichmentCache()
+    }
+  })
+}
+
+function getCachedEnrichmentByKeys(keys: string[]): EnrichmentPayload | null {
+  const now = Date.now()
+  for (const key of keys) {
+    const cached = enrichmentCache.get(key)
+    if (!cached) continue
+    if (now - cached.updatedAt > ENRICH_CACHE_TTL_MS) {
+      enrichmentCache.delete(key)
+      continue
+    }
+
+    cached.updatedAt = now
+    return sanitizeEnrichmentPayload(cached.value)
+  }
+  return null
+}
+
+function storeEnrichmentForKeys(
+  keys: string[],
+  value: EnrichmentPayload
+): void {
+  const sanitized = sanitizeEnrichmentPayload(value)
+  const updatedAt = Date.now()
+  for (const key of keys) {
+    enrichmentCache.set(key, { value: sanitized, updatedAt })
+  }
+  schedulePersistEnrichmentCache()
+}
+
 async function j(url: string, label = 'fetch') {
   const t0 = Date.now()
   const safe = url.replace(/(api_key|apikey|token|key)=([^&]+)/gi, '$1=***')
-  let res: Response | null = null
   let text = ''
   try {
-    res = await fetch(url)
+    const res = await fetch(url)
     text = await res.text()
     console.log(
       `[enrich] ${label} ${safe} -> ${res.status} in ${
@@ -62,111 +249,69 @@ async function j(url: string, label = 'fetch') {
     if (!res.ok) {
       throw new Error(`${label} HTTP ${res.status}`)
     }
-    try {
-      return JSON.parse(text)
-    } catch (e) {
-      console.error(`[enrich] ${label} JSON parse failed: ${e?.message || e}`)
-      throw e
-    }
+    return JSON.parse(text)
   } catch (e) {
     console.error(`[enrich] ${label} FAILED ${safe}: ${e?.message || e}`)
-    throw e
-  }
-}
-
-async function omdbById(id: string) {
-  const OMDB = getOmdbKey()
-  if (!OMDB || !id) {
-    console.log(`[enrich] omdbById skip: api=${!!OMDB} id=${!!id}`)
-    return null as any
-  }
-  const url = `http://www.omdbapi.com/?apikey=${OMDB}&i=${id}&plot=short`
-  try {
-    const d = await j(url, 'omdbById')
-    const ok = d && d.Response !== 'False'
-    console.log(
-      `[enrich] omdbById result for ${id}: ${ok ? 'OK' : 'NO MATCH'} ${
-        ok ? `imdb=${d.imdbRating}` : d?.Error || ''
-      }`
-    )
-    return ok ? d : null
-  } catch (e) {
-    console.error(`[enrich] omdbById error for ${id}: ${e?.message || e}`)
     return null
   }
 }
 
-async function omdbByTitle(t: string, y?: number | null) {
-  const OMDB = getOmdbKey()
-  if (!OMDB || !t) {
-    console.log(`[enrich] omdbByTitle skip: api=${!!OMDB} title=${!!t}`)
-    return null as any
+function extractUsContentRating(releaseDates: any): string | null {
+  const us = releaseDates?.results?.find((r: any) => r?.iso_3166_1 === 'US')
+  if (!us?.release_dates) return null
+
+  const preferredTypes = new Set([3, 2, 1]) // Theatrical limited, Theatrical, Premiere
+  for (const rd of us.release_dates) {
+    const cert = String(rd?.certification || '').trim()
+    if (cert && preferredTypes.has(Number(rd?.type))) return cert
   }
-  const yq = y ? `&y=${y}` : ''
-  const url = `http://www.omdbapi.com/?apikey=${OMDB}&t=${encodeURIComponent(
-    t
-  )}${yq}&plot=short`
-  try {
-    const d = await j(url, 'omdbByTitle')
-    return d && d.Response !== 'False' ? d : null
-  } catch (e) {
-    console.error(`[enrich] omdbByTitle error: ${e?.message || e}`)
-    return null
-  }
+
+  const anyWithCert = us.release_dates.find((rd: any) =>
+    String(rd?.certification || '').trim()
+  )
+  return anyWithCert ? String(anyWithCert.certification).trim() : null
 }
 
 async function tmdbSearchMovie(title: string, year?: number | null) {
   const TMDB = getTmdbKey()
-  if (!TMDB || !title) {
-    console.log(`[enrich] tmdbSearchMovie skip: api=${!!TMDB} title=${!!title}`)
-    return null as any
-  }
+  if (!TMDB || !title) return null as any
+
   const cacheKey = `search-${title}-${year || 'noyear'}`
   if (tmdbSearchCache.has(cacheKey)) {
     return tmdbSearchCache.get(cacheKey)
   }
+
   const q = new URLSearchParams({
     api_key: TMDB,
     query: title,
     include_adult: 'false',
   })
   if (year) q.set('year', String(year))
-  const url = `https://api.themoviedb.org/3/search/movie?${q.toString()}`
-  try {
-    const data = await j(url, 'tmdb.search')
-    const result = data?.results?.[0] ?? null
-    if (!result)
-      console.warn(
-        `[enrich] tmdb.search no results for "${title}" y=${year ?? ''}`
-      )
-    if (result) tmdbSearchCache.set(cacheKey, result)
-    return result
-  } catch (e) {
-    console.error(`[enrich] tmdb.search error: ${e?.message || e}`)
-    return null
-  }
+
+  const data = await j(
+    `https://api.themoviedb.org/3/search/movie?${q.toString()}`,
+    'tmdb.search'
+  )
+  const result = data?.results?.[0] ?? null
+  if (result) tmdbSearchCache.set(cacheKey, result)
+  return result
 }
 
 async function tmdbMovieDetails(id: number) {
   const TMDB = getTmdbKey()
-  if (!TMDB || !id) {
-    console.log(`[enrich] tmdbMovieDetails skip: api=${!!TMDB} id=${!!id}`)
-    return null as any
-  }
+  if (!TMDB || !id) return null as any
+
   const cacheKey = `details-${id}`
   if (tmdbCache.has(cacheKey)) {
     return tmdbCache.get(cacheKey)
   }
-  const url = `https://api.themoviedb.org/3/movie/${id}?api_key=${TMDB}&append_to_response=external_ids,watch/providers,credits`
-  try {
-    const result = await j(url, 'tmdb.details')
-    if (!result) console.warn(`[enrich] tmdb.details empty for id=${id}`)
-    if (result) tmdbCache.set(cacheKey, result)
-    return result
-  } catch (e) {
-    console.error(`[enrich] tmdb.details error id=${id}: ${e?.message || e}`)
-    return null
-  }
+
+  const result = await j(
+    `https://api.themoviedb.org/3/movie/${id}?api_key=${TMDB}&append_to_response=external_ids,watch/providers,credits,release_dates`,
+    'tmdb.details'
+  )
+  if (result) tmdbCache.set(cacheKey, result)
+  return result
 }
 
 const imdbFromGuid = (guid?: string | null) => {
@@ -180,16 +325,21 @@ export async function enrich({
   year,
   plexGuid,
   imdbId: providedImdbId,
+  tmdbId: providedTmdbId,
 }: {
   title: string
   year?: number | null
   plexGuid?: string | null
   imdbId?: string | null
+  tmdbId?: number | null
 }) {
+  await loadPersistentEnrichmentCache()
+
   let plot: string | null = null
   let imdbId: string | null = providedImdbId || imdbFromGuid(plexGuid)
+  const tmdbIdFromGuid = extractTmdbIdFromGuid(plexGuid)
+  const requestedTmdbId = providedTmdbId ?? tmdbIdFromGuid
   let rating_imdb: number | null = null
-  let rating_rt: number | null = null
   let rating_tmdb: number | null = null
   let rating_comparr: number | null = null
   let genres: string[] = []
@@ -199,13 +349,37 @@ export async function enrich({
   }
   let contentRating: string | null = null
   let cast: string[] = []
+  let castMembers: Array<{
+    name: string
+    character: string
+    profilePath: string | null
+  }> = []
   let writers: string[] = []
   let director: string | null = null
   let runtime: number | null = null
+  let original_language: string | null = null
+  let originalLanguage: string | null = null
   let streamingLink: string | null = null
   let voteCount: number | null = null
 
-  // 1) Try local IMDb database first for ratings (if we have an IMDb ID)
+  const cacheKey = buildEnrichmentCacheKey({
+    title,
+    year,
+    imdbId,
+    tmdbId: requestedTmdbId,
+  })
+  const candidateCacheKeys = buildCandidateCacheKeys({
+    title,
+    year,
+    imdbId,
+    tmdbId: requestedTmdbId,
+  })
+  const cached = getCachedEnrichmentByKeys([cacheKey, ...candidateCacheKeys])
+  if (cached) {
+    storeEnrichmentForKeys([cacheKey, ...candidateCacheKeys], cached)
+    return cached
+  }
+
   if (imdbId) {
     const localRating = getIMDbRating(imdbId)
     if (localRating !== null) {
@@ -213,314 +387,114 @@ export async function enrich({
     }
   }
 
-  // 2) OMDb (prefer provided IMDb ID, then plex guid IMDb id, else title+year)
-  // Always query OMDB to get plot, RT ratings, and fallback IMDb rating
-  let om = imdbId ? await omdbById(imdbId) : null
-  if (!om) om = await omdbByTitle(title, year ?? undefined)
-
-  if (om) {
-    plot = om.Plot || null
-    imdbId = om.imdbID || imdbId || null
-
-    // Only use OMDB rating if we don't have one from local database
-    if (rating_imdb === null) {
-      rating_imdb =
-        om.imdbRating && om.imdbRating !== 'N/A' ? Number(om.imdbRating) : null
-    }
-
-    const rtRow = (om.Ratings || []).find(
-      (r: any) => r.Source === 'Rotten Tomatoes'
-    )
-    rating_rt = rtRow
-      ? parseInt(String(rtRow.Value).replace('%', ''), 10)
-      : null
-    contentRating = om.Rated && om.Rated !== 'N/A' ? om.Rated : null
-
-    // ALWAYS get TMDb data even when OMDb succeeds
-    const hit = await tmdbSearchMovie(title, year ?? undefined)
-    let tmdbPosterPath = hit?.poster_path || null
-
-    if (hit) {
-      const det = await tmdbMovieDetails(hit.id)
-      rating_tmdb =
-        typeof det?.vote_average === 'number'
-          ? Number(det.vote_average.toFixed(1))
-          : hit?.vote_average ?? null
-
-      if (det) {
-        genres = (det.genres || []).map((g: any) => g.name)
-        runtime = det.runtime || null
-        voteCount = det.vote_count || null
-
-        const providers = det['watch/providers']?.results?.US
-        if (providers) {
-          // Import the normalization function
-          const { normalizeProviderName } = await import(
-            '../../infra/constants/streamingProvidersMapping.ts'
-          )
-
-          // Extract JustWatch link
-          streamingLink = providers.link || null
-
-          // Process subscription services (flatrate)
-          const subscriptionMap = new Map()
-          ;(providers.flatrate || []).forEach((p: any) => {
-            const normalizedName = normalizeProviderName(p.provider_name)
-            if (!subscriptionMap.has(normalizedName)) {
-              subscriptionMap.set(normalizedName, {
-                id: p.provider_id,
-                name: normalizedName,
-                logo_path: p.logo_path || null,
-                type: 'subscription',
-              })
-            }
-          })
-
-          // Process free services (free + ads)
-          const freeMap = new Map()
-          ;[...(providers.free || []), ...(providers.ads || [])].forEach(
-            (p: any) => {
-              const normalizedName = normalizeProviderName(p.provider_name)
-              if (!freeMap.has(normalizedName)) {
-                freeMap.set(normalizedName, {
-                  id: p.provider_id,
-                  name: normalizedName,
-                  logo_path: p.logo_path || null,
-                  type: 'free',
-                })
-              }
-            }
-          )
-
-          // Store as structured object
-          streamingServices = {
-            subscription: Array.from(subscriptionMap.values()),
-            free: Array.from(freeMap.values()),
-          }
-        }
-
-        // Extract credits (cast, crew)
-        const credits = det.credits
-        if (credits) {
-          if (credits.cast) {
-            cast = credits.cast
-              .slice(0, 5)
-              .map((c: any) => c.name)
-              .filter((name: string) => name)
-          }
-
-          if (credits.crew) {
-            const directorData = credits.crew.find(
-              (c: any) => c.job === 'Director'
-            )
-            if (directorData?.name) {
-              director = directorData.name
-            }
-
-            writers = credits.crew
-              .filter(
-                (c: any) =>
-                  c.job === 'Writer' ||
-                  c.job === 'Screenplay' ||
-                  c.job === 'Story'
-              )
-              .map((c: any) => c.name)
-              .filter((name: string) => name)
-              .slice(0, 3)
-          }
-        }
-      }
-    }
-
-    // Check if movie is in Plex and add to streamingServices
-    try {
-      const { isMovieInPlex } = await import('../../integrations/plex/cache.ts')
-
-      // Try to get TMDb ID from the movie details we already fetched
-      const tmdbId = det?.id || hit?.id
-      const imdbFromTmdb = det?.external_ids?.imdb_id
-
-      const inPlex = isMovieInPlex({
-        tmdbId,
-        imdbId: imdbFromTmdb || imdbId || undefined,
-        title,
-        year,
-      })
-
-      const plexLibraryName = getPlexLibraryName() || 'Plex'
-      if (
-        inPlex &&
-        !streamingServices.subscription.some(s => s.name === plexLibraryName)
-      ) {
-        streamingServices.subscription.unshift({
-          id: 0,
-          name: plexLibraryName,
-          logo_path: '/assets/logos/allvids.svg',
-          type: 'subscription',
-        })
-      }
-    } catch (err) {
-      console.log(
-        `[enrich] Failed to check Plex status: ${err?.message || err}`
-      )
-    }
-
-    /*
-    // Calculate Comparr score (average of available ratings, requires at least 2)
-    const ratings = [];
-    if (rating_imdb !== null) ratings.push(rating_imdb);
-    if (rating_tmdb !== null) ratings.push(rating_tmdb);
-    if (rating_rt !== null) ratings.push(rating_rt / 10); // Convert percentage to decimal
-
-    if (ratings.length >= 2) {
-      const sum = ratings.reduce((acc, val) => acc + val, 0);
-      rating_comparr = Math.round((sum / ratings.length) * 10) / 10; // Round to 1 decimal place
-    }
-    */
-
-    return {
-      plot,
-      imdbId,
-      rating_imdb,
-      rating_rt,
-      rating_tmdb,
-      rating_comparr,
-      genres,
-      streamingServices,
-      contentRating,
-      tmdbPosterPath: hit?.poster_path || null,
-      cast,
-      writers,
-      director,
-      runtime,
-      streamingLink,
-      voteCount,
-      tmdbId: hit?.id || null,
-    }
+  const initialDetails =
+    requestedTmdbId != null ? await tmdbMovieDetails(requestedTmdbId) : null
+  const hit =
+    initialDetails || (await tmdbSearchMovie(title, year ?? undefined))
+  let det = initialDetails
+  if (hit && !det) {
+    det = await tmdbMovieDetails(hit.id)
   }
 
-  // 2) TMDb fallback (overview & vote_average); bounce back to OMDb if we get an IMDb id
-  const hit = await tmdbSearchMovie(title, year ?? undefined)
-  if (hit) {
-    const det = await tmdbMovieDetails(hit.id)
-    plot = det?.overview || hit.overview || null
+  if (det || hit) {
+    plot = det?.overview || hit?.overview || null
     rating_tmdb =
       typeof det?.vote_average === 'number'
         ? Number(det.vote_average.toFixed(1))
-        : hit?.vote_average ?? null
+        : typeof hit?.vote_average === 'number'
+        ? Number(hit.vote_average.toFixed(1))
+        : null
 
-    // Extract additional TMDb data
-    if (det) {
-      genres = (det.genres || []).map((g: any) => g.name)
-      runtime = det.runtime || null
-      voteCount = det.vote_count || null
+    imdbId = det?.external_ids?.imdb_id || imdbId || null
+    if (rating_imdb == null && imdbId) {
+      const localRating = getIMDbRating(imdbId)
+      if (localRating !== null) rating_imdb = localRating
+    }
 
-      const providers = det['watch/providers']?.results?.US
-      if (providers) {
-        // Import the normalization function
-        const { normalizeProviderName } = await import(
-          '../../infra/constants/streamingProvidersMapping.ts'
-        )
+    genres = (det?.genres || []).map((g: any) => g.name)
+    runtime = det?.runtime || null
+    original_language = det?.original_language || hit?.original_language || null
+    originalLanguage = original_language
+    voteCount = det?.vote_count || null
+    contentRating = extractUsContentRating(det?.release_dates)
 
-        // Extract JustWatch link
-        streamingLink = providers.link || null
+    const providers = det?.['watch/providers']?.results?.US
+    if (providers) {
+      const { normalizeProviderName } = await import(
+        '../../infra/constants/streamingProvidersMapping.ts'
+      )
 
-        // Process subscription services (flatrate)
-        const subscriptionMap = new Map()
-        ;(providers.flatrate || []).forEach((p: any) => {
+      streamingLink = providers.link || null
+
+      const subscriptionMap = new Map()
+      ;(providers.flatrate || []).forEach((p: any) => {
+        const normalizedName = normalizeProviderName(p.provider_name)
+        if (!subscriptionMap.has(normalizedName)) {
+          subscriptionMap.set(normalizedName, {
+            id: p.provider_id,
+            name: normalizedName,
+            logo_path: p.logo_path || null,
+            type: 'subscription',
+          })
+        }
+      })
+
+      const freeMap = new Map()
+      ;[...(providers.free || []), ...(providers.ads || [])].forEach(
+        (p: any) => {
           const normalizedName = normalizeProviderName(p.provider_name)
-          if (!subscriptionMap.has(normalizedName)) {
-            subscriptionMap.set(normalizedName, {
+          if (!freeMap.has(normalizedName)) {
+            freeMap.set(normalizedName, {
               id: p.provider_id,
               name: normalizedName,
               logo_path: p.logo_path || null,
-              type: 'subscription',
+              type: 'free',
             })
           }
-        })
-
-        // Process free services (free + ads)
-        const freeMap = new Map()
-        ;[...(providers.free || []), ...(providers.ads || [])].forEach(
-          (p: any) => {
-            const normalizedName = normalizeProviderName(p.provider_name)
-            if (!freeMap.has(normalizedName)) {
-              freeMap.set(normalizedName, {
-                id: p.provider_id,
-                name: normalizedName,
-                logo_path: p.logo_path || null,
-                type: 'free',
-              })
-            }
-          }
-        )
-
-        // Store as structured object
-        streamingServices = {
-          subscription: Array.from(subscriptionMap.values()),
-          free: Array.from(freeMap.values()),
         }
-      }
+      )
 
-      // Extract credits (cast, crew)
-      const credits = det.credits
-      if (credits) {
-        if (credits.cast) {
-          cast = credits.cast
-            .slice(0, 5)
-            .map((c: any) => c.name)
-            .filter((name: string) => name)
-        }
-
-        if (credits.crew) {
-          const directorData = credits.crew.find(
-            (c: any) => c.job === 'Director'
-          )
-          if (directorData?.name) {
-            director = directorData.name
-          }
-
-          writers = credits.crew
-            .filter(
-              (c: any) =>
-                c.job === 'Writer' ||
-                c.job === 'Screenplay' ||
-                c.job === 'Story'
-            )
-            .map((c: any) => c.name)
-            .filter((name: string) => name)
-            .slice(0, 3)
-        }
+      streamingServices = {
+        subscription: Array.from(subscriptionMap.values()),
+        free: Array.from(freeMap.values()),
       }
     }
 
-    const imdbFromTmdb = det?.external_ids?.imdb_id
-    if (OMDB && imdbFromTmdb) {
-      const om2 = await omdbById(imdbFromTmdb)
-      if (om2) {
-        plot = om2.Plot || plot
-        imdbId = om2.imdbID || imdbFromTmdb
-        rating_imdb =
-          om2.imdbRating && om2.imdbRating !== 'N/A'
-            ? Number(om2.imdbRating)
-            : null
-        const rtRow2 = (om2.Ratings || []).find(
-          (r: any) => r.Source === 'Rotten Tomatoes'
-        )
-        rating_rt = rtRow2
-          ? parseInt(String(rtRow2.Value).replace('%', ''), 10)
-          : null
-      } else {
-        imdbId = imdbFromTmdb
+    if (det?.credits) {
+      castMembers = (det.credits.cast || [])
+        .slice(0, 12)
+        .map((c: any) => ({
+          name: c?.name || '',
+          character: c?.character || '',
+          profilePath: c?.profile_path || null,
+        }))
+        .filter((member: any) => member.name)
+
+      cast = (det.credits.cast || [])
+        .slice(0, 5)
+        .map((c: any) => c.name)
+        .filter((name: string) => name)
+
+      const crew = det.credits.crew || []
+      const directorData = crew.find((c: any) => c.job === 'Director')
+      if (directorData?.name) {
+        director = directorData.name
       }
+
+      writers = crew
+        .filter(
+          (c: any) =>
+            c.job === 'Writer' || c.job === 'Screenplay' || c.job === 'Story'
+        )
+        .map((c: any) => c.name)
+        .filter((name: string) => name)
+        .slice(0, 3)
     }
   }
 
-  // Check if movie is in Plex and add to streamingServices
   try {
     const { isMovieInPlex } = await import('../../integrations/plex/cache.ts')
 
-    // Try to get TMDb ID from the movie details we already fetched
     const tmdbId = det?.id || hit?.id
     const imdbFromTmdb = det?.external_ids?.imdb_id
 
@@ -547,24 +521,10 @@ export async function enrich({
     console.log(`[enrich] Failed to check Plex status: ${err?.message || err}`)
   }
 
-  /*
-  // Calculate Comparr score (average of available ratings, requires at least 2)
-  const ratings = [];
-  if (rating_imdb !== null) ratings.push(rating_imdb);
-  if (rating_tmdb !== null) ratings.push(rating_tmdb);
-  if (rating_rt !== null) ratings.push(rating_rt / 10); // Convert percentage to decimal
-
-  if (ratings.length >= 2) {
-    const sum = ratings.reduce((acc, val) => acc + val, 0);
-    rating_comparr = Math.round((sum / ratings.length) * 10) / 10; // Round to 1 decimal place
-  }
-  */
-
-  return {
+  const result: EnrichmentPayload = {
     plot,
     imdbId,
     rating_imdb,
-    rating_rt,
     rating_tmdb,
     rating_comparr,
     genres,
@@ -572,11 +532,26 @@ export async function enrich({
     contentRating,
     tmdbPosterPath: hit?.poster_path || null,
     cast,
+    castMembers,
     writers,
     director,
     runtime,
+    original_language,
+    originalLanguage,
     streamingLink,
     voteCount,
     tmdbId: hit?.id || null,
   }
+
+  storeEnrichmentForKeys(
+    buildCandidateCacheKeys({
+      title,
+      year,
+      imdbId: result.imdbId,
+      tmdbId: result.tmdbId,
+    }),
+    result
+  )
+
+  return result
 }

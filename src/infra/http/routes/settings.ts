@@ -84,11 +84,7 @@ const runConnectionCheck = async (
       ? normalizePlexToken(token)
       : String(token || '').trim()
 
-  if (
-    normalizedTarget !== 'tmdb' &&
-    normalizedTarget !== 'omdb' &&
-    !isValidHttpUrl(serviceUrl)
-  ) {
+  if (normalizedTarget !== 'tmdb' && !isValidHttpUrl(serviceUrl)) {
     return { ok: false, message: 'Invalid URL.' }
   }
 
@@ -106,6 +102,12 @@ const runConnectionCheck = async (
   } else if (normalizedTarget === 'radarr') {
     endpoint = `${serviceUrl}/api/v3/system/status`
     headers = { 'X-Api-Key': normalizedToken }
+  } else if (normalizedTarget === 'emby') {
+    endpoint = `${serviceUrl}/System/Info`
+    headers = { 'X-Emby-Token': normalizedToken }
+  } else if (normalizedTarget === 'jellyfin') {
+    endpoint = `${serviceUrl}/System/Info`
+    headers = { 'X-Emby-Token': normalizedToken }
   } else if (
     normalizedTarget === 'jellyseerr' ||
     normalizedTarget === 'overseerr'
@@ -116,10 +118,6 @@ const runConnectionCheck = async (
     endpoint = `https://api.themoviedb.org/3/configuration?api_key=${encodeURIComponent(
       normalizedToken
     )}`
-  } else if (normalizedTarget === 'omdb') {
-    endpoint = `https://www.omdbapi.com/?apikey=${encodeURIComponent(
-      normalizedToken
-    )}&i=tt0133093`
   } else {
     return { ok: false, message: 'Unknown service target.' }
   }
@@ -134,16 +132,6 @@ const runConnectionCheck = async (
       return {
         ok: false,
         message: `Connection failed with status ${response.status}.`,
-      }
-    }
-
-    if (normalizedTarget === 'omdb') {
-      const payload = await response.json().catch(() => ({}))
-      if (payload?.Response === 'False') {
-        return {
-          ok: false,
-          message: payload?.Error || 'OMDb API key validation failed.',
-        }
       }
     }
 
@@ -199,13 +187,18 @@ const ADMIN_ONLY_SETTINGS = new Set([
   'PLEX_URL',
   'PLEX_TOKEN',
   'PLEX_LIBRARY_NAME',
+  'EMBY_URL',
+  'EMBY_API_KEY',
+  'EMBY_LIBRARY_NAME',
+  'JELLYFIN_URL',
+  'JELLYFIN_API_KEY',
+  'JELLYFIN_LIBRARY_NAME',
   'LIBRARY_FILTER',
   'COLLECTION_FILTER',
   'STREAMING_PROFILE_MODE',
   'LINK_TYPE',
   'PERSONAL_MEDIA_SOURCES',
   'TMDB_API_KEY',
-  'OMDB_API_KEY',
   'MOVIE_BATCH_SIZE',
   'RADARR_URL',
   'RADARR_API_KEY',
@@ -315,10 +308,22 @@ export async function handleSettingsRoutes(
 
   if (pathname === '/api/client-config') {
     const settings = getSettings()
+    const plexConfigured =
+      Boolean(String(settings.PLEX_URL || '').trim()) &&
+      Boolean(String(settings.PLEX_TOKEN || '').trim())
+    const embyConfigured =
+      Boolean(String(settings.EMBY_URL || '').trim()) &&
+      Boolean(String(settings.EMBY_API_KEY || '').trim())
+    const jellyfinConfigured =
+      Boolean(String(settings.JELLYFIN_URL || '').trim()) &&
+      Boolean(String(settings.JELLYFIN_API_KEY || '').trim())
     await req.respond({
       status: 200,
       body: JSON.stringify({
         plexLibraryName: getPlexLibraryName(),
+        plexConfigured,
+        embyConfigured,
+        jellyfinConfigured,
         paidStreamingServices: settings.PAID_STREAMING_SERVICES,
         personalMediaSources: settings.PERSONAL_MEDIA_SOURCES,
       }),

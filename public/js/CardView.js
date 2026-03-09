@@ -2,11 +2,36 @@ import { escapeHtml } from './utils.js'
 
 // deno-lint-ignore-file
 
+function getLanguageDisplayName(value) {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+
+  // Keep plain-language values untouched (e.g., "English")
+  if (!/^[a-z]{2,3}(?:-[a-z]{2})?$/i.test(raw)) return raw
+
+  try {
+    const normalized = raw.replace('_', '-')
+    const languageCode = normalized.split('-')[0].toLowerCase()
+    const region = normalized.split('-')[1]?.toUpperCase()
+    const localeCode = region ? `${languageCode}-${region}` : languageCode
+    const display = new Intl.DisplayNames(['en'], { type: 'language' }).of(
+      localeCode
+    )
+    return display || raw
+  } catch {
+    return raw
+  }
+}
+
 export default class CardView {
   constructor(movieData, eventTarget) {
     this.movieData = movieData
     this.eventTarget = eventTarget
     this.animationDuration = 500
+    this.swipeThreshold = 100
+    this.flickVelocityThreshold = 500
+    this.throwDistance = 300
+    this.dragActivationThreshold = 5
     this.basePath = document.body.dataset.basePath
     this.render()
   }
@@ -33,8 +58,9 @@ export default class CardView {
       art,
       year,
       guid,
-      summary = '',
       rating = '',
+      summary = '',
+      genres = [],
     } = this.movieData
     node.dataset.guid = guid
 
@@ -79,6 +105,15 @@ export default class CardView {
 
     const finalArt = normalizeArt(art)
 
+    const titleLine = `${escapeHtml(title)}${
+      type === 'movie'
+        ? ` <span class="poster-year">(${escapeHtml(year)})</span>`
+        : ''
+    }`
+    const genreLine = Array.isArray(genres)
+      ? genres.slice(0, 2).map(escapeHtml).join(' • ')
+      : ''
+
     node.innerHTML = `
       <div class="poster-wrapper">
         <button type="button" class="undo-button" aria-label="Undo" title="Undo last rating">
@@ -93,57 +128,31 @@ export default class CardView {
           }"
           decoding="async"
           alt="${escapeHtml(title)} poster"
+          draggable="false"
         />
+        <div class="poster-overlay">
+          <div class="poster-overlay-content">
+            <div class="poster-title">${titleLine}</div>
+            ${genreLine ? `<div class="poster-genres">${genreLine}</div>` : ''}
+            ${rating ? `<div class="card-ratings compact">${rating}</div>` : ''}
+            ${
+              summary
+                ? `<p class="card-plot card-plot-preview">${escapeHtml(
+                    summary
+                  )}</p>`
+                : ''
+            }
+          </div>
+        </div>
       </div>
 
       <div class="card-meta">
-        <div class="card-title">
-          ${escapeHtml(title)}${type === 'movie' ? ` (${escapeHtml(year)})` : ''}
-        </div>
         ${this.renderCrewInfo()}
-        ${
-          summary
-            ? `<p class="card-plot" onclick="this.closest('.card')._handlePlot(event)">${escapeHtml(summary)}</p>`
-            : ''
-        }
-        ${rating ? `<div class="card-ratings">${rating}</div>` : ''}
-
-        <div class="rate-controls">
-          <div class="button-wrapper">
-            <button type="button" class="rate-thumbs-down" aria-label="Thumbs down" onclick="this.closest('.card')._handleDown(event)">
-              <i class="fas fa-thumbs-down"></i>
-              <span class="button-label">Pass</span>
-            </button>
-          </div>
-          <div class="button-wrapper">
-            <button type="button" class="rate-seen" aria-label="Mark as seen" onclick="this.closest('.card')._handleSeen(event)">
-              <i class="fas fa-eye"></i>
-              <span class="button-label">Seen</span>
-            </button>
-          </div>
-          <div class="button-wrapper">
-            <button type="button" class="rate-thumbs-up" aria-label="Thumbs up" onclick="this.closest('.card')._handleUp(event)">
-              <i class="fas fa-thumbs-up"></i>
-              <span class="button-label">Watch</span>
-            </button>
-          </div>
-        </div>
       </div>
     `
 
-    // Wire the three buttons to dispatch the "rate" message
-    const upBtn = node.querySelector('.rate-thumbs-up')
-    const downBtn = node.querySelector('.rate-thumbs-down')
-    const seenBtn = node.querySelector('.rate-seen')
     const undoBtn = node.querySelector('.undo-button')
-
-    const handleRate = value => {
-      return e => {
-        e.preventDefault()
-        e.stopPropagation()
-        node.dispatchEvent(new MessageEvent('rate', { data: value }))
-      }
-    }
+    const posterWrapper = node.querySelector('.poster-wrapper')
 
     const handleUndo = e => {
       e.preventDefault()
@@ -151,18 +160,17 @@ export default class CardView {
       this.eventTarget.dispatchEvent(new Event('undo'))
     }
 
-    // Use touchend for mobile, click for desktop
-    upBtn?.addEventListener('touchend', handleRate(true), { passive: false })
-    upBtn?.addEventListener('click', handleRate(true))
-
-    downBtn?.addEventListener('touchend', handleRate(false), { passive: false })
-    downBtn?.addEventListener('click', handleRate(false))
-
-    seenBtn?.addEventListener('touchend', handleRate(null), { passive: false })
-    seenBtn?.addEventListener('click', handleRate(null))
-
     undoBtn?.addEventListener('touchend', handleUndo, { passive: false })
     undoBtn?.addEventListener('click', handleUndo)
+
+    posterWrapper?.addEventListener('click', e => {
+      if (e.target.closest('.undo-button')) return
+      if (this.didDragCard) {
+        this.didDragCard = false
+        return
+      }
+      node.classList.toggle('details-expanded')
+    })
 
     // Add handlers for plot expansion
     const plotEl = node.querySelector('.card-plot')
@@ -176,13 +184,9 @@ export default class CardView {
     plotEl?.addEventListener('click', handlePlotToggle)
 
     // Attach swipe handler ONLY to poster to allow scrolling on text/metadata areas
-    // Only enable swipe on touch-capable devices (mobile/tablet)
+    // Pointer events support touch + mouse, so desktop users can click-and-drag too.
     const posterEl = node.querySelector('.poster')
-    const isTouchDevice =
-      'ontouchstart' in window || navigator.maxTouchPoints > 0
-    if (isTouchDevice) {
-      posterEl?.addEventListener('pointerdown', this.handleSwipe)
-    }
+    posterEl?.addEventListener('pointerdown', this.handleSwipe)
 
     // Append to card stack
     console.log(
@@ -244,18 +248,22 @@ export default class CardView {
     }
 
     // Don't prevent default or capture yet - wait for movement
-    const maxX = window.innerWidth
     let hasMoved = false
-    let currentDirection
-    let position = 0
+    let currentOffsetX = 0
+    let currentOffsetY = 0
+    const dragStartTime = performance.now()
 
     const handleMove = e => {
       // Only start swipe if moved more than 10px
       if (!hasMoved) {
-        const deltaX = Math.abs(e.x - startEvent.x)
-        const deltaY = Math.abs(e.y - startEvent.y)
+        const deltaX = Math.abs(e.clientX - startEvent.clientX)
+        const deltaY = Math.abs(e.clientY - startEvent.clientY)
 
-        if (deltaX < 10 && deltaY < 10) return // Ignore small movements (could be a tap)
+        if (
+          deltaX < this.dragActivationThreshold &&
+          deltaY < this.dragActivationThreshold
+        )
+          return // Ignore tiny movement (could be a tap)
 
         // Check if movement is primarily vertical (scrolling) or horizontal (swiping)
         if (deltaY > deltaX) {
@@ -266,29 +274,24 @@ export default class CardView {
 
         // Now we know it's a horizontal swipe, not a tap or scroll
         hasMoved = true
+        this.didDragCard = true
         startEvent.preventDefault()
         this.node.setPointerCapture(startEvent.pointerId)
-        this.animationFrameRequestId = requestAnimationFrame(() =>
-          this.animationLoop()
-        )
+        this.node.classList.add('is-dragging')
+        this.node.style.transition = 'none'
+        this.node.style.willChange = 'transform, opacity'
       }
 
-      const direction = e.x < startEvent.x ? 'left' : 'right'
-      const delta = e.x - startEvent.x
+      currentOffsetX = e.clientX - startEvent.clientX
+      currentOffsetY = e.clientY - startEvent.clientY
 
-      position =
-        direction === 'left'
-          ? Math.abs(delta) / startEvent.x
-          : delta / (maxX - startEvent.x)
-
-      if (currentDirection != direction) {
-        currentDirection = direction
-        this.animation = this.getAnimation(direction)
-        this.animation.pause()
-      }
-
-      this.currentTime =
-        Math.max(0, Math.min(1, position)) * this.animationDuration
+      const rotateDeg = Math.max(-25, Math.min(25, currentOffsetX / 10))
+      const opacity = Math.max(
+        0.4,
+        1 - Math.min(Math.abs(currentOffsetX) / 350, 0.6)
+      )
+      this.node.style.transform = `translate3d(${currentOffsetX}px, ${currentOffsetY}px, 0) rotate(${rotateDeg}deg)`
+      this.node.style.opacity = `${opacity}`
     }
 
     this.node.addEventListener('pointermove', handleMove, { passive: false })
@@ -296,30 +299,91 @@ export default class CardView {
       'pointerup',
       async () => {
         this.node.removeEventListener('pointermove', handleMove)
+        this.node.classList.remove('is-dragging')
+        this.node.style.willChange = ''
         if (hasMoved) {
-          cancelAnimationFrame(this.animationFrameRequestId)
-          if (this.animation) {
-            if (position >= 0.5) {
-              await this.rate(currentDirection === 'right', this.animation)
-            } else {
-              this.animation.reverse()
-            }
+          const elapsedMs = Math.max(1, performance.now() - dragStartTime)
+          const velocityX = (currentOffsetX / elapsedMs) * 1000
+          const velocityY = (currentOffsetY / elapsedMs) * 1000
+          const absX = Math.abs(currentOffsetX)
+          const absY = Math.abs(currentOffsetY)
+          const direction = currentOffsetX < 0 ? 'left' : 'right'
 
-            this.animation = null
-            currentDirection = null
+          // Horizontal-dominance guard + OR thresholds (distance OR flick velocity)
+          const qualifiesSwipe =
+            absX > absY &&
+            (absX > this.swipeThreshold ||
+              Math.abs(velocityX) > this.flickVelocityThreshold)
+
+          if (qualifiesSwipe) {
+            const throwTargetX =
+              direction === 'left' ? -this.throwDistance : this.throwDistance
+            const throwTargetY = currentOffsetY + velocityY * 0.2
+            await this.rate(
+              direction === 'right',
+              this.getThrowAnimation(throwTargetX, throwTargetY)
+            )
+          } else {
+            this.animateSnapBack()
           }
+        } else {
+          this.node.style.transform = ''
+          this.node.style.opacity = ''
+          this.node.style.transition = ''
         }
+      },
+      { once: true }
+    )
+
+    this.node.addEventListener(
+      'pointercancel',
+      () => {
+        this.node.removeEventListener('pointermove', handleMove)
+        this.node.classList.remove('is-dragging')
+        this.node.style.willChange = ''
+        this.animateSnapBack()
       },
       { once: true }
     )
   }
 
-  animationLoop() {
-    if (this.animation) {
-      this.animation.currentTime = this.currentTime
-    }
-    this.animationFrameRequestId = requestAnimationFrame(() =>
-      this.animationLoop()
+  animateSnapBack() {
+    this.node.animate(
+      [
+        {
+          transform:
+            this.node.style.transform || 'translate(0, 0) rotate(0deg)',
+          opacity: this.node.style.opacity || '1',
+        },
+        { transform: 'translate(0, 0) rotate(0deg)', opacity: 1 },
+      ],
+      {
+        duration: 250,
+        easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+        fill: 'forwards',
+      }
+    )
+    this.node.style.transform = ''
+    this.node.style.opacity = ''
+    this.node.style.transition = ''
+  }
+
+  getThrowAnimation(targetX, targetY) {
+    return this.node.animate(
+      {
+        transform: [
+          this.node.style.transform || 'translate(0, 0) rotate(0deg)',
+          `translate(${targetX}px, ${targetY}px) rotate(${
+            targetX < 0 ? -20 : 20
+          }deg)`,
+        ],
+        opacity: [this.node.style.opacity || '1', '0'],
+      },
+      {
+        duration: 250,
+        easing: 'ease-out',
+        fill: 'both',
+      }
     )
   }
 
@@ -341,7 +405,21 @@ export default class CardView {
   }
 
   renderCrewInfo() {
-    const { director, writers, cast, genres, contentRating } = this.movieData
+    const {
+      title,
+      year,
+      director,
+      writers,
+      cast,
+      castMembers,
+      genres,
+      contentRating,
+      summary,
+      rating,
+      originalLanguage,
+      original_language,
+      language,
+    } = this.movieData
 
     console.log('DEBUG renderCrewInfo:', {
       director,
@@ -349,12 +427,23 @@ export default class CardView {
       writers: writers?.slice(0, 3),
       castCount: cast?.length,
       cast: cast?.slice(0, 3),
+      castMembersCount: castMembers?.length,
+      castMembers: castMembers?.slice(0, 3),
       genresCount: genres?.length,
       genres,
       contentRating,
     })
 
     const lines = []
+
+    if (title) {
+      const titleWithYear = `${escapeHtml(title)}${
+        year
+          ? ` <span class="crew-title-year">(${escapeHtml(year)})</span>`
+          : ''
+      }`
+      lines.push(`<div class="crew-title">${titleWithYear}</div>`)
+    }
 
     // Content Rating + Genres combined line
     const ratingGenreParts = []
@@ -396,6 +485,17 @@ export default class CardView {
       ratingGenreParts.push(`<i class="fas fa-clock"></i> ${runtimeMin} min`)
     }
 
+    const rawOriginalLanguage =
+      originalLanguage || original_language || language
+    const originalLanguageDisplay = getLanguageDisplayName(rawOriginalLanguage)
+    if (originalLanguageDisplay) {
+      ratingGenreParts.push(
+        `<i class="fas fa-language"></i> ${escapeHtml(
+          String(originalLanguageDisplay)
+        )}`
+      )
+    }
+
     // Combine with separator if both exist
     if (ratingGenreParts.length > 0) {
       lines.push(
@@ -406,9 +506,16 @@ export default class CardView {
     }
 
     // Director
+    if (rating) {
+      lines.push(`<div class="card-ratings">${rating}</div>`)
+    }
+
+    // Director
     if (director && director !== 'undefined') {
       lines.push(
-        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-video"></i> ${escapeHtml(director)}</div>`
+        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-video"></i> <strong class="crew-label">Director:</strong> ${escapeHtml(
+          director
+        )}</div>`
       )
     }
 
@@ -418,21 +525,65 @@ export default class CardView {
       const displayWriters = writers.slice(0, maxWriters)
       const hasMore = writers.length > maxWriters
       lines.push(
-        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-pen"></i> ${displayWriters.map(escapeHtml).join(
-          ', '
-        )}${hasMore ? ' & more' : ''}</div>`
+        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-pen"></i> <strong class="crew-label">Writer:</strong> ${displayWriters
+          .map(escapeHtml)
+          .join(', ')}${hasMore ? ' & more' : ''}</div>`
       )
     }
 
-    // Cast (show max 3 on mobile, 4 on desktop)
-    if (cast && Array.isArray(cast) && cast.length > 0) {
+    if (summary) {
+      lines.push(
+        `<h4 class="storyline-header">Storyline</h4><p class="card-plot" onclick="this.closest('.card')._handlePlot(event)">${escapeHtml(
+          summary
+        )}</p>`
+      )
+    }
+
+    // Cast cards section (TMDb style horizontal scroll)
+    if (castMembers && Array.isArray(castMembers) && castMembers.length > 0) {
+      const castCards = castMembers
+        .filter(member => member?.name)
+        .map(member => {
+          const profilePath = member.profilePath || ''
+          const profileUrl = profilePath
+            ? `${this.basePath || ''}/tmdb-poster${
+                profilePath.startsWith('/') ? profilePath : `/${profilePath}`
+              }`
+            : ''
+          return `<article class="cast-card" title="${escapeHtml(member.name)}">
+            <div class="cast-card-photo-wrap">
+              ${
+                profileUrl
+                  ? `<img class="cast-card-photo" src="${profileUrl}" alt="${escapeHtml(
+                      member.name
+                    )}" loading="lazy" decoding="async" draggable="false" />`
+                  : `<div class="cast-card-photo cast-card-photo-fallback" aria-hidden="true"><i class="fas fa-user"></i></div>`
+              }
+            </div>
+            <div class="cast-card-body">
+              <div class="cast-card-name">${escapeHtml(member.name)}</div>
+              <div class="cast-card-character">${escapeHtml(
+                member.character || ''
+              )}</div>
+            </div>
+          </article>`
+        })
+        .join('')
+
+      if (castCards) {
+        lines.push(`<section class="card-cast-section">
+          <h4 class="cast-header">Cast</h4>
+          <div class="cast-scroll" aria-label="Cast list" onclick="event.stopPropagation()">${castCards}</div>
+        </section>`)
+      }
+    } else if (cast && Array.isArray(cast) && cast.length > 0) {
       const maxCast = window.innerWidth <= 600 ? 3 : 4
       const displayCast = cast.slice(0, maxCast)
       const hasMore = cast.length > maxCast
       lines.push(
-        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-users"></i> ${displayCast.map(escapeHtml).join(
-          ', '
-        )}${hasMore ? ' & more' : ''}</div>`
+        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-users"></i> ${displayCast
+          .map(escapeHtml)
+          .join(', ')}${hasMore ? ' & more' : ''}</div>`
       )
     }
 

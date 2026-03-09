@@ -9,6 +9,121 @@ export interface ImdbCsvRow {
   titleType: string
 }
 
+export interface ImdbImportTarget {
+  exportUrl: string
+  pageUrl: string
+  sourceType: 'list' | 'ratings' | 'watchlist'
+  normalizedInput: string
+}
+
+/**
+ * Resolve user-provided IMDb sync input into an export CSV URL.
+ * Supports full URLs as well as bare IDs (e.g. ls123456789, ur12345678).
+ */
+export function resolveImdbImportTarget(
+  input: string
+): ImdbImportTarget | null {
+  const value = String(input || '').trim()
+  if (!value) return null
+
+  const listIdMatch = value.match(/\b(ls\d+)\b/i)
+  if (listIdMatch) {
+    const listId = listIdMatch[1].toLowerCase()
+    return {
+      exportUrl: `https://www.imdb.com/list/${listId}/export`,
+      pageUrl: `https://www.imdb.com/list/${listId}`,
+      sourceType: 'list',
+      normalizedInput: listId,
+    }
+  }
+
+  const userIdMatch = value.match(/\b(ur\d+)\b/i)
+  if (!userIdMatch) return null
+
+  const userId = userIdMatch[1].toLowerCase()
+  const lowerValue = value.toLowerCase()
+
+  if (lowerValue.includes('/watchlist')) {
+    return {
+      exportUrl: `https://www.imdb.com/user/${userId}/watchlist/export`,
+      pageUrl: `https://www.imdb.com/user/${userId}/watchlist`,
+      sourceType: 'watchlist',
+      normalizedInput: userId,
+    }
+  }
+
+  return {
+    exportUrl: `https://www.imdb.com/user/${userId}/ratings/export`,
+    pageUrl: `https://www.imdb.com/user/${userId}/ratings`,
+    sourceType: 'ratings',
+    normalizedInput: userId,
+  }
+}
+
+/**
+ * Attempt to discover an IMDb CSV export URL from a ratings/watchlist/list HTML page.
+ */
+export function extractImdbExportUrlFromHtml(html: string): string | null {
+  const text = String(html || '')
+
+  const patterns: RegExp[] = [
+    // Relative paths typically found in href attributes.
+    /\/(?:list\/[a-z0-9]+|user\/ur\d+\/(?:ratings|watchlist))\/export\/?(?:\?[^"'\s<>]*)?/i,
+    // Absolute URLs embedded directly in markup or scripts.
+    /https:\/\/www\.imdb\.com\/(?:list\/[a-z0-9]+|user\/ur\d+\/(?:ratings|watchlist))\/export\/?(?:\?[^"'\s<>]*)?/i,
+    // Escaped absolute URLs embedded in JSON/script payloads.
+    new RegExp(
+      String.raw`https:\\\/\\\/www\\.imdb\\.com\\\/(?:list\\\/[a-z0-9]+|user\\\/ur\\d+\\\/(?:ratings|watchlist))\\\/export\\\/?(?:\?[^"'\\]*)?`,
+      'i'
+    ),
+  ]
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern)
+    const rawValue = match?.[0]
+    if (!rawValue) continue
+
+    const unescaped = rawValue.replace(/\\\//g, '/')
+
+    if (unescaped.startsWith('http')) {
+      return unescaped
+    }
+
+    if (unescaped.startsWith('/')) {
+      return `https://www.imdb.com${unescaped}`
+    }
+  }
+
+  return null
+}
+
+/**
+ * Extract IMDb title IDs from list/watchlist/ratings HTML when CSV export is blocked.
+ */
+export function extractImdbIdsFromHtml(html: string): string[] {
+  const text = String(html || '')
+  const seen = new Set<string>()
+  const ids: string[] = []
+
+  const patterns: RegExp[] = [
+    /\/title\/(tt\d+)\//gi,
+    /titleId\s*[:=]\s*['"](tt\d+)['"]/gi,
+    /['"]tconst['"]\s*:\s*['"](tt\d+)['"]/gi,
+  ]
+
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null
+    while ((match = pattern.exec(text)) !== null) {
+      const imdbId = (match[1] || '').trim()
+      if (!imdbId || seen.has(imdbId)) continue
+      seen.add(imdbId)
+      ids.push(imdbId)
+    }
+  }
+
+  return ids
+}
+
 /**
  * Parse an IMDb CSV export (ratings or watchlist) and extract movie entries.
  * Handles both the "Your Ratings" and "Watchlist" export formats.

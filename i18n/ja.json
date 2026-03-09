@@ -40,6 +40,6 @@
   "LOGIN_CREATE_TAB": "Create",
   "LOGIN_ROOM_CODE_PLACEHOLDER": "4-digits",
   "LOGIN_ROOM_EXISTS_ERROR": "Room Code already Exists. Try again or click Generate.",
-  "LOGIN_ROOM_NOT_FOUND": "Room code not found. Try again or click Create.",
+  "LOGIN_ROOM_NOT_FOUND": "Room code not found, try again or create a new one by toggling New here? to YES.",
   "LOGIN_STEP_ROOM_CREATE": "Create a new room code."
 }

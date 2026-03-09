@@ -2,7 +2,7 @@
 // deno-lint-ignore-file
 
 import { ComparrAPI } from './ComparrAPI.js'
-import CardView from './CardView.js?v=3'
+import CardView from './CardView.js?v=4'
 import { MatchesView } from './MatchesView.js'
 
 // Global API reference so functions outside main() can access it
@@ -26,6 +26,29 @@ function normalizePoster(u) {
     return '/tmdb-poster/' + u.slice('/poster/'.length) // legacy -> canonical
   if (u.startsWith('http://') || u.startsWith('https://')) return u // full CDN URL
   return '/tmdb-poster' + (u.startsWith('/') ? u : '/' + u) // raw TMDB path
+}
+
+const preloadedPosterUrls = new Set()
+
+function getPosterUrlForPreload(movie) {
+  const normalized = normalizePoster(
+    movie?.art || movie?.posterPath || movie?.poster_path || ''
+  )
+  if (!normalized) return ''
+  if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
+    return normalized
+  }
+  return `${document.body?.dataset?.basePath || ''}${normalized}`
+}
+
+function preloadPosterForMovie(movie) {
+  const url = getPosterUrlForPreload(movie)
+  if (!url || preloadedPosterUrls.has(url)) return
+
+  const img = new Image()
+  img.decoding = 'async'
+  img.src = url
+  img.onload = () => preloadedPosterUrls.add(url)
 }
 
 // Helper function to get genre names from IDs
@@ -64,6 +87,67 @@ function formatRuntime(minutes) {
   }
   return `${mins}m`
 }
+
+function parseNumericRating(value) {
+  if (value === null || value === undefined || value === '') return null
+  const parsed = Number.parseFloat(String(value).replace(/[^\d.]/g, ''))
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function buildRatingHtml(movie, basePath) {
+  const comparr = parseNumericRating(movie?.rating_comparr)
+  const imdb = parseNumericRating(movie?.rating_imdb)
+  const tmdb = parseNumericRating(movie?.rating_tmdb)
+
+  const parts = []
+  if (comparr != null) {
+    parts.push(
+      `<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> <span class="rating-value">${comparr.toFixed(
+        1
+      )}</span>`
+    )
+  }
+  if (imdb != null) {
+    parts.push(
+      `<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> <span class="rating-value">${imdb.toFixed(
+        1
+      )}</span>`
+    )
+  }
+  if (tmdb != null) {
+    parts.push(
+      `<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> <span class="rating-value">${tmdb.toFixed(
+        1
+      )}</span>`
+    )
+  }
+
+  if (parts.length > 0) {
+    return parts.join(' <span class="rating-separator">&bull;</span> ')
+  }
+
+  const raw = String(movie?.rating || '').trim()
+  if (!raw) return ''
+  if (raw.includes('<img')) return raw
+
+  const parsedFromText = {
+    comparr: parseNumericRating(
+      raw.match(/comparr\s*[:\-]?\s*([\d.]+)/i)?.[1] || null
+    ),
+    imdb: parseNumericRating(raw.match(/imdb\s*[:\-]?\s*([\d.]+)/i)?.[1]),
+    tmdb: parseNumericRating(raw.match(/tmdb\s*[:\-]?\s*([\d.]+)/i)?.[1]),
+  }
+
+  return buildRatingHtml(
+    {
+      rating_comparr: parsedFromText.comparr,
+      rating_imdb: parsedFromText.imdb,
+      rating_tmdb: parsedFromText.tmdb,
+    },
+    basePath
+  )
+}
+
 // ===== END OF HELPER FUNCTIONS =====
 
 // ===== FUNNY LOADING MESSAGES =====
@@ -148,10 +232,104 @@ const filterDisplayNames = {
   DK: 'Denmark',
 }
 
-const DEFAULT_YEAR_MIN = 2000
-const DEFAULT_VOTE_COUNT = 25
+const DEFAULT_YEAR_MIN = 1895
+const DEFAULT_VOTE_COUNT = 0
 const DEFAULT_LANGUAGES = [] // Start with no language filter to show all movies
 const SWIPE_DEFAULTS_STORAGE_KEY = 'comparrSwipeFilterDefaults'
+const DISPLAY_PREFERENCES_STORAGE_PREFIX = 'comparrDisplayPreferences'
+
+function getDisplayPreferencesStorageKey() {
+  const userName =
+    sessionStorage.getItem('userName') ||
+    localStorage.getItem('personalUser') ||
+    localStorage.getItem('user') ||
+    'default-user'
+  const roomCode =
+    sessionStorage.getItem('roomCode') ||
+    localStorage.getItem('personalRoomCode') ||
+    localStorage.getItem('roomCode') ||
+    'default-room'
+  return `${DISPLAY_PREFERENCES_STORAGE_PREFIX}:${roomCode}:${userName}`
+}
+
+function getDefaultDisplayPreferences() {
+  return {
+    showSeenList: false,
+    showPassList: false,
+  }
+}
+
+function loadDisplayPreferences() {
+  const defaults = getDefaultDisplayPreferences()
+  try {
+    const raw = localStorage.getItem(getDisplayPreferencesStorageKey())
+    if (!raw) return defaults
+    const parsed = JSON.parse(raw)
+    return {
+      showSeenList:
+        typeof parsed?.showSeenList === 'boolean'
+          ? parsed.showSeenList
+          : defaults.showSeenList,
+      showPassList:
+        typeof parsed?.showPassList === 'boolean'
+          ? parsed.showPassList
+          : defaults.showPassList,
+    }
+  } catch (err) {
+    console.warn('Failed to load display preferences:', err)
+    return defaults
+  }
+}
+
+function saveDisplayPreferences(preferences) {
+  try {
+    localStorage.setItem(
+      getDisplayPreferencesStorageKey(),
+      JSON.stringify(preferences)
+    )
+  } catch (err) {
+    console.warn('Failed to save display preferences:', err)
+  }
+}
+
+function applyDisplayPreferencesToNavigation(preferences) {
+  const showSeenList = preferences?.showSeenList === true
+  const showPassList = preferences?.showPassList === true
+
+  document.querySelectorAll('[data-tab="tab-seen"]').forEach(el => {
+    el.style.display = showSeenList ? '' : 'none'
+  })
+  document.querySelectorAll('[data-tab="tab-dislikes"]').forEach(el => {
+    el.style.display = showPassList ? '' : 'none'
+  })
+
+  const seenPanel = document.getElementById('tab-seen')
+  const passPanel = document.getElementById('tab-dislikes')
+  if (seenPanel && !showSeenList) {
+    seenPanel.hidden = !showSeenList
+  }
+  if (passPanel && !showPassList) {
+    passPanel.hidden = !showPassList
+  }
+
+  const activePanel = document.querySelector('.tab-panel:not([hidden])')
+  const activePanelId = activePanel?.id
+  const activePanelHiddenByPreference =
+    (activePanelId === 'tab-seen' && !showSeenList) ||
+    (activePanelId === 'tab-dislikes' && !showPassList)
+
+  if (activePanelHiddenByPreference) {
+    const swipeButtons = document.querySelectorAll('[data-tab="tab-swipe"]')
+    swipeButtons.forEach(button => button.classList.add('is-active'))
+    const swipePanel = document.getElementById('tab-swipe')
+    document.querySelectorAll('.tab-panel').forEach(panel => {
+      panel.hidden = panel.id !== 'tab-swipe'
+    })
+    if (swipePanel) {
+      swipePanel.hidden = false
+    }
+  }
+}
 
 // Update dropdown button text based on selected items
 function updateDropdownButtonText(
@@ -376,6 +554,19 @@ function initTabs() {
     ? tabbar.querySelectorAll('[data-tab]:not(.mobile-settings-item)')
     : []
   const allButtons = [...sidebarButtons, ...tabbarButtons]
+  const isPersonalMode = document.body.dataset.appMode === 'personal'
+
+  applyDisplayPreferencesToNavigation(loadDisplayPreferences())
+
+  if (isPersonalMode) {
+    document.querySelectorAll('[data-tab="tab-matches"]').forEach(node => {
+      node.style.display = 'none'
+    })
+    const matchesPanel = document.getElementById('tab-matches')
+    if (matchesPanel) {
+      matchesPanel.hidden = true
+    }
+  }
 
   // Dropdown support (for mobile tabbar)
   const dropdown = document.querySelector(
@@ -673,8 +864,7 @@ function sortWatchList(sortBy) {
       const imdb = imdbMatch ? parseFloat(imdbMatch[1]) : 0
 
       // Extract RT rating: <img src="..." alt="RT"> 85%
-      const rtMatch = innerHTML.match(/rottentomatoes\.svg[^>]*>\s*([\d.]+)%/i)
-      const rt = rtMatch ? parseFloat(rtMatch[1]) : 0
+      const rt = 0
 
       // Extract TMDb rating: <img src="..." alt="TMDb"> 7.5
       const tmdbMatch = innerHTML.match(/tmdb\.svg[^>]*>\s*([\d.]+)/i)
@@ -748,7 +938,26 @@ function setSettingsStatus(message) {
   const status = document.querySelector('.settings-status')
   if (status) {
     status.textContent = message
+    if (!message) {
+      status.classList.remove('is-success', 'is-error', 'is-pulsing')
+    }
   }
+}
+
+function pulseSettingsStatus(type = 'info') {
+  const status = document.querySelector('.settings-status')
+  if (!status) return
+
+  status.classList.remove('is-success', 'is-error', 'is-pulsing')
+  if (type === 'success') {
+    status.classList.add('is-success')
+  } else if (type === 'error') {
+    status.classList.add('is-error')
+  }
+
+  // Force reflow so the pulse animation can retrigger each time.
+  void status.offsetWidth
+  status.classList.add('is-pulsing')
 }
 
 function clearSettingsStatusAfterDelay(delayMs = 0) {
@@ -787,8 +996,94 @@ function setSettingsDirty(isDirty) {
   settingsDirty = Boolean(isDirty)
   if (settingsDirty) {
     setSettingsStatus('You have unsaved changes.')
+    pulseSettingsStatus('info')
   }
   syncSettingsFooterActions()
+}
+
+function hydrateDisplaySettingsForm() {
+  displayPreferences = loadDisplayPreferences()
+  const showSeenListInput = document.getElementById(
+    'setting-display-show-seen-list'
+  )
+  const showPassListInput = document.getElementById(
+    'setting-display-show-pass-list'
+  )
+
+  if (showSeenListInput) {
+    showSeenListInput.setAttribute(
+      'aria-pressed',
+      displayPreferences.showSeenList === true ? 'true' : 'false'
+    )
+    showSeenListInput.textContent =
+      displayPreferences.showSeenList === true
+        ? 'Hide Seen List'
+        : 'Show Seen List'
+  }
+  if (showPassListInput) {
+    showPassListInput.setAttribute(
+      'aria-pressed',
+      displayPreferences.showPassList === true ? 'true' : 'false'
+    )
+    showPassListInput.textContent =
+      displayPreferences.showPassList === true
+        ? 'Hide Pass List'
+        : 'Show Pass List'
+  }
+}
+
+function collectDisplaySettingsForm() {
+  const showSeenListInput = document.getElementById(
+    'setting-display-show-seen-list'
+  )
+  const showPassListInput = document.getElementById(
+    'setting-display-show-pass-list'
+  )
+
+  return {
+    showSeenList: showSeenListInput
+      ? showSeenListInput.getAttribute('aria-pressed') === 'true'
+      : false,
+    showPassList: showPassListInput
+      ? showPassListInput.getAttribute('aria-pressed') === 'true'
+      : false,
+  }
+}
+
+function initializeDisplaySettingsToggleButtons() {
+  const toggleButtons = [
+    {
+      id: 'setting-display-show-seen-list',
+      enabledLabel: 'Hide Seen List',
+      disabledLabel: 'Show Seen List',
+    },
+    {
+      id: 'setting-display-show-pass-list',
+      enabledLabel: 'Hide Pass List',
+      disabledLabel: 'Show Pass List',
+    },
+  ]
+
+  toggleButtons.forEach(({ id, enabledLabel, disabledLabel }) => {
+    const button = document.getElementById(id)
+    if (!button || button.dataset.displayToggleBound === 'true') return
+
+    button.addEventListener('click', () => {
+      const enabled = button.getAttribute('aria-pressed') !== 'true'
+      button.setAttribute('aria-pressed', enabled ? 'true' : 'false')
+      button.textContent = enabled ? enabledLabel : disabledLabel
+      setSettingsDirty(true)
+    })
+
+    button.dataset.displayToggleBound = 'true'
+  })
+}
+
+function saveDisplaySettingsForm() {
+  const nextPreferences = collectDisplaySettingsForm()
+  displayPreferences = nextPreferences
+  saveDisplayPreferences(nextPreferences)
+  applyDisplayPreferencesToNavigation(nextPreferences)
 }
 
 // Keep admin password in sessionStorage only (tab-scoped, cleared on close).
@@ -801,6 +1096,7 @@ let settingsAccessState = {
 let hasAdminSettingsAccess = false
 let currentSettingsTarget = 'settings-availability'
 let activeAdminSettingsTab = 'settings-core'
+let displayPreferences = loadDisplayPreferences()
 
 function getAdminHeaders() {
   return adminPassword ? { 'x-admin-password': adminPassword } : {}
@@ -855,6 +1151,15 @@ async function loadClientConfig() {
     }
     if (data?.personalMediaSources !== undefined) {
       window.PERSONAL_MEDIA_SOURCES = data.personalMediaSources
+    }
+    if (data?.plexConfigured !== undefined) {
+      window.PLEX_CONFIGURED = Boolean(data.plexConfigured)
+    }
+    if (data?.embyConfigured !== undefined) {
+      window.EMBY_CONFIGURED = Boolean(data.embyConfigured)
+    }
+    if (data?.jellyfinConfigured !== undefined) {
+      window.JELLYFIN_CONFIGURED = Boolean(data.jellyfinConfigured)
     }
     updateHostManagedSubscriptionServiceOptions()
   } catch (err) {
@@ -1078,11 +1383,9 @@ function updatePersonalMediaSourceConfigVisibility(selectedSources = []) {
   )
 
   document.querySelectorAll('[data-personal-media-config]').forEach(section => {
-    const source = String(
-      section.dataset.personalMediaConfig || ''
-    ).toLowerCase()
-    const isSelected = selected.has(source)
-    section.toggleAttribute('hidden', !isSelected)
+    // Keep all personal media config sections visible so admins can preconfigure
+    // integrations before enabling them as active personal media sources.
+    section.toggleAttribute('hidden', false)
   })
 
   document
@@ -1379,6 +1682,11 @@ function isValidUrl(value) {
 function initializeIntegrationTestButtons() {
   const mappings = {
     plex: { url: 'setting-plex-url', key: 'setting-plex-token' },
+    emby: { url: 'setting-emby-url', key: 'setting-emby-api-key' },
+    jellyfin: {
+      url: 'setting-jellyfin-url',
+      key: 'setting-jellyfin-api-key',
+    },
     radarr: { url: 'setting-radarr-url', key: 'setting-radarr-api-key' },
     jellyseerr: {
       url: 'setting-jellyseerr-url',
@@ -1389,16 +1697,16 @@ function initializeIntegrationTestButtons() {
       key: 'setting-overseerr-api-key',
     },
     tmdb: { key: 'setting-tmdb-key' },
-    omdb: { key: 'setting-omdb-key' },
   }
 
   const targetLabels = {
     plex: 'Plex',
+    emby: 'Emby',
+    jellyfin: 'Jellyfin',
     radarr: 'Radarr',
     jellyseerr: 'Jellyseerr',
     overseerr: 'Overseerr',
     tmdb: 'TMDB',
-    omdb: 'OMDb',
   }
 
   document.querySelectorAll('[data-test-target]').forEach(button => {
@@ -1610,15 +1918,26 @@ async function saveSettingsForm() {
     if (data?.settings?.PLEX_LIBRARY_NAME) {
       window.PLEX_LIBRARY_NAME = data.settings.PLEX_LIBRARY_NAME
     }
+    if (data?.settings?.PAID_STREAMING_SERVICES !== undefined) {
+      window.PAID_STREAMING_SERVICES = data.settings.PAID_STREAMING_SERVICES
+    }
+    if (data?.settings?.PERSONAL_MEDIA_SOURCES !== undefined) {
+      window.PERSONAL_MEDIA_SOURCES = data.settings.PERSONAL_MEDIA_SOURCES
+    }
+    await loadClientConfig()
+    updateHostManagedSubscriptionServiceOptions()
+    updateSwipeAvailabilityUI()
     setSettingsStatus(
       'Settings saved. Caches are refreshing in the background.'
     )
+    pulseSettingsStatus('success')
     setSettingsDirty(false)
   } catch (err) {
     console.error('Failed to save settings:', err)
     setSettingsStatus(
       `Failed to save settings: ${err?.message || 'Unknown error.'}`
     )
+    pulseSettingsStatus('error')
   }
 }
 
@@ -1637,7 +1956,9 @@ async function hydrateSettingsUiIfAuthorized() {
   initializeAdvancedSettingsToggle()
   initializeAdminSettingsTabs()
   initializeIntegrationTestButtons()
+  initializeDisplaySettingsToggleButtons()
   await hydrateSettingsForm()
+  hydrateDisplaySettingsForm()
 
   document
     .querySelectorAll(
@@ -1654,6 +1975,13 @@ async function hydrateSettingsUiIfAuthorized() {
     ?.addEventListener('click', () => {
       if (currentSettingsTarget === 'settings-defaults') {
         swipeFilterApply?.click()
+        return
+      }
+      if (currentSettingsTarget === 'settings-display') {
+        saveDisplaySettingsForm()
+        setSettingsStatus('Display settings saved.')
+        pulseSettingsStatus('success')
+        setSettingsDirty(false)
         return
       }
       saveSettingsForm()
@@ -1775,8 +2103,7 @@ function sortPassList(sortBy) {
       const innerHTML = ratingEl.innerHTML
       const imdbMatch = innerHTML.match(/imdb\.svg[^>]*>\s*([\d.]+)/i)
       const imdb = imdbMatch ? parseFloat(imdbMatch[1]) : 0
-      const rtMatch = innerHTML.match(/rottentomatoes\.svg[^>]*>\s*([\d.]+)%/i)
-      const rt = rtMatch ? parseFloat(rtMatch[1]) : 0
+      const rt = 0
       const tmdbMatch = innerHTML.match(/tmdb\.svg[^>]*>\s*([\d.]+)/i)
       const tmdb = tmdbMatch ? parseFloat(tmdbMatch[1]) : 0
       return { imdb, rt, tmdb }
@@ -1873,8 +2200,7 @@ function sortSeenList(sortBy) {
       const innerHTML = ratingEl.innerHTML
       const imdbMatch = innerHTML.match(/imdb\.svg[^>]*>\s*([\d.]+)/i)
       const imdb = imdbMatch ? parseFloat(imdbMatch[1]) : 0
-      const rtMatch = innerHTML.match(/rottentomatoes\.svg[^>]*>\s*([\d.]+)%/i)
-      const rt = rtMatch ? parseFloat(rtMatch[1]) : 0
+      const rt = 0
       const tmdbMatch = innerHTML.match(/tmdb\.svg[^>]*>\s*([\d.]+)/i)
       const tmdb = tmdbMatch ? parseFloat(tmdbMatch[1]) : 0
       return { imdb, rt, tmdb }
@@ -1951,6 +2277,7 @@ async function login(api) {
   const loginSection = document.querySelector('.login-section')
   const passwordForm = document.querySelector('.js-password-form')
   const loginForm = document.querySelector('.js-login-form')
+  const modeForm = document.querySelector('.js-mode-form')
   const roomCodeInput = loginForm?.elements?.roomCode
   const generatedRoomCodeInput = loginForm?.elements?.generatedRoomCode
   const roomCodeError = document.querySelector('.js-room-code-error')
@@ -1960,6 +2287,7 @@ async function login(api) {
   )
   const roomModeTabs = [...document.querySelectorAll('.js-room-mode-tab')]
   const roomModePanels = [...document.querySelectorAll('.js-room-code-panel')]
+  const loginSubmitButton = document.querySelector('.js-login-submit-button')
   const generateBtn = document.querySelector('.js-generate-room-code')
   const roomCodeLine = document.querySelector('.js-room-code-line')
   const i18nRoomExistsMessage =
@@ -1967,12 +2295,8 @@ async function login(api) {
     'Room Code already Exists. Try again or click Generate.'
   const i18nRoomNotFoundMessage =
     document.body.dataset.i18nRoomNotFoundMessage ||
-    'Room code not found. Try again or click Create.'
-  const i18nRoomStepJoin =
-    document.body.dataset.i18nRoomStepJoin ||
-    'Enter your shared/private room code'
-  const i18nRoomStepCreate =
-    document.body.dataset.i18nRoomStepCreate || 'Create a new room code.'
+    'Room code not found, try again or create a new one by toggling New here? to YES.'
+  const loginHelperCopy = document.querySelector('.login-helper-copy')
 
   const passwordError = document.createElement('p')
   passwordError.className = 'password-error-message'
@@ -1996,14 +2320,66 @@ async function login(api) {
     loginError.hidden = !message
   }
 
+  const promptActiveSessionTakeover = () => {
+    const overlay = document.getElementById('active-session-overlay')
+    const popup = document.getElementById('active-session-popup')
+    const continueBtn = document.getElementById('active-session-continue-btn')
+    const cancelBtn = document.getElementById('active-session-cancel-btn')
+
+    if (!overlay || !popup || !continueBtn || !cancelBtn) {
+      return Promise.resolve(
+        window.confirm(
+          'You already have an active session. Continue to log out all other active sessions on all devices?'
+        )
+      )
+    }
+
+    const closePrompt = () => {
+      popup.classList.remove('active')
+      overlay.classList.remove('active')
+    }
+
+    return new Promise(resolve => {
+      const cleanup = () => {
+        continueBtn.removeEventListener('click', onContinue)
+        cancelBtn.removeEventListener('click', onCancel)
+        overlay.removeEventListener('click', onCancel)
+      }
+
+      const onContinue = () => {
+        cleanup()
+        closePrompt()
+        resolve(true)
+      }
+
+      const onCancel = () => {
+        cleanup()
+        closePrompt()
+        modeForm.style.display = 'grid'
+        loginForm.style.display = 'none'
+        setLoginError('')
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        resolve(false)
+      }
+
+      continueBtn.addEventListener('click', onContinue)
+      cancelBtn.addEventListener('click', onCancel)
+      overlay.addEventListener('click', onCancel)
+
+      overlay.classList.add('active')
+      popup.classList.add('active')
+    })
+  }
+
   const normalizeRoomCodeInput = value =>
     String(value || '')
       .trim()
       .toUpperCase()
       .replace(/[^0-9A-Z]/g, '')
-      .slice(0, 6)
+      .slice(0, 4)
 
   let roomMode = 'join'
+  let selectedMode = 'group'
 
   const getActiveRoomCode = () => {
     if (roomMode === 'create') {
@@ -2017,7 +2393,6 @@ async function login(api) {
     const normalized = normalizeRoomCodeInput(code)
     if (roomMode === 'create') {
       if (generatedRoomCodeInput) generatedRoomCodeInput.value = normalized
-      if (roomCodeInput) roomCodeInput.value = normalized
       return
     }
 
@@ -2025,20 +2400,34 @@ async function login(api) {
   }
 
   const syncRoomCodeInputs = () => {
-    const activeCode = getActiveRoomCode()
-    if (roomCodeInput && roomCodeInput.value !== activeCode) {
-      roomCodeInput.value = activeCode
+    if (roomMode === 'create') {
+      if (generatedRoomCodeInput) {
+        generatedRoomCodeInput.value = normalizeRoomCodeInput(
+          generatedRoomCodeInput.value
+        )
+      }
+      return
     }
-    if (
-      generatedRoomCodeInput &&
-      generatedRoomCodeInput.value !== activeCode &&
-      roomMode === 'create'
-    ) {
-      generatedRoomCodeInput.value = activeCode
+
+    if (roomCodeInput) {
+      roomCodeInput.value = normalizeRoomCodeInput(roomCodeInput.value)
     }
   }
 
-  const setRoomMode = mode => {
+  const getRoomStepCopy = (mode, selectedMode) => {
+    const isCreate = mode === 'create'
+    const isPersonalMode = selectedMode === 'personal'
+
+    if (!isCreate) {
+      return 'Room Code'
+    }
+
+    return isPersonalMode
+      ? 'Create a new private room code.'
+      : 'Create a new group room code.'
+  }
+
+  const setRoomMode = (mode, selectedMode = 'group') => {
     roomMode = mode === 'create' ? 'create' : 'join'
 
     roomModeTabs.forEach(tab => {
@@ -2052,8 +2441,15 @@ async function login(api) {
     })
 
     if (roomStepInstruction) {
-      roomStepInstruction.textContent =
-        roomMode === 'create' ? i18nRoomStepCreate : i18nRoomStepJoin
+      roomStepInstruction.textContent = getRoomStepCopy(roomMode, selectedMode)
+    }
+
+    if (loginHelperCopy) {
+      loginHelperCopy.hidden = roomMode !== 'join'
+    }
+
+    if (loginSubmitButton) {
+      loginSubmitButton.hidden = roomMode === 'join'
     }
 
     setRoomCodeError('')
@@ -2063,7 +2459,7 @@ async function login(api) {
 
   roomModeTabs.forEach(tab => {
     tab.addEventListener('click', () => {
-      setRoomMode(tab.dataset.roomMode)
+      setRoomMode(tab.dataset.roomMode, selectedMode)
     })
   })
 
@@ -2080,55 +2476,120 @@ async function login(api) {
 
   let verifiedPassword = null
 
-  if (passwordForm && loginForm) {
+  const handleVerifiedPassword = accessPassword => {
+    setPasswordError('')
+    setLoginError('')
+    verifiedPassword = accessPassword
+    sessionStorage.setItem('comparrAccessPassword', accessPassword)
+    passwordForm.style.display = 'none'
+    modeForm.style.display = 'grid'
+
+    // Scroll to top of page
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+
+    // restore cached values
+    const savedUser = localStorage.getItem('user')
+    const savedCode = localStorage.getItem('roomCode')
+    const normalizedSavedCode = normalizeRoomCodeInput(savedCode)
+    const hasMeaningfulSavedGroupCredentials =
+      Boolean(savedUser && normalizedSavedCode) &&
+      !(savedUser.trim() === 'Solo' && normalizedSavedCode === 'SOLO')
+
+    if (hasMeaningfulSavedGroupCredentials) {
+      loginForm.elements.name.value = savedUser
+      if (roomCodeInput) roomCodeInput.value = normalizedSavedCode
+    }
+
+    setRoomMode('join', selectedMode)
+  }
+
+  if (passwordForm && loginForm && modeForm) {
     passwordForm.style.display = 'flex'
+    modeForm.style.display = 'none'
     loginForm.style.display = 'none'
   }
 
-  // Handle password verification first
-  await new Promise(resolve => {
-    const handlePasswordSubmit = async e => {
-      e.preventDefault()
-      const fd = new FormData(passwordForm)
-      const accessPassword = fd.get('accessPassword')
-      if (!accessPassword) return
+  let skipPasswordPrompt = false
+  const shouldReturnToModeSelection =
+    sessionStorage.getItem('comparrReturnToModeSelection') === '1'
+  const storedAccessPassword = sessionStorage.getItem('comparrAccessPassword')
 
-      setPasswordError('')
+  if (shouldReturnToModeSelection) {
+    sessionStorage.removeItem('comparrReturnToModeSelection')
 
+    if (storedAccessPassword) {
       try {
-        await api.verifyAccessPassword(accessPassword)
-      } catch (err) {
-        setPasswordError(err.message)
-        return
+        await api.verifyAccessPassword(storedAccessPassword)
+        handleVerifiedPassword(storedAccessPassword)
+        skipPasswordPrompt = true
+      } catch {
+        sessionStorage.removeItem('comparrAccessPassword')
       }
-
-      // Store password and show login form
-      setPasswordError('')
-      setLoginError('')
-      verifiedPassword = accessPassword
-      passwordForm.style.display = 'none'
-      loginForm.style.display = 'block'
-
-      // Scroll to top of page
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-
-      // restore cached values
-      const savedUser = localStorage.getItem('user')
-      const savedCode = localStorage.getItem('roomCode')
-      if (savedUser) loginForm.elements.name.value = savedUser
-      if (savedCode) {
-        const normalizedSavedCode = normalizeRoomCodeInput(savedCode)
-        if (roomCodeInput) roomCodeInput.value = normalizedSavedCode
-        if (generatedRoomCodeInput) {
-          generatedRoomCodeInput.value = normalizedSavedCode
-        }
-      }
-
-      setRoomMode('join')
-      resolve()
     }
-    passwordForm.addEventListener('submit', handlePasswordSubmit)
+  }
+
+  if (!skipPasswordPrompt) {
+    // Handle password verification first
+    await new Promise(resolve => {
+      const handlePasswordSubmit = async e => {
+        e.preventDefault()
+        const fd = new FormData(passwordForm)
+        const accessPassword = fd.get('accessPassword')
+        if (!accessPassword) return
+
+        setPasswordError('')
+
+        try {
+          await api.verifyAccessPassword(accessPassword)
+        } catch (err) {
+          setPasswordError(err.message)
+          return
+        }
+
+        handleVerifiedPassword(accessPassword)
+        resolve()
+      }
+      passwordForm.addEventListener('submit', handlePasswordSubmit)
+    })
+  }
+
+  selectedMode = await new Promise(resolve => {
+    const handleModeSubmit = e => {
+      e.preventDefault()
+      const submitter = e.submitter
+      const mode = submitter?.value === 'group' ? 'group' : 'personal'
+      modeForm.removeEventListener('submit', handleModeSubmit)
+      resolve(mode)
+    }
+    modeForm.addEventListener('submit', handleModeSubmit)
   })
+
+  modeForm.style.display = 'none'
+  loginForm.style.display = 'grid'
+
+  if (selectedMode === 'personal') {
+    setRoomMode('join', selectedMode)
+
+    const savedPersonalUser = (
+      localStorage.getItem('personalUser') ||
+      localStorage.getItem('user') ||
+      ''
+    ).trim()
+    const savedPersonalCode = normalizeRoomCodeInput(
+      localStorage.getItem('personalRoomCode') || ''
+    )
+
+    if (savedPersonalUser) {
+      loginForm.elements.name.value = savedPersonalUser
+    }
+    if (savedPersonalCode && roomCodeInput) {
+      roomCodeInput.value = savedPersonalCode
+    }
+  }
+
+  if (selectedMode !== 'personal') {
+    setRoomMode('join', selectedMode)
+  }
 
   // Generate unique code
   generateBtn?.addEventListener('click', async () => {
@@ -2136,7 +2597,7 @@ async function login(api) {
     setLoginError('')
     try {
       const code = await api.generateRoomCode()
-      setRoomMode('create')
+      setRoomMode('create', selectedMode)
       setActiveRoomCode(code)
       syncRoomCodeInputs()
     } catch (err) {
@@ -2156,8 +2617,8 @@ async function login(api) {
       if (generatedRoomCodeInput) generatedRoomCodeInput.value = code
 
       if (!name || !code) return
-      if (!/^[0-9A-Z]{4,6}$/.test(code)) {
-        setRoomCodeError('Room code must be 4-6 characters (A-Z or 0-9).')
+      if (!/^[0-9A-Z]{4}$/.test(code)) {
+        setRoomCodeError('Room code must be exactly 4 characters (A-Z or 0-9).')
         return
       }
 
@@ -2179,8 +2640,24 @@ async function login(api) {
           return
         }
 
-        const data = await api.login(name, code, verifiedPassword)
+        let data
+        try {
+          data = await api.login(name, code, verifiedPassword)
+        } catch (err) {
+          if (err.code !== 'ACTIVE_SESSION_EXISTS') {
+            throw err
+          }
+
+          const shouldTakeOver = await promptActiveSessionTakeover()
+          if (!shouldTakeOver) {
+            return
+          }
+
+          data = await api.login(name, code, verifiedPassword, true)
+        }
         loginForm.removeEventListener('submit', handleSubmit)
+
+        const isPersonalMode = selectedMode === 'personal'
 
         // hide login
         await loginSection.animate(
@@ -2189,9 +2666,14 @@ async function login(api) {
         ).finished
         loginSection.hidden = true
 
-        // remember
-        localStorage.setItem('user', name)
-        localStorage.setItem('roomCode', code)
+        if (isPersonalMode) {
+          localStorage.setItem('personalUser', name)
+          localStorage.setItem('personalRoomCode', code)
+          document.body.dataset.appMode = 'personal'
+        } else {
+          localStorage.setItem('user', name)
+          localStorage.setItem('roomCode', code)
+        }
 
         roomCodeLine.dataset.roomCode = code
         document.body.scrollIntoView()
@@ -2200,7 +2682,9 @@ async function login(api) {
         await Promise.all(
           [
             ...document.querySelectorAll(
-              '.rate-section, .matches-section, #tab-likes, #tab-dislikes'
+              isPersonalMode
+                ? '.rate-section'
+                : '.rate-section, .matches-section'
             ),
           ].map(node => {
             node.hidden = false
@@ -2212,7 +2696,12 @@ async function login(api) {
         )
 
         initTabs()
-        resolve({ ...data, user: name, roomCode: code })
+        resolve({
+          ...data,
+          user: name,
+          roomCode: code,
+          appMode: isPersonalMode ? 'personal' : 'group',
+        })
       } catch (err) {
         setLoginError(err.message)
       }
@@ -2523,11 +3012,12 @@ async function appendRatedRow(
               : ''
           }
           ${metadataBadgesHTML}
-          ${
-            movie.rating
-              ? `<div class="watch-card-ratings">${movie.rating}</div>`
+          ${(() => {
+            const ratingHtml = buildRatingHtml(movie, basePath)
+            return ratingHtml
+              ? `<div class="watch-card-ratings">${ratingHtml}</div>`
               : ''
-          }
+          })()}
     
         <div class="watch-card-actions">
           <div class="service-dropdown">
@@ -2731,41 +3221,11 @@ async function appendRatedRow(
           // Update the rating display - always update even if empty to show that refresh completed
           const ratingEl = card.querySelector('.watch-card-ratings')
           if (ratingEl) {
-            // If we have ratings, update them. If not but rating exists in response, use it
-            if (data.rating) {
-              ratingEl.innerHTML = data.rating
-            } else if (
-              data.rating_imdb ||
-              data.rating_rt ||
-              data.rating_tmdb ||
-              data.rating_comparr
-            ) {
-              // Build rating HTML from individual ratings if rating string not provided
-              const basePath = document.body.dataset.basePath || ''
-              const ratingParts = []
-              if (data.rating_comparr)
-                ratingParts.push(
-                  `<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> ${data.rating_comparr}`
-                )
-              if (data.rating_imdb)
-                ratingParts.push(
-                  `<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> ${data.rating_imdb}`
-                )
-              if (data.rating_rt)
-                ratingParts.push(
-                  `<img src="${basePath}/assets/logos/rottentomatoes.svg" alt="RT" class="rating-logo"> ${data.rating_rt}%`
-                )
-              if (data.rating_tmdb)
-                ratingParts.push(
-                  `<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> ${data.rating_tmdb}`
-                )
-              ratingEl.innerHTML =
-                ratingParts.length > 0
-                  ? ratingParts.join(
-                      ' <span class="rating-separator">&bull;</span> '
-                    )
-                  : ''
-            }
+            const ratingHtml = buildRatingHtml(
+              data,
+              document.body.dataset.basePath || ''
+            )
+            ratingEl.innerHTML = ratingHtml
           }
 
           // Update Plex status / Add to Plex button
@@ -2962,11 +3422,12 @@ async function appendRatedRow(
               ? `<p class="watch-card-summary">${movie.summary}</p>`
               : ''
           }
-          ${
-            movie.rating
-              ? `<div class="watch-card-ratings">${movie.rating}</div>`
+          ${(() => {
+            const ratingHtml = buildRatingHtml(movie, basePath)
+            return ratingHtml
+              ? `<div class="watch-card-ratings">${ratingHtml}</div>`
               : ''
-          }
+          })()}
         
           <!-- Move to other lists buttons -->
           <div class="list-actions">
@@ -3086,11 +3547,12 @@ async function appendRatedRow(
               ? `<p class="watch-card-summary">${movie.summary}</p>`
               : ''
           }
-          ${
-            movie.rating
-              ? `<div class="watch-card-ratings">${movie.rating}</div>`
+          ${(() => {
+            const ratingHtml = buildRatingHtml(movie, basePath)
+            return ratingHtml
+              ? `<div class="watch-card-ratings">${ratingHtml}</div>`
               : ''
-          }
+          })()}
         
           <!-- Move to other lists buttons -->
           <div class="list-actions">
@@ -3920,12 +4382,21 @@ const main = async () => {
   console.log('⏳ Waiting for login...')
   const loginData = await login(api)
   console.log('✅ Login successful:', loginData)
-  const { matches, rated, user: userName, roomCode } = loginData
+  const {
+    matches,
+    rated,
+    user: userName,
+    roomCode,
+    appMode = 'group',
+  } = loginData
 
   document.body.classList.add('is-logged-in')
+  document.body.dataset.appMode = appMode
 
   sessionStorage.setItem('userName', userName)
   sessionStorage.setItem('roomCode', roomCode)
+  displayPreferences = loadDisplayPreferences()
+  applyDisplayPreferencesToNavigation(displayPreferences)
 
   // Track movies this user has already rated (to prevent showing them again)
   const normalizeGuid = value => {
@@ -3983,6 +4454,9 @@ const main = async () => {
 
   // Get Plex library name from server config (fallback to default)
   window.PLEX_LIBRARY_NAME = 'My Plex Library'
+  window.PLEX_CONFIGURED = false
+  window.EMBY_CONFIGURED = false
+  window.JELLYFIN_CONFIGURED = false
   await loadClientConfig()
   await setupSettingsUI()
 
@@ -4032,6 +4506,19 @@ const main = async () => {
   const imdbImportProgress = document.getElementById('imdb-import-progress')
   const imdbImportStatus = document.getElementById('imdb-import-status')
   const imdbImportBar = document.getElementById('imdb-import-bar')
+  let isImdbImportActive = false
+
+  function resetImdbImportProgress() {
+    if (imdbImportProgress) imdbImportProgress.style.display = 'none'
+    if (imdbImportStatus) imdbImportStatus.textContent = 'Importing...'
+    if (imdbImportBar) {
+      imdbImportBar.style.width = '0%'
+      imdbImportBar.classList.remove('error')
+    }
+  }
+
+  // Ensure stale UI state does not survive navigation/reconnect.
+  resetImdbImportProgress()
 
   api.addEventListener('message', e => {
     const data = e.data
@@ -4040,9 +4527,13 @@ const main = async () => {
     if (data.type === 'imdbImportProgress') {
       const { status, total, processed, imported, skipped } = data.payload
 
-      if (imdbImportProgress) imdbImportProgress.style.display = 'block'
+      if (!['started', 'processing', 'completed'].includes(status)) {
+        return
+      }
 
       if (status === 'started') {
+        isImdbImportActive = true
+        if (imdbImportProgress) imdbImportProgress.style.display = 'block'
         if (imdbImportStatus)
           imdbImportStatus.textContent = `Starting import of ${total} movies...`
         if (imdbImportBar) {
@@ -4050,11 +4541,15 @@ const main = async () => {
           imdbImportBar.classList.remove('error')
         }
       } else if (status === 'processing') {
+        isImdbImportActive = true
+        if (imdbImportProgress) imdbImportProgress.style.display = 'block'
         const pct = total > 0 ? Math.round((processed / total) * 100) : 0
         if (imdbImportStatus)
-          imdbImportStatus.textContent = `Processing: ${processed}/${total} (${imported} added, ${skipped} skipped)`
+          imdbImportStatus.textContent = `Imported ${imported} out of ${total} movies (${processed}/${total} processed, ${skipped} skipped)`
         if (imdbImportBar) imdbImportBar.style.width = `${pct}%`
       } else if (status === 'completed') {
+        if (!isImdbImportActive) return
+
         if (imdbImportStatus)
           imdbImportStatus.textContent = `Done! ${imported} imported, ${skipped} skipped.`
         if (imdbImportBar) imdbImportBar.style.width = '100%'
@@ -4062,15 +4557,18 @@ const main = async () => {
           `IMDb sync complete: ${imported} movies added to Seen list.`
         )
 
-        // Re-enable buttons
-        const imdbUrlSyncBtn = document.getElementById('imdb-url-sync-btn')
+        // Re-enable button
         const imdbCsvUploadBtn = document.getElementById('imdb-csv-upload-btn')
-        if (imdbUrlSyncBtn) imdbUrlSyncBtn.disabled = false
         if (imdbCsvUploadBtn) imdbCsvUploadBtn.disabled = false
+
+        if (typeof window.refreshImdbImportHistory === 'function') {
+          window.refreshImdbImportHistory()
+        }
 
         // Hide progress after delay
         setTimeout(() => {
-          if (imdbImportProgress) imdbImportProgress.style.display = 'none'
+          isImdbImportActive = false
+          resetImdbImportProgress()
         }, 5000)
       }
     }
@@ -4295,12 +4793,18 @@ const main = async () => {
       currentOpen = null
     }
 
+    function positionDropdown(pair) {
+      if (!pair?.toggle || !pair?.list) return
+      const rect = pair.toggle.getBoundingClientRect()
+      pair.list.style.top = `${rect.bottom + 4}px`
+      pair.list.style.left = `${rect.left}px`
+      pair.list.style.width = `${Math.max(rect.width, 200)}px`
+    }
+
     function openDropdown(pair) {
       if (!pair.toggle || !pair.list) return
 
       console.log(`🧠 Opening ${pair.type} dropdown`)
-
-      const rect = pair.toggle.getBoundingClientRect()
 
       // Move to overlay and position
       overlay.appendChild(pair.list)
@@ -4308,9 +4812,9 @@ const main = async () => {
       // Force styles to override CSS
       pair.list.style.cssText = `
         position: fixed !important;
-        top: ${rect.bottom + 4}px !important;
-        left: ${rect.left}px !important;
-        width: ${Math.max(rect.width, 200)}px !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 200px !important;
         max-height: 250px !important;
         display: block !important;
         visibility: visible !important;
@@ -4327,11 +4831,26 @@ const main = async () => {
 
       pair.toggle.classList.add('open')
       currentOpen = pair.type
+      positionDropdown(pair)
 
       console.log(`🧠 ${pair.type} dropdown visible at`, {
         top: pair.list.style.top,
         left: pair.list.style.left,
         display: pair.list.style.display,
+      })
+    }
+
+    let positionUpdateQueued = false
+    function refreshOpenDropdownPosition() {
+      if (positionUpdateQueued) return
+      positionUpdateQueued = true
+
+      requestAnimationFrame(() => {
+        positionUpdateQueued = false
+        if (!currentOpen) return
+        const openPair = pairs.find(p => p.type === currentOpen)
+        if (!openPair) return
+        positionDropdown(openPair)
       })
     }
 
@@ -4472,8 +4991,14 @@ const main = async () => {
       }
     })
 
-    // Close on scroll/resize
-    window.addEventListener('scroll', closeAllDropdowns, { passive: true })
+    // Keep dropdown aligned while scrolling; close on resize to avoid stale layout
+    document.addEventListener('scroll', refreshOpenDropdownPosition, {
+      passive: true,
+      capture: true,
+    })
+    window.addEventListener('scroll', refreshOpenDropdownPosition, {
+      passive: true,
+    })
     window.addEventListener('resize', closeAllDropdowns)
 
     console.log('✅ Dropdown setup complete')
@@ -4597,14 +5122,7 @@ const main = async () => {
   })
 
   /* COMMENTED OUT - RT Rating Filter
-  const rtRatingSlider = document.getElementById('rt-rating')
-  const rtRatingValue = document.getElementById('rt-rating-value')
-  rtRatingSlider?.addEventListener('input', (e) => {
-    const rating = parseInt(e.target.value)
-    filterState.rtRating = rating
-    rtRatingValue.textContent = rating
-  })
-  */
+   */
 
   // Apply filters button
   const applyFiltersBtn = document.getElementById('apply-filters')
@@ -4781,12 +5299,44 @@ const main = async () => {
     }
   })
 
+  const triggerTopCardRate = value => {
+    const activeCard = document.querySelector('.js-card-stack > :first-child')
+    if (!activeCard) {
+      console.log('⚠️ No active card available to rate')
+      return
+    }
+
+    activeCard.dispatchEvent(new MessageEvent('rate', { data: value }))
+  }
+
+  const swipeRateButtons = document.querySelectorAll('.js-swipe-rate')
+  swipeRateButtons.forEach(button => {
+    const handleSwipeRate = event => {
+      event.preventDefault()
+      event.stopPropagation()
+
+      const { rateValue } = button.dataset
+      if (rateValue === 'up') {
+        triggerTopCardRate(true)
+      } else if (rateValue === 'down') {
+        triggerTopCardRate(false)
+      } else {
+        triggerTopCardRate(null)
+      }
+    }
+
+    button.addEventListener('touchend', handleSwipeRate, { passive: false })
+    button.addEventListener('click', handleSwipeRate)
+  })
+
   let movieBuffer = []
   let pendingGuids = new Set()
   let pendingTmdbIds = new Set()
   let isLoadingBatch = false
   let ensureMovieBufferPromise = null
-  const BUFFER_MIN_SIZE = 8
+  let ensureMovieBufferTarget = 0
+  const BUFFER_MIN_SIZE = 10
+  const INITIAL_BUFFER_MIN_SIZE = 4
   const BATCH_SIZE = 20
 
   // Track if initial load has completed (to prevent showing filter notification on startup)
@@ -4801,7 +5351,7 @@ const main = async () => {
   // Prime request-service status and the initial swipe buffer in parallel
   console.log('🧊 Priming request status and initial movie batch...')
   const requestServiceStatusPromise = checkRequestServiceStatus()
-  const initialBufferWarmPromise = ensureMovieBuffer()
+  const initialBufferWarmPromise = ensureMovieBuffer(INITIAL_BUFFER_MIN_SIZE)
 
   await requestServiceStatusPromise
   console.log('📦 Request service status cached')
@@ -4822,15 +5372,80 @@ const main = async () => {
     }
   }
 
+  async function hydrateSeenRatingsRetroactively(limit = 30) {
+    if (!seenList) return
+
+    const cards = Array.from(seenList.querySelectorAll('.watch-card'))
+      .filter(card => {
+        const ratingEl = card.querySelector('.watch-card-ratings')
+        if (!ratingEl) return true
+        return !ratingEl.querySelector('.rating-logo')
+      })
+      .slice(0, limit)
+
+    if (cards.length === 0) return
+
+    console.log(
+      `🔄 Retro-rating refresh queued for ${cards.length} Seen card(s)`
+    )
+
+    const workers = 3
+    let index = 0
+
+    const runWorker = async () => {
+      while (index < cards.length) {
+        const card = cards[index]
+        index += 1
+
+        const idOrGuid = card.dataset.tmdbId || card.dataset.guid
+        if (!idOrGuid) continue
+
+        try {
+          const response = await fetch(
+            `/api/refresh-movie/${encodeURIComponent(idOrGuid)}`
+          )
+          if (!response.ok) continue
+
+          const data = await response.json().catch(() => null)
+          if (!data) continue
+
+          const ratingHtml = buildRatingHtml(data, basePath)
+          if (!ratingHtml) continue
+
+          let ratingEl = card.querySelector('.watch-card-ratings')
+          if (!ratingEl) {
+            ratingEl = document.createElement('div')
+            ratingEl.className = 'watch-card-ratings'
+            const content = card.querySelector('.watch-card-content')
+            content?.prepend(ratingEl)
+          }
+          ratingEl.innerHTML = ratingHtml
+        } catch (err) {
+          console.warn('Seen retro refresh failed:', err)
+        }
+      }
+    }
+
+    await Promise.all(
+      Array.from({ length: Math.min(workers, cards.length) }, () => runWorker())
+    )
+  }
+
+  hydrateSeenRatingsRetroactively().catch(err => {
+    console.warn('Retro Seen ratings hydration failed:', err)
+  })
+
   // =========================================================
-  // IMDb Import Handler (URL sync + CSV upload)
+  // IMDb Import Handler (CSV upload + history)
   // =========================================================
-  const imdbUrlInput = document.getElementById('setting-imdb-sync-url')
-  const imdbUrlSyncBtn = document.getElementById('imdb-url-sync-btn')
   const imdbCsvUploadBtn = document.getElementById('imdb-csv-upload-btn')
   const imdbCsvInput = document.getElementById('imdb-csv-input')
+  const imdbImportHistoryBody = document.getElementById(
+    'imdb-import-history-body'
+  )
 
   function showImdbProgress(text) {
+    isImdbImportActive = true
     if (imdbImportProgress) imdbImportProgress.style.display = 'block'
     if (imdbImportStatus) imdbImportStatus.textContent = text
     if (imdbImportBar) {
@@ -4850,74 +5465,61 @@ const main = async () => {
     showNotification(`IMDb import failed: ${err.message}`)
   }
 
-  // --- URL Sync handler ---
-  if (imdbUrlSyncBtn) {
-    imdbUrlSyncBtn.addEventListener('click', async () => {
-      const imdbUrl = imdbUrlInput?.value?.trim() || ''
-      if (!imdbUrl) {
-        showNotification(
-          'Please set an IMDb list URL in Settings → Sync first.'
-        )
-        return
-      }
-
-      // Basic URL validation
-      if (!imdbUrl.includes('imdb.com/')) {
-        showNotification('Please enter a valid IMDb URL.')
-        return
-      }
-
-      showImdbProgress('Fetching list from IMDb...')
-      imdbUrlSyncBtn.disabled = true
-      if (imdbCsvUploadBtn) imdbCsvUploadBtn.disabled = true
-
-      try {
-        const apiBase = document.body.dataset.basePath || ''
-        const response = await fetch(`${apiBase}/api/imdb-import-url`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imdbUrl, roomCode, userName }),
-        })
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          throw new Error(errorData.error || `Server error: ${response.status}`)
-        }
-
-        const result = await response.json()
-
-        // Handle immediate completion (0 movies) or started status
-        if (result.status === 'completed' && result.total === 0) {
-          if (imdbImportStatus)
-            imdbImportStatus.textContent = 'No movies found in the IMDb list.'
-          if (imdbImportBar) imdbImportBar.style.width = '100%'
-          imdbUrlSyncBtn.disabled = false
-          if (imdbCsvUploadBtn) imdbCsvUploadBtn.disabled = false
-          setTimeout(() => {
-            if (imdbImportProgress) imdbImportProgress.style.display = 'none'
-          }, 3000)
-        } else if (result.status === 'started') {
-          // Background processing started - progress updates will come via WebSocket
-          if (imdbImportStatus)
-            imdbImportStatus.textContent = `Processing ${result.total} movies in background...`
-          if (imdbImportBar) imdbImportBar.style.width = '10%'
-          // Buttons stay disabled - will be re-enabled by WebSocket completion handler
-        }
-      } catch (err) {
-        showImdbError(err)
-        imdbUrlSyncBtn.disabled = false
-        if (imdbCsvUploadBtn) imdbCsvUploadBtn.disabled = false
-      }
-    })
-
-    // Allow pressing Enter in the URL input
-    imdbUrlInput?.addEventListener('keydown', e => {
-      if (e.key === 'Enter') {
-        e.preventDefault()
-        imdbUrlSyncBtn.click()
-      }
-    })
+  function escapeCell(value) {
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
   }
+
+  async function loadImdbImportHistory() {
+    if (!imdbImportHistoryBody) return
+
+    try {
+      const apiBase = document.body.dataset.basePath || ''
+      const response = await fetch(
+        `${apiBase}/api/imdb-import-history?roomCode=${encodeURIComponent(
+          roomCode
+        )}&userName=${encodeURIComponent(userName)}`
+      )
+
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`)
+      }
+
+      const { history } = await response.json()
+      if (!Array.isArray(history) || history.length === 0) {
+        imdbImportHistoryBody.innerHTML =
+          '<tr><td colspan="4">No imports yet.</td></tr>'
+        return
+      }
+
+      imdbImportHistoryBody.innerHTML = history
+        .map(entry => {
+          const uploadDate = new Date(entry.uploadedAt).toLocaleString()
+          const statusClass =
+            entry.status === 'failed' ? 'failed' : 'successful'
+          return `<tr>
+            <td>${escapeCell(entry.fileName || 'IMDb CSV')}</td>
+            <td>${escapeCell(uploadDate)}</td>
+            <td>${escapeCell(entry.movieCount ?? 0)}</td>
+            <td><span class="imdb-import-status-pill ${statusClass}">${escapeCell(
+            entry.status === 'failed' ? 'Failed' : 'Successful'
+          )}</span></td>
+          </tr>`
+        })
+        .join('')
+    } catch (err) {
+      console.warn('Failed to load IMDb import history:', err)
+      imdbImportHistoryBody.innerHTML =
+        '<tr><td colspan="4">Unable to load import history.</td></tr>'
+    }
+  }
+
+  window.refreshImdbImportHistory = loadImdbImportHistory
+  loadImdbImportHistory()
 
   // --- CSV Upload handler ---
   if (imdbCsvUploadBtn && imdbCsvInput) {
@@ -4937,7 +5539,6 @@ const main = async () => {
 
       showImdbProgress('Reading file...')
       imdbCsvUploadBtn.disabled = true
-      if (imdbUrlSyncBtn) imdbUrlSyncBtn.disabled = true
 
       try {
         const csvContent = await file.text()
@@ -4948,7 +5549,12 @@ const main = async () => {
         const response = await fetch(`${apiBase}/api/imdb-import`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ csvContent, roomCode, userName }),
+          body: JSON.stringify({
+            csvContent,
+            roomCode,
+            userName,
+            fileName: file.name,
+          }),
         })
 
         if (imdbImportBar) imdbImportBar.style.width = '20%'
@@ -4966,7 +5572,7 @@ const main = async () => {
             imdbImportStatus.textContent = 'No movies found in the CSV file.'
           if (imdbImportBar) imdbImportBar.style.width = '100%'
           imdbCsvUploadBtn.disabled = false
-          if (imdbUrlSyncBtn) imdbUrlSyncBtn.disabled = false
+          loadImdbImportHistory()
           setTimeout(() => {
             if (imdbImportProgress) imdbImportProgress.style.display = 'none'
           }, 3000)
@@ -4985,25 +5591,25 @@ const main = async () => {
             ) {
               if (imdbImportStatus)
                 imdbImportStatus.textContent = `Processing ${result.total} movies... (check Seen list, refresh if needed)`
-              // Re-enable buttons so user isn't stuck
+              // Re-enable button so user isn't stuck
               imdbCsvUploadBtn.disabled = false
-              if (imdbUrlSyncBtn) imdbUrlSyncBtn.disabled = false
             }
           }, 30000)
         }
       } catch (err) {
         showImdbError(err)
         imdbCsvUploadBtn.disabled = false
-        if (imdbUrlSyncBtn) imdbUrlSyncBtn.disabled = false
+        loadImdbImportHistory()
       } finally {
         imdbCsvInput.value = '' // Always reset file input
       }
     })
   }
 
-  async function ensureMovieBuffer() {
+  async function ensureMovieBuffer(targetSize = BUFFER_MIN_SIZE) {
     // If already loading, return the existing promise with timeout
     if (ensureMovieBufferPromise) {
+      const requestedLargerTarget = targetSize > ensureMovieBufferTarget
       console.log('⏳ Already ensuring buffer, waiting...')
       try {
         await Promise.race([
@@ -5016,15 +5622,21 @@ const main = async () => {
         if (e.message === 'Buffer promise timeout') {
           console.warn('⚠️ Buffer promise timed out, resetting')
           ensureMovieBufferPromise = null
+          ensureMovieBufferTarget = 0
           window.ensureMovieBufferPromise = ensureMovieBufferPromise
           isLoadingBatch = false
           window.isLoadingBatch = isLoadingBatch
           // Retry the buffer load
-          return ensureMovieBuffer()
+          return ensureMovieBuffer(targetSize)
         }
         throw e
       }
-      return ensureMovieBufferPromise
+
+      if (requestedLargerTarget && movieBuffer.length < targetSize) {
+        return ensureMovieBuffer(targetSize)
+      }
+
+      return
     }
 
     // Clear buffer if filters changed
@@ -5038,7 +5650,7 @@ const main = async () => {
       window.__resetMovies = false
     }
 
-    if (isLoadingBatch || movieBuffer.length >= BUFFER_MIN_SIZE) {
+    if (isLoadingBatch || movieBuffer.length >= targetSize) {
       return
     }
 
@@ -5053,6 +5665,7 @@ const main = async () => {
     }
 
     //FIX: Create and store the promise immediately
+    ensureMovieBufferTarget = targetSize
     ensureMovieBufferPromise = (async () => {
       try {
         const MAX_BATCH_ATTEMPTS = 4
@@ -5062,7 +5675,7 @@ const main = async () => {
 
         while (
           attempts < MAX_BATCH_ATTEMPTS &&
-          movieBuffer.length < BUFFER_MIN_SIZE
+          movieBuffer.length < targetSize
         ) {
           attempts += 1
           console.log(
@@ -5076,7 +5689,6 @@ const main = async () => {
             voteCount: filterState.voteCount,
             sortBy: filterState.sortBy,
             imdbRating: filterState.imdbRating,
-            rtRating: filterState.rtRating,
             batchSize: BATCH_SIZE,
           })
 
@@ -5154,6 +5766,11 @@ const main = async () => {
           addedMovies += unseenMovies.length
           movieBuffer.push(...unseenMovies)
 
+          // Warm poster images in the browser cache before cards are rendered.
+          unseenMovies
+            .slice(0, CARD_STACK_SIZE + 2)
+            .forEach(preloadPosterForMovie)
+
           unseenMovies.forEach(movie => {
             const normalizedGuid = normalizeGuid(movie.guid)
             if (normalizedGuid) pendingGuids.add(normalizedGuid)
@@ -5200,6 +5817,7 @@ const main = async () => {
       } finally {
         isLoadingBatch = false
         ensureMovieBufferPromise = null
+        ensureMovieBufferTarget = 0
         window.isLoadingBatch = isLoadingBatch
         window.ensureMovieBufferPromise = ensureMovieBufferPromise
       }
@@ -5313,7 +5931,7 @@ const main = async () => {
     window.__resetMovies = false
 
     try {
-      await ensureMovieBuffer()
+      await ensureMovieBuffer(INITIAL_BUFFER_MIN_SIZE)
 
       const cardStack = document.querySelector('.js-card-stack')
       if (cardStack) cardStack.innerHTML = ''
@@ -5336,7 +5954,9 @@ const main = async () => {
         }
       }
 
-      await ensureMovieBuffer()
+      ensureMovieBuffer().catch(error => {
+        console.warn('⚠️ Background buffer refill failed:', error)
+      })
     } catch (error) {
       console.error('❌Error in initial movie loading:', error)
     }
@@ -6003,6 +6623,7 @@ watchFilterReset?.addEventListener('click', () => {
 // Swipe Filter Modal
 // =========================================================
 const swipeFilterBtn = document.getElementById('swipe-filter-btn')
+const swipeHomeBtn = document.getElementById('swipe-home-btn')
 const swipeFilterModal = document.getElementById('swipe-filter-modal')
 const swipeFilterOverlay = document.getElementById('swipe-filter-overlay')
 const swipeFilterClose = document.getElementById('swipe-filter-close')
@@ -6097,27 +6718,29 @@ function updateSwipeSortButton(sortBy) {
 }
 
 function parsePaidServices() {
-  try {
-    const parsed = JSON.parse(window.PAID_STREAMING_SERVICES || '[]')
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
+  return parseArraySetting(window.PAID_STREAMING_SERVICES)
 }
 
 function parsePersonalSources() {
-  try {
-    const parsed = JSON.parse(window.PERSONAL_MEDIA_SOURCES || '[]')
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
+  return parseArraySetting(window.PERSONAL_MEDIA_SOURCES)
 }
 
 function updateHostManagedSubscriptionServiceOptions() {
   const hostManagedServices = new Set(
     parsePersonalSources().map(source => String(source).trim().toLowerCase())
   )
+
+  if (window.PLEX_CONFIGURED) {
+    hostManagedServices.add('plex')
+  }
+
+  if (window.EMBY_CONFIGURED) {
+    hostManagedServices.add('emby')
+  }
+
+  if (window.JELLYFIN_CONFIGURED) {
+    hostManagedServices.add('jellyfin')
+  }
 
   document
     .querySelectorAll('[data-host-managed-personal-service]')
@@ -6143,6 +6766,18 @@ function getAvailableSubscriptionOptions() {
   const personalSources = parsePersonalSources().map(value =>
     String(value).trim()
   )
+
+  if (window.PLEX_CONFIGURED && !personalSources.includes('plex')) {
+    personalSources.push('plex')
+  }
+
+  if (window.EMBY_CONFIGURED && !personalSources.includes('emby')) {
+    personalSources.push('emby')
+  }
+
+  if (window.JELLYFIN_CONFIGURED && !personalSources.includes('jellyfin')) {
+    personalSources.push('jellyfin')
+  }
 
   return {
     paidServices: Array.from(new Set(paidServices)),
@@ -6575,6 +7210,28 @@ swipeFilterBtn?.addEventListener('click', () => openSwipeFilterModal('live'))
 swipeFilterClose?.addEventListener('click', closeSwipeFilterModal)
 swipeFilterOverlay?.addEventListener('click', closeSwipeFilterModal)
 
+function returnToModeSelection() {
+  closeSwipeFilterModal()
+  sessionStorage.setItem('comparrReturnToModeSelection', '1')
+  window.location.reload()
+}
+
+const swipeHeaderHomeButtons = document.querySelectorAll(
+  '.swipe-header .js-home-btn'
+)
+if (swipeHeaderHomeButtons.length > 1) {
+  swipeHeaderHomeButtons.forEach((button, index) => {
+    if (index < swipeHeaderHomeButtons.length - 1) {
+      button.remove()
+    }
+  })
+}
+
+const homeButtons = document.querySelectorAll('.js-home-btn')
+homeButtons.forEach(button => {
+  button.addEventListener('click', returnToModeSelection)
+})
+
 // Setup swipe filter modal dropdowns
 function setupSwipeFilterDropdowns() {
   const overlay =
@@ -6654,13 +7311,21 @@ function setupSwipeFilterDropdowns() {
 
   function openSwipeDropdown(pair) {
     if (!pair.toggle || !pair.list) return
-    const rect = pair.toggle.getBoundingClientRect()
+
+    const positionSwipeDropdown = targetPair => {
+      if (!targetPair?.toggle || !targetPair?.list) return
+      const rect = targetPair.toggle.getBoundingClientRect()
+      targetPair.list.style.top = `${rect.bottom + 4}px`
+      targetPair.list.style.left = `${rect.left}px`
+      targetPair.list.style.width = `${Math.max(rect.width, 200)}px`
+    }
+
     overlay.appendChild(pair.list)
     pair.list.style.cssText = `
       position: fixed !important;
-      top: ${rect.bottom + 4}px !important;
-      left: ${rect.left}px !important;
-      width: ${Math.max(rect.width, 200)}px !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 200px !important;
       max-height: 250px !important;
       display: block !important;
       visibility: visible !important;
@@ -6676,6 +7341,32 @@ function setupSwipeFilterDropdowns() {
     `
     pair.toggle.classList.add('open')
     currentOpen = pair.type
+
+    positionSwipeDropdown(pair)
+
+    if (!openSwipeDropdown.refreshPosition) {
+      let positionUpdateQueued = false
+      openSwipeDropdown.refreshPosition = () => {
+        if (positionUpdateQueued) return
+        positionUpdateQueued = true
+        requestAnimationFrame(() => {
+          positionUpdateQueued = false
+          if (!currentOpen) return
+          const openPair = pairs.find(p => p.type === currentOpen)
+          if (!openPair) return
+          positionSwipeDropdown(openPair)
+        })
+      }
+
+      document.addEventListener('scroll', openSwipeDropdown.refreshPosition, {
+        passive: true,
+        capture: true,
+      })
+      window.addEventListener('scroll', openSwipeDropdown.refreshPosition, {
+        passive: true,
+      })
+      window.addEventListener('resize', closeAllSwipeDropdowns)
+    }
   }
 
   pairs.forEach(pair => {
@@ -6931,7 +7622,9 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
       .filter(input => input.checked)
       .map(input => input.value)
     const selectedSet = new Set(selectedSubscriptionServices)
-    const personalSet = new Set(parsePersonalSources())
+    const personalSet = new Set(
+      getAvailableSubscriptionOptions().personalSources
+    )
     const paidSet = new Set(parsePaidServices())
     setAvailabilityState({
       anywhere: false,
@@ -6951,7 +7644,9 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
     const selectedSubscriptionServices = swipeSubscriptionChildren
       .filter(child => child.checked)
       .map(child => child.value)
-    const personalSet = new Set(parsePersonalSources())
+    const personalSet = new Set(
+      getAvailableSubscriptionOptions().personalSources
+    )
     const paidSet = new Set(parsePaidServices())
 
     if (input === swipeAvailabilitySubscriptions) {
@@ -6991,7 +7686,9 @@ swipeSubscriptionChildren.forEach(input => {
     const selected = swipeSubscriptionChildren
       .filter(child => child.checked)
       .map(child => child.value)
-    const personalSet = new Set(parsePersonalSources())
+    const personalSet = new Set(
+      getAvailableSubscriptionOptions().personalSources
+    )
     const paidSet = new Set(parsePaidServices())
 
     const next = {
@@ -7021,6 +7718,9 @@ swipeFilterApply?.addEventListener('click', e => {
         JSON.stringify(normalized)
       )
       refreshDefaultsSummary()
+      setSettingsStatus('Default swipe filters saved.')
+      pulseSettingsStatus('success')
+      clearSettingsStatusAfterDelay(3000)
     }
     closeSwipeFilterModal()
     return

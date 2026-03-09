@@ -72,7 +72,3 @@ export class RateLimiter {
 // Shared rate limiters for external APIs
 // TMDb: ~40 requests per 10 seconds = 4/sec sustained, allow burst of 10
 export const tmdbRateLimiter = new RateLimiter(10, 3.5)
-
-// OMDb: 1000 requests per day for free tier = ~0.7/min, but we'll be conservative
-// Most users won't hit this, but we'll limit to ~1/sec to be safe
-export const omdbRateLimiter = new RateLimiter(5, 1)
