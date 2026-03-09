@@ -122,6 +122,27 @@ describe('ComparrAPI', () => {
         name: 'Bob',
         roomCode: 'ROOM456',
         accessPassword: 'secret',
+        forceTakeover: false,
+      })
+    })
+
+    it('should pass through ACTIVE_SESSION_EXISTS error code', async () => {
+      const loginPromise = api.login('Alice', 'ROOM123', 'password')
+
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      mockWebSocket.simulateMessage({
+        type: 'loginResponse',
+        payload: {
+          success: false,
+          code: 'ACTIVE_SESSION_EXISTS',
+          message: 'Already logged in',
+        },
+      })
+
+      await expect(loginPromise).rejects.toMatchObject({
+        message: 'Already logged in',
+        code: 'ACTIVE_SESSION_EXISTS',
       })
     })
   })

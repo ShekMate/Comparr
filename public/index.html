@@ -10,7 +10,7 @@
     <title>Comparr</title>
 
     <!-- Load CSS from site root (/public is web root) -->
-    <link rel="stylesheet" href="${ROOT_PATH}/style.css?v=20250202d" />
+    <link rel="stylesheet" href="${ROOT_PATH}/style.css?v=20260301a" />
     <!-- Font Awesome Icons -->
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
@@ -53,21 +53,63 @@
           style="display: block"
         >
           <img
+            class="password-troll-art"
             src="${ROOT_PATH}/assets/troll_bridge_keeper.png"
             alt="Troll bridge keeper"
-            style="max-width: 400px; margin-bottom: 1rem"
           />
-          <label for="access-password">${ACCESS_PASSWORD_LABEL}</label>
           <div class="password-input-container">
             <input
               id="access-password"
               type="password"
               name="accessPassword"
               autocomplete="current-password"
+              placeholder="Access Password"
+              aria-label="${ACCESS_PASSWORD_LABEL}"
               required
             />
-            <button type="submit" class="submit-button">
-              ${ACCESS_PASSWORD_SUBMIT}
+            <button
+              type="submit"
+              class="submit-button password-continue-button"
+              aria-label="${ACCESS_PASSWORD_SUBMIT}"
+            >
+              <i class="fas fa-arrow-right" aria-hidden="true"></i>
+            </button>
+          </div>
+        </form>
+
+        <!-- Mode picker (hidden until password is verified) -->
+        <form class="mode-form js-mode-form" name="mode" style="display: none">
+          <div class="login-intro">
+            <h1>Choose your experience</h1>
+          </div>
+          <div class="mode-card-grid">
+            <button
+              type="submit"
+              class="mode-card"
+              name="appMode"
+              value="personal"
+            >
+              <span class="mode-card-title">Personal Discovery</span>
+              <span class="mode-card-copy"
+                >Discover movies from your libraries, streaming services, free
+                providers, or the full catalog. Swipe to rate, filter results,
+                build your watchlist, and request movies through built-in
+                automation.</span
+              >
+            </button>
+            <button
+              type="submit"
+              class="mode-card"
+              name="appMode"
+              value="group"
+            >
+              <span class="mode-card-title">Group Match</span>
+              <span class="mode-card-copy"
+                >Join a room with friends and rate movies independently. When
+                multiple users swipe Watch, it’s a match. Review matches, check
+                streaming availability, or request the movie be added to the
+                host’s library.</span
+              >
             </button>
           </div>
         </form>
@@ -83,18 +125,7 @@
             <p>${LOGIN_WELCOME_SUBTITLE}</p>
           </div>
 
-          <div class="login-field-group">
-            <label for="name">${LOGIN_STEP_NAME}</label>
-            <input
-              id="name"
-              type="text"
-              name="name"
-              placeholder="${LOGIN_NAME}"
-              autocomplete="given-name"
-              required
-            />
-          </div>
-          <div class="login-field-group">
+          <div class="login-field-group login-field-group--room-mode">
             <div class="room-mode-header">
               <label class="room-mode-question">${LOGIN_NEW_HERE}</label>
               <div class="room-mode-tabs" role="tablist" aria-label="Room mode">
@@ -118,6 +149,21 @@
                 </button>
               </div>
             </div>
+            <p class="login-helper-copy">${LOGIN_ROOM_HELPER}</p>
+          </div>
+
+          <div class="login-field-group login-field-group--name">
+            <label for="name">${LOGIN_STEP_NAME}</label>
+            <input
+              id="name"
+              type="text"
+              name="name"
+              placeholder="${LOGIN_NAME}"
+              autocomplete="given-name"
+              required
+            />
+          </div>
+          <div class="login-field-group login-field-group--room-details">
             <p class="room-mode-instruction js-room-step-instruction">
               ${LOGIN_STEP_ROOM}
             </p>
@@ -137,6 +183,13 @@
                   maxlength="4"
                   autocomplete="off"
                 />
+                <button
+                  type="submit"
+                  class="room-code-submit-button"
+                  aria-label="${LOGIN_CONTINUE}"
+                >
+                  <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                </button>
               </div>
             </div>
 
@@ -166,10 +219,10 @@
 
             <p class="room-code-error-message js-room-code-error" hidden></p>
             <p class="login-error-message js-login-error" hidden></p>
-
-            <p class="login-helper-copy">${LOGIN_ROOM_HELPER}</p>
           </div>
-          <button type="submit" class="submit-button">${LOGIN_CONTINUE}</button>
+          <button type="submit" class="submit-button js-login-submit-button">
+            ${LOGIN_CONTINUE}
+          </button>
         </form>
       </section>
 
@@ -221,6 +274,16 @@
             >
               <i class="fas fa-tv"></i>
               Streaming
+            </button>
+            <button
+              type="button"
+              class="dropdown-item mobile-settings-item"
+              data-tab="tab-settings"
+              data-settings-target="settings-display"
+              data-settings-title="Display"
+            >
+              <i class="fas fa-desktop"></i>
+              Display
             </button>
             <button
               type="button"
@@ -312,6 +375,14 @@
               <button
                 class="sidebar-subitem"
                 data-tab="tab-settings"
+                data-settings-target="settings-display"
+                data-settings-title="Display"
+              >
+                Display
+              </button>
+              <button
+                class="sidebar-subitem"
+                data-tab="tab-settings"
                 data-settings-target="settings-defaults"
                 data-settings-title="Defaults"
               >
@@ -351,8 +422,53 @@
           >
             <i class="fas fa-filter"></i>
           </button>
+          <button
+            id="swipe-home-btn"
+            class="swipe-filter-btn swipe-home-btn js-home-btn"
+            title="Back to Mode Selection"
+          >
+            <i class="fas fa-house"></i>
+          </button>
         </div>
         <div class="card-stack js-card-stack"></div>
+        <div
+          class="rate-controls swipe-rate-controls"
+          aria-label="Swipe actions"
+        >
+          <div class="button-wrapper">
+            <button
+              type="button"
+              class="rate-thumbs-down js-swipe-rate"
+              data-rate-value="down"
+              aria-label="Thumbs down"
+            >
+              <i class="fas fa-thumbs-down"></i>
+              <span class="button-label">Pass</span>
+            </button>
+          </div>
+          <div class="button-wrapper">
+            <button
+              type="button"
+              class="rate-seen js-swipe-rate"
+              data-rate-value="seen"
+              aria-label="Mark as seen"
+            >
+              <i class="fas fa-eye"></i>
+              <span class="button-label">Seen</span>
+            </button>
+          </div>
+          <div class="button-wrapper">
+            <button
+              type="button"
+              class="rate-thumbs-up js-swipe-rate"
+              data-rate-value="up"
+              aria-label="Thumbs up"
+            >
+              <i class="fas fa-thumbs-up"></i>
+              <span class="button-label">Watch</span>
+            </button>
+          </div>
+        </div>
       </section>
 
       <!-- ===== Filters panel ===== -->
@@ -938,32 +1054,23 @@
               </button>
               <button
                 id="watch-filter-btn"
-                style="
-                  padding: 0.5rem;
-                  background: rgba(51, 65, 85, 0.5);
-                  color: white;
-                  border: 1px solid rgba(51, 65, 85, 0.5);
-                  border-radius: var(--radius-md);
-                  cursor: pointer;
-                  font-size: 0.85rem;
-                  transition: all 0.3s ease;
-                "
+                class="watch-list-icon-btn watch-filter-btn"
               >
                 <i class="fas fa-filter"></i>
               </button>
               <button
                 id="refresh-watch-btn"
-                style="
-                  padding: 0.5rem 1rem;
-                  background: var(--gradient-primary);
-                  color: white;
-                  border: none;
-                  border-radius: var(--radius-md);
-                  cursor: pointer;
-                  font-size: 0.85rem;
-                "
+                class="watch-list-icon-btn refresh-watch-btn"
               >
                 <i class="fas fa-sync-alt"></i>
+              </button>
+              <button
+                id="watch-home-btn"
+                class="watch-list-icon-btn js-home-btn"
+                title="Back to Mode Selection"
+                type="button"
+              >
+                <i class="fas fa-house"></i>
               </button>
             </div>
           </div>
@@ -993,6 +1100,26 @@
             </button>
             <button class="btn-secondary" id="match-keep-swiping-btn">
               <i class="fas fa-arrows-h"></i> Keep Swiping
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== Active Session Takeover Popup ===== -->
+      <div class="modal-overlay" id="active-session-overlay"></div>
+      <div class="match-popup active-session-popup" id="active-session-popup">
+        <div class="match-popup-content">
+          <h2 class="match-popup-title">Active Session Found</h2>
+          <p class="match-popup-message">
+            You already have an active session. By clicking Continue, you will
+            be logged out of all other active sessions on all devices.
+          </p>
+          <div class="match-popup-actions">
+            <button class="btn-primary" id="active-session-continue-btn">
+              Continue
+            </button>
+            <button class="btn-secondary" id="active-session-cancel-btn">
+              Cancel
             </button>
           </div>
         </div>
@@ -1492,6 +1619,39 @@
                   />
                   Apple TV+
                 </label>
+                <label
+                  class="rating-checkbox"
+                  data-subscription-group="personal"
+                >
+                  <input
+                    type="checkbox"
+                    id="swipe-availability-subscription-plex"
+                    value="plex"
+                  />
+                  Plex
+                </label>
+                <label
+                  class="rating-checkbox"
+                  data-subscription-group="personal"
+                >
+                  <input
+                    type="checkbox"
+                    id="swipe-availability-subscription-emby"
+                    value="emby"
+                  />
+                  Emby
+                </label>
+                <label
+                  class="rating-checkbox"
+                  data-subscription-group="personal"
+                >
+                  <input
+                    type="checkbox"
+                    id="swipe-availability-subscription-jellyfin"
+                    value="jellyfin"
+                  />
+                  Jellyfin
+                </label>
               </div>
               <label class="rating-checkbox availability-option">
                 <input type="checkbox" id="swipe-availability-free" />
@@ -1891,6 +2051,14 @@
               >
                 <i class="fas fa-chevron-down"></i>
               </button>
+              <button
+                id="pass-home-btn"
+                class="watch-list-icon-btn js-home-btn"
+                title="Back to Mode Selection"
+                type="button"
+              >
+                <i class="fas fa-house"></i>
+              </button>
             </div>
           </div>
           <div class="watch-list-container">
@@ -1939,6 +2107,14 @@
                 title="Expand All"
               >
                 <i class="fas fa-chevron-down"></i>
+              </button>
+              <button
+                id="seen-home-btn"
+                class="watch-list-icon-btn js-home-btn"
+                title="Back to Mode Selection"
+                type="button"
+              >
+                <i class="fas fa-house"></i>
               </button>
             </div>
           </div>
@@ -2241,6 +2417,32 @@
             </div>
           </div>
 
+          <div class="settings-section" id="settings-display" hidden>
+            <h4>Display</h4>
+            <div class="settings-field">
+              <button
+                type="button"
+                class="settings-mode-toggle settings-display-toggle"
+                id="setting-display-show-seen-list"
+                aria-pressed="false"
+              >
+                Show Seen List
+              </button>
+              <p>Show or hide your Seen List tab in the main menu.</p>
+            </div>
+            <div class="settings-field">
+              <button
+                type="button"
+                class="settings-mode-toggle settings-display-toggle"
+                id="setting-display-show-pass-list"
+                aria-pressed="false"
+              >
+                Show Pass List
+              </button>
+              <p>Show or hide your Pass List in the main menu.</p>
+            </div>
+          </div>
+
           <div
             class="settings-section"
             id="settings-personal-media"
@@ -2311,7 +2513,6 @@
               id="settings-personal-media-config-plex"
               data-admin-only="true"
               data-personal-media-config="plex"
-              hidden
             >
               <h5>Plex Configuration</h5>
               <div class="settings-field">
@@ -2403,6 +2604,102 @@
                 <p>Comma-separated collection names to include.</p>
               </div>
             </div>
+
+            <div
+              class="settings-field"
+              id="settings-personal-media-config-emby"
+              data-admin-only="true"
+              data-personal-media-config="emby"
+            >
+              <h5>Emby Configuration</h5>
+              <div class="settings-field">
+                <label for="setting-emby-url">Emby URL</label>
+                <input
+                  id="setting-emby-url"
+                  type="text"
+                  data-setting-key="EMBY_URL"
+                  data-required-when-source-selected="emby"
+                  placeholder="http://192.168.1.100:8096"
+                />
+              </div>
+              <div class="settings-field">
+                <label for="setting-emby-api-key">Emby API Key</label>
+                <input
+                  id="setting-emby-api-key"
+                  type="password"
+                  data-setting-key="EMBY_API_KEY"
+                  data-required-when-source-selected="emby"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  class="settings-test-btn"
+                  data-test-target="emby"
+                >
+                  Test Emby connection
+                </button>
+              </div>
+              <div class="settings-field">
+                <label for="setting-emby-library-name">Emby Library Name</label>
+                <input
+                  id="setting-emby-library-name"
+                  type="text"
+                  data-setting-key="EMBY_LIBRARY_NAME"
+                  data-required-when-source-selected="emby"
+                  placeholder="My Emby Library"
+                />
+                <p>Label shown for Emby availability in the UI.</p>
+              </div>
+            </div>
+
+            <div
+              class="settings-field"
+              id="settings-personal-media-config-jellyfin"
+              data-admin-only="true"
+              data-personal-media-config="jellyfin"
+            >
+              <h5>Jellyfin Configuration</h5>
+              <div class="settings-field">
+                <label for="setting-jellyfin-url">Jellyfin URL</label>
+                <input
+                  id="setting-jellyfin-url"
+                  type="text"
+                  data-setting-key="JELLYFIN_URL"
+                  data-required-when-source-selected="jellyfin"
+                  placeholder="http://192.168.1.100:8096"
+                />
+              </div>
+              <div class="settings-field">
+                <label for="setting-jellyfin-api-key">Jellyfin API Key</label>
+                <input
+                  id="setting-jellyfin-api-key"
+                  type="password"
+                  data-setting-key="JELLYFIN_API_KEY"
+                  data-required-when-source-selected="jellyfin"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  class="settings-test-btn"
+                  data-test-target="jellyfin"
+                >
+                  Test Jellyfin connection
+                </button>
+              </div>
+              <div class="settings-field">
+                <label for="setting-jellyfin-library-name"
+                  >Jellyfin Library Name</label
+                >
+                <input
+                  id="setting-jellyfin-library-name"
+                  type="text"
+                  data-setting-key="JELLYFIN_LIBRARY_NAME"
+                  data-required-when-source-selected="jellyfin"
+                  placeholder="My Jellyfin Library"
+                />
+                <p>Label shown for Jellyfin availability in the UI.</p>
+              </div>
+            </div>
           </div>
 
           <div
@@ -2463,32 +2760,10 @@
           <div class="settings-section" id="settings-imports">
             <h4>Sync & Imports</h4>
             <div class="settings-field">
-              <label for="setting-imdb-sync-url">IMDb Seen List URL</label>
-              <input
-                id="setting-imdb-sync-url"
-                type="url"
-                data-setting-key="IMDB_SYNC_URL"
-                class="imdb-url-input"
-                placeholder="https://www.imdb.com/list/ls012345678/"
-              />
-              <p>
-                Supports list, ratings, or watchlist URLs. The list must be
-                public on IMDb.
-              </p>
+              <label>IMDb CSV Import</label>
+              <p>Upload an IMDb CSV export to import movies into Seen.</p>
               <div class="imdb-import-panel" style="display: block">
                 <div class="imdb-import-panel-inner">
-                  <div class="imdb-url-row">
-                    <button
-                      id="imdb-url-sync-btn"
-                      class="imdb-url-sync-btn"
-                      type="button"
-                    >
-                      <i class="fas fa-sync-alt"></i> Sync IMDb Now
-                    </button>
-                  </div>
-                  <div class="imdb-import-divider">
-                    <span>or</span>
-                  </div>
                   <div class="imdb-import-csv-section">
                     <button
                       id="imdb-csv-upload-btn"
@@ -2517,6 +2792,26 @@
                     <div id="imdb-import-bar" class="imdb-import-bar"></div>
                   </div>
                 </div>
+                <details class="imdb-import-history" id="imdb-import-history">
+                  <summary>History</summary>
+                  <div class="imdb-import-history-table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Filename</th>
+                          <th>Upload date</th>
+                          <th># of movies</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody id="imdb-import-history-body">
+                        <tr>
+                          <td colspan="4">No imports yet.</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
               </div>
             </div>
             <div
@@ -2689,33 +2984,7 @@
     </footer>
 
     <!-- Load JS from site root -->
-    <script src="/js/main.js" type="module" defer></script>
-    <script>
-      /* Fallback: make the "Generate" button always work, even if main.js fails */
-      ;(function () {
-        document.addEventListener('click', function (e) {
-          const btn = e.target.closest('.js-generate-room-code')
-          if (!btn) return
-
-          const roomInput = document.querySelector('input[name="roomCode"]')
-          const generatedInput = document.querySelector(
-            'input[name="generatedRoomCode"]'
-          )
-          if (!roomInput && !generatedInput) return
-
-          const MAP = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789'
-          let code = ''
-          for (let i = 0; i < 4; i++) {
-            code += MAP[Math.floor(Math.random() * MAP.length)]
-          }
-
-          if (generatedInput) generatedInput.value = code
-          if (roomInput) roomInput.value = code
-          try {
-            localStorage.setItem('roomCode', code)
-          } catch (_) {}
-        })
-      })()
-    </script>
+    <script src="/js/main.js?v=20260301a" type="module" defer></script>
+    <script src="/js/room-code-fallback.js" defer></script>
   </body>
 </html>

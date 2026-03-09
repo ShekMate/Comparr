@@ -1,53 +1,61 @@
 # Running Comparr behind a reverse proxy
 
-Many people choose to run services behind a reverse proxy. This page aims to provide some documentation to spare lots of duplicated effort (and bug tickets).
+Many people choose to run services behind a reverse proxy. This page aims to provide some documentation to spare duplicated effort.
+
+> When using a reverse proxy that sets client forwarding headers, set `TRUST_PROXY=true` in Comparr.
+> If you use host allowlisting, set `ALLOWED_ORIGINS` to your public host/origin values.
 
 ## Nginx
 
-### Behind a subdomain
+### Behind a subdomain (HTTPS)
 
 ```nginx.conf
-[...]
-
-http {
-  server {
-    listen 9000;
-    server_name comparr.example.com;
-
-    location ^~ / {
-        proxy_pass http://localhost:8000/;
-        proxy_set_header Upgrade $http_upgrade;
-    }
-  }
+server {
+  listen 80;
+  server_name comparr.example.com;
+  return 301 https://$host$request_uri;
 }
 
-[...]
+server {
+  listen 443 ssl http2;
+  server_name comparr.example.com;
+
+  ssl_certificate /etc/letsencrypt/live/comparr.example.com/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/comparr.example.com/privkey.pem;
+
+  add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+  add_header X-Content-Type-Options "nosniff" always;
+  add_header X-Frame-Options "DENY" always;
+
+  location / {
+    proxy_pass http://localhost:8000/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+  }
+}
 ```
 
 ### Behind a subpath
 
-Run Comparr with the `ROOT_PATH=/comparr`, and use the following `nginx.conf`.
+Run Comparr with `ROOT_PATH=/comparr` and proxy that subpath:
 
 ```nginx.conf
-[...]
-
-http {
-  server {
-    listen 9000;
-
-    location ^~ /comparr/ {
-        proxy_pass http://localhost:8000/;
-        proxy_set_header Upgrade $http_upgrade;
-    }
-  }
+location ^~ /comparr/ {
+  proxy_pass http://localhost:8000/;
+  proxy_http_version 1.1;
+  proxy_set_header Host $host;
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto $scheme;
+  proxy_set_header Upgrade $http_upgrade;
+  proxy_set_header Connection "upgrade";
 }
-
-[...]
 ```
 
 ## HAProxy
-
-### Behind a subdomain
 
 ```haproxy.cfg
 frontend https
@@ -65,7 +73,11 @@ backend comparr-http
 
 ## Apache2
 
-Make sure to enable Apache2 mods first: a2enmod mod_proxy mod_proxy_wstunnel mod_rewrite
+Enable required modules first:
+
+```bash
+a2enmod mod_proxy mod_proxy_wstunnel mod_rewrite
+```
 
 ```xml
 <VirtualHost *:80>

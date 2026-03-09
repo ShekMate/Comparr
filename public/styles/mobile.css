@@ -1,0 +1,709 @@
+:root {
+  --swipe-card-width: 325px;
+  --swipe-rating-font-size: 1.05rem;
+  --swipe-rating-logo-height: 16px;
+  --swipe-card-title-size: 1rem;
+}
+
+@media (max-width: 768px) {
+  /* High specificity rule to absolutely ensure sidebar is hidden on mobile */
+  html body nav.sidebar,
+  html body .sidebar,
+  nav.sidebar,
+  .sidebar,
+  #sidebar {
+    display: none !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    max-width: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    position: absolute !important;
+    left: -9999px !important;
+  }
+
+  .tabbar {
+    display: flex !important;
+    visibility: visible !important;
+  }
+
+  body.is-logged-in .tab-panel,
+  body.is-logged-in .login-section,
+  body.is-logged-in footer {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .card-stack:empty::before {
+    font-size: 2.5rem;
+    left: 50%;
+    top: calc(50% - 2rem);
+    transform: translateX(-50%) rotate(0deg);
+    animation: spin-mobile 1s linear infinite;
+  }
+
+  .card-stack:empty::after {
+    font-size: 0.95rem;
+    left: 50%;
+    top: calc(50% + 1.5rem);
+    max-width: none;
+    width: 90vw;
+    padding: 0 0.5rem;
+    text-align: center;
+    white-space: normal;
+  }
+
+  @keyframes spin-mobile {
+    from {
+      transform: translateX(-50%) rotate(0deg);
+    }
+    to {
+      transform: translateX(-50%) rotate(360deg);
+    }
+  }
+}
+
+@media (max-width: 600px) {
+  .match-popup {
+    max-width: 95%;
+  }
+
+  .match-popup-content {
+    padding: 1.5rem 1rem;
+  }
+
+  .match-popup-icon {
+    width: 60px;
+    height: 60px;
+  }
+
+  .match-popup-icon i {
+    font-size: 2rem;
+  }
+
+  .match-popup-title {
+    font-size: 1.5rem;
+  }
+
+  .match-popup-message {
+    font-size: 0.9rem;
+  }
+
+  .match-popup-actions {
+    flex-direction: column;
+  }
+
+  .match-popup-actions .btn-primary,
+  .match-popup-actions .btn-secondary {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 600px) {
+  .watch-list-header {
+    padding: 0 1rem;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .watch-list-header h3 {
+    text-align: center;
+  }
+
+  .sort-controls {
+    justify-content: center;
+  }
+
+  .sort-controls select {
+    width: 100%;
+    font-size: 0.8rem;
+  }
+
+  /* Hide button text on mobile, show only icon */
+  .expand-collapse-btn span {
+    display: none;
+  }
+
+  .expand-collapse-btn {
+    padding: 0.5rem;
+    min-width: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .matches-list {
+    gap: 0.75rem;
+    padding: 0 1rem;
+  }
+
+  .match-card-header {
+    padding: 0.85rem 1rem;
+  }
+
+  .match-card-title {
+    font-size: 1rem;
+  }
+
+  .match-card-content {
+    padding: 1rem;
+  }
+
+  .match-card-poster img {
+    width: 80px;
+    height: 120px;
+  }
+
+  .match-card-plot {
+    font-size: 0.8rem;
+  }
+
+  .match-card-actions {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 600px) {
+  .watch-list-layout {
+    padding: 0 1rem 1rem;
+  }
+
+  .watch-list {
+    gap: 0.4rem; /* Even tighter on mobile */
+  }
+
+  .watch-card-collapsed {
+    padding: 0.6rem 0.75rem;
+  }
+
+  .watch-card-title-compact {
+    font-size: 0.85rem;
+  }
+
+  .watch-card-details {
+    padding: 0.75rem;
+  }
+
+  .watch-card-poster img {
+    width: 60px;
+    height: 90px;
+  }
+
+  .watch-card-actions {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+
+  .service-dropdown-btn,
+  .add-to-plex-btn,
+  .plex-status {
+    font-size: 0.7rem;
+    padding: 0.5rem 0.75rem;
+  }
+}
+
+@media (max-width: 600px) {
+  html,
+  body {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Tabbar Mobile */
+  .tabbar {
+    flex-wrap: wrap;
+    margin: 0.25rem auto 0rem !important;
+    padding: 0.1rem 0.1rem !important;
+    gap: 0.1rem;
+    overflow: visible;
+    width: 325px !important;
+    max-width: 325px !important;
+    justify-content: space-between !important;
+  }
+
+  .tabbar button {
+    padding: 0.15rem 0.5rem !important;
+    font-size: 0.45rem;
+    font-weight: 500;
+  }
+
+  /* Dropdown Mobile - LEFT ALIGNED */
+  .dropdown-menu {
+    text-align: left !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) translateY(8px) !important;
+    min-width: 140px;
+  }
+
+  .dropdown.show .dropdown-menu {
+    transform: translateX(-50%) translateY(8px) scale(1) !important;
+  }
+
+  .dropdown-item {
+    padding: 0.75rem 1rem !important;
+    font-size: 0.85rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+  }
+
+  .dropdown-item i {
+    margin-right: 0.5rem !important;
+  }
+
+  /* Rating Logos */
+  .card-ratings {
+    gap: 0.05rem;
+    margin-top: 0.05rem !important;
+    padding-top: 0 !important;
+    clear: both !important;
+  }
+
+  .rating-separator {
+    margin: 0 0.08rem;
+    font-size: 0.85em;
+  }
+
+  /* Section Spacing */
+  .rate-section:not([hidden]) {
+    padding-top: 0rem !important;
+  }
+
+  /* Login Mobile */
+  .login-form {
+    width: min(92vw, 28rem);
+    row-gap: 0.5rem;
+    padding: 0;
+  }
+
+  .login-section .logo {
+    width: min(76vw, 15rem);
+    margin: 0 auto;
+  }
+
+  .login-section:not([hidden]) {
+    padding: var(--s2);
+    padding-bottom: var(--s5);
+    gap: var(--s2);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .login-form label {
+    margin: 0 0 0.25rem 0;
+    width: 100%;
+  }
+
+  .login-field-group {
+    width: 100%;
+  }
+
+  .login-field-group--room-mode,
+  .login-field-group--name {
+    width: 60%;
+    justify-self: center;
+  }
+
+  .login-form input {
+    padding: 0.75rem 1rem;
+    font-size: 1.5rem;
+    width: 100%;
+  }
+
+  .login-form .room-mode-instruction,
+  .login-form .room-code-error-message,
+  .login-form .login-error-message {
+    width: 70%;
+    justify-self: center;
+  }
+
+  .login-form .login-helper-copy {
+    width: 100%;
+    justify-self: center;
+    text-align: center;
+  }
+
+  .login-form .login-field-group > input {
+    width: 100%;
+    justify-self: stretch;
+  }
+
+  .login-form .room-code-panel {
+    width: 60%;
+    justify-self: center;
+  }
+
+  .login-form .room-code-container {
+    width: 100%;
+    justify-self: center;
+    --room-code-control-size: calc(1.5rem + (0.75rem * 2) + 4px);
+  }
+
+  .login-form .submit-button {
+    width: 50%;
+    justify-self: center;
+  }
+
+  .login-form .room-mode-header {
+    width: 100%;
+    max-width: 100%;
+    justify-content: center;
+    justify-self: stretch;
+    gap: 0.65rem;
+  }
+
+  /* Password Form - Enhanced */
+  .password-form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    width: 100%;
+    max-width: 28rem;
+    margin: 0 auto;
+    gap: 2rem;
+    padding: 2rem;
+    background: transparent;
+    border-radius: var(--radius-2xl);
+    border: 1px solid transparent;
+    box-shadow: var(--shadow-xl);
+    backdrop-filter: blur(20px);
+  }
+
+  /* Card Mobile */
+  .card {
+    position: relative;
+    gap: 0 !important;
+  }
+
+  .card-meta {
+    padding-top: 0.5rem !important;
+    margin-top: 0rem !important;
+  }
+
+  .card-title {
+    margin-top: 0 !important;
+  }
+
+  .card-plot {
+    min-height: 44px !important;
+    padding: 8px !important;
+    margin-top: -8px !important;
+    margin-left: -8px !important;
+    margin-right: -8px !important;
+    margin-bottom: 0rem !important;
+    padding-bottom: 0rem !important;
+    z-index: 998 !important;
+    position: relative !important;
+  }
+
+  .card > * {
+    pointer-events: auto !important;
+  }
+  /* Ensure card doesn't capture touches meant for buttons */
+  .card .poster-wrapper,
+  .card .card-meta {
+    pointer-events: none;
+  }
+
+  .card .card-plot,
+  .card button,
+  .card .rate-controls,
+  .card .cast-scroll {
+    pointer-events: auto !important;
+  }
+
+  .poster-wrapper {
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .card-crew {
+    font-size: 0.7rem;
+    line-height: 1.5;
+    margin: 0.5rem 0;
+  }
+
+  .card-crew i {
+    font-size: 0.65rem;
+  }
+  .card-cast-section {
+    margin-top: 1rem;
+  }
+
+  .cast-scroll {
+    gap: 0.275rem;
+    padding-bottom: 0.35rem;
+  }
+
+  .cast-card {
+    flex-basis: 102px;
+  }
+
+  .cast-card-photo {
+    width: 70px;
+    height: 70px;
+  }
+
+  .cast-card-name {
+    font-size: 0.75rem;
+  }
+
+  .cast-card-character {
+    font-size: 0.68rem;
+  }
+
+  /* Rate Controls Mobile */
+  .card > .rate-controls {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .rate-controls {
+    padding: 0 0.3rem !important;
+    gap: 0.6rem !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  .rate-controls .button-wrapper {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0 !important;
+    min-width: auto !important;
+    position: relative !important;
+    z-index: 999 !important;
+    pointer-events: auto !important;
+  }
+
+  .rate-controls button {
+    width: auto !important;
+    height: auto !important;
+    font-size: 0.85rem !important;
+    min-width: auto !important;
+    min-height: auto !important;
+    padding: 0.35rem 0.7rem !important;
+    margin: 0 !important;
+    position: relative !important;
+    z-index: 999 !important;
+  }
+
+  .rate-controls .button-label {
+    font-size: 0.75rem !important;
+    color: inherit !important;
+    display: inline-flex !important;
+    visibility: visible !important;
+    font-weight: 600 !important;
+    text-align: center !important;
+    width: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1.2 !important;
+    letter-spacing: 0.02em !important;
+  }
+
+  /* Matches Mobile */
+  .matches-list {
+    grid-template-columns: 1fr;
+    padding: 0; /* Changed to 0 */
+    width: 100%;
+  }
+
+  /* Filters Mobile */
+  .filters-container {
+    padding: 0 1rem 1rem;
+  }
+
+  .filter-group {
+    padding: 1rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .dropdown-button {
+    max-width: 100%;
+  }
+
+  .dropdown-list {
+    max-width: 100%;
+  }
+
+  .where-to-watch-toggle {
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .toggle-option {
+    width: 100%;
+  }
+
+  /* Tables Mobile */
+  .watch-table-container {
+    padding: 1rem;
+  }
+
+  .watch-table th,
+  .watch-table td {
+    padding: 0.75rem;
+  }
+
+  .movie-info {
+    gap: 0.75rem;
+  }
+
+  .movie-poster {
+    width: 32px;
+    height: 48px;
+  }
+
+  .toggle-switch-container {
+    justify-content: space-between;
+  }
+
+  .toggle-label-text {
+    font-size: 0.85rem;
+  }
+
+  .services-btn {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .services-dropdown-menu {
+    min-width: 200px;
+    max-height: 350px;
+  }
+
+  .service-item {
+    padding: 0.6rem 0.875rem;
+    font-size: 0.85rem;
+  }
+
+  /* Mobile adjustments for clickable service links */
+  .service-link-wrapper .service-item {
+    padding: 0.6rem 0.875rem;
+    font-size: 0.85rem;
+  }
+
+  .service-footer {
+    padding: 0.6rem 0.875rem;
+    font-size: 0.7rem;
+  }
+
+  .service-footer i {
+    font-size: 0.65rem;
+  }
+
+  .services-footer {
+    padding: 0.5rem 0.875rem;
+  }
+
+  .tmdb-link,
+  .justwatch-attribution {
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .tabbar {
+    gap: 0.25rem;
+    padding: 0.5rem;
+    flex-wrap: wrap;
+    margin: 0.75rem auto 0.75rem;
+    overflow: visible;
+  }
+
+  .tabbar button {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    min-width: auto;
+    flex: 0 0 auto;
+  }
+
+  .dropdown-toggle {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  .dropdown-toggle::after {
+    margin-left: 0.3rem;
+    font-size: 0.7em;
+  }
+
+  .dropdown-menu {
+    min-width: 130px;
+    left: 0;
+    right: 0;
+    transform: translateX(-50%) translateY(8px);
+    margin: 0 auto;
+    width: fit-content;
+  }
+
+  .dropdown-item {
+    text-align: left !important;
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+
+  .rate-section:not([hidden]) {
+    padding-top: 1rem !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .error-notification {
+    left: 1rem;
+    right: 1rem;
+    max-width: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .seen-header-actions {
+    position: static;
+    top: auto;
+    right: auto;
+    transform: none;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .imdb-import-panel {
+    margin: 0 1rem 1rem;
+  }
+
+  .imdb-url-row {
+    flex-direction: column;
+  }
+
+  .imdb-url-sync-btn {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 700px) {
+  .mode-card-grid {
+    grid-template-columns: 1fr;
+  }
+}

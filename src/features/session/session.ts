@@ -8,6 +8,8 @@ import {
   NoMoreMoviesError,
 } from '../../api/plex.ts'
 import { WebSocket } from '../../infra/ws/websocketServer.ts'
+import { loginRateLimiter } from '../../infra/http/ip-rate-limiter.ts'
+import { timingSafeEqual } from '../../core/security.ts'
 import { enrich } from '../catalog/enrich.ts'
 import { discoverMovies } from '../catalog/discover.ts'
 import { isMovieInRadarr } from '../../api/radarr.ts'
@@ -33,7 +35,7 @@ import {
   getBestPosterUrl,
   prefetchPoster,
 } from '../../services/cache/poster-cache.ts'
-import { tmdbRateLimiter, omdbRateLimiter } from '../../core/rate-limiter.ts'
+import { tmdbRateLimiter } from '../../core/rate-limiter.ts'
 
 // Genre ID to name mapping (TMDb genre IDs)
 const GENRE_MAP: Record<number, string> = {
@@ -76,10 +78,9 @@ function ensureComparrScore(movie: any): void {
 
     // Skip if movie doesn't have any ratings (null/undefined)
     const hasImdb = typeof movie.rating_imdb === 'number'
-    const hasRt = typeof movie.rating_rt === 'number'
     const hasTmdb = typeof movie.rating_tmdb === 'number'
 
-    if (!hasImdb && !hasRt && !hasTmdb) {
+    if (!hasImdb && !hasTmdb) {
       return
     }
 
@@ -88,7 +89,6 @@ function ensureComparrScore(movie: any): void {
     const ratings = [];
     if (hasImdb) ratings.push(movie.rating_imdb);
     if (hasTmdb) ratings.push(movie.rating_tmdb);
-    if (hasRt) ratings.push(movie.rating_rt / 10);
 
     if (ratings.length >= 2 && (movie.rating_comparr === null || movie.rating_comparr === undefined)) {
       const sum = ratings.reduce((acc, val) => acc + val, 0);
@@ -102,28 +102,21 @@ function ensureComparrScore(movie: any): void {
       const parts: string[] = []
 
       parts.push(
-        `<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> ${movie.rating_comparr}`
+        `<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> <span class="rating-value">${movie.rating_comparr}</span>`
       )
       if (movie.rating_imdb != null) {
         parts.push(
-          `<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> ${movie.rating_imdb}`
-        )
-      }
-      if (movie.rating_rt != null) {
-        parts.push(
-          `<img src="${basePath}/assets/logos/rottentomatoes.svg" alt="RT" class="rating-logo"> ${movie.rating_rt}%`
+          `<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> <span class="rating-value">${movie.rating_imdb}</span>`
         )
       }
       if (movie.rating_tmdb != null) {
         parts.push(
-          `<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> ${movie.rating_tmdb}`
+          `<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> <span class="rating-value">${movie.rating_tmdb}</span>`
         )
       }
 
       if (parts.length > 0) {
-        movie.rating = parts.join(
-          ' <span class="rating-separator">&bull;</span> '
-        )
+        movie.rating = parts.join(' ')
       }
     }
   } catch (err) {
@@ -153,6 +146,11 @@ interface MediaItem {
   art: string
   director?: string
   cast?: string[]
+  castMembers?: Array<{
+    name: string
+    character?: string
+    profilePath?: string | null
+  }>
   writers?: string[]
   genres?: string[]
   contentRating?: string
@@ -184,7 +182,6 @@ type DiscoverFilters = {
   voteCount?: number
   sortBy?: string
   imdbRating?: number
-  rtRating?: number
   streamingServices?: string[]
 }
 
@@ -262,6 +259,28 @@ const DEFAULT_DISCOVER_PREFETCH_PAGES = Number(
 const FILTERED_DISCOVER_PREFETCH_PAGES = Number(
   Deno.env.get('DISCOVER_CACHE_FILTERED_PAGES') ?? '2'
 )
+const SEND_BATCH_SOFT_TIMEOUT_MS = Number(
+  Deno.env.get('SEND_BATCH_SOFT_TIMEOUT_MS') ?? '15000'
+)
+const SEND_BATCH_HARD_TIMEOUT_MS = Number(
+  Deno.env.get('SEND_BATCH_HARD_TIMEOUT_MS') ?? '45000'
+)
+const INITIAL_BATCH_HARD_TIMEOUT_MS = Number(
+  Deno.env.get('INITIAL_BATCH_HARD_TIMEOUT_MS') ?? '12000'
+)
+const LOGIN_PREFETCH_SOFT_TIMEOUT_MS = Number(
+  Deno.env.get('LOGIN_PREFETCH_SOFT_TIMEOUT_MS') ?? '2500'
+)
+const ENRICHMENT_TIMEOUT_MS = Number(
+  Deno.env.get('ENRICHMENT_TIMEOUT_MS') ?? '5000'
+)
+const DISCOVER_ENRICH_PREWARM_COUNT = Number(
+  Deno.env.get('DISCOVER_ENRICH_PREWARM_COUNT') ?? '6'
+)
+const DISCOVER_ENRICH_PREWARM_CONCURRENCY = Math.max(
+  1,
+  Number(Deno.env.get('DISCOVER_ENRICH_PREWARM_CONCURRENCY') ?? '2')
+)
 
 interface DiscoverCacheEntry {
   pages: Map<number, any[]>
@@ -309,7 +328,6 @@ async function fetchDiscoverPage(
     runtimeMax: filters?.runtimeMax,
     voteCount: filters?.voteCount,
     sortBy: filters?.sortBy,
-    rtRating: filters?.rtRating,
   })
 
   const results = discovered.results ?? []
@@ -437,7 +455,12 @@ if (typeof denoWithUnref.unrefTimer === 'function') {
 
 interface WebSocketLoginMessage {
   type: 'login'
-  payload: { name: string; roomCode: string; accessPassword: string }
+  payload: {
+    name: string
+    roomCode: string
+    accessPassword: string
+    forceTakeover?: boolean
+  }
 }
 
 interface WebSocketMatchMessage {
@@ -448,7 +471,7 @@ interface WebSocketMatchMessage {
 interface WebSocketLoginResponseMessage {
   type: 'loginResponse'
   payload:
-    | { success: false; message?: string }
+    | { success: false; message?: string; code?: string }
     | {
         success: true
         matches: Array<WebSocketMatchMessage['payload']>
@@ -488,7 +511,6 @@ interface WebSocketNextBatchMessage {
     voteCount?: number
     sortBy?: string
     imdbRating?: number
-    rtRating?: number
   }
 }
 
@@ -504,13 +526,27 @@ type WebSocketMessage =
   | WebSocketResponseMessage
   | WebSocketNextBatchMessage
 
+export interface ImdbImportHistoryEntry {
+  id: string
+  fileName: string
+  uploadedAt: number
+  movieCount: number
+  status: 'successful' | 'failed'
+}
+
 // -------------------------
 // Persistence (rooms + movie index) - ENHANCED VERSION
 // -------------------------
+type PersistedRoomUser = {
+  name: string
+  responses: Response[]
+  importHistory?: ImdbImportHistoryEntry[]
+}
+
 type PersistedRooms = Record<
   string,
   {
-    users: { name: string; responses: Response[] }[]
+    users: PersistedRoomUser[]
   }
 >
 
@@ -556,17 +592,62 @@ async function loadState(): Promise<PersistedState> {
       const roomVal: any = roomsIn[roomCode] || {}
       const usersRaw: any = roomVal.users
 
-      let usersArr: { name: string; responses: Response[] }[] = []
+      let usersArr: PersistedRoomUser[] = []
       if (Array.isArray(usersRaw)) {
-        usersArr = usersRaw as { name: string; responses: Response[] }[]
+        usersArr = usersRaw.map((user: any) => ({
+          name: String(user?.name || ''),
+          responses: Array.isArray(user?.responses)
+            ? user.responses
+                .filter(
+                  (r: any) => typeof r?.guid === 'string' && r.guid.length > 0
+                )
+                .map((r: any) => ({
+                  guid: r.guid,
+                  wantsToWatch: r?.wantsToWatch ?? null,
+                  tmdbId:
+                    typeof r?.tmdbId === 'number'
+                      ? r.tmdbId
+                      : r?.tmdbId == null
+                      ? null
+                      : Number.isFinite(Number(r.tmdbId))
+                      ? Number(r.tmdbId)
+                      : null,
+                }))
+            : [],
+          importHistory: Array.isArray(user?.importHistory)
+            ? user.importHistory
+                .filter((entry: any) => typeof entry?.id === 'string')
+                .map((entry: any) => ({
+                  id: entry.id,
+                  fileName:
+                    typeof entry.fileName === 'string' &&
+                    entry.fileName.trim().length > 0
+                      ? entry.fileName.trim()
+                      : 'IMDb CSV',
+                  uploadedAt:
+                    typeof entry.uploadedAt === 'number' &&
+                    Number.isFinite(entry.uploadedAt)
+                      ? entry.uploadedAt
+                      : Date.now(),
+                  movieCount:
+                    typeof entry.movieCount === 'number' &&
+                    Number.isFinite(entry.movieCount)
+                      ? entry.movieCount
+                      : 0,
+                  status: entry.status === 'failed' ? 'failed' : 'successful',
+                }))
+            : [],
+        }))
       } else if (usersRaw && typeof usersRaw === 'object') {
         usersArr = []
         for (const name in usersRaw) {
           const val: any = usersRaw[name]
           const responses: Response[] = Array.isArray(val?.responses)
             ? val.responses
-                .filter(r => typeof r?.guid === 'string' && r.guid.length > 0)
-                .map(r => ({
+                .filter(
+                  (r: any) => typeof r?.guid === 'string' && r.guid.length > 0
+                )
+                .map((r: any) => ({
                   guid: r.guid,
                   wantsToWatch: r?.wantsToWatch ?? null,
                   tmdbId:
@@ -579,7 +660,7 @@ async function loadState(): Promise<PersistedState> {
                       : null,
                 }))
             : []
-          usersArr.push({ name, responses })
+          usersArr.push({ name, responses, importHistory: [] })
         }
       }
 
@@ -706,6 +787,62 @@ function removeRoomUser(roomCode: string, userName: string) {
   const room = persistedState.rooms[roomCode]
   if (!room) return
   room.users = room.users.filter(u => u.name !== userName)
+}
+
+function getRoomUser(roomCode: string, userName: string): PersistedRoomUser {
+  const room = (persistedState.rooms[roomCode] ??= { users: [] })
+  let user = room.users.find(u => u.name === userName)
+  if (!user) {
+    user = { name: userName, responses: [], importHistory: [] }
+    room.users.push(user)
+  }
+  if (!Array.isArray(user.importHistory)) {
+    user.importHistory = []
+  }
+  return user
+}
+
+export function recordImdbImportHistoryStart(
+  roomCode: string,
+  userName: string,
+  fileName: string,
+  movieCount: number
+): string {
+  const user = getRoomUser(roomCode, userName)
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  user.importHistory!.unshift({
+    id,
+    fileName: fileName.trim() || 'IMDb CSV',
+    uploadedAt: Date.now(),
+    movieCount,
+    status: 'successful',
+  })
+  user.importHistory = user.importHistory!.slice(0, 25)
+  return id
+}
+
+export function finalizeImdbImportHistory(
+  roomCode: string,
+  userName: string,
+  importId: string,
+  status: 'successful' | 'failed'
+) {
+  const user = getRoomUser(roomCode, userName)
+  const entry = user.importHistory?.find(item => item.id === importId)
+  if (entry) {
+    entry.status = status
+  }
+}
+
+export function getImdbImportHistory(
+  roomCode: string,
+  userName: string
+): ImdbImportHistoryEntry[] {
+  const room = persistedState.rooms[roomCode]
+  if (!room) return []
+  const user = room.users.find(u => u.name === userName)
+  if (!user?.importHistory) return []
+  return [...user.importHistory]
 }
 
 function addMoviesToIndex(movies: MediaItem[]) {
@@ -1058,9 +1195,65 @@ class Session {
     const shuffled = results.slice().sort(() => Math.random() - 0.5)
     queue.buffer.push(...shuffled)
 
+    this.prewarmDiscoverEnrichment(shuffled)
+
     if (exhausted) {
       queue.exhausted = true
     }
+  }
+
+  private prewarmDiscoverEnrichment(tmdbMovies: any[]): void {
+    if (DISCOVER_ENRICH_PREWARM_COUNT <= 0 || tmdbMovies.length === 0) {
+      return
+    }
+
+    const candidates = tmdbMovies
+      .filter(movie => movie && typeof movie.id === 'number')
+      .slice(0, DISCOVER_ENRICH_PREWARM_COUNT)
+
+    if (!candidates.length) return
+
+    const workers = Array.from(
+      {
+        length: Math.min(
+          DISCOVER_ENRICH_PREWARM_CONCURRENCY,
+          candidates.length
+        ),
+      },
+      (_, workerIndex) =>
+        (async () => {
+          for (
+            let idx = workerIndex;
+            idx < candidates.length;
+            idx += DISCOVER_ENRICH_PREWARM_CONCURRENCY
+          ) {
+            const movie = candidates[idx]
+
+            try {
+              if (movie.poster_path) {
+                prefetchPoster(movie.poster_path, 'tmdb')
+              }
+
+              await enrich({
+                title: movie.title,
+                year: parseYear(movie.release_date?.slice(0, 4)) ?? null,
+                plexGuid: `tmdb://${movie.id}`,
+                tmdbId: movie.id,
+              })
+            } catch (err) {
+              log.debug(
+                `Discover enrichment prewarm failed for ${
+                  movie?.title ?? 'unknown movie'
+                }: ${err}`
+              )
+            }
+          }
+        })()
+    )
+
+    Promise.allSettled(workers).catch(err => {
+      log.debug(`Discover enrichment prewarm scheduling failed: ${err}`)
+    })
   }
 
   private async ensureDiscoverBuffer(
@@ -1321,32 +1514,39 @@ class Session {
     }
   }
 
-  async sendNextBatch(filters?: {
-    yearMin?: number
-    yearMax?: number
-    genres?: string[]
-    streamingServices?: string[]
-    showPlexOnly?: boolean
-    availability?: {
-      anywhere?: boolean
-      roomPersonalMedia?: boolean
-      paidSubscriptions?: boolean
-      freeStreaming?: boolean
+  async sendNextBatch(
+    filters?: {
+      yearMin?: number
+      yearMax?: number
+      genres?: string[]
+      streamingServices?: string[]
+      showPlexOnly?: boolean
+      availability?: {
+        anywhere?: boolean
+        roomPersonalMedia?: boolean
+        paidSubscriptions?: boolean
+        freeStreaming?: boolean
+      }
+      contentRatings?: string[]
+      imdbRating?: number
+      tmdbRating?: number
+      languages?: string[]
+      countries?: string[]
+      directors?: Array<{ id: number; name: string }>
+      actors?: Array<{ id: number; name: string }>
+      runtimeMin?: number
+      runtimeMax?: number
+      voteCount?: number
+      sortBy?: string
+      imdbRating?: number
+    },
+    options?: {
+      suppressBroadcast?: boolean
+      softTimeoutMs?: number
+      hardTimeoutMs?: number
+      stopAfterFirstMovie?: boolean
     }
-    contentRatings?: string[]
-    imdbRating?: number
-    tmdbRating?: number
-    languages?: string[]
-    countries?: string[]
-    directors?: Array<{ id: number; name: string }>
-    actors?: Array<{ id: number; name: string }>
-    runtimeMin?: number
-    runtimeMax?: number
-    voteCount?: number
-    sortBy?: string
-    imdbRating?: number
-    rtRating?: number
-  }) {
+  ) {
     const configuredPaidServices = getPaidStreamingServices()
     const configuredPersonalSources = getPersonalMediaSources()
     const requestedServices = (filters?.streamingServices || [])
@@ -1463,6 +1663,7 @@ class Session {
 
       const maxAttempts = attemptBatchSize
       let attempts = 0
+      const batchBuildStartedAt = Date.now()
 
       let hasPersonFilters =
         tmdbConfigured &&
@@ -1545,19 +1746,26 @@ class Session {
           return await this.formatTMDbMovie(tmdbMovie)
         }
 
-        return await this.getTMDbMovie(attemptNumber - 1, {
-          yearMin: filters?.yearMin,
-          yearMax: filters?.yearMax,
-          genres: filters?.genres,
-          tmdbRating: filters?.tmdbRating,
-          languages: filters?.languages,
-          countries: filters?.countries,
-          runtimeMin: filters?.runtimeMin,
-          runtimeMax: filters?.runtimeMax,
-          voteCount: filters?.voteCount,
-          sortBy: filters?.sortBy,
-          streamingServices: effectiveStreamingServices,
-        })
+        try {
+          return await this.getTMDbMovie(attemptNumber - 1, {
+            yearMin: filters?.yearMin,
+            yearMax: filters?.yearMax,
+            genres: filters?.genres,
+            tmdbRating: filters?.tmdbRating,
+            languages: filters?.languages,
+            countries: filters?.countries,
+            runtimeMin: filters?.runtimeMin,
+            runtimeMax: filters?.runtimeMax,
+            voteCount: filters?.voteCount,
+            sortBy: filters?.sortBy,
+            streamingServices: effectiveStreamingServices,
+          })
+        } catch (err) {
+          log.warning(
+            `TMDb candidate fetch failed at attempt ${attemptNumber}; trying room library fallback: ${err}`
+          )
+          return await fetchPlexCandidate()
+        }
       }
 
       const queueNextCandidate = () => {
@@ -1576,10 +1784,34 @@ class Session {
 
       queueNextCandidate()
 
+      const isInitialRoomBatch = this.movieList.length === 0
+      const effectiveSoftTimeoutMs =
+        options?.softTimeoutMs ?? SEND_BATCH_SOFT_TIMEOUT_MS
+      const effectiveHardTimeoutMs =
+        options?.hardTimeoutMs ??
+        (isInitialRoomBatch
+          ? INITIAL_BATCH_HARD_TIMEOUT_MS
+          : SEND_BATCH_HARD_TIMEOUT_MS)
+      const stopAfterFirstMovie = options?.stopAfterFirstMovie ?? false
+
       while (
         validMovies.length < Number(getMovieBatchSize()) &&
         pendingCandidate
       ) {
+        const elapsedMs = Date.now() - batchBuildStartedAt
+        if (validMovies.length > 0 && elapsedMs >= effectiveSoftTimeoutMs) {
+          log.info(
+            `⏱️ Soft timeout reached after ${elapsedMs}ms; sending ${validMovies.length} movie(s) early to reduce first-load latency.`
+          )
+          break
+        }
+        if (elapsedMs >= effectiveHardTimeoutMs) {
+          log.warning(
+            `⏱️ Hard timeout reached after ${elapsedMs}ms; ending batch generation with ${validMovies.length} movie(s).`
+          )
+          break
+        }
+
         const { promise, attemptNumber } = pendingCandidate
         let plexMovie: any | null = null
 
@@ -1647,13 +1879,17 @@ class Session {
                 plot: string | null
                 imdbId: string | null
                 rating_imdb: number | null
-                rating_rt: number | null
                 rating_tmdb: number | null
                 tmdbPosterPath?: string | null
                 genres?: string[]
                 streamingServices?: { subscription: any[]; free: any[] }
                 streamingLink?: string | null
                 cast?: string[]
+                castMembers?: Array<{
+                  name: string
+                  character?: string
+                  profilePath?: string | null
+                }>
                 writers?: string[]
                 director?: string | null
                 runtime?: number | null
@@ -1664,7 +1900,42 @@ class Session {
             | undefined
 
           try {
-            extra = await this.getEnrichmentData(plexMovie)
+            extra = await Promise.race([
+              this.getEnrichmentData(plexMovie),
+              new Promise<undefined>(resolve =>
+                setTimeout(() => resolve(undefined), ENRICHMENT_TIMEOUT_MS)
+              ),
+            ])
+
+            if (!extra) {
+              log.debug(
+                `⏱️ Enrichment timed out for ${plexMovie.title} after ${ENRICHMENT_TIMEOUT_MS}ms; using base metadata.`
+              )
+
+              const shouldForceMetadataForInitialCard =
+                isInitialRoomBatch && validMovies.length < 2
+
+              if (shouldForceMetadataForInitialCard) {
+                try {
+                  extra = await Promise.race([
+                    this.getEnrichmentData(plexMovie),
+                    new Promise<undefined>(resolve =>
+                      setTimeout(() => resolve(undefined), 10000)
+                    ),
+                  ])
+
+                  if (extra) {
+                    log.info(
+                      `✅ Recovered enrichment for initial card ${plexMovie.title} in forced metadata pass.`
+                    )
+                  }
+                } catch (retryErr) {
+                  log.warning(
+                    `Forced enrichment retry failed for ${plexMovie.title}: ${retryErr}`
+                  )
+                }
+              }
+            }
           } catch (e) {
             log.warning(`Enrichment failed for ${plexMovie.title}: ${e}`)
           }
@@ -1701,28 +1972,21 @@ class Session {
 
           if (extra?.rating_comparr != null) {
             parts.push(
-              `<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> ${extra.rating_comparr}`
+              `<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> <span class="rating-value">${extra.rating_comparr}</span>`
             )
           }
           if (extra?.rating_imdb != null) {
             parts.push(
-              `<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> ${extra.rating_imdb}`
-            )
-          }
-          if (extra?.rating_rt != null) {
-            parts.push(
-              `<img src="${basePath}/assets/logos/rottentomatoes.svg" alt="RT" class="rating-logo"> ${extra.rating_rt}%`
+              `<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> <span class="rating-value">${extra.rating_imdb}</span>`
             )
           }
           if (extra?.rating_tmdb != null) {
             parts.push(
-              `<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> ${extra.rating_tmdb}`
+              `<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> <span class="rating-value">${extra.rating_tmdb}</span>`
             )
           }
           const ratingStr =
-            parts.length > 0
-              ? parts.join(' <span class="rating-separator">&bull;</span> ')
-              : plexMovie.rating ?? ''
+            parts.length > 0 ? parts.join(' ') : plexMovie.rating ?? ''
 
           const summaryStr =
             (extra?.plot && String(extra.plot)) ||
@@ -1739,18 +2003,6 @@ class Session {
               continue
             }
           }
-
-          if (filters?.rtRating && filters.rtRating > 0) {
-            if (!extra?.rating_rt || extra.rating_rt < filters.rtRating) {
-              log.debug(
-                `⛔️ Skipping ${plexMovie.title} - RT rating ${
-                  extra?.rating_rt || 'N/A'
-                } below minimum ${filters.rtRating}`
-              )
-              continue
-            }
-          }
-
           if (filters?.yearMin || filters?.yearMax) {
             const movieYear =
               typeof plexMovie.year === 'number'
@@ -1814,7 +2066,11 @@ class Session {
           }
 
           if (filters?.voteCount && filters.voteCount > 0) {
-            const voteCount = extra?.voteCount || 0
+            const voteCount =
+              extra?.voteCount ??
+              plexMovie.vote_count ??
+              plexMovie.voteCount ??
+              0
             if (voteCount < filters.voteCount) {
               log.debug(
                 `⛔️ Skipping ${plexMovie.title} - vote count ${voteCount} below minimum ${filters.voteCount}`
@@ -1918,6 +2174,7 @@ class Session {
               extra?.director ||
               (plexMovie.Director ?? [{ tag: undefined }])[0].tag,
             cast: extra?.cast || [],
+            castMembers: extra?.castMembers || [],
             writers: extra?.writers || [],
             genres: extra?.genres || [],
             contentRating: extra?.contentRating || undefined,
@@ -1929,12 +2186,22 @@ class Session {
             tmdbId: extra?.tmdbId || null,
             genre_ids: plexMovie.genre_ids || [],
             vote_count: extra?.voteCount || plexMovie.vote_count || 0,
-            original_language: plexMovie.original_language || null,
+            original_language:
+              extra?.original_language ||
+              extra?.originalLanguage ||
+              plexMovie.original_language ||
+              null,
             production_countries: plexMovie.production_countries || [],
           }
 
           validMovies.push(movie)
           seenGuids.add(movie.guid)
+          if (stopAfterFirstMovie && validMovies.length === 1) {
+            log.info(
+              '🚀 Initial batch fast-path: stopping after first valid movie to unblock client render.'
+            )
+            break
+          }
           if (movie.tmdbId != null) {
             seenTmdbIds.add(movie.tmdbId)
           }
@@ -2155,13 +2422,15 @@ class Session {
             thumb: norm(m, m.thumb),
           }))
 
-          // Send the sanitized batch to the client
-          ws.send(
-            JSON.stringify({
-              type: 'batch',
-              payload: normalizedBatch,
-            })
-          )
+          // Send the sanitized batch to the client unless this call is preloading for login.
+          if (!options?.suppressBroadcast) {
+            ws.send(
+              JSON.stringify({
+                type: 'batch',
+                payload: normalizedBatch,
+              })
+            )
+          }
         }
       }
 
@@ -2173,9 +2442,11 @@ class Session {
     } catch (err) {
       log.error('Error in sendNextBatch:', err)
       // Send empty batch on error
-      for (const ws of this.users.values()) {
-        if (ws && !ws.isClosed) {
-          ws.send(JSON.stringify({ type: 'batch', payload: [] }))
+      if (!options?.suppressBroadcast) {
+        for (const ws of this.users.values()) {
+          if (ws && !ws.isClosed) {
+            ws.send(JSON.stringify({ type: 'batch', payload: [] }))
+          }
         }
       }
     }
@@ -2197,7 +2468,6 @@ class Session {
       voteCount?: number
       sortBy?: string
       imdbRating?: number
-      rtRating?: number
       streamingServices?: string[]
     }
   ): Promise<any> {
@@ -2220,7 +2490,6 @@ class Session {
       runtimeMax: filters?.runtimeMax,
       voteCount: filters?.voteCount,
       sortBy: filters?.sortBy,
-      rtRating: filters?.rtRating,
       streamingServices: filters?.streamingServices,
     }
 
@@ -2365,6 +2634,7 @@ class Session {
             : Number(plexMovie.year) || null,
         plexGuid: plexMovie.guid,
         imdbId: plexMovie.imdbId,
+        tmdbId: plexMovie.tmdbId,
       })
     }
 
@@ -2378,6 +2648,7 @@ class Session {
             : Number(plexMovie.year) || null,
         plexGuid: plexMovie.guid,
         imdbId: plexMovie.imdbId,
+        tmdbId: plexMovie.tmdbId,
       }).catch(err => {
         this.enrichmentCache.delete(cacheKey)
         throw err
@@ -2457,6 +2728,7 @@ class Session {
 const activeSessions: Map<string, Session> = new Map()
 
 const ROOM_CODE_MAP = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789'
+const ROOM_CODE_LENGTH = 4
 
 export function normalizeRoomCode(roomCode: string): string {
   return String(roomCode || '')
@@ -2465,7 +2737,9 @@ export function normalizeRoomCode(roomCode: string): string {
 }
 
 export function isValidRoomCode(roomCode: string): boolean {
-  return /^[0-9A-Z]{4}$/.test(normalizeRoomCode(roomCode))
+  return new RegExp(`^[0-9A-Z]{${ROOM_CODE_LENGTH}}$`).test(
+    normalizeRoomCode(roomCode)
+  )
 }
 
 export function doesRoomCodeExist(roomCode: string): boolean {
@@ -2479,10 +2753,10 @@ export async function generateUniqueRoomCode(
   maxAttempts = 200
 ): Promise<string> {
   for (let i = 0; i < maxAttempts; i++) {
-    const code = Array.from(
-      { length: 4 },
-      () => ROOM_CODE_MAP[Math.floor(Math.random() * ROOM_CODE_MAP.length)]
-    ).join('')
+    const code = Array.from({ length: ROOM_CODE_LENGTH }, () => {
+      const value = crypto.getRandomValues(new Uint32Array(1))[0]
+      return ROOM_CODE_MAP[value % ROOM_CODE_MAP.length]
+    }).join('')
 
     if (!doesRoomCodeExist(code)) {
       return code
@@ -2609,7 +2883,10 @@ export const getSession = (roomCode: string, ws: WebSocket): Session => {
 // -------------------------
 // Login flow
 // -------------------------
-export const handleLogin = (ws: WebSocket): Promise<User> => {
+export const handleLogin = (
+  ws: WebSocket,
+  clientIp = 'unknown'
+): Promise<User> => {
   return new Promise(resolve => {
     const handler = async (msg: string) => {
       try {
@@ -2618,11 +2895,23 @@ export const handleLogin = (ws: WebSocket): Promise<User> => {
         if (data.type === 'login') {
           log.info(`Got a login attempt from ${data.payload.name}`)
 
+          if (!loginRateLimiter.check(clientIp)) {
+            const response: WebSocketLoginResponseMessage = {
+              type: 'loginResponse',
+              payload: {
+                success: false,
+                message: 'Too many login attempts. Please wait.',
+              },
+            }
+            ws.send(JSON.stringify(response))
+            return
+          }
+
           // Check access password
           const accessPassword = getAccessPassword()
           if (
             accessPassword &&
-            data.payload.accessPassword !== accessPassword
+            !timingSafeEqual(data.payload.accessPassword, accessPassword)
           ) {
             log.warning(`Invalid access password from ${data.payload.name}`)
             const response: WebSocketLoginResponseMessage = {
@@ -2644,7 +2933,7 @@ export const handleLogin = (ws: WebSocket): Promise<User> => {
               type: 'loginResponse',
               payload: {
                 success: false,
-                message: 'Room code must be 4 characters (A-Z or 0-9).',
+                message: `Room code must be exactly ${ROOM_CODE_LENGTH} characters (A-Z or 0-9).`,
               },
             }
             ws.send(JSON.stringify(response))
@@ -2653,47 +2942,57 @@ export const handleLogin = (ws: WebSocket): Promise<User> => {
 
           const session = getSession(roomCode, ws)
 
+          const activeUsersWithSameName = [...session.users.entries()].filter(
+            ([sessionUser, sessionSocket]) =>
+              sessionUser.name === data.payload.name &&
+              sessionSocket &&
+              !sessionSocket.isClosed
+          )
+
           const existingUser = [...session.users.keys()].find(
             ({ name }) => name === data.payload.name
           )
 
-          if (
-            existingUser &&
-            session.users.get(existingUser) &&
-            !session.users.get(existingUser)?.isClosed
-          ) {
-            log.info(
-              `${existingUser.name} is already logged in. Try another name!`
-            )
-            const response: WebSocketLoginResponseMessage = {
-              type: 'loginResponse',
-              payload: {
-                success: false,
-                message: `${existingUser.name} is already logged in. Try another name!`,
-              },
+          if (activeUsersWithSameName.length > 0) {
+            if (!data.payload.forceTakeover) {
+              log.info(
+                `${data.payload.name} already has an active session in ${roomCode}`
+              )
+              const response: WebSocketLoginResponseMessage = {
+                type: 'loginResponse',
+                payload: {
+                  success: false,
+                  code: 'ACTIVE_SESSION_EXISTS',
+                  message: `${data.payload.name} is already logged in. Try another name!`,
+                },
+              }
+              ws.send(JSON.stringify(response))
+              return
             }
-            ws.send(JSON.stringify(response))
-            return
+
+            for (const [
+              sessionUser,
+              sessionSocket,
+            ] of activeUsersWithSameName) {
+              log.info(
+                `Force logout for ${sessionUser.name} in room ${roomCode} due to takeover request`
+              )
+              sessionSocket?.close(
+                4001,
+                'Logged out because another session continued login'
+              )
+            }
           }
 
-          try {
-            await ensurePlexHydrationReady()
-          } catch (err) {
-            log.error(
-              `Delaying login for ${data.payload.name}: Plex cache not ready (${
+          ensurePlexHydrationReady().catch(err => {
+            log.warning(
+              `Continuing login for ${
+                data.payload.name
+              } while Plex hydration finishes in background: ${
                 err?.message || err
-              })`
+              }`
             )
-            const response: WebSocketLoginResponseMessage = {
-              type: 'loginResponse',
-              payload: {
-                success: false,
-                message: 'Login is temporarily unavailable. Please try again.',
-              },
-            }
-            ws.send(JSON.stringify(response))
-            return
-          }
+          })
 
           const user: User = existingUser ?? {
             name: data.payload.name,
@@ -2708,6 +3007,29 @@ export const handleLogin = (ws: WebSocket): Promise<User> => {
 
           ws.removeListener('message', handler)
           session.add(user, ws)
+
+          const hasUnratedMoviesForUser = session.movieList.some(movie => {
+            if (user.responses.some(response => response.guid === movie.guid)) {
+              return false
+            }
+            const movieTmdbId =
+              movie.tmdbId ?? extractTmdbIdFromGuid(movie.guid)
+            if (movieTmdbId == null) {
+              return true
+            }
+            return !user.responses.some(response => {
+              const ratedTmdbId =
+                response.tmdbId ?? extractTmdbIdFromGuid(response.guid)
+              return ratedTmdbId === movieTmdbId
+            })
+          })
+
+          if (!hasUnratedMoviesForUser) {
+            await session.sendNextBatch(undefined, {
+              suppressBroadcast: true,
+              softTimeoutMs: LOGIN_PREFETCH_SOFT_TIMEOUT_MS,
+            })
+          }
 
           let responsesMutated = dedupeUserResponses(user, session)
 
@@ -2952,6 +3274,7 @@ export interface ImdbImportJob {
   roomCode: string
   userName: string
   imdbRows: Array<{ imdbId: string; title: string; year: number | null }>
+  importHistoryId?: string
 }
 
 /**
@@ -2995,7 +3318,7 @@ function sendToUser(roomCode: string, userName: string, message: any): boolean {
 export async function processImdbImportBackground(
   job: ImdbImportJob
 ): Promise<void> {
-  const { roomCode, userName, imdbRows } = job
+  const { roomCode, userName, imdbRows, importHistoryId } = job
   const total = imdbRows.length
 
   log.info(
@@ -3092,7 +3415,6 @@ export async function processImdbImportBackground(
       }
 
       // 2. Full enrichment using existing pipeline (this respects rate limits internally via caching)
-      await omdbRateLimiter.acquire()
       const enriched = await enrich({
         title: tmdbMovie.title,
         year: tmdbMovie.release_date
@@ -3114,7 +3436,6 @@ export async function processImdbImportBackground(
       const ratingParts: string[] = []
       if (enriched?.rating_imdb)
         ratingParts.push(`IMDb: ${enriched.rating_imdb}`)
-      if (enriched?.rating_rt) ratingParts.push(`RT: ${enriched.rating_rt}%`)
       if (enriched?.rating_tmdb)
         ratingParts.push(`TMDb: ${enriched.rating_tmdb}`)
       if (ratingParts.length > 0) ratingStr = ratingParts.join(' | ')
@@ -3150,9 +3471,9 @@ export async function processImdbImportBackground(
         original_language: tmdbMovie.original_language || null,
         director: enriched?.director || null,
         cast: enriched?.cast || [],
+        castMembers: enriched?.castMembers || [],
         writers: enriched?.writers || [],
         rating_imdb: enriched?.rating_imdb || null,
-        rating_rt: enriched?.rating_rt || null,
         rating_tmdb: enriched?.rating_tmdb || null,
         rating_comparr: enriched?.rating_comparr || null,
       }
@@ -3225,6 +3546,13 @@ export async function processImdbImportBackground(
   await saveState(persistedState).catch(err =>
     log.warning(`Failed to save state after import: ${err}`)
   )
+
+  if (importHistoryId) {
+    finalizeImdbImportHistory(roomCode, userName, importHistoryId, 'successful')
+    await saveState(persistedState).catch(err =>
+      log.warning(`Failed to save import history state: ${err}`)
+    )
+  }
 
   // Send completion message
   sendToUser(roomCode, userName, {
