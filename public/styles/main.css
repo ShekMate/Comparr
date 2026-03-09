@@ -1721,7 +1721,9 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .password-input-container .password-visibility-field {
-  flex: 1;
+  flex: 0 0 auto;
+  margin-left: 96px;
+  width: calc(100% - 96px);
 }
 
 .password-form input {
