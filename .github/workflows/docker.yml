@@ -2,7 +2,7 @@ name: Build & Push Dev Docker image
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ['main']
   workflow_dispatch:
 
 permissions:
@@ -11,7 +11,10 @@ permissions:
 
 jobs:
   build:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/comparr-dev
 
     steps:
       - name: Check out repo
@@ -28,9 +31,9 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/shekmate/comparr-dev
+          images: ${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=sha,prefix=sha-
 
       - name: Build and push
