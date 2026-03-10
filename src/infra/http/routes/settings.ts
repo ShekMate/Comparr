@@ -317,6 +317,7 @@ export async function handleSettingsRoutes(
     const jellyfinConfigured =
       Boolean(String(settings.JELLYFIN_URL || '').trim()) &&
       Boolean(String(settings.JELLYFIN_API_KEY || '').trim())
+    const tmdbConfigured = Boolean(String(settings.TMDB_API_KEY || '').trim())
     await req.respond({
       status: 200,
       body: JSON.stringify({
@@ -324,6 +325,7 @@ export async function handleSettingsRoutes(
         plexConfigured,
         embyConfigured,
         jellyfinConfigured,
+        tmdbConfigured,
         paidStreamingServices: settings.PAID_STREAMING_SERVICES,
         personalMediaSources: settings.PERSONAL_MEDIA_SOURCES,
       }),
