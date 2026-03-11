@@ -1969,20 +1969,17 @@ function createFirstRunGuideModal() {
   modal.className = 'first-run-guide-modal'
   modal.innerHTML = `
     <div class="first-run-guide-card" role="dialog" aria-modal="true" aria-labelledby="first-run-guide-title">
-      <h2 id="first-run-guide-title">Welcome, Host 👋</h2>
-      <p class="first-run-guide-copy">Before swiping, choose how this host instance should source movies.</p>
+      <h2 id="first-run-guide-title">Hi, there 👋</h2>
+      <p class="first-run-guide-copy">Let's set this up the way you want to use it. What movies do you want to swipe through?</p>
       <div class="first-run-guide-options" id="first-run-guide-options">
         <button type="button" class="first-run-guide-option is-selected" data-flow="personal-only">
-          <strong>Use my Plex / Emby / Jellyfin libraries</strong>
-          <span>TMDb is optional in this mode. You can swipe local library titles without it.</span>
+          <strong>My Plex, Emby, and/or Jellyfin Libraries Only.*</strong>
         </button>
         <button type="button" class="first-run-guide-option" data-flow="tmdb-only">
-          <strong>Use streaming/discovery only</strong>
-          <span>Requires a TMDb API key to load movies.</span>
+          <strong>My Paid / Free Streaming Subscriptions Only.*</strong>
         </button>
         <button type="button" class="first-run-guide-option" data-flow="combined">
-          <strong>Use both libraries + streaming discovery</strong>
-          <span>Recommended: configure personal media sources and TMDb for full results.</span>
+          <strong>My Plex, Emby, and/or Jellyfin Libraries + My Paid / Free Streaming Subscriptions.*</strong>
         </button>
       </div>
       <p id="first-run-guide-requirements" class="first-run-guide-requirements"></p>
@@ -2001,28 +1998,19 @@ function createFirstRunGuideModal() {
   const recheckButton = modal.querySelector('#first-run-recheck')
   const tabButton = document.querySelector('[data-tab="tab-settings"]')
 
+  const tmdbRegistrationUrl = 'https://www.themoviedb.org/settings/api'
   const requirementCopyByFlow = {
     'personal-only':
-      'Required: at least one valid Plex, Emby, or Jellyfin connection.',
-    'tmdb-only':
-      'Required: TMDb API key. Get a free key at https://www.themoviedb.org/settings/api',
-    combined:
-      'Recommended: at least one personal media source + TMDb API key for full combined discovery.',
+      '*Requires at least one valid Plex, Emby, or Jellyfin connection. Optional: provide a TMDb API Key for additional movie metadata and an enhanced user experience.',
+    'tmdb-only': `*Requires a TMDb API Key. Get your free API Key <a href="${tmdbRegistrationUrl}" target="_blank" rel="noopener noreferrer">here</a>.`,
+    combined: `*Requires at least one valid Plex, Emby, or Jellyfin connection and a TMDb API Key. Get your free API Key <a href="${tmdbRegistrationUrl}" target="_blank" rel="noopener noreferrer">here</a>.`,
   }
 
   const renderRequirementCopy = flow => {
     if (!requirements) return
     const copy =
       requirementCopyByFlow[flow] || requirementCopyByFlow['personal-only']
-    const tmdbUrl = 'https://www.themoviedb.org/settings/api'
-    if (copy.includes(tmdbUrl)) {
-      requirements.innerHTML = copy.replace(
-        tmdbUrl,
-        `<a href="${tmdbUrl}" target="_blank" rel="noopener noreferrer">TMDb free API registration</a>`
-      )
-      return
-    }
-    requirements.textContent = copy
+    requirements.innerHTML = copy
   }
 
   let selectedFlow = 'personal-only'
