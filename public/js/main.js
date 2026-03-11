@@ -2559,6 +2559,8 @@ async function login(api) {
 
   const setRoomMode = (mode, selectedMode = 'group') => {
     roomMode = mode === 'create' ? 'create' : 'join'
+    const isJoinMode = roomMode === 'join'
+    const isCreateMode = roomMode === 'create'
 
     roomModeTabs.forEach(tab => {
       const active = tab.dataset.roomMode === roomMode
@@ -2580,6 +2582,16 @@ async function login(api) {
 
     if (loginSubmitButton) {
       loginSubmitButton.hidden = roomMode === 'join'
+    }
+
+    if (roomCodeInput) {
+      roomCodeInput.required = isJoinMode
+      roomCodeInput.disabled = !isJoinMode
+    }
+
+    if (generatedRoomCodeInput) {
+      generatedRoomCodeInput.required = isCreateMode
+      generatedRoomCodeInput.disabled = !isCreateMode
     }
 
     setRoomCodeError('')
