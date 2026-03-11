@@ -1161,6 +1161,9 @@ async function loadClientConfig() {
     if (data?.jellyfinConfigured !== undefined) {
       window.JELLYFIN_CONFIGURED = Boolean(data.jellyfinConfigured)
     }
+    if (data?.tmdbConfigured !== undefined) {
+      window.TMDB_CONFIGURED = Boolean(data.tmdbConfigured)
+    }
     updateHostManagedSubscriptionServiceOptions()
   } catch (err) {
     console.warn('Client config fetch failed:', err)
@@ -1925,6 +1928,7 @@ async function saveSettingsForm() {
       window.PERSONAL_MEDIA_SOURCES = data.settings.PERSONAL_MEDIA_SOURCES
     }
     await loadClientConfig()
+    document.dispatchEvent(new CustomEvent('comparr:source-config-updated'))
     updateHostManagedSubscriptionServiceOptions()
     updateSwipeAvailabilityUI()
     setSettingsStatus(
@@ -1943,6 +1947,120 @@ async function saveSettingsForm() {
 
 let settingsUiHydrated = false
 let settingsHydratedWithAdminAccess = false
+
+function hasConfiguredPersonalMediaSource() {
+  return Boolean(
+    window.PLEX_CONFIGURED ||
+      window.EMBY_CONFIGURED ||
+      window.JELLYFIN_CONFIGURED
+  )
+}
+
+function hasConfiguredMovieSource() {
+  return hasConfiguredPersonalMediaSource() || Boolean(window.TMDB_CONFIGURED)
+}
+
+function createFirstRunGuideModal() {
+  const existing = document.getElementById('first-run-guide-modal')
+  if (existing) return existing
+
+  const modal = document.createElement('section')
+  modal.id = 'first-run-guide-modal'
+  modal.className = 'first-run-guide-modal'
+  modal.innerHTML = `
+    <div class="first-run-guide-card" role="dialog" aria-modal="true" aria-labelledby="first-run-guide-title">
+      <h2 id="first-run-guide-title">Hi, there 👋</h2>
+      <p class="first-run-guide-copy">Let's set this up the way you want to use it. What movies do you want to swipe through?</p>
+      <div class="first-run-guide-options" id="first-run-guide-options">
+        <button type="button" class="first-run-guide-option is-selected" data-flow="personal-only">
+          <strong>My Plex, Emby, and/or Jellyfin Libraries Only.*</strong>
+        </button>
+        <button type="button" class="first-run-guide-option" data-flow="tmdb-only">
+          <strong>My Paid / Free Streaming Subscriptions Only.*</strong>
+        </button>
+        <button type="button" class="first-run-guide-option" data-flow="combined">
+          <strong>My Plex, Emby, and/or Jellyfin Libraries + My Paid / Free Streaming Subscriptions.*</strong>
+        </button>
+      </div>
+      <p id="first-run-guide-requirements" class="first-run-guide-requirements"></p>
+      <div class="first-run-guide-actions">
+        <button type="button" class="submit-button" id="first-run-open-settings">Open Settings</button>
+        <button type="button" class="submit-button first-run-guide-secondary" id="first-run-recheck">I saved settings, re-check</button>
+      </div>
+    </div>
+  `
+
+  document.body.appendChild(modal)
+
+  const options = Array.from(modal.querySelectorAll('.first-run-guide-option'))
+  const requirements = modal.querySelector('#first-run-guide-requirements')
+  const openSettingsButton = modal.querySelector('#first-run-open-settings')
+  const recheckButton = modal.querySelector('#first-run-recheck')
+  const tabButton = document.querySelector('[data-tab="tab-settings"]')
+
+  const tmdbRegistrationUrl = 'https://www.themoviedb.org/settings/api'
+  const requirementCopyByFlow = {
+    'personal-only':
+      '*Requires at least one valid Plex, Emby, or Jellyfin connection. Optional: provide a TMDb API Key for additional movie metadata and an enhanced user experience.',
+    'tmdb-only': `*Requires a TMDb API Key. Get your free API Key <a href="${tmdbRegistrationUrl}" target="_blank" rel="noopener noreferrer">here</a>.`,
+    combined: `*Requires at least one valid Plex, Emby, or Jellyfin connection and a TMDb API Key. Get your free API Key <a href="${tmdbRegistrationUrl}" target="_blank" rel="noopener noreferrer">here</a>.`,
+  }
+
+  const renderRequirementCopy = flow => {
+    if (!requirements) return
+    const copy =
+      requirementCopyByFlow[flow] || requirementCopyByFlow['personal-only']
+    requirements.innerHTML = copy
+  }
+
+  let selectedFlow = 'personal-only'
+  renderRequirementCopy(selectedFlow)
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      selectedFlow = option.dataset.flow || 'personal-only'
+      options.forEach(btn =>
+        btn.classList.toggle('is-selected', btn === option)
+      )
+      renderRequirementCopy(selectedFlow)
+    })
+  })
+
+  openSettingsButton?.addEventListener('click', () => {
+    tabButton?.click()
+  })
+
+  recheckButton?.addEventListener('click', async () => {
+    await loadClientConfig()
+    document.dispatchEvent(new CustomEvent('comparr:source-config-updated'))
+  })
+
+  return modal
+}
+
+async function ensureInitialSourceSetup() {
+  if (hasConfiguredMovieSource()) return
+
+  const modal = createFirstRunGuideModal()
+  modal?.classList.add('is-visible')
+
+  await new Promise(resolve => {
+    const handleRecheck = async () => {
+      await loadClientConfig()
+      if (!hasConfiguredMovieSource()) {
+        return
+      }
+      modal?.classList.remove('is-visible')
+      document.removeEventListener(
+        'comparr:source-config-updated',
+        handleRecheck
+      )
+      resolve()
+    }
+
+    document.addEventListener('comparr:source-config-updated', handleRecheck)
+  })
+}
 
 async function hydrateSettingsUiIfAuthorized() {
   if (settingsUiHydrated) {
@@ -4457,8 +4575,10 @@ const main = async () => {
   window.PLEX_CONFIGURED = false
   window.EMBY_CONFIGURED = false
   window.JELLYFIN_CONFIGURED = false
+  window.TMDB_CONFIGURED = false
   await loadClientConfig()
   await setupSettingsUI()
+  await ensureInitialSourceSetup()
 
   const matchesView = new MatchesView(matches)
   const shownMatchGuids = new Set()
