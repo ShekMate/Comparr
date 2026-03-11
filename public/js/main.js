@@ -1970,22 +1970,25 @@ function createFirstRunGuideModal() {
   modal.innerHTML = `
     <div class="first-run-guide-card" role="dialog" aria-modal="true" aria-labelledby="first-run-guide-title">
       <h2 id="first-run-guide-title">Hi, there 👋</h2>
-      <p class="first-run-guide-copy">Let's set this up the way you want to use it. What movies do you want to swipe through?</p>
-      <div class="first-run-guide-options" id="first-run-guide-options">
-        <button type="button" class="first-run-guide-option is-selected" data-flow="personal-only">
-          <strong>My Plex, Emby, and/or Jellyfin Libraries Only.*</strong>
-        </button>
-        <button type="button" class="first-run-guide-option" data-flow="tmdb-only">
-          <strong>My Paid / Free Streaming Subscriptions Only.*</strong>
-        </button>
-        <button type="button" class="first-run-guide-option" data-flow="combined">
-          <strong>My Plex, Emby, and/or Jellyfin Libraries + My Paid / Free Streaming Subscriptions.*</strong>
-        </button>
+      <p class="first-run-guide-copy" id="first-run-guide-copy">Let's set this up the way you want to use it. What movies do you want to swipe through?</p>
+      <div class="first-run-guide-body" id="first-run-guide-body">
+        <div class="first-run-guide-options" id="first-run-guide-options">
+          <button type="button" class="first-run-guide-option" data-flow="personal-only">
+            <strong>My Plex, Emby, and/or Jellyfin Libraries Only.*</strong>
+          </button>
+          <button type="button" class="first-run-guide-option" data-flow="tmdb-only">
+            <strong>My Paid / Free Streaming Subscriptions Only.*</strong>
+          </button>
+          <button type="button" class="first-run-guide-option" data-flow="combined">
+            <strong>My Plex, Emby, and/or Jellyfin Libraries + My Paid / Free Streaming Subscriptions.*</strong>
+          </button>
+        </div>
       </div>
       <p id="first-run-guide-requirements" class="first-run-guide-requirements"></p>
+      <p id="first-run-guide-status" class="first-run-guide-status"></p>
       <div class="first-run-guide-actions">
-        <button type="button" class="submit-button" id="first-run-open-settings">Open Settings</button>
-        <button type="button" class="submit-button first-run-guide-secondary" id="first-run-recheck">I saved settings, re-check</button>
+        <button type="button" class="submit-button first-run-guide-secondary" id="first-run-back" hidden>Back</button>
+        <button type="button" class="submit-button" id="first-run-next">Next</button>
       </div>
     </div>
   `
@@ -1993,10 +1996,12 @@ function createFirstRunGuideModal() {
   document.body.appendChild(modal)
 
   const options = Array.from(modal.querySelectorAll('.first-run-guide-option'))
+  const body = modal.querySelector('#first-run-guide-body')
+  const copy = modal.querySelector('#first-run-guide-copy')
   const requirements = modal.querySelector('#first-run-guide-requirements')
-  const openSettingsButton = modal.querySelector('#first-run-open-settings')
-  const recheckButton = modal.querySelector('#first-run-recheck')
-  const tabButton = document.querySelector('[data-tab="tab-settings"]')
+  const status = modal.querySelector('#first-run-guide-status')
+  const backButton = modal.querySelector('#first-run-back')
+  const nextButton = modal.querySelector('#first-run-next')
 
   const tmdbRegistrationUrl = 'https://www.themoviedb.org/settings/api'
   const requirementCopyByFlow = {
@@ -2013,27 +2018,344 @@ function createFirstRunGuideModal() {
     requirements.innerHTML = copy
   }
 
-  let selectedFlow = 'personal-only'
-  renderRequirementCopy(selectedFlow)
+  const selectedState = {
+    flow: '',
+    sources: [],
+    validatedTargets: {},
+  }
+  const history = []
+
+  const setWizardStatus = (message = '', tone = 'info') => {
+    if (!status) return
+    status.textContent = message
+    status.dataset.tone = message ? tone : ''
+  }
+
+  const syncInputValue = (inputId, value) => {
+    const input = document.getElementById(inputId)
+    if (input) {
+      input.value = value
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+    }
+  }
+
+  const saveSettingsSubset = async updates => {
+    const res = await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...getAdminHeaders() },
+      body: JSON.stringify({ settings: updates }),
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      throw new Error(parseApiErrorMessage(data, 'Failed to save settings.'))
+    }
+  }
+
+  const runConnectionTest = async (target, url, token) => {
+    const res = await fetch('/api/settings-test', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...getAdminHeaders() },
+      body: JSON.stringify({ target, url, token }),
+    })
+    const data = await res.json().catch(() => ({ ok: false }))
+    if (!res.ok || !data?.ok) {
+      throw new Error(data?.message || `Failed to connect to ${target}.`)
+    }
+  }
+
+  const serviceMeta = {
+    plex: {
+      label: 'Plex',
+      requiredLabel: 'Plex URL and Plex token are required.',
+      settings: { url: 'PLEX_URL', token: 'PLEX_TOKEN' },
+      inputIds: { url: 'setting-plex-url', token: 'setting-plex-token' },
+    },
+    emby: {
+      label: 'Emby',
+      requiredLabel: 'Emby URL and Emby API key are required.',
+      settings: { url: 'EMBY_URL', token: 'EMBY_API_KEY' },
+      inputIds: { url: 'setting-emby-url', token: 'setting-emby-api-key' },
+    },
+    jellyfin: {
+      label: 'Jellyfin',
+      requiredLabel: 'Jellyfin URL and Jellyfin API key are required.',
+      settings: { url: 'JELLYFIN_URL', token: 'JELLYFIN_API_KEY' },
+      inputIds: {
+        url: 'setting-jellyfin-url',
+        token: 'setting-jellyfin-api-key',
+      },
+    },
+  }
+
+  const setSelectedFlow = flow => {
+    selectedState.flow = flow
+    options.forEach(btn =>
+      btn.classList.toggle('is-selected', btn.dataset.flow === flow)
+    )
+    renderRequirementCopy(flow)
+    setWizardStatus('')
+  }
+
+  const renderScreen = screen => {
+    if (!body || !copy) return
+    backButton.hidden = history.length === 0
+    setWizardStatus('')
+
+    if (screen.type === 'flow') {
+      copy.textContent =
+        "Let's set this up the way you want to use it. What movies do you want to swipe through?"
+      body.innerHTML = `<div class="first-run-guide-options">${options
+        .map(option => option.outerHTML)
+        .join('')}</div>`
+      nextButton.textContent = 'Next'
+      const screenOptions = Array.from(
+        body.querySelectorAll('.first-run-guide-option')
+      )
+      if (selectedState.flow) {
+        screenOptions.forEach(btn =>
+          btn.classList.toggle(
+            'is-selected',
+            btn.dataset.flow === selectedState.flow
+          )
+        )
+      }
+      screenOptions.forEach(option => {
+        option.addEventListener('click', () =>
+          setSelectedFlow(option.dataset.flow || '')
+        )
+      })
+      return
+    }
+
+    if (screen.type === 'sources') {
+      copy.textContent = 'Choose your personal media sources.'
+      body.innerHTML = `
+        <div class="first-run-guide-checkboxes">
+          <label><input type="checkbox" value="plex" ${
+            selectedState.sources.includes('plex') ? 'checked' : ''
+          }/> Plex</label>
+          <label><input type="checkbox" value="emby" ${
+            selectedState.sources.includes('emby') ? 'checked' : ''
+          }/> Emby</label>
+          <label><input type="checkbox" value="jellyfin" ${
+            selectedState.sources.includes('jellyfin') ? 'checked' : ''
+          }/> Jellyfin</label>
+        </div>
+      `
+      nextButton.textContent = 'Next'
+      return
+    }
+
+    if (screen.type === 'service') {
+      const meta = serviceMeta[screen.target]
+      if (!meta) return
+      copy.textContent = `${meta.label} setup`
+      body.innerHTML = `
+        <label class="first-run-guide-field-label">${meta.label} URL</label>
+        <input id="first-run-${
+          screen.target
+        }-url" class="first-run-guide-input" type="url" placeholder="http://localhost" value="${
+        document.getElementById(meta.inputIds.url)?.value || ''
+      }" />
+        <label class="first-run-guide-field-label">${meta.label} ${
+        screen.target === 'plex' ? 'Token' : 'API Key'
+      }</label>
+        <input id="first-run-${
+          screen.target
+        }-token" class="first-run-guide-input" type="text" value="${
+        document.getElementById(meta.inputIds.token)?.value || ''
+      }" />
+        <button type="button" class="submit-button first-run-guide-secondary" id="first-run-test-${
+          screen.target
+        }">Test Connection</button>
+      `
+      nextButton.textContent = 'Next'
+      const testButton = body.querySelector(`#first-run-test-${screen.target}`)
+      testButton?.addEventListener('click', async () => {
+        const url =
+          body.querySelector(`#first-run-${screen.target}-url`)?.value || ''
+        const token =
+          body.querySelector(`#first-run-${screen.target}-token`)?.value || ''
+        if (!isValidUrl(url) || !token.trim()) {
+          setWizardStatus(meta.requiredLabel, 'error')
+          return
+        }
+        try {
+          setWizardStatus(`Testing ${meta.label} connection...`)
+          await runConnectionTest(screen.target, url, token)
+          selectedState.validatedTargets[screen.target] = true
+          setWizardStatus(`✅ ${meta.label} connection successful.`, 'success')
+        } catch (err) {
+          selectedState.validatedTargets[screen.target] = false
+          setWizardStatus(
+            err?.message || `Failed to connect to ${meta.label}.`,
+            'error'
+          )
+        }
+      })
+      return
+    }
+
+    if (screen.type === 'tmdb') {
+      copy.textContent = 'TMDb setup'
+      body.innerHTML = `
+        <label class="first-run-guide-field-label">TMDb API Key</label>
+        <input id="first-run-tmdb-key" class="first-run-guide-input" type="text" value="${
+          document.getElementById('setting-tmdb-key')?.value || ''
+        }" />
+        <button type="button" class="submit-button first-run-guide-secondary" id="first-run-test-tmdb">Test Connection</button>
+      `
+      nextButton.textContent = 'Finish'
+      body
+        .querySelector('#first-run-test-tmdb')
+        ?.addEventListener('click', async () => {
+          const token = body.querySelector('#first-run-tmdb-key')?.value || ''
+          if (!token.trim()) {
+            setWizardStatus('TMDb API key is required.', 'error')
+            return
+          }
+          try {
+            setWizardStatus('Testing TMDb connection...')
+            await runConnectionTest('tmdb', '', token)
+            selectedState.validatedTargets.tmdb = true
+            setWizardStatus('✅ TMDb connection successful.', 'success')
+          } catch (err) {
+            selectedState.validatedTargets.tmdb = false
+            setWizardStatus(
+              err?.message || 'Failed to connect to TMDb.',
+              'error'
+            )
+          }
+        })
+    }
+  }
+
+  const getNextScreen = async () => {
+    const current = history[history.length - 1] || { type: 'flow' }
+    if (current.type === 'flow') {
+      if (!selectedState.flow) {
+        setWizardStatus('Please select one option to continue.', 'error')
+        return null
+      }
+      if (selectedState.flow === 'tmdb-only') return { type: 'tmdb' }
+      return { type: 'sources' }
+    }
+
+    if (current.type === 'sources') {
+      const checked = Array.from(
+        body.querySelectorAll('input[type="checkbox"]:checked')
+      ).map(el => el.value)
+      if (!checked.length) {
+        setWizardStatus('Select at least one source to continue.', 'error')
+        return null
+      }
+      selectedState.sources = checked
+      return { type: 'service', target: checked[0], index: 0 }
+    }
+
+    if (current.type === 'service') {
+      const meta = serviceMeta[current.target]
+      const url =
+        body.querySelector(`#first-run-${current.target}-url`)?.value || ''
+      const token =
+        body.querySelector(`#first-run-${current.target}-token`)?.value || ''
+      if (!isValidUrl(url) || !token.trim()) {
+        setWizardStatus(meta.requiredLabel, 'error')
+        return null
+      }
+      if (!selectedState.validatedTargets[current.target]) {
+        setWizardStatus(
+          `Please test ${meta.label} connection before continuing.`,
+          'error'
+        )
+        return null
+      }
+      syncInputValue(meta.inputIds.url, url)
+      syncInputValue(meta.inputIds.token, token)
+      try {
+        await saveSettingsSubset({
+          [meta.settings.url]: url,
+          [meta.settings.token]: token,
+        })
+      } catch (err) {
+        setWizardStatus(err?.message || 'Failed to save settings.', 'error')
+        return null
+      }
+
+      const nextIndex = current.index + 1
+      if (nextIndex < selectedState.sources.length) {
+        return {
+          type: 'service',
+          target: selectedState.sources[nextIndex],
+          index: nextIndex,
+        }
+      }
+      if (selectedState.flow === 'combined') return { type: 'tmdb' }
+      return { type: 'complete' }
+    }
+
+    if (current.type === 'tmdb') {
+      const tmdbKey = body.querySelector('#first-run-tmdb-key')?.value || ''
+      if (!tmdbKey.trim()) {
+        setWizardStatus('TMDb API key is required.', 'error')
+        return null
+      }
+      if (!selectedState.validatedTargets.tmdb) {
+        setWizardStatus(
+          'Please test TMDb connection before finishing.',
+          'error'
+        )
+        return null
+      }
+      syncInputValue('setting-tmdb-key', tmdbKey)
+      try {
+        await saveSettingsSubset({ TMDB_API_KEY: tmdbKey })
+      } catch (err) {
+        setWizardStatus(
+          err?.message || 'Failed to save TMDb settings.',
+          'error'
+        )
+        return null
+      }
+      return { type: 'complete' }
+    }
+
+    return null
+  }
+
+  const startWizard = () => {
+    const initial = { type: 'flow' }
+    history.splice(0, history.length, initial)
+    renderScreen(initial)
+  }
+
+  nextButton?.addEventListener('click', async () => {
+    const next = await getNextScreen()
+    if (!next) return
+    if (next.type === 'complete') {
+      await loadClientConfig()
+      document.dispatchEvent(new CustomEvent('comparr:source-config-updated'))
+      return
+    }
+    history.push(next)
+    renderScreen(next)
+  })
+
+  backButton?.addEventListener('click', () => {
+    if (history.length <= 1) return
+    history.pop()
+    const previous = history[history.length - 1]
+    renderScreen(previous)
+  })
 
   options.forEach(option => {
-    option.addEventListener('click', () => {
-      selectedFlow = option.dataset.flow || 'personal-only'
-      options.forEach(btn =>
-        btn.classList.toggle('is-selected', btn === option)
-      )
-      renderRequirementCopy(selectedFlow)
-    })
+    option.addEventListener('click', () =>
+      setSelectedFlow(option.dataset.flow || '')
+    )
   })
 
-  openSettingsButton?.addEventListener('click', () => {
-    tabButton?.click()
-  })
-
-  recheckButton?.addEventListener('click', async () => {
-    await loadClientConfig()
-    document.dispatchEvent(new CustomEvent('comparr:source-config-updated'))
-  })
+  renderRequirementCopy('personal-only')
+  startWizard()
 
   return modal
 }

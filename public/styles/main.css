@@ -4678,6 +4678,52 @@ footer {
   color: #93c5fd;
 }
 
+.first-run-guide-body {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.first-run-guide-checkboxes {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.first-run-guide-checkboxes label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #e2e8f0;
+}
+
+.first-run-guide-input {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  background: rgba(15, 23, 42, 0.65);
+  color: #e2e8f0;
+  padding: 0.55rem 0.7rem;
+}
+
+.first-run-guide-field-label {
+  color: #cbd5e1;
+  font-size: 0.9rem;
+}
+
+.first-run-guide-status {
+  margin-top: 0.6rem;
+  min-height: 1.2rem;
+  color: #cbd5e1;
+  font-size: 0.92rem;
+}
+
+.first-run-guide-status[data-tone='error'] {
+  color: #fca5a5;
+}
+
+.first-run-guide-status[data-tone='success'] {
+  color: #86efac;
+}
+
 .first-run-guide-actions {
   margin-top: 1rem;
   display: flex;
