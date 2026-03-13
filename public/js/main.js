@@ -2669,6 +2669,7 @@ function createFirstRunGuideModal() {
 
       selectedState.subscriptions = selectedSubscriptions
       const serializedSubscriptions = JSON.stringify(selectedSubscriptions)
+      window.PAID_STREAMING_SERVICES = serializedSubscriptions
       hydratePaidStreamingServicesSetting(serializedSubscriptions)
       try {
         await saveSettingsSubset({
@@ -7659,7 +7660,11 @@ function updateSwipeSortButton(sortBy) {
 }
 
 function parsePaidServices() {
-  return parseArraySetting(window.PAID_STREAMING_SERVICES)
+  const fromWindow = parseArraySetting(window.PAID_STREAMING_SERVICES)
+  if (fromWindow.length > 0) return fromWindow
+  return parseArraySetting(
+    document.getElementById('setting-paid-streaming-services')?.value
+  )
 }
 
 function parsePersonalSources() {
@@ -7819,8 +7824,7 @@ function updateSwipeAvailabilityUI() {
   if (anywhereInput) anywhereInput.checked = availability.anywhere
   if (subscriptionsInput) {
     subscriptionsInput.checked = anySubscriptionSelected
-    subscriptionsInput.disabled =
-      !subscriptionsConfigured || availability.anywhere
+    subscriptionsInput.disabled = !subscriptionsConfigured
     const visibleSubscriptionCount = getVisibleSubscriptionOptions().length
     subscriptionsInput.indeterminate =
       anySubscriptionSelected &&
@@ -7829,12 +7833,11 @@ function updateSwipeAvailabilityUI() {
   }
   subscriptionInputs.forEach(input => {
     input.checked = selectedSubscriptionSet.has(input.value)
-    input.disabled =
-      availability.anywhere || !subscriptionsConfigured || input.disabled
+    input.disabled = !subscriptionsConfigured || input.disabled
   })
   if (freeInput) {
     freeInput.checked = availability.freeStreaming
-    freeInput.disabled = availability.anywhere
+    freeInput.disabled = false
   }
 
   const toggle = document.getElementById('swipe-availability-toggle')
