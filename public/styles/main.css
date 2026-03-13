@@ -4717,6 +4717,20 @@ footer {
   color: #e2e8f0;
 }
 
+.first-run-guide-radio-group {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.first-run-guide-radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #e2e8f0;
+  font-size: 0.95rem;
+}
+
 .first-run-guide-input {
   width: 100%;
   border-radius: 10px;
