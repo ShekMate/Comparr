@@ -84,6 +84,8 @@ export const getJellyseerrApiKey = () => getSettingTrimmed('JELLYSEERR_API_KEY')
 export const getOverseerrUrl = () =>
   normalizeUrl(getSettingTrimmed('OVERSEERR_URL'))
 export const getOverseerrApiKey = () => getSettingTrimmed('OVERSEERR_API_KEY')
+export const getSeerrUrl = () => normalizeUrl(getSettingTrimmed('SEERR_URL'))
+export const getSeerrApiKey = () => getSettingTrimmed('SEERR_API_KEY')
 export const getTmdbApiKey = () => getSettingTrimmed('TMDB_API_KEY')
 export const getStreamingProfileMode = () =>
   getSettingTrimmed('STREAMING_PROFILE_MODE') ?? 'anywhere'

@@ -377,7 +377,7 @@ for await (const req of server) {
         let errorMessage = 'Internal server error'
         if (err.message?.includes('ECONNREFUSED')) {
           errorMessage =
-            'Unable to connect to request service (Jellyseerr/Overseerr). Please check if the service is running.'
+            'Unable to connect to request service (Seerr/Jellyseerr/Overseerr). Please check if the service is running.'
         } else if (
           err.message?.includes('401') ||
           err.message?.includes('403')

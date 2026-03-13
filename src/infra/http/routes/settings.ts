@@ -110,7 +110,8 @@ const runConnectionCheck = async (
     headers = { 'X-Emby-Token': normalizedToken }
   } else if (
     normalizedTarget === 'jellyseerr' ||
-    normalizedTarget === 'overseerr'
+    normalizedTarget === 'overseerr' ||
+    normalizedTarget === 'seerr'
   ) {
     endpoint = `${serviceUrl}/api/v1/status`
     headers = { 'X-Api-Key': normalizedToken }
@@ -206,6 +207,8 @@ const ADMIN_ONLY_SETTINGS = new Set([
   'JELLYSEERR_API_KEY',
   'OVERSEERR_URL',
   'OVERSEERR_API_KEY',
+  'SEERR_URL',
+  'SEERR_API_KEY',
   'ACCESS_PASSWORD',
   'ADMIN_PASSWORD',
 ])

@@ -1699,6 +1699,10 @@ function initializeIntegrationTestButtons() {
       url: 'setting-overseerr-url',
       key: 'setting-overseerr-api-key',
     },
+    seerr: {
+      url: 'setting-seerr-url',
+      key: 'setting-seerr-api-key',
+    },
     tmdb: { key: 'setting-tmdb-key' },
   }
 
@@ -1709,6 +1713,7 @@ function initializeIntegrationTestButtons() {
     radarr: 'Radarr',
     jellyseerr: 'Jellyseerr',
     overseerr: 'Overseerr',
+    seerr: 'Seerr',
     tmdb: 'TMDB',
   }
 
@@ -1798,6 +1803,57 @@ function initializeIntegrationTestButtons() {
   })
 }
 
+function getAdminSelectedRequestServiceType() {
+  const selected = document.querySelector(
+    'input[name="admin-request-service-type"]:checked'
+  )
+  return selected?.value || 'jellyseerr'
+}
+
+function setAdminSelectedRequestServiceType(type) {
+  const normalizedType =
+    type === 'overseerr' || type === 'seerr' ? type : 'jellyseerr'
+  const radio = document.querySelector(
+    `input[name="admin-request-service-type"][value="${normalizedType}"]`
+  )
+  if (radio) radio.checked = true
+}
+
+function inferRequestServiceTypeFromSettingsValues() {
+  const hasJelly = Boolean(
+    document.getElementById('setting-jellyseerr-url')?.value?.trim() &&
+      document.getElementById('setting-jellyseerr-api-key')?.value?.trim()
+  )
+  const hasOver = Boolean(
+    document.getElementById('setting-overseerr-url')?.value?.trim() &&
+      document.getElementById('setting-overseerr-api-key')?.value?.trim()
+  )
+  const hasSeerr = Boolean(
+    document.getElementById('setting-seerr-url')?.value?.trim() &&
+      document.getElementById('setting-seerr-api-key')?.value?.trim()
+  )
+
+  if (hasSeerr) return 'seerr'
+  if (hasOver && !hasJelly) return 'overseerr'
+  return 'jellyseerr'
+}
+
+function normalizeRequestServiceSettingsForSelection(settings) {
+  const selectedRequestService = getAdminSelectedRequestServiceType()
+  const selectedKeys = {
+    jellyseerr: ['JELLYSEERR_URL', 'JELLYSEERR_API_KEY'],
+    overseerr: ['OVERSEERR_URL', 'OVERSEERR_API_KEY'],
+    seerr: ['SEERR_URL', 'SEERR_API_KEY'],
+  }
+
+  Object.entries(selectedKeys).forEach(([service, keys]) => {
+    if (service === selectedRequestService) return
+    keys.forEach(key => {
+      settings[key] = ''
+    })
+  })
+}
+
 function collectSettingsForm() {
   const settings = {}
   document.querySelectorAll('[data-setting-key]').forEach(el => {
@@ -1864,6 +1920,9 @@ async function hydrateSettingsForm() {
 
     hydratePaidStreamingServicesSetting(settings.PAID_STREAMING_SERVICES)
     hydratePersonalMediaSourcesSetting(settings.PERSONAL_MEDIA_SOURCES)
+    setAdminSelectedRequestServiceType(
+      inferRequestServiceTypeFromSettingsValues()
+    )
     setSettingsDirty(false)
     clearSettingsStatusAfterDelay()
   } catch (err) {
@@ -1888,6 +1947,7 @@ async function saveSettingsForm() {
     }
 
     const settings = collectSettingsForm()
+    normalizeRequestServiceSettingsForSelection(settings)
     const res = await fetch('/api/settings', {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...getAdminHeaders() },
@@ -2031,6 +2091,8 @@ function createFirstRunGuideModal() {
       jellyseerrApiKey: '',
       overseerrUrl: '',
       overseerrApiKey: '',
+      seerrUrl: '',
+      seerrApiKey: '',
     },
     defaultsLastSavedSnapshot: '',
   }
@@ -2044,6 +2106,8 @@ function createFirstRunGuideModal() {
     jellyseerrApiKey: 'first-run-jellyseerr-api-key',
     overseerrUrl: 'first-run-overseerr-url',
     overseerrApiKey: 'first-run-overseerr-api-key',
+    seerrUrl: 'first-run-seerr-url',
+    seerrApiKey: 'first-run-seerr-api-key',
   }
 
   const setWizardStatus = (message = '', tone = 'info') => {
@@ -2410,13 +2474,19 @@ function createFirstRunGuideModal() {
       renderRequirementCopy('')
       title.textContent = 'Movie Requests (optional)'
       copy.textContent =
-        'Integrate Radarr plus either Jellyseerr or Overseerr to enable movie requests for titles not in your media sources.'
+        'Integrate Radarr plus Seerr, Jellyseerr, or Overseerr to enable movie requests for titles not in your media sources.'
       const selectedRequestService =
         selectedState.requestServices.requestServiceType === 'overseerr'
           ? 'overseerr'
+          : selectedState.requestServices.requestServiceType === 'seerr'
+          ? 'seerr'
           : 'jellyseerr'
       const requestServiceLabel =
-        selectedRequestService === 'overseerr' ? 'Overseerr' : 'Jellyseerr'
+        selectedRequestService === 'overseerr'
+          ? 'Overseerr'
+          : selectedRequestService === 'seerr'
+          ? 'Seerr'
+          : 'Jellyseerr'
       const requestServiceUrlValue =
         selectedState.requestServices[`${selectedRequestService}Url`]
       const requestServiceApiKeyValue =
@@ -2446,6 +2516,11 @@ function createFirstRunGuideModal() {
           }" value="overseerr" ${
         selectedRequestService === 'overseerr' ? 'checked' : ''
       } /> Overseerr</label>
+          <label><input type="radio" name="${
+            requestFieldIds.requestServiceType
+          }" value="seerr" ${
+        selectedRequestService === 'seerr' ? 'checked' : ''
+      } /> Seerr</label>
         </div>
         <label class="first-run-guide-field-label">${requestServiceLabel} URL</label>
         <input id="${
@@ -2625,9 +2700,17 @@ function createFirstRunGuideModal() {
         return null
       }
       const selectedRequestService =
-        s.requestServiceType === 'overseerr' ? 'overseerr' : 'jellyseerr'
+        s.requestServiceType === 'overseerr'
+          ? 'overseerr'
+          : s.requestServiceType === 'seerr'
+          ? 'seerr'
+          : 'jellyseerr'
       const selectedRequestServiceLabel =
-        selectedRequestService === 'overseerr' ? 'Overseerr' : 'Jellyseerr'
+        selectedRequestService === 'overseerr'
+          ? 'Overseerr'
+          : selectedRequestService === 'seerr'
+          ? 'Seerr'
+          : 'Jellyseerr'
       const selectedRequestServiceUrl = s[`${selectedRequestService}Url`]
       const selectedRequestServiceApiKey = s[`${selectedRequestService}ApiKey`]
       if (!selectedRequestServiceUrl && !selectedRequestServiceApiKey) {
@@ -2650,6 +2733,7 @@ function createFirstRunGuideModal() {
 
       const hasJelly = selectedRequestService === 'jellyseerr'
       const hasOver = selectedRequestService === 'overseerr'
+      const hasSeerr = selectedRequestService === 'seerr'
 
       try {
         await saveSettingsSubset({
@@ -2659,6 +2743,8 @@ function createFirstRunGuideModal() {
           JELLYSEERR_API_KEY: hasJelly ? s.jellyseerrApiKey : '',
           OVERSEERR_URL: hasOver ? s.overseerrUrl : '',
           OVERSEERR_API_KEY: hasOver ? s.overseerrApiKey : '',
+          SEERR_URL: hasSeerr ? s.seerrUrl : '',
+          SEERR_API_KEY: hasSeerr ? s.seerrApiKey : '',
         })
       } catch (err) {
         setWizardStatus(
@@ -2706,11 +2792,18 @@ function createFirstRunGuideModal() {
       document.getElementById('setting-overseerr-url')?.value?.trim() || ''
     selectedState.requestServices.overseerrApiKey =
       document.getElementById('setting-overseerr-api-key')?.value?.trim() || ''
+    selectedState.requestServices.seerrUrl =
+      document.getElementById('setting-seerr-url')?.value?.trim() || ''
+    selectedState.requestServices.seerrApiKey =
+      document.getElementById('setting-seerr-api-key')?.value?.trim() || ''
     selectedState.requestServices.requestServiceType =
-      selectedState.requestServices.overseerrUrl &&
-      selectedState.requestServices.overseerrApiKey &&
-      !selectedState.requestServices.jellyseerrUrl &&
-      !selectedState.requestServices.jellyseerrApiKey
+      selectedState.requestServices.seerrUrl &&
+      selectedState.requestServices.seerrApiKey
+        ? 'seerr'
+        : selectedState.requestServices.overseerrUrl &&
+          selectedState.requestServices.overseerrApiKey &&
+          !selectedState.requestServices.jellyseerrUrl &&
+          !selectedState.requestServices.jellyseerrApiKey
         ? 'overseerr'
         : 'jellyseerr'
     const initial = { type: 'flow' }
@@ -2796,7 +2889,7 @@ async function hydrateSettingsUiIfAuthorized() {
 
   document
     .querySelectorAll(
-      '[data-setting-key], [data-paid-streaming-service], [data-personal-media-source]'
+      '[data-setting-key], [data-paid-streaming-service], [data-personal-media-source], input[name="admin-request-service-type"]'
     )
     .forEach(el => {
       if (el.dataset.boundSettingsDirty === 'true') return
