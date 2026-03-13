@@ -4753,7 +4753,8 @@ footer {
   flex-wrap: wrap;
 }
 
-.first-run-guide-actions .submit-button {
+.first-run-guide-actions .submit-button,
+.first-run-guide-test-button {
   border: 1px solid rgba(99, 102, 241, 0.5);
   border-radius: 10px;
   background: var(--gradient-primary);
@@ -4764,12 +4765,19 @@ footer {
   transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
 }
 
-.first-run-guide-actions .submit-button:hover {
+.first-run-guide-test-button {
+  width: fit-content;
+  margin-top: 0.25rem;
+}
+
+.first-run-guide-actions .submit-button:hover,
+.first-run-guide-test-button:hover {
   transform: translateY(-1px);
   box-shadow: 0 8px 20px rgba(59, 130, 246, 0.35);
 }
 
-.first-run-guide-actions .submit-button:focus-visible {
+.first-run-guide-actions .submit-button:focus-visible,
+.first-run-guide-test-button:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.35),
     0 8px 20px rgba(59, 130, 246, 0.35);
