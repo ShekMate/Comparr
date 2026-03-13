@@ -2139,7 +2139,7 @@ function createFirstRunGuideModal() {
     }
 
     if (screen.type === 'sources') {
-      title.textContent = 'Choose your sources'
+      title.textContent = 'Personal Media Sources'
       copy.textContent = 'Choose your personal media sources.'
       body.innerHTML = `
         <div class="first-run-guide-checkboxes">
@@ -2161,8 +2161,8 @@ function createFirstRunGuideModal() {
     if (screen.type === 'service') {
       const meta = serviceMeta[screen.target]
       if (!meta) return
-      title.textContent = `${meta.label} setup`
-      copy.textContent = `${meta.label} setup`
+      title.textContent = meta.label
+      copy.textContent = ''
       body.innerHTML = `
         <label class="first-run-guide-field-label">${meta.label} URL</label>
         <input id="first-run-${
@@ -2178,7 +2178,7 @@ function createFirstRunGuideModal() {
         }-token" class="first-run-guide-input" type="text" value="${
         document.getElementById(meta.inputIds.token)?.value || ''
       }" />
-        <button type="button" class="submit-button first-run-guide-secondary" id="first-run-test-${
+        <button type="button" class="submit-button" id="first-run-test-${
           screen.target
         }">Test Connection</button>
       `
@@ -2217,7 +2217,7 @@ function createFirstRunGuideModal() {
         <input id="first-run-tmdb-key" class="first-run-guide-input" type="text" value="${
           document.getElementById('setting-tmdb-key')?.value || ''
         }" />
-        <button type="button" class="submit-button first-run-guide-secondary" id="first-run-test-tmdb">Test Connection</button>
+        <button type="button" class="submit-button" id="first-run-test-tmdb">Test Connection</button>
       `
       nextButton.textContent = 'Finish'
       body
