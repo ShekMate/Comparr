@@ -2024,6 +2024,7 @@ function createFirstRunGuideModal() {
     subscriptions: [],
     validatedTargets: {},
     requestServices: {
+      requestServiceType: 'jellyseerr',
       radarrUrl: '',
       radarrApiKey: '',
       jellyseerrUrl: '',
@@ -2036,6 +2037,7 @@ function createFirstRunGuideModal() {
   const history = []
 
   const requestFieldIds = {
+    requestServiceType: 'first-run-request-service-type',
     radarrUrl: 'first-run-radarr-url',
     radarrApiKey: 'first-run-radarr-api-key',
     jellyseerrUrl: 'first-run-jellyseerr-url',
@@ -2144,13 +2146,22 @@ function createFirstRunGuideModal() {
 
   const persistRequestInputs = () => {
     Object.entries(requestFieldIds).forEach(([key, id]) => {
+      if (key === 'requestServiceType') {
+        selectedState.requestServices[key] =
+          body.querySelector(`input[name="${id}"]:checked`)?.value ||
+          selectedState.requestServices[key] ||
+          'jellyseerr'
+        return
+      }
       selectedState.requestServices[key] =
         body.querySelector(`#${id}`)?.value?.trim() || ''
     })
   }
 
   const hasAnyRequestInput = () =>
-    Object.values(selectedState.requestServices).some(value => Boolean(value))
+    Object.entries(selectedState.requestServices).some(
+      ([key, value]) => key !== 'requestServiceType' && Boolean(value)
+    )
 
   const getCurrentDefaultsSnapshot = () =>
     JSON.stringify(normalizeFilterStateForDefaults(window.filterState))
@@ -2399,21 +2410,60 @@ function createFirstRunGuideModal() {
       renderRequirementCopy('')
       title.textContent = 'Movie Requests (optional)'
       copy.textContent =
-        'Integrate radarr along with jellyseerr or overseerr to enable a request option for movies not in your personal media sources.'
+        'Integrate Radarr plus either Jellyseerr or Overseerr to enable movie requests for titles not in your media sources.'
+      const selectedRequestService =
+        selectedState.requestServices.requestServiceType === 'overseerr'
+          ? 'overseerr'
+          : 'jellyseerr'
+      const requestServiceLabel =
+        selectedRequestService === 'overseerr' ? 'Overseerr' : 'Jellyseerr'
+      const requestServiceUrlValue =
+        selectedState.requestServices[`${selectedRequestService}Url`]
+      const requestServiceApiKeyValue =
+        selectedState.requestServices[`${selectedRequestService}ApiKey`]
       body.innerHTML = `
         <label class="first-run-guide-field-label">Radarr URL</label>
-        <input id="${requestFieldIds.radarrUrl}" class="first-run-guide-input" type="url" placeholder="http://localhost" value="${selectedState.requestServices.radarrUrl}" />
+        <input id="${
+          requestFieldIds.radarrUrl
+        }" class="first-run-guide-input" type="url" placeholder="http://localhost" value="${
+        selectedState.requestServices.radarrUrl
+      }" />
         <label class="first-run-guide-field-label">Radarr API Key</label>
-        <input id="${requestFieldIds.radarrApiKey}" class="first-run-guide-input" type="text" value="${selectedState.requestServices.radarrApiKey}" />
-        <label class="first-run-guide-field-label">Jellyseerr URL</label>
-        <input id="${requestFieldIds.jellyseerrUrl}" class="first-run-guide-input" type="url" placeholder="http://localhost" value="${selectedState.requestServices.jellyseerrUrl}" />
-        <label class="first-run-guide-field-label">Jellyseerr API Key</label>
-        <input id="${requestFieldIds.jellyseerrApiKey}" class="first-run-guide-input" type="text" value="${selectedState.requestServices.jellyseerrApiKey}" />
-        <label class="first-run-guide-field-label">Overseerr URL</label>
-        <input id="${requestFieldIds.overseerrUrl}" class="first-run-guide-input" type="url" placeholder="http://localhost" value="${selectedState.requestServices.overseerrUrl}" />
-        <label class="first-run-guide-field-label">Overseerr API Key</label>
-        <input id="${requestFieldIds.overseerrApiKey}" class="first-run-guide-input" type="text" value="${selectedState.requestServices.overseerrApiKey}" />
+        <input id="${
+          requestFieldIds.radarrApiKey
+        }" class="first-run-guide-input" type="text" value="${
+        selectedState.requestServices.radarrApiKey
+      }" />
+        <label class="first-run-guide-field-label">Request Service</label>
+        <div class="first-run-guide-radio-group">
+          <label><input type="radio" name="${
+            requestFieldIds.requestServiceType
+          }" value="jellyseerr" ${
+        selectedRequestService === 'jellyseerr' ? 'checked' : ''
+      } /> Jellyseerr</label>
+          <label><input type="radio" name="${
+            requestFieldIds.requestServiceType
+          }" value="overseerr" ${
+        selectedRequestService === 'overseerr' ? 'checked' : ''
+      } /> Overseerr</label>
+        </div>
+        <label class="first-run-guide-field-label">${requestServiceLabel} URL</label>
+        <input id="${
+          requestFieldIds[`${selectedRequestService}Url`]
+        }" class="first-run-guide-input" type="url" placeholder="http://localhost" value="${requestServiceUrlValue}" />
+        <label class="first-run-guide-field-label">${requestServiceLabel} API Key</label>
+        <input id="${
+          requestFieldIds[`${selectedRequestService}ApiKey`]
+        }" class="first-run-guide-input" type="text" value="${requestServiceApiKeyValue}" />
       `
+      body
+        .querySelectorAll(`input[name="${requestFieldIds.requestServiceType}"]`)
+        .forEach(radio => {
+          radio.addEventListener('change', () => {
+            persistRequestInputs()
+            renderScreen(screen)
+          })
+        })
       return
     }
 
@@ -2574,26 +2624,32 @@ function createFirstRunGuideModal() {
         setWizardStatus('Radarr URL and API Key are required.', 'error')
         return null
       }
-      const hasJelly = Boolean(s.jellyseerrUrl || s.jellyseerrApiKey)
-      const hasOver = Boolean(s.overseerrUrl || s.overseerrApiKey)
-      if (!hasJelly && !hasOver) {
+      const selectedRequestService =
+        s.requestServiceType === 'overseerr' ? 'overseerr' : 'jellyseerr'
+      const selectedRequestServiceLabel =
+        selectedRequestService === 'overseerr' ? 'Overseerr' : 'Jellyseerr'
+      const selectedRequestServiceUrl = s[`${selectedRequestService}Url`]
+      const selectedRequestServiceApiKey = s[`${selectedRequestService}ApiKey`]
+      if (!selectedRequestServiceUrl && !selectedRequestServiceApiKey) {
         setWizardStatus(
-          'Add Jellyseerr or Overseerr details, or click Skip.',
+          `Add ${selectedRequestServiceLabel} details, or click Skip.`,
           'error'
         )
         return null
       }
-      if (hasJelly && (!isValidUrl(s.jellyseerrUrl) || !s.jellyseerrApiKey)) {
+      if (
+        !isValidUrl(selectedRequestServiceUrl) ||
+        !selectedRequestServiceApiKey
+      ) {
         setWizardStatus(
-          'Jellyseerr URL and API Key are both required.',
+          `${selectedRequestServiceLabel} URL and API Key are both required.`,
           'error'
         )
         return null
       }
-      if (hasOver && (!isValidUrl(s.overseerrUrl) || !s.overseerrApiKey)) {
-        setWizardStatus('Overseerr URL and API Key are both required.', 'error')
-        return null
-      }
+
+      const hasJelly = selectedRequestService === 'jellyseerr'
+      const hasOver = selectedRequestService === 'overseerr'
 
       try {
         await saveSettingsSubset({
@@ -2638,6 +2694,25 @@ function createFirstRunGuideModal() {
       document.getElementById('setting-paid-streaming-services')?.value ||
         window.PAID_STREAMING_SERVICES
     )
+    selectedState.requestServices.radarrUrl =
+      document.getElementById('setting-radarr-url')?.value?.trim() || ''
+    selectedState.requestServices.radarrApiKey =
+      document.getElementById('setting-radarr-api-key')?.value?.trim() || ''
+    selectedState.requestServices.jellyseerrUrl =
+      document.getElementById('setting-jellyseerr-url')?.value?.trim() || ''
+    selectedState.requestServices.jellyseerrApiKey =
+      document.getElementById('setting-jellyseerr-api-key')?.value?.trim() || ''
+    selectedState.requestServices.overseerrUrl =
+      document.getElementById('setting-overseerr-url')?.value?.trim() || ''
+    selectedState.requestServices.overseerrApiKey =
+      document.getElementById('setting-overseerr-api-key')?.value?.trim() || ''
+    selectedState.requestServices.requestServiceType =
+      selectedState.requestServices.overseerrUrl &&
+      selectedState.requestServices.overseerrApiKey &&
+      !selectedState.requestServices.jellyseerrUrl &&
+      !selectedState.requestServices.jellyseerrApiKey
+        ? 'overseerr'
+        : 'jellyseerr'
     const initial = { type: 'flow' }
     history.splice(0, history.length, initial)
     renderScreen(initial)
