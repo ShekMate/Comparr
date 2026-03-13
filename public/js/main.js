@@ -2178,7 +2178,7 @@ function createFirstRunGuideModal() {
         }-token" class="first-run-guide-input" type="text" value="${
         document.getElementById(meta.inputIds.token)?.value || ''
       }" />
-        <button type="button" class="submit-button" id="first-run-test-${
+        <button type="button" class="submit-button first-run-guide-test-button" id="first-run-test-${
           screen.target
         }">Test Connection</button>
       `
@@ -2217,7 +2217,7 @@ function createFirstRunGuideModal() {
         <input id="first-run-tmdb-key" class="first-run-guide-input" type="text" value="${
           document.getElementById('setting-tmdb-key')?.value || ''
         }" />
-        <button type="button" class="submit-button" id="first-run-test-tmdb">Test Connection</button>
+        <button type="button" class="submit-button first-run-guide-test-button" id="first-run-test-tmdb">Test Connection</button>
       `
       nextButton.textContent = 'Finish'
       body
