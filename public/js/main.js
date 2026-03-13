@@ -1970,7 +1970,7 @@ function createFirstRunGuideModal() {
   modal.innerHTML = `
     <div class="first-run-guide-card" role="dialog" aria-modal="true" aria-labelledby="first-run-guide-title">
       <h2 id="first-run-guide-title">Hi, there 👋</h2>
-      <p class="first-run-guide-copy" id="first-run-guide-copy">Let's set this up the way you want to use it. What movies do you want to swipe through?</p>
+      <p class="first-run-guide-copy" id="first-run-guide-copy">What movies do you want to swipe through?</p>
       <div class="first-run-guide-body" id="first-run-guide-body">
         <div class="first-run-guide-options" id="first-run-guide-options">
           <button type="button" class="first-run-guide-option" data-flow="personal-only">
@@ -1997,6 +1997,7 @@ function createFirstRunGuideModal() {
 
   const options = Array.from(modal.querySelectorAll('.first-run-guide-option'))
   const body = modal.querySelector('#first-run-guide-body')
+  const title = modal.querySelector('#first-run-guide-title')
   const copy = modal.querySelector('#first-run-guide-copy')
   const requirements = modal.querySelector('#first-run-guide-requirements')
   const status = modal.querySelector('#first-run-guide-status')
@@ -2109,13 +2110,13 @@ function createFirstRunGuideModal() {
   }
 
   const renderScreen = screen => {
-    if (!body || !copy) return
+    if (!body || !copy || !title) return
     backButton.hidden = history.length <= 1
     setWizardStatus('')
 
     if (screen.type === 'flow') {
-      copy.textContent =
-        "Let's set this up the way you want to use it. What movies do you want to swipe through?"
+      title.textContent = 'Hi, there 👋'
+      copy.textContent = 'What movies do you want to swipe through?'
       body.innerHTML = `<div class="first-run-guide-options">${options
         .map(option => option.outerHTML)
         .join('')}</div>`
@@ -2138,6 +2139,7 @@ function createFirstRunGuideModal() {
     }
 
     if (screen.type === 'sources') {
+      title.textContent = 'Choose your sources'
       copy.textContent = 'Choose your personal media sources.'
       body.innerHTML = `
         <div class="first-run-guide-checkboxes">
@@ -2159,6 +2161,7 @@ function createFirstRunGuideModal() {
     if (screen.type === 'service') {
       const meta = serviceMeta[screen.target]
       if (!meta) return
+      title.textContent = `${meta.label} setup`
       copy.textContent = `${meta.label} setup`
       body.innerHTML = `
         <label class="first-run-guide-field-label">${meta.label} URL</label>
@@ -2207,6 +2210,7 @@ function createFirstRunGuideModal() {
     }
 
     if (screen.type === 'tmdb') {
+      title.textContent = 'TMDb setup'
       copy.textContent = 'TMDb setup'
       body.innerHTML = `
         <label class="first-run-guide-field-label">TMDb API Key</label>
