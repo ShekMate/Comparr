@@ -3,6 +3,8 @@ import {
   getJellyseerrUrl,
   getOverseerrApiKey,
   getOverseerrUrl,
+  getSeerrApiKey,
+  getSeerrUrl,
 } from '../core/config.ts'
 import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
 
@@ -21,39 +23,62 @@ interface MediaStatus {
 
 // Validate configuration on startup
 const validateConfiguration = () => {
+  const seerrConfigured = !!(getSeerrUrl() && getSeerrApiKey())
   const jellyseerrConfigured = !!(getJellyseerrUrl() && getJellyseerrApiKey())
   const overseerrConfigured = !!(getOverseerrUrl() && getOverseerrApiKey())
+  const configuredServices = [
+    seerrConfigured ? 'Seerr' : '',
+    jellyseerrConfigured ? 'Jellyseerr' : '',
+    overseerrConfigured ? 'Overseerr' : '',
+  ].filter(Boolean)
 
-  if (jellyseerrConfigured && overseerrConfigured) {
+  if (configuredServices.length > 1) {
     log.warning(
-      '⚠️  Both Jellyseerr and Overseerr are configured! Only one should be set.'
+      `⚠️  Multiple request services configured (${configuredServices.join(
+        ', '
+      )}). Only one should be set.`
     )
     log.warning(
-      '⚠️  Jellyseerr will be used. Please remove Overseerr configuration from your .env file.'
+      '⚠️  Seerr is preferred, then Jellyseerr, then Overseerr. Remove extra configuration keys.'
     )
   }
 
-  if (jellyseerrConfigured) {
+  if (seerrConfigured) {
+    log.info('✅ Seerr request service configured')
+  } else if (jellyseerrConfigured) {
     log.info('✅ Jellyseerr request service configured')
   } else if (overseerrConfigured) {
     log.info('✅ Overseerr request service configured')
   } else {
-    log.info('ℹ️  No request service configured (Jellyseerr/Overseerr)')
+    log.info('ℹ️  No request service configured (Seerr/Jellyseerr/Overseerr)')
   }
 }
 
 // Determine which service is configured
 const getServiceConfig = () => {
+  const seerrUrl = getSeerrUrl()
+  const seerrApiKey = getSeerrApiKey()
   const jellyseerrUrl = getJellyseerrUrl()
   const jellyseerrApiKey = getJellyseerrApiKey()
   const overseerrUrl = getOverseerrUrl()
   const overseerrApiKey = getOverseerrApiKey()
+  const seerrConfigured = !!(seerrUrl && seerrApiKey)
   const jellyseerrConfigured = !!(jellyseerrUrl && jellyseerrApiKey)
   const overseerrConfigured = !!(overseerrUrl && overseerrApiKey)
 
-  // Prioritize Jellyseerr if both are configured
-  if (jellyseerrConfigured && overseerrConfigured) {
-    log.warning('Both services configured - using Jellyseerr')
+  // Prioritize Seerr, then Jellyseerr, then Overseerr
+  if (seerrConfigured && (jellyseerrConfigured || overseerrConfigured)) {
+    log.warning('Multiple request services configured - using Seerr')
+  } else if (jellyseerrConfigured && overseerrConfigured) {
+    log.warning('Multiple request services configured - using Jellyseerr')
+  }
+
+  if (seerrConfigured) {
+    return {
+      url: seerrUrl!,
+      apiKey: seerrApiKey!,
+      service: 'seerr',
+    }
   }
 
   if (jellyseerrConfigured) {
@@ -62,13 +87,16 @@ const getServiceConfig = () => {
       apiKey: jellyseerrApiKey!,
       service: 'jellyseerr',
     }
-  } else if (overseerrConfigured) {
+  }
+
+  if (overseerrConfigured) {
     return {
       url: overseerrUrl!,
       apiKey: overseerrApiKey!,
       service: 'overseerr',
     }
   }
+
   return null
 }
 
@@ -79,7 +107,7 @@ export async function requestMovie(tmdbId: number): Promise<RequestResponse> {
   const config = getServiceConfig()
 
   if (!config) {
-    log.warning('No Jellyseerr or Overseerr configured')
+    log.warning('No Seerr, Jellyseerr, or Overseerr configured')
     return { success: false, message: 'Request service not configured' }
   }
 

@@ -3,6 +3,8 @@ import {
   getJellyseerrUrl,
   getOverseerrApiKey,
   getOverseerrUrl,
+  getSeerrApiKey,
+  getSeerrUrl,
   getPlexToken,
   getPlexUrl,
   getRadarrApiKey,
@@ -24,6 +26,7 @@ export async function handleConfigDebugRoute(req: any, path: string) {
         radarr_configured: !!(getRadarrUrl() && getRadarrApiKey()),
         jellyseerr_configured: !!(getJellyseerrUrl() && getJellyseerrApiKey()),
         overseerr_configured: !!(getOverseerrUrl() && getOverseerrApiKey()),
+        seerr_configured: !!(getSeerrUrl() && getSeerrApiKey()),
       },
       null,
       2
