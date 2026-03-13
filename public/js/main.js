@@ -1971,23 +1971,13 @@ function createFirstRunGuideModal() {
     <div class="first-run-guide-card" role="dialog" aria-modal="true" aria-labelledby="first-run-guide-title">
       <h2 id="first-run-guide-title">Hi, there 👋</h2>
       <p class="first-run-guide-copy" id="first-run-guide-copy">What movies do you want to swipe through?</p>
-      <div class="first-run-guide-body" id="first-run-guide-body">
-        <div class="first-run-guide-options" id="first-run-guide-options">
-          <button type="button" class="first-run-guide-option" data-flow="personal-only">
-            <strong>My Plex, Emby, and/or Jellyfin Libraries Only.*</strong>
-          </button>
-          <button type="button" class="first-run-guide-option" data-flow="tmdb-only">
-            <strong>My Paid / Free Streaming Subscriptions Only.*</strong>
-          </button>
-          <button type="button" class="first-run-guide-option" data-flow="combined">
-            <strong>My Plex, Emby, and/or Jellyfin Libraries + My Paid / Free Streaming Subscriptions.*</strong>
-          </button>
-        </div>
-      </div>
+      <div class="first-run-guide-body" id="first-run-guide-body"></div>
       <p id="first-run-guide-requirements" class="first-run-guide-requirements"></p>
       <p id="first-run-guide-status" class="first-run-guide-status"></p>
       <div class="first-run-guide-actions">
         <button type="button" class="submit-button first-run-guide-secondary" id="first-run-back" hidden>Back</button>
+        <button type="button" class="submit-button first-run-guide-secondary" id="first-run-skip" hidden>Skip</button>
+        <button type="button" class="submit-button" id="first-run-save" hidden>Save</button>
         <button type="button" class="submit-button" id="first-run-next">Next</button>
       </div>
     </div>
@@ -1995,13 +1985,14 @@ function createFirstRunGuideModal() {
 
   document.body.appendChild(modal)
 
-  const options = Array.from(modal.querySelectorAll('.first-run-guide-option'))
   const body = modal.querySelector('#first-run-guide-body')
   const title = modal.querySelector('#first-run-guide-title')
   const copy = modal.querySelector('#first-run-guide-copy')
   const requirements = modal.querySelector('#first-run-guide-requirements')
   const status = modal.querySelector('#first-run-guide-status')
   const backButton = modal.querySelector('#first-run-back')
+  const skipButton = modal.querySelector('#first-run-skip')
+  const saveButton = modal.querySelector('#first-run-save')
   const nextButton = modal.querySelector('#first-run-next')
 
   const tmdbRegistrationUrl = 'https://www.themoviedb.org/settings/api'
@@ -2013,6 +2004,52 @@ function createFirstRunGuideModal() {
   }
   const tmdbOnlyRegistrationCopy = `Get your free API Key <a href="${tmdbRegistrationUrl}" target="_blank" rel="noopener noreferrer">here</a>.`
 
+  const flowOptionsMarkup = `
+    <div class="first-run-guide-options">
+      <button type="button" class="first-run-guide-option" data-flow="personal-only">
+        <strong>My Plex, Emby, and/or Jellyfin Libraries Only.*</strong>
+      </button>
+      <button type="button" class="first-run-guide-option" data-flow="tmdb-only">
+        <strong>My Paid / Free Streaming Subscriptions Only.*</strong>
+      </button>
+      <button type="button" class="first-run-guide-option" data-flow="combined">
+        <strong>My Plex, Emby, and/or Jellyfin Libraries + My Paid / Free Streaming Subscriptions.*</strong>
+      </button>
+    </div>
+  `
+
+  const selectedState = {
+    flow: '',
+    sources: [],
+    subscriptions: [],
+    validatedTargets: {},
+    requestServices: {
+      radarrUrl: '',
+      radarrApiKey: '',
+      jellyseerrUrl: '',
+      jellyseerrApiKey: '',
+      overseerrUrl: '',
+      overseerrApiKey: '',
+    },
+    defaultsLastSavedSnapshot: '',
+  }
+  const history = []
+
+  const requestFieldIds = {
+    radarrUrl: 'first-run-radarr-url',
+    radarrApiKey: 'first-run-radarr-api-key',
+    jellyseerrUrl: 'first-run-jellyseerr-url',
+    jellyseerrApiKey: 'first-run-jellyseerr-api-key',
+    overseerrUrl: 'first-run-overseerr-url',
+    overseerrApiKey: 'first-run-overseerr-api-key',
+  }
+
+  const setWizardStatus = (message = '', tone = 'info') => {
+    if (!status) return
+    status.textContent = message
+    status.dataset.tone = message ? tone : ''
+  }
+
   const renderRequirementCopy = flow => {
     if (!requirements) return
     if (!flow || !requirementCopyByFlow[flow]) {
@@ -2020,24 +2057,9 @@ function createFirstRunGuideModal() {
       requirements.hidden = true
       return
     }
-    const copy =
+    requirements.innerHTML =
       requirementCopyByFlow[flow] || requirementCopyByFlow['personal-only']
-    requirements.innerHTML = copy
     requirements.hidden = false
-  }
-
-  const selectedState = {
-    flow: '',
-    sources: [],
-    subscriptions: [],
-    validatedTargets: {},
-  }
-  const history = []
-
-  const setWizardStatus = (message = '', tone = 'info') => {
-    if (!status) return
-    status.textContent = message
-    status.dataset.tone = message ? tone : ''
   }
 
   const syncInputValue = (inputId, value) => {
@@ -2096,47 +2118,138 @@ function createFirstRunGuideModal() {
     },
   }
 
-  const syncFlowSelectionUI = flow => {
+  const setSelectedFlow = flow => {
+    selectedState.flow = flow
     body
       ?.querySelectorAll('.first-run-guide-option')
       .forEach(btn =>
         btn.classList.toggle('is-selected', btn.dataset.flow === flow)
       )
-  }
-
-  const setSelectedFlow = flow => {
-    selectedState.flow = flow
-    syncFlowSelectionUI(flow)
     renderRequirementCopy(flow)
     setWizardStatus('')
   }
 
+  const updateActionButtons = screen => {
+    backButton.hidden = history.length <= 1 || screen.type === 'setup-complete'
+    skipButton.hidden = screen.type !== 'requests'
+    saveButton.hidden = screen.type !== 'defaults'
+    if (screen.type === 'setup-complete') {
+      nextButton.textContent = 'Start Swiping'
+    } else if (screen.type === 'defaults') {
+      nextButton.textContent = 'Finish'
+    } else {
+      nextButton.textContent = 'Next'
+    }
+  }
+
+  const persistRequestInputs = () => {
+    Object.entries(requestFieldIds).forEach(([key, id]) => {
+      selectedState.requestServices[key] =
+        body.querySelector(`#${id}`)?.value?.trim() || ''
+    })
+  }
+
+  const hasAnyRequestInput = () =>
+    Object.values(selectedState.requestServices).some(value => Boolean(value))
+
+  const getCurrentDefaultsSnapshot = () =>
+    JSON.stringify(normalizeFilterStateForDefaults(window.filterState))
+
+  const hasUnsavedDefaultsChanges = () => {
+    if (swipeFilterMode !== 'defaults' || !window.filterState) return false
+    return (
+      getCurrentDefaultsSnapshot() !== selectedState.defaultsLastSavedSnapshot
+    )
+  }
+
+  const promptDefaultsUnsavedChanges = () =>
+    new Promise(resolve => {
+      const overlay = document.createElement('div')
+      overlay.className = 'first-run-guide-confirm-overlay'
+      overlay.innerHTML = `
+        <div class="first-run-guide-confirm-card" role="dialog" aria-modal="true">
+          <p>Defaults selections were not saved.</p>
+          <div class="first-run-guide-actions">
+            <button type="button" class="submit-button first-run-guide-secondary" data-action="cancel">Cancel</button>
+            <button type="button" class="submit-button" data-action="continue">Continue Anyways</button>
+          </div>
+        </div>
+      `
+      overlay
+        .querySelector('[data-action="cancel"]')
+        ?.addEventListener('click', () => {
+          overlay.remove()
+          resolve(false)
+        })
+      overlay
+        .querySelector('[data-action="continue"]')
+        ?.addEventListener('click', () => {
+          overlay.remove()
+          resolve(true)
+        })
+      modal.appendChild(overlay)
+    })
+
+  const enterDefaultsInWizard = () => {
+    body.innerHTML = '<div id="first-run-defaults-inline-editor"></div>'
+    const container = body.querySelector('#first-run-defaults-inline-editor')
+    if (!swipeFilterModal || !container) return
+
+    swipeFilterMode = 'defaults'
+    liveSwipeFilterStateRef = window.filterState
+    const baseState =
+      loadSavedSwipeFilterDefaults() ||
+      normalizeFilterStateForDefaults(liveSwipeFilterStateRef)
+    window.filterState = cloneFilterStateValue(baseState)
+
+    container.appendChild(swipeFilterModal)
+    swipeFilterModal.classList.add('active', 'inline-defaults-mode')
+    swipeFilterOverlay?.classList.remove('active')
+    updateSwipeFilterModalModeUI()
+    syncSwipeFilterModalWithState()
+
+    selectedState.defaultsLastSavedSnapshot = getCurrentDefaultsSnapshot()
+  }
+
+  const leaveDefaultsEditor = () => {
+    if (swipeFilterMode !== 'defaults') return
+    if (liveSwipeFilterStateRef) {
+      window.filterState = liveSwipeFilterStateRef
+      liveSwipeFilterStateRef = null
+    }
+    swipeFilterMode = 'live'
+    updateSwipeFilterModalModeUI()
+    exitDefaultsInlineEditor()
+  }
+
+  const saveDefaultsFromWizard = () => {
+    if (swipeFilterMode !== 'defaults' || !window.filterState) return
+    const normalized = normalizeFilterStateForDefaults(window.filterState)
+    if (!normalized) return
+    localStorage.setItem(SWIPE_DEFAULTS_STORAGE_KEY, JSON.stringify(normalized))
+    selectedState.defaultsLastSavedSnapshot = JSON.stringify(normalized)
+    setWizardStatus('✅ Default filters saved.', 'success')
+  }
+
   const renderScreen = screen => {
     if (!body || !copy || !title) return
-    backButton.hidden = history.length <= 1
     setWizardStatus('')
+    updateActionButtons(screen)
 
     if (screen.type === 'flow') {
       title.textContent = 'Hi, there 👋'
       copy.textContent = 'What movies do you want to swipe through?'
-      body.innerHTML = `<div class="first-run-guide-options">${options
-        .map(option => option.outerHTML)
-        .join('')}</div>`
-      nextButton.textContent = 'Next'
-      const screenOptions = Array.from(
-        body.querySelectorAll('.first-run-guide-option')
-      )
-      if (selectedState.flow) {
-        syncFlowSelectionUI(selectedState.flow)
-        renderRequirementCopy(selectedState.flow)
-      } else {
-        renderRequirementCopy('')
-      }
-      screenOptions.forEach(option => {
+      body.innerHTML = flowOptionsMarkup
+      body.querySelectorAll('.first-run-guide-option').forEach(option => {
         option.addEventListener('click', () =>
           setSelectedFlow(option.dataset.flow || '')
         )
       })
+      if (selectedState.flow) {
+        setSelectedFlow(selectedState.flow)
+      } else {
+        renderRequirementCopy('')
+      }
       return
     }
 
@@ -2157,7 +2270,6 @@ function createFirstRunGuideModal() {
           }/> Jellyfin</label>
         </div>
       `
-      nextButton.textContent = 'Next'
       return
     }
 
@@ -2186,38 +2298,43 @@ function createFirstRunGuideModal() {
           screen.target
         }">Test Connection</button>
       `
-      nextButton.textContent = 'Next'
-      const testButton = body.querySelector(`#first-run-test-${screen.target}`)
-      testButton?.addEventListener('click', async () => {
-        const url =
-          body.querySelector(`#first-run-${screen.target}-url`)?.value || ''
-        const token =
-          body.querySelector(`#first-run-${screen.target}-token`)?.value || ''
-        if (!isValidUrl(url) || !token.trim()) {
-          setWizardStatus(meta.requiredLabel, 'error')
-          return
-        }
-        try {
-          setWizardStatus(`Testing ${meta.label} connection...`)
-          await runConnectionTest(screen.target, url, token)
-          selectedState.validatedTargets[screen.target] = true
-          setWizardStatus(`✅ ${meta.label} connection successful.`, 'success')
-        } catch (err) {
-          selectedState.validatedTargets[screen.target] = false
-          setWizardStatus(
-            err?.message || `Failed to connect to ${meta.label}.`,
-            'error'
-          )
-        }
-      })
+      body
+        .querySelector(`#first-run-test-${screen.target}`)
+        ?.addEventListener('click', async () => {
+          const url =
+            body.querySelector(`#first-run-${screen.target}-url`)?.value || ''
+          const token =
+            body.querySelector(`#first-run-${screen.target}-token`)?.value || ''
+          if (!isValidUrl(url) || !token.trim()) {
+            setWizardStatus(meta.requiredLabel, 'error')
+            return
+          }
+          try {
+            setWizardStatus(`Testing ${meta.label} connection...`)
+            await runConnectionTest(screen.target, url, token)
+            selectedState.validatedTargets[screen.target] = true
+            setWizardStatus(
+              `✅ ${meta.label} connection successful.`,
+              'success'
+            )
+          } catch (err) {
+            selectedState.validatedTargets[screen.target] = false
+            setWizardStatus(
+              err?.message || `Failed to connect to ${meta.label}.`,
+              'error'
+            )
+          }
+        })
       return
     }
 
     if (screen.type === 'tmdb') {
-      title.textContent = 'TMDb'
-      copy.textContent = ''
-      requirements.innerHTML = tmdbOnlyRegistrationCopy
-      requirements.hidden = false
+      renderRequirementCopy('')
+      title.textContent = 'TMDb API Key'
+      copy.innerHTML =
+        selectedState.flow === 'tmdb-only'
+          ? tmdbOnlyRegistrationCopy
+          : `Optional: ${tmdbOnlyRegistrationCopy}`
       body.innerHTML = `
         <label class="first-run-guide-field-label">TMDb API Key</label>
         <input id="first-run-tmdb-key" class="first-run-guide-input" type="text" value="${
@@ -2225,8 +2342,6 @@ function createFirstRunGuideModal() {
         }" />
         <button type="button" class="submit-button first-run-guide-test-button" id="first-run-test-tmdb">Test Connection</button>
       `
-      nextButton.textContent =
-        selectedState.flow === 'personal-only' ? 'Finish' : 'Next'
       body
         .querySelector('#first-run-test-tmdb')
         ?.addEventListener('click', async () => {
@@ -2255,54 +2370,82 @@ function createFirstRunGuideModal() {
       renderRequirementCopy('')
       title.textContent = 'Subscription Services'
       copy.textContent = 'Choose the streaming subscriptions you have.'
-
       const subscriptionOptions = Array.from(
         document.querySelectorAll(
           '#setting-paid-streaming-services-list .settings-checkbox-option input[type="checkbox"][value]'
         )
       )
       const selectedSet = new Set(selectedState.subscriptions)
-
       body.innerHTML = `
         <div class="first-run-guide-checkboxes">
           ${subscriptionOptions
             .map(input => {
               const value = String(input.value || '').trim()
               if (!value) return ''
-
               const option = input.closest('.settings-checkbox-option')
+              if (option?.dataset?.hostManagedPersonalService) return ''
               const labelText = option?.textContent?.trim() || value
-              const isHostManaged = Boolean(
-                option?.dataset?.hostManagedPersonalService
-              )
-
-              return `<label>
-                <input
-                  type="checkbox"
-                  value="${value}"
-                  data-first-run-paid-streaming-service="true"
-                  ${selectedSet.has(value) ? 'checked' : ''}
-                  ${isHostManaged ? 'checked disabled' : ''}
-                /> ${labelText}${isHostManaged ? ' (from personal media)' : ''}
-              </label>`
+              return `<label><input type="checkbox" value="${value}" data-first-run-paid-streaming-service="true" ${
+                selectedSet.has(value) ? 'checked' : ''
+              }/> ${labelText}</label>`
             })
             .join('')}
         </div>
       `
+      return
+    }
 
-      nextButton.textContent = 'Finish'
+    if (screen.type === 'requests') {
+      renderRequirementCopy('')
+      title.textContent = 'Movie Requests (optional)'
+      copy.textContent =
+        'Integrate radarr along with jellyseerr or overseerr to enable a request option for movies not in your personal media sources.'
+      body.innerHTML = `
+        <label class="first-run-guide-field-label">Radarr URL</label>
+        <input id="${requestFieldIds.radarrUrl}" class="first-run-guide-input" type="url" placeholder="http://localhost" value="${selectedState.requestServices.radarrUrl}" />
+        <label class="first-run-guide-field-label">Radarr API Key</label>
+        <input id="${requestFieldIds.radarrApiKey}" class="first-run-guide-input" type="text" value="${selectedState.requestServices.radarrApiKey}" />
+        <label class="first-run-guide-field-label">Jellyseerr URL</label>
+        <input id="${requestFieldIds.jellyseerrUrl}" class="first-run-guide-input" type="url" placeholder="http://localhost" value="${selectedState.requestServices.jellyseerrUrl}" />
+        <label class="first-run-guide-field-label">Jellyseerr API Key</label>
+        <input id="${requestFieldIds.jellyseerrApiKey}" class="first-run-guide-input" type="text" value="${selectedState.requestServices.jellyseerrApiKey}" />
+        <label class="first-run-guide-field-label">Overseerr URL</label>
+        <input id="${requestFieldIds.overseerrUrl}" class="first-run-guide-input" type="url" placeholder="http://localhost" value="${selectedState.requestServices.overseerrUrl}" />
+        <label class="first-run-guide-field-label">Overseerr API Key</label>
+        <input id="${requestFieldIds.overseerrApiKey}" class="first-run-guide-input" type="text" value="${selectedState.requestServices.overseerrApiKey}" />
+      `
+      return
+    }
+
+    if (screen.type === 'defaults') {
+      renderRequirementCopy('')
+      title.textContent = 'Default Filters (optional)'
+      copy.textContent =
+        'Set default filters for the movies shown in your swipe screen.'
+      enterDefaultsInWizard()
+      return
+    }
+
+    if (screen.type === 'setup-complete') {
+      renderRequirementCopy('')
+      title.textContent = 'Setup Complete'
+      copy.textContent =
+        "You're all set. Visit the settings tab in your navigation menu to further customize and edit your current settings."
+      body.innerHTML = ''
     }
   }
 
   const getNextScreen = async () => {
     const current = history[history.length - 1] || { type: 'flow' }
+
     if (current.type === 'flow') {
       if (!selectedState.flow) {
         setWizardStatus('Please select one option to continue.', 'error')
         return null
       }
-      if (selectedState.flow === 'tmdb-only') return { type: 'tmdb' }
-      return { type: 'sources' }
+      return selectedState.flow === 'tmdb-only'
+        ? { type: 'tmdb' }
+        : { type: 'sources' }
     }
 
     if (current.type === 'sources') {
@@ -2345,7 +2488,6 @@ function createFirstRunGuideModal() {
         setWizardStatus(err?.message || 'Failed to save settings.', 'error')
         return null
       }
-
       const nextIndex = current.index + 1
       if (nextIndex < selectedState.sources.length) {
         return {
@@ -2354,8 +2496,9 @@ function createFirstRunGuideModal() {
           index: nextIndex,
         }
       }
-      if (selectedState.flow === 'combined') return { type: 'tmdb' }
-      return { type: 'complete' }
+      return selectedState.flow === 'combined'
+        ? { type: 'tmdb' }
+        : { type: 'setup-complete' }
     }
 
     if (current.type === 'tmdb') {
@@ -2381,38 +2524,27 @@ function createFirstRunGuideModal() {
         )
         return null
       }
-
       if (
         selectedState.flow === 'tmdb-only' ||
         selectedState.flow === 'combined'
       ) {
         return { type: 'subscriptions' }
       }
-
-      return { type: 'complete' }
+      return { type: 'setup-complete' }
     }
 
     if (current.type === 'subscriptions') {
       const selectedSubscriptions = Array.from(
         body.querySelectorAll(
-          'input[data-first-run-paid-streaming-service="true"]:checked:not(:disabled)'
+          'input[data-first-run-paid-streaming-service="true"]:checked'
         )
       )
         .map(input => String(input.value || '').trim())
         .filter(Boolean)
 
-      if (!selectedSubscriptions.length) {
-        setWizardStatus(
-          'Select at least one subscription service to continue.',
-          'error'
-        )
-        return null
-      }
-
       selectedState.subscriptions = selectedSubscriptions
       const serializedSubscriptions = JSON.stringify(selectedSubscriptions)
       hydratePaidStreamingServicesSetting(serializedSubscriptions)
-
       try {
         await saveSettingsSubset({
           PAID_STREAMING_SERVICES: serializedSubscriptions,
@@ -2424,7 +2556,77 @@ function createFirstRunGuideModal() {
         )
         return null
       }
+      return { type: 'requests' }
+    }
 
+    if (current.type === 'requests') {
+      persistRequestInputs()
+      if (!hasAnyRequestInput()) {
+        setWizardStatus(
+          'Leave fields blank and click Skip, or add details to continue.',
+          'error'
+        )
+        return null
+      }
+
+      const s = selectedState.requestServices
+      if (!isValidUrl(s.radarrUrl) || !s.radarrApiKey) {
+        setWizardStatus('Radarr URL and API Key are required.', 'error')
+        return null
+      }
+      const hasJelly = Boolean(s.jellyseerrUrl || s.jellyseerrApiKey)
+      const hasOver = Boolean(s.overseerrUrl || s.overseerrApiKey)
+      if (!hasJelly && !hasOver) {
+        setWizardStatus(
+          'Add Jellyseerr or Overseerr details, or click Skip.',
+          'error'
+        )
+        return null
+      }
+      if (hasJelly && (!isValidUrl(s.jellyseerrUrl) || !s.jellyseerrApiKey)) {
+        setWizardStatus(
+          'Jellyseerr URL and API Key are both required.',
+          'error'
+        )
+        return null
+      }
+      if (hasOver && (!isValidUrl(s.overseerrUrl) || !s.overseerrApiKey)) {
+        setWizardStatus('Overseerr URL and API Key are both required.', 'error')
+        return null
+      }
+
+      try {
+        await saveSettingsSubset({
+          RADARR_URL: s.radarrUrl,
+          RADARR_API_KEY: s.radarrApiKey,
+          JELLYSEERR_URL: hasJelly ? s.jellyseerrUrl : '',
+          JELLYSEERR_API_KEY: hasJelly ? s.jellyseerrApiKey : '',
+          OVERSEERR_URL: hasOver ? s.overseerrUrl : '',
+          OVERSEERR_API_KEY: hasOver ? s.overseerrApiKey : '',
+        })
+      } catch (err) {
+        setWizardStatus(
+          err?.message || 'Failed to save request settings.',
+          'error'
+        )
+        return null
+      }
+
+      return { type: 'defaults' }
+    }
+
+    if (current.type === 'defaults') {
+      if (hasUnsavedDefaultsChanges()) {
+        const shouldContinue = await promptDefaultsUnsavedChanges()
+        if (!shouldContinue) return null
+      }
+      leaveDefaultsEditor()
+      return { type: 'setup-complete' }
+    }
+
+    if (current.type === 'setup-complete') {
+      await loadClientConfig()
+      document.dispatchEvent(new CustomEvent('comparr:source-config-updated'))
       return { type: 'complete' }
     }
 
@@ -2443,27 +2645,32 @@ function createFirstRunGuideModal() {
 
   nextButton?.addEventListener('click', async () => {
     const next = await getNextScreen()
-    if (!next) return
-    if (next.type === 'complete') {
-      await loadClientConfig()
-      document.dispatchEvent(new CustomEvent('comparr:source-config-updated'))
-      return
-    }
+    if (!next || next.type === 'complete') return
     history.push(next)
     renderScreen(next)
   })
 
   backButton?.addEventListener('click', () => {
     if (history.length <= 1) return
+    const current = history[history.length - 1]
+    if (current?.type === 'defaults') {
+      leaveDefaultsEditor()
+    }
     history.pop()
-    const previous = history[history.length - 1]
-    renderScreen(previous)
+    renderScreen(history[history.length - 1])
   })
 
-  options.forEach(option => {
-    option.addEventListener('click', () =>
-      setSelectedFlow(option.dataset.flow || '')
-    )
+  skipButton?.addEventListener('click', () => {
+    const current = history[history.length - 1]
+    if (current?.type !== 'requests') return
+    persistRequestInputs()
+    history.push({ type: 'defaults' })
+    renderScreen({ type: 'defaults' })
+  })
+
+  saveButton?.addEventListener('click', () => {
+    if ((history[history.length - 1] || {}).type !== 'defaults') return
+    saveDefaultsFromWizard()
   })
 
   renderRequirementCopy('')

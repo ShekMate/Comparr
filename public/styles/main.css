@@ -4792,3 +4792,30 @@ footer {
 .first-run-guide-secondary:hover {
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.35) !important;
 }
+
+.first-run-guide-confirm-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  z-index: 2;
+}
+
+.first-run-guide-confirm-card {
+  width: min(420px, calc(100% - 2rem));
+  background: #0f172a;
+  border: 1px solid rgba(129, 140, 248, 0.45);
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+#first-run-defaults-inline-editor .filter-modal {
+  position: static;
+  transform: none;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+}
