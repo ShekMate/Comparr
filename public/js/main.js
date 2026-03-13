@@ -2331,10 +2331,10 @@ function createFirstRunGuideModal() {
     if (screen.type === 'tmdb') {
       renderRequirementCopy('')
       title.textContent = 'TMDb API Key'
-      copy.innerHTML =
-        selectedState.flow === 'tmdb-only'
-          ? tmdbOnlyRegistrationCopy
-          : `Optional: ${tmdbOnlyRegistrationCopy}`
+      const isTmdbRequired = selectedState.flow !== 'personal-only'
+      copy.innerHTML = isTmdbRequired
+        ? tmdbOnlyRegistrationCopy
+        : `Optional: ${tmdbOnlyRegistrationCopy}`
       body.innerHTML = `
         <label class="first-run-guide-field-label">TMDb API Key</label>
         <input id="first-run-tmdb-key" class="first-run-guide-input" type="text" value="${
