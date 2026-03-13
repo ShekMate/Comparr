@@ -4656,11 +4656,25 @@ footer {
   text-align: left;
   padding: 0.9rem;
   cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease,
+    box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .first-run-guide-option.is-selected {
   border-color: #818cf8;
   background: rgba(99, 102, 241, 0.2);
+  box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.2);
+}
+
+.first-run-guide-option:hover {
+  border-color: rgba(129, 140, 248, 0.7);
+  background: rgba(30, 41, 59, 0.95);
+}
+
+.first-run-guide-option:focus-visible {
+  outline: none;
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.35);
 }
 
 .first-run-guide-option span {
@@ -4731,7 +4745,34 @@ footer {
   flex-wrap: wrap;
 }
 
+.first-run-guide-actions .submit-button {
+  border: 1px solid rgba(99, 102, 241, 0.5);
+  border-radius: 10px;
+  background: var(--gradient-primary);
+  color: #fff;
+  font-weight: 600;
+  padding: 0.55rem 0.95rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.first-run-guide-actions .submit-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.35);
+}
+
+.first-run-guide-actions .submit-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.35),
+    0 8px 20px rgba(59, 130, 246, 0.35);
+}
+
 .first-run-guide-secondary {
-  background: transparent;
-  border: 1px solid rgba(148, 163, 184, 0.55);
+  background: rgba(15, 23, 42, 0.75) !important;
+  border: 1px solid rgba(148, 163, 184, 0.55) !important;
+  color: #e2e8f0 !important;
+}
+
+.first-run-guide-secondary:hover {
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.35) !important;
 }

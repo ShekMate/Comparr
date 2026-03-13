@@ -2013,9 +2013,15 @@ function createFirstRunGuideModal() {
 
   const renderRequirementCopy = flow => {
     if (!requirements) return
+    if (!flow || !requirementCopyByFlow[flow]) {
+      requirements.innerHTML = ''
+      requirements.hidden = true
+      return
+    }
     const copy =
       requirementCopyByFlow[flow] || requirementCopyByFlow['personal-only']
     requirements.innerHTML = copy
+    requirements.hidden = false
   }
 
   const selectedState = {
@@ -2087,18 +2093,24 @@ function createFirstRunGuideModal() {
     },
   }
 
+  const syncFlowSelectionUI = flow => {
+    body
+      ?.querySelectorAll('.first-run-guide-option')
+      .forEach(btn =>
+        btn.classList.toggle('is-selected', btn.dataset.flow === flow)
+      )
+  }
+
   const setSelectedFlow = flow => {
     selectedState.flow = flow
-    options.forEach(btn =>
-      btn.classList.toggle('is-selected', btn.dataset.flow === flow)
-    )
+    syncFlowSelectionUI(flow)
     renderRequirementCopy(flow)
     setWizardStatus('')
   }
 
   const renderScreen = screen => {
     if (!body || !copy) return
-    backButton.hidden = history.length === 0
+    backButton.hidden = history.length <= 1
     setWizardStatus('')
 
     if (screen.type === 'flow') {
@@ -2112,12 +2124,10 @@ function createFirstRunGuideModal() {
         body.querySelectorAll('.first-run-guide-option')
       )
       if (selectedState.flow) {
-        screenOptions.forEach(btn =>
-          btn.classList.toggle(
-            'is-selected',
-            btn.dataset.flow === selectedState.flow
-          )
-        )
+        syncFlowSelectionUI(selectedState.flow)
+        renderRequirementCopy(selectedState.flow)
+      } else {
+        renderRequirementCopy('')
       }
       screenOptions.forEach(option => {
         option.addEventListener('click', () =>
@@ -2354,7 +2364,7 @@ function createFirstRunGuideModal() {
     )
   })
 
-  renderRequirementCopy('personal-only')
+  renderRequirementCopy('')
   startWizard()
 
   return modal
