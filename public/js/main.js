@@ -2029,6 +2029,7 @@ function createFirstRunGuideModal() {
   const selectedState = {
     flow: '',
     sources: [],
+    subscriptions: [],
     validatedTargets: {},
   }
   const history = []
@@ -2224,7 +2225,8 @@ function createFirstRunGuideModal() {
         }" />
         <button type="button" class="submit-button first-run-guide-test-button" id="first-run-test-tmdb">Test Connection</button>
       `
-      nextButton.textContent = 'Finish'
+      nextButton.textContent =
+        selectedState.flow === 'personal-only' ? 'Finish' : 'Next'
       body
         .querySelector('#first-run-test-tmdb')
         ?.addEventListener('click', async () => {
@@ -2246,6 +2248,49 @@ function createFirstRunGuideModal() {
             )
           }
         })
+      return
+    }
+
+    if (screen.type === 'subscriptions') {
+      renderRequirementCopy('')
+      title.textContent = 'Subscription Services'
+      copy.textContent = 'Choose the streaming subscriptions you have.'
+
+      const subscriptionOptions = Array.from(
+        document.querySelectorAll(
+          '#setting-paid-streaming-services-list .settings-checkbox-option input[type="checkbox"][value]'
+        )
+      )
+      const selectedSet = new Set(selectedState.subscriptions)
+
+      body.innerHTML = `
+        <div class="first-run-guide-checkboxes">
+          ${subscriptionOptions
+            .map(input => {
+              const value = String(input.value || '').trim()
+              if (!value) return ''
+
+              const option = input.closest('.settings-checkbox-option')
+              const labelText = option?.textContent?.trim() || value
+              const isHostManaged = Boolean(
+                option?.dataset?.hostManagedPersonalService
+              )
+
+              return `<label>
+                <input
+                  type="checkbox"
+                  value="${value}"
+                  data-first-run-paid-streaming-service="true"
+                  ${selectedSet.has(value) ? 'checked' : ''}
+                  ${isHostManaged ? 'checked disabled' : ''}
+                /> ${labelText}${isHostManaged ? ' (from personal media)' : ''}
+              </label>`
+            })
+            .join('')}
+        </div>
+      `
+
+      nextButton.textContent = 'Finish'
     }
   }
 
@@ -2336,6 +2381,50 @@ function createFirstRunGuideModal() {
         )
         return null
       }
+
+      if (
+        selectedState.flow === 'tmdb-only' ||
+        selectedState.flow === 'combined'
+      ) {
+        return { type: 'subscriptions' }
+      }
+
+      return { type: 'complete' }
+    }
+
+    if (current.type === 'subscriptions') {
+      const selectedSubscriptions = Array.from(
+        body.querySelectorAll(
+          'input[data-first-run-paid-streaming-service="true"]:checked:not(:disabled)'
+        )
+      )
+        .map(input => String(input.value || '').trim())
+        .filter(Boolean)
+
+      if (!selectedSubscriptions.length) {
+        setWizardStatus(
+          'Select at least one subscription service to continue.',
+          'error'
+        )
+        return null
+      }
+
+      selectedState.subscriptions = selectedSubscriptions
+      const serializedSubscriptions = JSON.stringify(selectedSubscriptions)
+      hydratePaidStreamingServicesSetting(serializedSubscriptions)
+
+      try {
+        await saveSettingsSubset({
+          PAID_STREAMING_SERVICES: serializedSubscriptions,
+        })
+      } catch (err) {
+        setWizardStatus(
+          err?.message || 'Failed to save subscription settings.',
+          'error'
+        )
+        return null
+      }
+
       return { type: 'complete' }
     }
 
@@ -2343,6 +2432,10 @@ function createFirstRunGuideModal() {
   }
 
   const startWizard = () => {
+    selectedState.subscriptions = parseArraySetting(
+      document.getElementById('setting-paid-streaming-services')?.value ||
+        window.PAID_STREAMING_SERVICES
+    )
     const initial = { type: 'flow' }
     history.splice(0, history.length, initial)
     renderScreen(initial)
