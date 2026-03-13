@@ -4299,18 +4299,26 @@ footer {
 
 .settings-test-btn {
   align-self: flex-start;
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-text-secondary);
-  padding: 0.45rem 0.65rem;
+  border: 1px solid rgba(99, 102, 241, 0.5);
+  border-radius: 10px;
+  background: var(--gradient-primary);
+  color: #fff;
+  font-weight: 600;
+  padding: 0.55rem 0.95rem;
   cursor: pointer;
   font-size: 0.8rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
 }
 
 .settings-test-btn:hover {
-  color: var(--color-text-primary);
-  border-color: var(--color-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.35);
+}
+
+.settings-test-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.35),
+    0 8px 20px rgba(59, 130, 246, 0.35);
 }
 
 .settings-admin-tabs {
