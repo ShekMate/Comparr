@@ -2011,6 +2011,7 @@ function createFirstRunGuideModal() {
     'tmdb-only': `*Requires a TMDb API Key. Get your free API Key <a href="${tmdbRegistrationUrl}" target="_blank" rel="noopener noreferrer">here</a>.`,
     combined: `*Requires at least one valid Plex, Emby, or Jellyfin connection and a TMDb API Key. Get your free API Key <a href="${tmdbRegistrationUrl}" target="_blank" rel="noopener noreferrer">here</a>.`,
   }
+  const tmdbOnlyRegistrationCopy = `Get your free API Key <a href="${tmdbRegistrationUrl}" target="_blank" rel="noopener noreferrer">here</a>.`
 
   const renderRequirementCopy = flow => {
     if (!requirements) return
@@ -2139,6 +2140,7 @@ function createFirstRunGuideModal() {
     }
 
     if (screen.type === 'sources') {
+      renderRequirementCopy('')
       title.textContent = 'Personal Media Sources'
       copy.textContent = 'Choose your personal media sources.'
       body.innerHTML = `
@@ -2159,6 +2161,7 @@ function createFirstRunGuideModal() {
     }
 
     if (screen.type === 'service') {
+      renderRequirementCopy('')
       const meta = serviceMeta[screen.target]
       if (!meta) return
       title.textContent = meta.label
@@ -2210,8 +2213,10 @@ function createFirstRunGuideModal() {
     }
 
     if (screen.type === 'tmdb') {
-      title.textContent = 'TMDb setup'
-      copy.textContent = 'TMDb setup'
+      title.textContent = 'TMDb'
+      copy.textContent = ''
+      requirements.innerHTML = tmdbOnlyRegistrationCopy
+      requirements.hidden = false
       body.innerHTML = `
         <label class="first-run-guide-field-label">TMDb API Key</label>
         <input id="first-run-tmdb-key" class="first-run-guide-input" type="text" value="${
