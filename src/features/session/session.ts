@@ -498,6 +498,7 @@ interface WebSocketNextBatchMessage {
       roomPersonalMedia?: boolean
       paidSubscriptions?: boolean
       freeStreaming?: boolean
+      freeStreamingServices?: string[]
     }
     contentRatings?: string[]
     imdbRating?: number
@@ -1526,6 +1527,7 @@ class Session {
         roomPersonalMedia?: boolean
         paidSubscriptions?: boolean
         freeStreaming?: boolean
+        freeStreamingServices?: string[]
       }
       contentRatings?: string[]
       imdbRating?: number
@@ -1559,6 +1561,13 @@ class Session {
       roomPersonalMedia: Boolean(requestedAvailability?.roomPersonalMedia),
       paidSubscriptions: Boolean(requestedAvailability?.paidSubscriptions),
       freeStreaming: Boolean(requestedAvailability?.freeStreaming),
+      freeStreamingServices: Array.isArray(
+        requestedAvailability?.freeStreamingServices
+      )
+        ? requestedAvailability.freeStreamingServices
+            .map(service => String(service).trim())
+            .filter(Boolean)
+        : [],
     }
 
     if (
@@ -1574,6 +1583,11 @@ class Session {
       normalizedAvailability.roomPersonalMedia = false
       normalizedAvailability.paidSubscriptions = false
       normalizedAvailability.freeStreaming = false
+      normalizedAvailability.freeStreamingServices = []
+    }
+
+    if (!normalizedAvailability.freeStreaming) {
+      normalizedAvailability.freeStreamingServices = []
     }
 
     const wantsRoomPersonalMedia =
@@ -2122,6 +2136,50 @@ class Session {
               `⛔️ Skipping ${plexMovie.title} - missing free streaming availability`
             )
             continue
+          }
+
+          if (
+            wantsFreeStreaming &&
+            normalizedAvailability.freeStreamingServices.length > 0
+          ) {
+            const freeServiceSet = new Set(
+              streamingServices.free
+                .map(service =>
+                  String(service?.name || '')
+                    .trim()
+                    .toLowerCase()
+                )
+                .filter(Boolean)
+            )
+            const hasRequestedFreeService = normalizedAvailability.freeStreamingServices.some(
+              service => {
+                const normalized = service.toLowerCase()
+                if (normalized === 'pluto-tv') {
+                  return (
+                    freeServiceSet.has('pluto tv') ||
+                    freeServiceSet.has('pluto-tv')
+                  )
+                }
+                if (normalized === 'roku-channel') {
+                  return (
+                    freeServiceSet.has('roku channel') ||
+                    freeServiceSet.has('the roku channel') ||
+                    freeServiceSet.has('roku-channel')
+                  )
+                }
+                return (
+                  freeServiceSet.has(normalized) ||
+                  freeServiceSet.has(normalized.replace(/-/g, ' '))
+                )
+              }
+            )
+
+            if (!hasRequestedFreeService) {
+              log.debug(
+                `⛔️ Skipping ${plexMovie.title} - missing selected free streaming services`
+              )
+              continue
+            }
           }
 
           if (plexMovie.guid?.startsWith('plex://')) {

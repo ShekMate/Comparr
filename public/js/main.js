@@ -1170,6 +1170,14 @@ async function loadClientConfig() {
   }
 }
 
+const FREE_STREAMING_SERVICE_OPTIONS = [
+  'tubi',
+  'pluto-tv',
+  'freevee',
+  'roku-channel',
+  'crackle',
+]
+
 function getDefaultAvailabilityState() {
   return {
     anywhere: true,
@@ -1177,6 +1185,7 @@ function getDefaultAvailabilityState() {
     paidSubscriptions: false,
     freeStreaming: false,
     subscriptionServices: [],
+    freeStreamingServices: [],
   }
 }
 
@@ -1197,9 +1206,15 @@ function normalizeAvailabilityState(value, options = {}) {
           .map(service => String(service).trim())
           .filter(Boolean)
       : [],
+    freeStreamingServices: Array.isArray(value.freeStreamingServices)
+      ? value.freeStreamingServices
+          .map(service => String(service).trim())
+          .filter(Boolean)
+      : [],
   }
 
   state.subscriptionServices = Array.from(new Set(state.subscriptionServices))
+  state.freeStreamingServices = Array.from(new Set(state.freeStreamingServices))
 
   if (
     enforceSelection &&
@@ -1216,6 +1231,11 @@ function normalizeAvailabilityState(value, options = {}) {
     state.paidSubscriptions = false
     state.freeStreaming = false
     state.subscriptionServices = []
+    state.freeStreamingServices = []
+  }
+
+  if (!state.freeStreaming) {
+    state.freeStreamingServices = []
   }
 
   return state
@@ -7744,6 +7764,53 @@ function getVisibleSubscriptionOptions() {
     .map(input => input.value)
 }
 
+function getVisibleFreeStreamingOptions() {
+  return Array.from(
+    document.querySelectorAll(
+      '#swipe-free-options input[type="checkbox"][value]'
+    )
+  )
+    .filter(
+      input =>
+        !input.disabled && input.closest('label')?.style.display !== 'none'
+    )
+    .map(input => input.value)
+}
+
+function syncFreeStreamingOptionVisibility() {
+  const freeSet = new Set(FREE_STREAMING_SERVICE_OPTIONS)
+
+  document
+    .querySelectorAll('#swipe-free-options input[type="checkbox"][value]')
+    .forEach(input => {
+      const service = String(input.value || '').trim()
+      const isAvailable = freeSet.has(service)
+      const wrapper = input.closest('label')
+      if (wrapper) wrapper.style.display = isAvailable ? '' : 'none'
+      input.disabled = !isAvailable
+      if (!isAvailable) input.checked = false
+    })
+
+  const selected = Array.isArray(
+    window.filterState?.availability?.freeStreamingServices
+  )
+    ? window.filterState.availability.freeStreamingServices
+    : []
+
+  const visibleOptionSet = new Set(getVisibleFreeStreamingOptions())
+  const nextSelected = selected.filter(service => visibleOptionSet.has(service))
+
+  if (window.filterState?.availability) {
+    window.filterState.availability.freeStreamingServices = nextSelected
+  }
+
+  document
+    .querySelectorAll('#swipe-free-options input[type="checkbox"][value]')
+    .forEach(input => {
+      input.checked = nextSelected.includes(input.value)
+    })
+}
+
 function syncSubscriptionOptionVisibility() {
   const { paidServices, personalSources } = getAvailableSubscriptionOptions()
   const availableSet = new Set([...paidServices, ...personalSources])
@@ -7797,6 +7864,7 @@ function syncSubscriptionOptionVisibility() {
 
 function updateSwipeAvailabilityUI() {
   syncSubscriptionOptionVisibility()
+  syncFreeStreamingOptionVisibility()
 
   const availability = normalizeAvailabilityState(
     window.filterState?.availability,
@@ -7814,10 +7882,16 @@ function updateSwipeAvailabilityUI() {
     )
   )
   const freeInput = document.getElementById('swipe-availability-free')
+  const freeStreamingInputs = Array.from(
+    document.querySelectorAll(
+      '#swipe-free-options input[type="checkbox"][value]'
+    )
+  )
   const { paidServices, personalSources } = getAvailableSubscriptionOptions()
   const subscriptionsConfigured =
     paidServices.length + personalSources.length > 0
   const selectedSubscriptions = availability.subscriptionServices || []
+  const selectedFreeServices = availability.freeStreamingServices || []
   const selectedSubscriptionSet = new Set(selectedSubscriptions)
   const anySubscriptionSelected = selectedSubscriptions.length > 0
 
@@ -7838,7 +7912,18 @@ function updateSwipeAvailabilityUI() {
   if (freeInput) {
     freeInput.checked = availability.freeStreaming
     freeInput.disabled = false
+    const visibleFreeCount = getVisibleFreeStreamingOptions().length
+    freeInput.indeterminate =
+      availability.freeStreaming &&
+      selectedFreeServices.length > 0 &&
+      selectedFreeServices.length < visibleFreeCount
   }
+
+  const selectedFreeSet = new Set(selectedFreeServices)
+  freeStreamingInputs.forEach(input => {
+    input.checked = selectedFreeSet.has(input.value)
+    input.disabled = !availability.freeStreaming || input.disabled
+  })
 
   const toggle = document.getElementById('swipe-availability-toggle')
   if (toggle) {
@@ -7852,7 +7937,13 @@ function updateSwipeAvailabilityUI() {
             : 'My Subscriptions'
         )
       }
-      if (availability.freeStreaming) selected.push('Free Streaming')
+      if (availability.freeStreaming) {
+        selected.push(
+          selectedFreeServices.length > 1
+            ? `Free Streaming (${selectedFreeServices.length})`
+            : 'Free Streaming'
+        )
+      }
       label = selected.length > 0 ? selected.join(', ') : 'Anywhere'
     }
     toggle.innerHTML = `${label} <span class="dropdown-arrow">▼</span>`
@@ -8557,6 +8648,9 @@ const swipeSubscriptionChildren = Array.from(
     '#swipe-subscriptions-options input[type="checkbox"][value]'
   )
 )
+const swipeFreeStreamingChildren = Array.from(
+  document.querySelectorAll('#swipe-free-options input[type="checkbox"][value]')
+)
 
 swipeAvailabilityAnywhere?.addEventListener('change', e => {
   if (e.target.checked) {
@@ -8566,10 +8660,14 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
       .filter(input => input.checked)
       .map(input => input.value)
     const selectedSet = new Set(selectedSubscriptionServices)
+    const selectedFreeServices = swipeFreeStreamingChildren
+      .filter(input => input.checked)
+      .map(input => input.value)
     const personalSet = new Set(
       getAvailableSubscriptionOptions().personalSources
     )
     const paidSet = new Set(parsePaidServices())
+    const freeStreamingEnabled = Boolean(swipeAvailabilityFree?.checked)
     setAvailabilityState({
       anywhere: false,
       roomPersonalMedia: selectedSubscriptionServices.some(service =>
@@ -8578,16 +8676,14 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
       paidSubscriptions: selectedSubscriptionServices.some(service =>
         paidSet.has(service)
       ),
-      freeStreaming: Boolean(swipeAvailabilityFree?.checked),
+      freeStreaming: freeStreamingEnabled,
       subscriptionServices: Array.from(selectedSet),
+      freeStreamingServices: freeStreamingEnabled ? selectedFreeServices : [],
     })
   }
 })
 ;[swipeAvailabilitySubscriptions, swipeAvailabilityFree].forEach(input => {
   input?.addEventListener('change', () => {
-    const selectedSubscriptionServices = swipeSubscriptionChildren
-      .filter(child => child.checked)
-      .map(child => child.value)
     const personalSet = new Set(
       getAvailableSubscriptionOptions().personalSources
     )
@@ -8606,9 +8702,26 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
       }
     }
 
+    if (input === swipeAvailabilityFree) {
+      if (swipeAvailabilityFree.checked) {
+        const visibleFree = getVisibleFreeStreamingOptions()
+        swipeFreeStreamingChildren.forEach(child => {
+          if (visibleFree.includes(child.value)) child.checked = true
+        })
+      } else {
+        swipeFreeStreamingChildren.forEach(child => {
+          child.checked = false
+        })
+      }
+    }
+
     const selectedAfterToggle = swipeSubscriptionChildren
       .filter(child => child.checked)
       .map(child => child.value)
+    const selectedFreeAfterToggle = swipeFreeStreamingChildren
+      .filter(child => child.checked)
+      .map(child => child.value)
+    const freeStreamingEnabled = Boolean(swipeAvailabilityFree?.checked)
 
     const next = {
       anywhere: false,
@@ -8618,8 +8731,11 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
       paidSubscriptions: selectedAfterToggle.some(service =>
         paidSet.has(service)
       ),
-      freeStreaming: Boolean(swipeAvailabilityFree?.checked),
+      freeStreaming: freeStreamingEnabled,
       subscriptionServices: selectedAfterToggle,
+      freeStreamingServices: freeStreamingEnabled
+        ? selectedFreeAfterToggle
+        : [],
     }
     setAvailabilityState(next)
   })
@@ -8635,12 +8751,48 @@ swipeSubscriptionChildren.forEach(input => {
     )
     const paidSet = new Set(parsePaidServices())
 
+    const freeStreamingEnabled = Boolean(swipeAvailabilityFree?.checked)
+    const selectedFreeServices = swipeFreeStreamingChildren
+      .filter(child => child.checked)
+      .map(child => child.value)
+
     const next = {
       anywhere: false,
       roomPersonalMedia: selected.some(service => personalSet.has(service)),
       paidSubscriptions: selected.some(service => paidSet.has(service)),
-      freeStreaming: Boolean(swipeAvailabilityFree?.checked),
+      freeStreaming: freeStreamingEnabled,
       subscriptionServices: selected,
+      freeStreamingServices: freeStreamingEnabled ? selectedFreeServices : [],
+    }
+    setAvailabilityState(next)
+  })
+})
+
+swipeFreeStreamingChildren.forEach(input => {
+  input.addEventListener('change', () => {
+    const selectedSubscriptions = swipeSubscriptionChildren
+      .filter(child => child.checked)
+      .map(child => child.value)
+    const selectedFreeServices = swipeFreeStreamingChildren
+      .filter(child => child.checked)
+      .map(child => child.value)
+    const personalSet = new Set(
+      getAvailableSubscriptionOptions().personalSources
+    )
+    const paidSet = new Set(parsePaidServices())
+    const freeStreamingEnabled = Boolean(swipeAvailabilityFree?.checked)
+
+    const next = {
+      anywhere: false,
+      roomPersonalMedia: selectedSubscriptions.some(service =>
+        personalSet.has(service)
+      ),
+      paidSubscriptions: selectedSubscriptions.some(service =>
+        paidSet.has(service)
+      ),
+      freeStreaming: freeStreamingEnabled,
+      subscriptionServices: selectedSubscriptions,
+      freeStreamingServices: freeStreamingEnabled ? selectedFreeServices : [],
     }
     setAvailabilityState(next)
   })
