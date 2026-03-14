@@ -8172,6 +8172,8 @@ function enterDefaultsInlineEditor() {
 function exitDefaultsInlineEditor() {
   if (!swipeFilterModal) return
 
+  closeSwipeDropdowns()
+
   if (
     swipeFilterModalHomeParent &&
     swipeFilterModal.parentElement !== swipeFilterModalHomeParent
