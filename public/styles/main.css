@@ -905,7 +905,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 .card-crew .card-ratings + .crew-line,
 .card-crew .crew-line + .crew-line,
 .card-crew .crew-line + .storyline-header {
-  margin-top: 0.75rem;
+  margin-top: 0.5rem;
 }
 
 .crew-line:hover {
