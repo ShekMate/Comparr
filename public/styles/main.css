@@ -1077,10 +1077,10 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .where-to-watch-pill-logo {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  object-fit: cover;
+  width: auto;
+  max-width: 34px;
+  height: 16px;
+  object-fit: contain;
   flex-shrink: 0;
 }
 
@@ -3426,10 +3426,10 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .provider-pill-logo {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  object-fit: cover;
+  width: auto;
+  max-width: 34px;
+  height: 16px;
+  object-fit: contain;
   flex-shrink: 0;
 }
 

@@ -4789,24 +4789,27 @@ async function moveMovieBetweenLists(guid, fromList, toList) {
 }
 
 function getWatchProviders(movie) {
+  const normalizeProviders = providers => {
+    const unique = new Map()
+    ;(providers || []).forEach(provider => {
+      const name = String(provider?.name || '').trim()
+      if (!name) return
+      if (!unique.has(name.toLowerCase())) {
+        unique.set(name.toLowerCase(), provider)
+      }
+    })
+    return Array.from(unique.values())
+  }
+
   if (Array.isArray(movie.watchProviders) && movie.watchProviders.length > 0) {
-    return movie.watchProviders
+    return normalizeProviders(movie.watchProviders)
   }
 
   const streamingServices = getStreamingServices(movie)
-  const allProviders = [
+  return normalizeProviders([
     ...(streamingServices.subscription || []),
     ...(streamingServices.free || []),
-  ]
-
-  const unique = new Map()
-  allProviders.forEach(provider => {
-    if (provider?.name && !unique.has(provider.name)) {
-      unique.set(provider.name, provider)
-    }
-  })
-
-  return Array.from(unique.values())
+  ])
 }
 
 function getStreamingServices(movie) {
