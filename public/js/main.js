@@ -4792,10 +4792,22 @@ function getWatchProviders(movie) {
   const normalizeProviders = providers => {
     const unique = new Map()
     ;(providers || []).forEach(provider => {
-      const name = String(provider?.name || '').trim()
-      if (!name) return
-      if (!unique.has(name.toLowerCase())) {
-        unique.set(name.toLowerCase(), provider)
+      const fallbackName = String(provider?.name || '').trim()
+      const isPersonalLibraryProvider =
+        provider?.logo_path === '/assets/logos/allvids.svg' ||
+        (provider?.id === 0 && provider?.type === 'subscription')
+
+      const resolvedName = isPersonalLibraryProvider
+        ? String(window.PLEX_LIBRARY_NAME || fallbackName).trim()
+        : fallbackName
+
+      if (!resolvedName) return
+      const dedupeKey = resolvedName.toLowerCase()
+      if (!unique.has(dedupeKey)) {
+        unique.set(dedupeKey, {
+          ...provider,
+          name: resolvedName,
+        })
       }
     })
     return Array.from(unique.values())

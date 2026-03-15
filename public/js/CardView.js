@@ -568,12 +568,23 @@ export default class CardView {
       const uniqueProviders = []
       const seenProviders = new Set()
       allProviders.forEach(provider => {
-        const name = String(provider?.name || '').trim()
-        if (!name) return
-        const key = name.toLowerCase()
+        const fallbackName = String(provider?.name || '').trim()
+        const isPersonalLibraryProvider =
+          provider?.logo_path === '/assets/logos/allvids.svg' ||
+          (provider?.id === 0 && provider?.type === 'subscription')
+
+        const resolvedName = isPersonalLibraryProvider
+          ? String(window.PLEX_LIBRARY_NAME || fallbackName).trim()
+          : fallbackName
+
+        if (!resolvedName) return
+        const key = resolvedName.toLowerCase()
         if (seenProviders.has(key)) return
         seenProviders.add(key)
-        uniqueProviders.push(provider)
+        uniqueProviders.push({
+          ...provider,
+          name: resolvedName,
+        })
       })
 
       if (uniqueProviders.length > 0) {
