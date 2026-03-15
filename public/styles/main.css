@@ -1049,6 +1049,47 @@ body:not(.is-logged-in) .card-stack:empty::after {
   font-size: 0.85em;
 }
 
+.where-to-watch-section {
+  margin: 1rem 0 0.8rem;
+}
+
+.where-to-watch-heading {
+  margin: 0 0 0.45rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.where-to-watch-pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.42rem;
+}
+
+.where-to-watch-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.36rem;
+  padding: 0.22rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.where-to-watch-pill-logo {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.where-to-watch-pill-name {
+  font-size: 0.76rem;
+  line-height: 1;
+  color: var(--color-text-primary);
+}
+
 /* Card Streaming Providers */
 .card-streaming {
   margin: 1.5rem 0;
@@ -3353,6 +3394,49 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 /* Footer with "View on JustWatch" link */
+
+.where-to-watch {
+  margin-top: 0.75rem;
+}
+
+.where-to-watch-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.provider-pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.provider-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-line);
+  background: var(--color-surface-light);
+  color: var(--color-text-primary);
+}
+
+.provider-pill-logo {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.provider-pill-name {
+  font-size: 0.78rem;
+  line-height: 1;
+}
 .service-footer {
   padding: 0.75rem 1rem;
   color: var(--color-primary);
