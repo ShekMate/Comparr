@@ -159,6 +159,7 @@ interface MediaItem {
   key: string
   type: 'movie' | 'artist' | 'photo' | 'show'
   streamingServices?: { subscription: any[]; free: any[] }
+  watchProviders?: any[]
   streamingLink?: string | null
   tmdbId?: number | null
 }
@@ -3220,6 +3221,7 @@ export interface ImportedMovie {
   runtime?: number
   contentRating?: string
   streamingServices?: { subscription: any[]; free: any[] }
+  watchProviders?: any[]
   streamingLink?: string | null
 }
 
@@ -3300,6 +3302,7 @@ export async function bulkImportSeen(
         subscription: [],
         free: [],
       },
+      watchProviders: movie.watchProviders ?? [],
       streamingLink: movie.streamingLink ?? null,
     }
 
@@ -3518,6 +3521,7 @@ export async function processImdbImportBackground(
           subscription: [],
           free: [],
         },
+        watchProviders: enriched?.watchProviders ?? [],
         streamingLink: enriched?.streamingLink ?? null,
       }
 
@@ -3560,6 +3564,7 @@ export async function processImdbImportBackground(
         runtime: movie.runtime ?? undefined,
         contentRating: movie.contentRating ?? undefined,
         streamingServices: movie.streamingServices,
+        watchProviders: movie.watchProviders ?? [],
         streamingLink: movie.streamingLink,
       }
       if (row.imdbId) {
