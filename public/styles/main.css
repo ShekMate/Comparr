@@ -958,7 +958,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
   gap: 0.325rem;
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 0.2rem 0.05rem 0.45rem;
+  padding: 0.1rem 0.05rem 0.3rem;
   scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
@@ -1015,7 +1015,7 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .cast-card-body {
-  padding: 0.125rem 0.2rem 0.4rem;
+  padding: 0.05rem 0.2rem 0.25rem;
   text-align: center;
 }
 
