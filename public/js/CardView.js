@@ -419,6 +419,8 @@ export default class CardView {
       originalLanguage,
       original_language,
       language,
+      watchProviders,
+      streamingServices,
     } = this.movieData
 
     console.log('DEBUG renderCrewInfo:', {
@@ -545,6 +547,62 @@ export default class CardView {
           summary
         )}</p>`
       )
+    }
+
+    const providerCandidates = Array.isArray(watchProviders)
+      ? watchProviders
+      : []
+    const fallbackProviders = [
+      ...(streamingServices && Array.isArray(streamingServices.subscription)
+        ? streamingServices.subscription
+        : []),
+      ...(streamingServices && Array.isArray(streamingServices.free)
+        ? streamingServices.free
+        : []),
+    ]
+    const allProviders = providerCandidates.length
+      ? providerCandidates
+      : fallbackProviders
+
+    if (allProviders.length > 0) {
+      const uniqueProviders = []
+      const seenProviders = new Set()
+      allProviders.forEach(provider => {
+        const name = String(provider?.name || '').trim()
+        if (!name) return
+        const key = name.toLowerCase()
+        if (seenProviders.has(key)) return
+        seenProviders.add(key)
+        uniqueProviders.push(provider)
+      })
+
+      if (uniqueProviders.length > 0) {
+        const providerPills = uniqueProviders
+          .map(provider => {
+            const logoPath = provider?.logo_path
+            const logoUrl = logoPath
+              ? logoPath.startsWith('/assets/')
+                ? `${this.basePath || ''}${logoPath}`
+                : `https://image.tmdb.org/t/p/w92${logoPath}`
+              : ''
+
+            return `<span class="where-to-watch-pill">${
+              logoUrl
+                ? `<img src="${logoUrl}" alt="${escapeHtml(
+                    provider.name
+                  )}" class="where-to-watch-pill-logo" loading="lazy" decoding="async" />`
+                : ''
+            }<span class="where-to-watch-pill-name">${escapeHtml(
+              provider.name
+            )}</span></span>`
+          })
+          .join('')
+
+        lines.push(`<section class="where-to-watch-section">
+          <h4 class="where-to-watch-heading">Where to Watch</h4>
+          <div class="where-to-watch-pill-list" onclick="event.stopPropagation()">${providerPills}</div>
+        </section>`)
+      }
     }
 
     // Cast cards section (TMDb style horizontal scroll)

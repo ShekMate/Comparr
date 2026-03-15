@@ -109,11 +109,35 @@ async function updateStreamingForTmdbId(tmdbId: number) {
     }
   }
 
+  const allProviderMap = new Map<string, any>()
+  const providerGroups = [
+    ['subscription', providers?.flatrate || []],
+    ['free', providers?.free || []],
+    ['free', providers?.ads || []],
+    ['rent', providers?.rent || []],
+    ['buy', providers?.buy || []],
+  ] as const
+
+  for (const [type, group] of providerGroups) {
+    for (const p of group) {
+      const normalizedName = normalizeProviderName(p.provider_name)
+      if (!allProviderMap.has(normalizedName)) {
+        allProviderMap.set(normalizedName, {
+          id: p.provider_id,
+          name: normalizedName,
+          logo_path: p.logo_path || null,
+          type,
+        })
+      }
+    }
+  }
+
   const result = {
     streamingServices: {
       subscription: Array.from(subscriptionMap.values()),
       free: Array.from(freeMap.values()),
     },
+    watchProviders: Array.from(allProviderMap.values()),
     streamingLink: providers?.link || null,
   }
 
@@ -137,6 +161,7 @@ async function updateStreamingForTmdbId(tmdbId: number) {
           persistedState.movieIndex[guid] = {
             ...(movie as any),
             streamingServices: result.streamingServices,
+            watchProviders: result.watchProviders,
             streamingLink: result.streamingLink,
           }
           updatedCount++

@@ -17,6 +17,7 @@ type EnrichmentPayload = {
   rating_comparr: number | null
   genres: string[]
   streamingServices: { subscription: any[]; free: any[] }
+  watchProviders: any[]
   contentRating: string | null
   tmdbPosterPath: string | null
   cast: string[]
@@ -111,6 +112,9 @@ function sanitizeEnrichmentPayload(value: any): EnrichmentPayload {
         ? value.streamingServices.free
         : [],
     },
+    watchProviders: Array.isArray(value?.watchProviders)
+      ? value.watchProviders
+      : [],
     contentRating: value?.contentRating ?? null,
     tmdbPosterPath: value?.tmdbPosterPath ?? null,
     cast: Array.isArray(value?.cast) ? value.cast : [],
@@ -347,6 +351,7 @@ export async function enrich({
     subscription: [],
     free: [],
   }
+  let watchProviders: any[] = []
   let contentRating: string | null = null
   let cast: string[] = []
   let castMembers: Array<{
@@ -458,6 +463,31 @@ export async function enrich({
         subscription: Array.from(subscriptionMap.values()),
         free: Array.from(freeMap.values()),
       }
+
+      const allProviderMap = new Map()
+      const providerGroups = [
+        ['subscription', providers.flatrate || []],
+        ['free', providers.free || []],
+        ['free', providers.ads || []],
+        ['rent', providers.rent || []],
+        ['buy', providers.buy || []],
+      ] as const
+
+      providerGroups.forEach(([type, group]) => {
+        group.forEach((p: any) => {
+          const normalizedName = normalizeProviderName(p.provider_name)
+          if (!allProviderMap.has(normalizedName)) {
+            allProviderMap.set(normalizedName, {
+              id: p.provider_id,
+              name: normalizedName,
+              logo_path: p.logo_path || null,
+              type,
+            })
+          }
+        })
+      })
+
+      watchProviders = Array.from(allProviderMap.values())
     }
 
     if (det?.credits) {
@@ -529,6 +559,7 @@ export async function enrich({
     rating_comparr,
     genres,
     streamingServices,
+    watchProviders,
     contentRating,
     tmdbPosterPath: hit?.poster_path || null,
     cast,
