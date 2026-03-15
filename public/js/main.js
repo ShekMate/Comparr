@@ -3794,6 +3794,7 @@ async function appendRatedRow(
     }
 
     const streamingServices = getStreamingServices(movie)
+    const watchProviders = getWatchProviders(movie)
     const allServices = [
       ...(streamingServices.subscription || []),
       ...(streamingServices.free || []),
@@ -3871,6 +3872,32 @@ async function appendRatedRow(
         s => s.name !== window.PLEX_LIBRARY_NAME
       ).length > 0
     const hasFree = streamingServices.free && streamingServices.free.length > 0
+
+    const whereToWatchPillsHtml = watchProviders.length
+      ? `<div class="where-to-watch">
+          <div class="where-to-watch-title">Where to Watch</div>
+          <div class="provider-pill-list">
+            ${watchProviders
+              .map(provider => {
+                const logoUrl = provider.logo_path
+                  ? provider.logo_path.startsWith('/assets/')
+                    ? `${basePath}${provider.logo_path}`
+                    : `https://image.tmdb.org/t/p/w92${provider.logo_path}`
+                  : null
+
+                return `<span class="provider-pill">
+                  ${
+                    logoUrl
+                      ? `<img src="${logoUrl}" alt="${provider.name}" class="provider-pill-logo">`
+                      : ''
+                  }
+                  <span class="provider-pill-name">${provider.name}</span>
+                </span>`
+              })
+              .join('')}
+          </div>
+        </div>`
+      : ''
 
     // DEBUG: Log button rendering conditions
     console.log('🧩 Button rendering debug for', movie.title)
@@ -3978,7 +4005,8 @@ async function appendRatedRow(
               ? `<div class="watch-card-ratings">${ratingHtml}</div>`
               : ''
           })()}
-    
+          ${whereToWatchPillsHtml}
+
         <div class="watch-card-actions">
           <div class="service-dropdown">
             <button class="service-dropdown-btn ${
@@ -4261,6 +4289,45 @@ async function appendRatedRow(
                 services,
                 data.streamingLink
               )
+            }
+          }
+
+          const whereToWatchContainer = card.querySelector('.where-to-watch')
+          const providers = getWatchProviders(data)
+          if (whereToWatchContainer) {
+            if (providers.length > 0) {
+              const pills = providers
+                .map(provider => {
+                  const logoUrl = provider.logo_path
+                    ? provider.logo_path.startsWith('/assets/')
+                      ? `${document.body.dataset.basePath || ''}${
+                          provider.logo_path
+                        }`
+                      : `https://image.tmdb.org/t/p/w92${provider.logo_path}`
+                    : null
+                  return `<span class="provider-pill">${
+                    logoUrl
+                      ? `<img src="${logoUrl}" alt="${provider.name}" class="provider-pill-logo">`
+                      : ''
+                  }<span class="provider-pill-name">${
+                    provider.name
+                  }</span></span>`
+                })
+                .join('')
+              const list = whereToWatchContainer.querySelector(
+                '.provider-pill-list'
+              )
+              if (list) {
+                list.innerHTML = pills
+              } else {
+                whereToWatchContainer.insertAdjacentHTML(
+                  'beforeend',
+                  `<div class="provider-pill-list">${pills}</div>`
+                )
+              }
+              whereToWatchContainer.style.display = ''
+            } else {
+              whereToWatchContainer.style.display = 'none'
             }
           }
 
@@ -4719,6 +4786,42 @@ async function moveMovieBetweenLists(guid, fromList, toList) {
     console.error('Stack trace:', error.stack)
     showNotification('Failed to move movie. Please try again.')
   }
+}
+
+function getWatchProviders(movie) {
+  const normalizeProviders = providers => {
+    const unique = new Map()
+    ;(providers || []).forEach(provider => {
+      const fallbackName = String(provider?.name || '').trim()
+      const isPersonalLibraryProvider =
+        provider?.logo_path === '/assets/logos/allvids.svg' ||
+        (provider?.id === 0 && provider?.type === 'subscription')
+
+      const resolvedName = isPersonalLibraryProvider
+        ? String(window.PLEX_LIBRARY_NAME || fallbackName).trim()
+        : fallbackName
+
+      if (!resolvedName) return
+      const dedupeKey = resolvedName.toLowerCase()
+      if (!unique.has(dedupeKey)) {
+        unique.set(dedupeKey, {
+          ...provider,
+          name: resolvedName,
+        })
+      }
+    })
+    return Array.from(unique.values())
+  }
+
+  if (Array.isArray(movie.watchProviders) && movie.watchProviders.length > 0) {
+    return normalizeProviders(movie.watchProviders)
+  }
+
+  const streamingServices = getStreamingServices(movie)
+  return normalizeProviders([
+    ...(streamingServices.subscription || []),
+    ...(streamingServices.free || []),
+  ])
 }
 
 function getStreamingServices(movie) {
