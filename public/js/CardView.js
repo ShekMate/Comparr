@@ -445,6 +445,11 @@ export default class CardView {
       lines.push(`<div class="crew-title">${titleWithYear}</div>`)
     }
 
+    // IMDb/TMDb ratings line (above content metadata line)
+    if (rating) {
+      lines.push(`<div class="card-ratings">${rating}</div>`)
+    }
+
     // Content Rating + Genres combined line
     const ratingGenreParts = []
 
@@ -505,17 +510,12 @@ export default class CardView {
       )
     }
 
-    // Director
-    if (rating) {
-      lines.push(`<div class="card-ratings">${rating}</div>`)
-    }
+    const crewPeopleParts = []
 
-    // Director
+    // Director + Writers on one line with separators and icons only
     if (director && director !== 'undefined') {
-      lines.push(
-        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-video"></i> <strong class="crew-label">Director:</strong> ${escapeHtml(
-          director
-        )}</div>`
+      crewPeopleParts.push(
+        `<i class="fas fa-video"></i> ${escapeHtml(director)}`
       )
     }
 
@@ -524,10 +524,18 @@ export default class CardView {
       const maxWriters = window.innerWidth <= 600 ? 2 : 3
       const displayWriters = writers.slice(0, maxWriters)
       const hasMore = writers.length > maxWriters
-      lines.push(
-        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-pen"></i> <strong class="crew-label">Writer:</strong> ${displayWriters
+      crewPeopleParts.push(
+        `<i class="fas fa-pen"></i> ${displayWriters
           .map(escapeHtml)
-          .join(', ')}${hasMore ? ' & more' : ''}</div>`
+          .join(', ')}${hasMore ? ' & more' : ''}`
+      )
+    }
+
+    if (crewPeopleParts.length > 0) {
+      lines.push(
+        `<div class="crew-line" onclick="this.classList.toggle('expanded')">${crewPeopleParts.join(
+          ' <span style="opacity: 0.5; margin: 0 0.25rem;">|</span> '
+        )}</div>`
       )
     }
 
