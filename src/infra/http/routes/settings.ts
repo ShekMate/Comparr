@@ -309,6 +309,20 @@ export async function handleSettingsRoutes(
     return true
   }
 
+  if (pathname === '/api/access-password/status' && req.method === 'GET') {
+    const settings = getSettings()
+    const configuredPassword = String(settings.ACCESS_PASSWORD ?? '').trim()
+
+    await req.respond({
+      status: 200,
+      body: JSON.stringify({
+        requiresPassword: Boolean(configuredPassword),
+      }),
+      headers: makeJsonHeaders(),
+    })
+    return true
+  }
+
   if (pathname === '/api/client-config') {
     const settings = getSettings()
     const plexConfigured =
@@ -468,6 +482,19 @@ export async function handleSettingsRoutes(
         for (const key of attemptedAdminOnlySettings) {
           delete incomingSettings[key]
         }
+      }
+
+      if (
+        isAdmin &&
+        Object.prototype.hasOwnProperty.call(
+          incomingSettings,
+          'ACCESS_PASSWORD'
+        ) &&
+        String(incomingSettings.ACCESS_PASSWORD ?? '').trim() === ''
+      ) {
+        incomingSettings.ACCESS_PASSWORD = String(
+          currentSettings.ACCESS_PASSWORD ?? ''
+        )
       }
 
       if (
