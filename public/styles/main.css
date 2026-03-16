@@ -4838,6 +4838,18 @@ footer {
   font-size: 0.9rem;
 }
 
+.first-run-guide-instruction {
+  margin-top: -0.35rem;
+  margin-bottom: 0.8rem;
+  color: #cbd5e1;
+  font-size: 0.85rem;
+}
+
+.first-run-guide-security-label {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
 .first-run-guide-status {
   margin-top: 0.6rem;
   min-height: 1.2rem;
@@ -4898,6 +4910,18 @@ footer {
 
 .first-run-guide-secondary:hover {
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.35) !important;
+}
+
+.first-run-guide-actions .submit-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.first-run-guide-actions .submit-button:hover:disabled {
+  transform: none;
+  box-shadow: none;
 }
 
 .first-run-guide-confirm-overlay {
