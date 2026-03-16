@@ -2345,17 +2345,17 @@ function createFirstRunGuideModal() {
       copy.textContent = ''
       body.innerHTML = `
         <label class="first-run-guide-field-label first-run-guide-security-label">Access Password</label>
+        <p class="first-run-guide-instruction">Require a password for anyone to access your comparr instance.</p>
         <input id="first-run-access-password" class="first-run-guide-input" type="password" value="${
           selectedState.security.accessPassword ||
           document.getElementById('setting-access-password')?.value ||
           ''
         }" placeholder="(optional)" autocomplete="new-password" />
-        <p class="first-run-guide-instruction">Require a password for anyone to access your comparr instance.</p>
         <label class="first-run-guide-field-label first-run-guide-security-label">Admin Settings Password</label>
+        <p class="first-run-guide-instruction">Set a password for admin settings so your users cannot edit them.</p>
         <input id="first-run-admin-password" class="first-run-guide-input" type="password" value="${
           selectedState.security.adminPassword || ''
         }" placeholder="(optional)" autocomplete="new-password" />
-        <p class="first-run-guide-instruction">Set a password for admin settings so your users cannot edit them.</p>
       `
 
       const updateSecurityActionState = () => {
