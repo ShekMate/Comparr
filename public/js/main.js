@@ -2338,8 +2338,7 @@ function createFirstRunGuideModal() {
     if (screen.type === 'security') {
       renderRequirementCopy('')
       title.textContent = 'Security Settings'
-      copy.textContent =
-        'Require a password for anyone to access your comparr instance.'
+      copy.textContent = ''
       body.innerHTML = `
         <p class="first-run-guide-copy">Require a password for anyone to access your comparr instance .</p>
         <label class="first-run-guide-field-label">Access Password</label>
