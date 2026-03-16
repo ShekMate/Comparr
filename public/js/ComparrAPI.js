@@ -94,6 +94,19 @@ export class ComparrAPI extends EventTarget {
     })
   }
 
+  async getAccessPasswordStatus() {
+    const res = await fetch(`${this._basePath}/api/access-password/status`)
+    const data = await res.json().catch(() => ({}))
+
+    if (!res.ok) {
+      throw new Error(data.message || 'Unable to check access password status.')
+    }
+
+    return {
+      requiresPassword: Boolean(data.requiresPassword),
+    }
+  }
+
   async verifyAccessPassword(accessPassword) {
     const res = await fetch(`${this._basePath}/api/access-password/verify`, {
       method: 'POST',

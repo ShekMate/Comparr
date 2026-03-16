@@ -3470,11 +3470,22 @@ async function login(api) {
   }
 
   let skipPasswordPrompt = false
+  let accessPasswordIsRequired = true
   const shouldReturnToModeSelection =
     sessionStorage.getItem('comparrReturnToModeSelection') === '1'
   const storedAccessPassword = sessionStorage.getItem('comparrAccessPassword')
 
-  if (shouldReturnToModeSelection) {
+  try {
+    const accessPasswordStatus = await api.getAccessPasswordStatus()
+    accessPasswordIsRequired = accessPasswordStatus.requiresPassword
+  } catch (err) {
+    console.warn('Access password status check failed:', err)
+  }
+
+  if (!accessPasswordIsRequired) {
+    handleVerifiedPassword('')
+    skipPasswordPrompt = true
+  } else if (shouldReturnToModeSelection) {
     sessionStorage.removeItem('comparrReturnToModeSelection')
 
     if (storedAccessPassword) {
@@ -3494,7 +3505,7 @@ async function login(api) {
       const handlePasswordSubmit = async e => {
         e.preventDefault()
         const fd = new FormData(passwordForm)
-        const accessPassword = fd.get('accessPassword')
+        const accessPassword = String(fd.get('accessPassword') || '')
         if (!accessPassword) return
 
         setPasswordError('')
