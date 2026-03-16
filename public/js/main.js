@@ -2339,7 +2339,7 @@ function createFirstRunGuideModal() {
       renderRequirementCopy('')
       title.textContent = 'Security Settings'
       copy.textContent =
-        'Set an Access Password (optional) and an Admin Settings Password (optional).'
+        'Password protect access to you comparr instance and/or the admin settings so your users cannot edit them.'
       body.innerHTML = `
         <label class="first-run-guide-field-label">Access Password (optional)</label>
         <input id="first-run-access-password" class="first-run-guide-input" type="password" value="${
@@ -2350,7 +2350,7 @@ function createFirstRunGuideModal() {
         <label class="first-run-guide-field-label">Admin Settings Password (optional)</label>
         <input id="first-run-admin-password" class="first-run-guide-input" type="password" value="${
           selectedState.security.adminPassword || ''
-        }" placeholder="(leave blank to keep current)" autocomplete="new-password" />
+        }" placeholder="(optional)" autocomplete="new-password" />
       `
       return
     }
