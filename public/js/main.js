@@ -2100,6 +2100,10 @@ function createFirstRunGuideModal() {
 
   const selectedState = {
     flow: '',
+    security: {
+      accessPassword: '',
+      adminPassword: '',
+    },
     sources: [],
     subscriptions: [],
     validatedTargets: {},
@@ -2330,6 +2334,26 @@ function createFirstRunGuideModal() {
     if (!body || !copy || !title) return
     setWizardStatus('')
     updateActionButtons(screen)
+
+    if (screen.type === 'security') {
+      renderRequirementCopy('')
+      title.textContent = 'Security Settings'
+      copy.textContent =
+        'Set an Access Password (optional) and an Admin Settings Password (optional).'
+      body.innerHTML = `
+        <label class="first-run-guide-field-label">Access Password (optional)</label>
+        <input id="first-run-access-password" class="first-run-guide-input" type="password" value="${
+          selectedState.security.accessPassword ||
+          document.getElementById('setting-access-password')?.value ||
+          ''
+        }" placeholder="(optional)" autocomplete="new-password" />
+        <label class="first-run-guide-field-label">Admin Settings Password (optional)</label>
+        <input id="first-run-admin-password" class="first-run-guide-input" type="password" value="${
+          selectedState.security.adminPassword || ''
+        }" placeholder="(leave blank to keep current)" autocomplete="new-password" />
+      `
+      return
+    }
 
     if (screen.type === 'flow') {
       title.textContent = 'Hi, there 👋'
@@ -2581,7 +2605,34 @@ function createFirstRunGuideModal() {
   }
 
   const getNextScreen = async () => {
-    const current = history[history.length - 1] || { type: 'flow' }
+    const current = history[history.length - 1] || { type: 'security' }
+
+    if (current.type === 'security') {
+      const accessPassword =
+        body.querySelector('#first-run-access-password')?.value || ''
+      const adminPassword =
+        body.querySelector('#first-run-admin-password')?.value || ''
+
+      selectedState.security.accessPassword = accessPassword
+      selectedState.security.adminPassword = adminPassword
+
+      syncInputValue('setting-access-password', accessPassword)
+      syncInputValue('setting-admin-password', adminPassword)
+      try {
+        await saveSettingsSubset({
+          ACCESS_PASSWORD: accessPassword,
+          ADMIN_PASSWORD: adminPassword,
+        })
+      } catch (err) {
+        setWizardStatus(
+          err?.message || 'Failed to save security settings.',
+          'error'
+        )
+        return null
+      }
+
+      return { type: 'flow' }
+    }
 
     if (current.type === 'flow') {
       if (!selectedState.flow) {
@@ -2827,7 +2878,11 @@ function createFirstRunGuideModal() {
           !selectedState.requestServices.jellyseerrApiKey
         ? 'overseerr'
         : 'jellyseerr'
-    const initial = { type: 'flow' }
+    selectedState.security.accessPassword =
+      document.getElementById('setting-access-password')?.value || ''
+    selectedState.security.adminPassword = ''
+
+    const initial = { type: 'security' }
     history.splice(0, history.length, initial)
     renderScreen(initial)
   }
