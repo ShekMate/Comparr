@@ -1406,7 +1406,9 @@ function updatePersonalMediaSourceConfigVisibility(selectedSources = []) {
   )
 
   document.querySelectorAll('[data-personal-media-config]').forEach(section => {
-    const source = String(section.dataset.personalMediaConfig || '').toLowerCase()
+    const source = String(
+      section.dataset.personalMediaConfig || ''
+    ).toLowerCase()
     const shouldShow = source ? selected.has(source) : false
     section.toggleAttribute('hidden', !shouldShow)
   })
@@ -2221,8 +2223,10 @@ function createFirstRunGuideModal() {
 
   const updateActionButtons = screen => {
     backButton.hidden = history.length <= 1 || screen.type === 'setup-complete'
-    skipButton.hidden = screen.type !== 'requests'
+    skipButton.hidden = !['security', 'requests'].includes(screen.type)
     saveButton.hidden = screen.type !== 'defaults'
+    nextButton.disabled = false
+    skipButton.disabled = false
     if (screen.type === 'setup-complete') {
       nextButton.textContent = 'Start Swiping'
     } else if (screen.type === 'defaults') {
@@ -2340,19 +2344,39 @@ function createFirstRunGuideModal() {
       title.textContent = 'Security Settings'
       copy.textContent = ''
       body.innerHTML = `
-        <p class="first-run-guide-copy">Require a password for anyone to access your comparr instance .</p>
-        <label class="first-run-guide-field-label">Access Password</label>
+        <label class="first-run-guide-field-label first-run-guide-security-label">Access Password</label>
         <input id="first-run-access-password" class="first-run-guide-input" type="password" value="${
           selectedState.security.accessPassword ||
           document.getElementById('setting-access-password')?.value ||
           ''
         }" placeholder="(optional)" autocomplete="new-password" />
-        <p class="first-run-guide-copy">Set a password for admin settings so your users cannot edit them.</p>
-        <label class="first-run-guide-field-label">Admin Settings Password</label>
+        <p class="first-run-guide-instruction">Require a password for anyone to access your comparr instance.</p>
+        <label class="first-run-guide-field-label first-run-guide-security-label">Admin Settings Password</label>
         <input id="first-run-admin-password" class="first-run-guide-input" type="password" value="${
           selectedState.security.adminPassword || ''
         }" placeholder="(optional)" autocomplete="new-password" />
+        <p class="first-run-guide-instruction">Set a password for admin settings so your users cannot edit them.</p>
       `
+
+      const updateSecurityActionState = () => {
+        const accessPassword =
+          body.querySelector('#first-run-access-password')?.value?.trim() || ''
+        const adminPassword =
+          body.querySelector('#first-run-admin-password')?.value?.trim() || ''
+        const hasPassword = Boolean(accessPassword || adminPassword)
+        nextButton.disabled = !hasPassword
+        skipButton.disabled = hasPassword
+      }
+
+      body
+        .querySelector('#first-run-access-password')
+        ?.addEventListener('input', updateSecurityActionState)
+      body
+        .querySelector('#first-run-admin-password')
+        ?.addEventListener('input', updateSecurityActionState)
+
+      initializePasswordVisibilityToggles()
+      updateSecurityActionState()
       return
     }
 
@@ -2905,8 +2929,36 @@ function createFirstRunGuideModal() {
     renderScreen(history[history.length - 1])
   })
 
-  skipButton?.addEventListener('click', () => {
+  skipButton?.addEventListener('click', async () => {
     const current = history[history.length - 1]
+    if (current?.type === 'security') {
+      const accessPassword =
+        body.querySelector('#first-run-access-password')?.value || ''
+      const adminPassword =
+        body.querySelector('#first-run-admin-password')?.value || ''
+
+      selectedState.security.accessPassword = accessPassword
+      selectedState.security.adminPassword = adminPassword
+
+      syncInputValue('setting-access-password', accessPassword)
+      syncInputValue('setting-admin-password', adminPassword)
+      try {
+        await saveSettingsSubset({
+          ACCESS_PASSWORD: accessPassword,
+          ADMIN_PASSWORD: adminPassword,
+        })
+      } catch (err) {
+        setWizardStatus(
+          err?.message || 'Failed to save security settings.',
+          'error'
+        )
+        return
+      }
+      history.push({ type: 'flow' })
+      renderScreen({ type: 'flow' })
+      return
+    }
+
     if (current?.type !== 'requests') return
     persistRequestInputs()
     history.push({ type: 'defaults' })
