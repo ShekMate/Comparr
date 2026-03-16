@@ -483,20 +483,6 @@ export async function handleSettingsRoutes(
           delete incomingSettings[key]
         }
       }
-
-      if (
-        isAdmin &&
-        Object.prototype.hasOwnProperty.call(
-          incomingSettings,
-          'ACCESS_PASSWORD'
-        ) &&
-        String(incomingSettings.ACCESS_PASSWORD ?? '').trim() === ''
-      ) {
-        incomingSettings.ACCESS_PASSWORD = String(
-          currentSettings.ACCESS_PASSWORD ?? ''
-        )
-      }
-
       if (
         isAdmin &&
         Object.prototype.hasOwnProperty.call(
