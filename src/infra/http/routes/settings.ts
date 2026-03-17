@@ -345,6 +345,9 @@ export async function handleSettingsRoutes(
         tmdbConfigured,
         paidStreamingServices: settings.PAID_STREAMING_SERVICES,
         personalMediaSources: settings.PERSONAL_MEDIA_SOURCES,
+        setupWizardCompleted:
+          String(settings.SETUP_WIZARD_COMPLETED || '').toLowerCase() ===
+          'true',
       }),
       headers: makeJsonHeaders(),
     })

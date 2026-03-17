@@ -4923,6 +4923,16 @@ footer {
   box-shadow: none;
 }
 
+.first-run-guide-actions .submit-button.is-loading,
+.first-run-guide-test-button.is-loading {
+  opacity: 0.9;
+}
+
+.first-run-guide-actions .submit-button i,
+.first-run-guide-test-button i {
+  margin-right: 0.4rem;
+}
+
 .first-run-guide-actions .submit-button:hover:disabled {
   transform: none;
   box-shadow: none;
