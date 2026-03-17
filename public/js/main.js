@@ -2894,9 +2894,17 @@ function createFirstRunGuideModal() {
     }
 
     if (current.type === 'setup-complete') {
-      await saveSettingsSubset({
-        SETUP_WIZARD_COMPLETED: 'true',
-      }).catch(() => {})
+      try {
+        await saveSettingsSubset({
+          SETUP_WIZARD_COMPLETED: 'true',
+        })
+      } catch (err) {
+        setWizardStatus(
+          err?.message || 'Failed to finish setup. Please try again.',
+          'error'
+        )
+        return null
+      }
       await loadClientConfig()
       document.dispatchEvent(new CustomEvent('comparr:source-config-updated'))
       return { type: 'complete' }
