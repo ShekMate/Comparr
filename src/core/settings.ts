@@ -36,6 +36,7 @@ export type SettingsKey =
   | 'STREAMING_PROFILE_MODE'
   | 'PAID_STREAMING_SERVICES'
   | 'PERSONAL_MEDIA_SOURCES'
+  | 'SETUP_WIZARD_COMPLETED'
 
 export type Settings = Record<SettingsKey, string>
 
@@ -74,6 +75,7 @@ const SETTINGS_KEYS: SettingsKey[] = [
   'STREAMING_PROFILE_MODE',
   'PAID_STREAMING_SERVICES',
   'PERSONAL_MEDIA_SOURCES',
+  'SETUP_WIZARD_COMPLETED',
 ]
 
 const DEFAULTS: Partial<Settings> = {
@@ -94,6 +96,7 @@ const DEFAULTS: Partial<Settings> = {
   STREAMING_PROFILE_MODE: 'anywhere',
   PAID_STREAMING_SERVICES: '[]',
   PERSONAL_MEDIA_SOURCES: '[]',
+  SETUP_WIZARD_COMPLETED: 'false',
 }
 
 const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'

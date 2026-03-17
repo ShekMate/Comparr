@@ -23,6 +23,7 @@ Deno.test('settings include streaming profile defaults', async () => {
     assertEquals(settings.ADMIN_PASSWORD, '')
     assertEquals(settings.PAID_STREAMING_SERVICES, '[]')
     assertEquals(settings.PERSONAL_MEDIA_SOURCES, '[]')
+    assertEquals(settings.SETUP_WIZARD_COMPLETED, 'false')
   } finally {
     if (originalDataDir === undefined) {
       Deno.env.delete('DATA_DIR')
@@ -47,6 +48,7 @@ Deno.test('settings can persist streaming profile updates', async () => {
       ADMIN_PASSWORD: 'secret-admin',
       PAID_STREAMING_SERVICES: '["netflix","hulu"]',
       PERSONAL_MEDIA_SOURCES: '["plex","jellyfin"]',
+      SETUP_WIZARD_COMPLETED: 'true',
     })
 
     const reloaded = await import(uniqueSettingsModulePath())
@@ -56,6 +58,7 @@ Deno.test('settings can persist streaming profile updates', async () => {
     assertEquals(settings.ADMIN_PASSWORD, 'secret-admin')
     assertEquals(settings.PAID_STREAMING_SERVICES, '["netflix","hulu"]')
     assertEquals(settings.PERSONAL_MEDIA_SOURCES, '["plex","jellyfin"]')
+    assertEquals(settings.SETUP_WIZARD_COMPLETED, 'true')
   } finally {
     if (originalDataDir === undefined) {
       Deno.env.delete('DATA_DIR')
@@ -89,6 +92,7 @@ Deno.test('settings normalize streaming profile values', async () => {
     assertEquals(settings.ADMIN_PASSWORD, 'secret-admin')
     assertEquals(settings.PAID_STREAMING_SERVICES, '["netflix","hulu"]')
     assertEquals(settings.PERSONAL_MEDIA_SOURCES, '["plex","jellyfin"]')
+    assertEquals(settings.SETUP_WIZARD_COMPLETED, 'true')
   } finally {
     if (originalDataDir === undefined) {
       Deno.env.delete('DATA_DIR')

@@ -1164,6 +1164,9 @@ async function loadClientConfig() {
     if (data?.tmdbConfigured !== undefined) {
       window.TMDB_CONFIGURED = Boolean(data.tmdbConfigured)
     }
+    if (data?.setupWizardCompleted !== undefined) {
+      window.SETUP_WIZARD_COMPLETED = Boolean(data.setupWizardCompleted)
+    }
     updateHostManagedSubscriptionServiceOptions()
   } catch (err) {
     console.warn('Client config fetch failed:', err)
@@ -2236,6 +2239,26 @@ function createFirstRunGuideModal() {
     }
   }
 
+  const withButtonLoading = async (button, label, action) => {
+    if (!button) return action()
+    if (button.dataset.loading === 'true') return null
+    const originalHtml = button.innerHTML
+    const wasDisabled = button.disabled
+    button.dataset.loading = 'true'
+    button.disabled = true
+    button.classList.add('is-loading')
+    button.innerHTML = `<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> ${label}`
+
+    try {
+      return await action()
+    } finally {
+      button.dataset.loading = 'false'
+      button.classList.remove('is-loading')
+      button.innerHTML = originalHtml
+      button.disabled = wasDisabled
+    }
+  }
+
   const persistRequestInputs = () => {
     Object.entries(requestFieldIds).forEach(([key, id]) => {
       if (key === 'requestServiceType') {
@@ -2444,30 +2467,34 @@ function createFirstRunGuideModal() {
       `
       body
         .querySelector(`#first-run-test-${screen.target}`)
-        ?.addEventListener('click', async () => {
-          const url =
-            body.querySelector(`#first-run-${screen.target}-url`)?.value || ''
-          const token =
-            body.querySelector(`#first-run-${screen.target}-token`)?.value || ''
-          if (!isValidUrl(url) || !token.trim()) {
-            setWizardStatus(meta.requiredLabel, 'error')
-            return
-          }
-          try {
-            setWizardStatus(`Testing ${meta.label} connection...`)
-            await runConnectionTest(screen.target, url, token)
-            selectedState.validatedTargets[screen.target] = true
-            setWizardStatus(
-              `✅ ${meta.label} connection successful.`,
-              'success'
-            )
-          } catch (err) {
-            selectedState.validatedTargets[screen.target] = false
-            setWizardStatus(
-              err?.message || `Failed to connect to ${meta.label}.`,
-              'error'
-            )
-          }
+        ?.addEventListener('click', async event => {
+          const testButton = event.currentTarget
+          await withButtonLoading(testButton, 'Testing...', async () => {
+            const url =
+              body.querySelector(`#first-run-${screen.target}-url`)?.value || ''
+            const token =
+              body.querySelector(`#first-run-${screen.target}-token`)?.value ||
+              ''
+            if (!isValidUrl(url) || !token.trim()) {
+              setWizardStatus(meta.requiredLabel, 'error')
+              return
+            }
+            try {
+              setWizardStatus(`Testing ${meta.label} connection...`)
+              await runConnectionTest(screen.target, url, token)
+              selectedState.validatedTargets[screen.target] = true
+              setWizardStatus(
+                `✅ ${meta.label} connection successful.`,
+                'success'
+              )
+            } catch (err) {
+              selectedState.validatedTargets[screen.target] = false
+              setWizardStatus(
+                err?.message || `Failed to connect to ${meta.label}.`,
+                'error'
+              )
+            }
+          })
         })
       return
     }
@@ -2488,24 +2515,27 @@ function createFirstRunGuideModal() {
       `
       body
         .querySelector('#first-run-test-tmdb')
-        ?.addEventListener('click', async () => {
-          const token = body.querySelector('#first-run-tmdb-key')?.value || ''
-          if (!token.trim()) {
-            setWizardStatus('TMDb API key is required.', 'error')
-            return
-          }
-          try {
-            setWizardStatus('Testing TMDb connection...')
-            await runConnectionTest('tmdb', '', token)
-            selectedState.validatedTargets.tmdb = true
-            setWizardStatus('✅ TMDb connection successful.', 'success')
-          } catch (err) {
-            selectedState.validatedTargets.tmdb = false
-            setWizardStatus(
-              err?.message || 'Failed to connect to TMDb.',
-              'error'
-            )
-          }
+        ?.addEventListener('click', async event => {
+          const testButton = event.currentTarget
+          await withButtonLoading(testButton, 'Testing...', async () => {
+            const token = body.querySelector('#first-run-tmdb-key')?.value || ''
+            if (!token.trim()) {
+              setWizardStatus('TMDb API key is required.', 'error')
+              return
+            }
+            try {
+              setWizardStatus('Testing TMDb connection...')
+              await runConnectionTest('tmdb', '', token)
+              selectedState.validatedTargets.tmdb = true
+              setWizardStatus('✅ TMDb connection successful.', 'success')
+            } catch (err) {
+              selectedState.validatedTargets.tmdb = false
+              setWizardStatus(
+                err?.message || 'Failed to connect to TMDb.',
+                'error'
+              )
+            }
+          })
         })
       return
     }
@@ -2864,6 +2894,17 @@ function createFirstRunGuideModal() {
     }
 
     if (current.type === 'setup-complete') {
+      try {
+        await saveSettingsSubset({
+          SETUP_WIZARD_COMPLETED: 'true',
+        })
+      } catch (err) {
+        setWizardStatus(
+          err?.message || 'Failed to finish setup. Please try again.',
+          'error'
+        )
+        return null
+      }
       await loadClientConfig()
       document.dispatchEvent(new CustomEvent('comparr:source-config-updated'))
       return { type: 'complete' }
@@ -2873,6 +2914,33 @@ function createFirstRunGuideModal() {
   }
 
   const startWizard = () => {
+    const configuredSources = parseArraySetting(
+      document.getElementById('setting-personal-media-sources')?.value ||
+        window.PERSONAL_MEDIA_SOURCES
+    )
+    const fallbackSources = []
+    if (window.PLEX_CONFIGURED) fallbackSources.push('plex')
+    if (window.EMBY_CONFIGURED) fallbackSources.push('emby')
+    if (window.JELLYFIN_CONFIGURED) fallbackSources.push('jellyfin')
+    selectedState.sources = configuredSources.length
+      ? configuredSources
+      : fallbackSources
+
+    if (selectedState.sources.length && window.TMDB_CONFIGURED) {
+      selectedState.flow = 'combined'
+    } else if (window.TMDB_CONFIGURED) {
+      selectedState.flow = 'tmdb-only'
+    } else {
+      selectedState.flow = 'personal-only'
+    }
+
+    selectedState.validatedTargets = {
+      plex: Boolean(window.PLEX_CONFIGURED),
+      emby: Boolean(window.EMBY_CONFIGURED),
+      jellyfin: Boolean(window.JELLYFIN_CONFIGURED),
+      tmdb: Boolean(window.TMDB_CONFIGURED),
+    }
+
     selectedState.subscriptions = parseArraySetting(
       document.getElementById('setting-paid-streaming-services')?.value ||
         window.PAID_STREAMING_SERVICES
@@ -2913,10 +2981,12 @@ function createFirstRunGuideModal() {
   }
 
   nextButton?.addEventListener('click', async () => {
-    const next = await getNextScreen()
-    if (!next || next.type === 'complete') return
-    history.push(next)
-    renderScreen(next)
+    await withButtonLoading(nextButton, 'Loading...', async () => {
+      const next = await getNextScreen()
+      if (!next || next.type === 'complete') return
+      history.push(next)
+      renderScreen(next)
+    })
   })
 
   backButton?.addEventListener('click', () => {
@@ -2930,39 +3000,41 @@ function createFirstRunGuideModal() {
   })
 
   skipButton?.addEventListener('click', async () => {
-    const current = history[history.length - 1]
-    if (current?.type === 'security') {
-      const accessPassword =
-        body.querySelector('#first-run-access-password')?.value || ''
-      const adminPassword =
-        body.querySelector('#first-run-admin-password')?.value || ''
+    await withButtonLoading(skipButton, 'Loading...', async () => {
+      const current = history[history.length - 1]
+      if (current?.type === 'security') {
+        const accessPassword =
+          body.querySelector('#first-run-access-password')?.value || ''
+        const adminPassword =
+          body.querySelector('#first-run-admin-password')?.value || ''
 
-      selectedState.security.accessPassword = accessPassword
-      selectedState.security.adminPassword = adminPassword
+        selectedState.security.accessPassword = accessPassword
+        selectedState.security.adminPassword = adminPassword
 
-      syncInputValue('setting-access-password', accessPassword)
-      syncInputValue('setting-admin-password', adminPassword)
-      try {
-        await saveSettingsSubset({
-          ACCESS_PASSWORD: accessPassword,
-          ADMIN_PASSWORD: adminPassword,
-        })
-      } catch (err) {
-        setWizardStatus(
-          err?.message || 'Failed to save security settings.',
-          'error'
-        )
+        syncInputValue('setting-access-password', accessPassword)
+        syncInputValue('setting-admin-password', adminPassword)
+        try {
+          await saveSettingsSubset({
+            ACCESS_PASSWORD: accessPassword,
+            ADMIN_PASSWORD: adminPassword,
+          })
+        } catch (err) {
+          setWizardStatus(
+            err?.message || 'Failed to save security settings.',
+            'error'
+          )
+          return
+        }
+        history.push({ type: 'flow' })
+        renderScreen({ type: 'flow' })
         return
       }
-      history.push({ type: 'flow' })
-      renderScreen({ type: 'flow' })
-      return
-    }
 
-    if (current?.type !== 'requests') return
-    persistRequestInputs()
-    history.push({ type: 'defaults' })
-    renderScreen({ type: 'defaults' })
+      if (current?.type !== 'requests') return
+      persistRequestInputs()
+      history.push({ type: 'defaults' })
+      renderScreen({ type: 'defaults' })
+    })
   })
 
   saveButton?.addEventListener('click', () => {
@@ -2977,7 +3049,7 @@ function createFirstRunGuideModal() {
 }
 
 async function ensureInitialSourceSetup() {
-  if (hasConfiguredMovieSource()) return
+  if (hasConfiguredMovieSource() && window.SETUP_WIZARD_COMPLETED) return
 
   const modal = createFirstRunGuideModal()
   modal?.classList.add('is-visible')
@@ -2985,7 +3057,7 @@ async function ensureInitialSourceSetup() {
   await new Promise(resolve => {
     const handleRecheck = async () => {
       await loadClientConfig()
-      if (!hasConfiguredMovieSource()) {
+      if (!hasConfiguredMovieSource() || !window.SETUP_WIZARD_COMPLETED) {
         return
       }
       modal?.classList.remove('is-visible')
@@ -5640,6 +5712,7 @@ const main = async () => {
   window.EMBY_CONFIGURED = false
   window.JELLYFIN_CONFIGURED = false
   window.TMDB_CONFIGURED = false
+  window.SETUP_WIZARD_COMPLETED = false
   await loadClientConfig()
   await setupSettingsUI()
   await ensureInitialSourceSetup()
