@@ -2351,7 +2351,7 @@ function createFirstRunGuideModal() {
           document.getElementById('setting-access-password')?.value ||
           ''
         }" placeholder="(optional)" autocomplete="new-password" />
-        <label class="first-run-guide-field-label first-run-guide-security-label">Admin Settings Password</label>
+        <label class="first-run-guide-field-label first-run-guide-security-label first-run-guide-admin-password-label">Admin Settings Password</label>
         <p class="first-run-guide-instruction">Set a password for admin settings so your users cannot edit them.</p>
         <input id="first-run-admin-password" class="first-run-guide-input" type="password" value="${
           selectedState.security.adminPassword || ''
