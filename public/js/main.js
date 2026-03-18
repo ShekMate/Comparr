@@ -2190,10 +2190,21 @@ function createFirstRunGuideModal() {
     }
   }
 
-  const runConnectionTest = async (target, url, token) => {
+  const runConnectionTest = async (target, url, token, options = {}) => {
+    const adminPasswordHeader =
+      typeof options?.adminPasswordHeader === 'string'
+        ? options.adminPasswordHeader.trim()
+        : ''
+
     const res = await fetch('/api/settings-test', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', ...getAdminHeaders() },
+      headers: {
+        'content-type': 'application/json',
+        ...getAdminHeaders(),
+        ...(adminPasswordHeader && !adminPassword
+          ? { 'x-admin-password': adminPasswordHeader }
+          : {}),
+      },
       body: JSON.stringify({ target, url, token }),
     })
     const data = await res.json().catch(() => ({ ok: false }))
@@ -2235,6 +2246,18 @@ function createFirstRunGuideModal() {
       )
     renderRequirementCopy(flow)
     setWizardStatus('')
+  }
+
+  const getWizardAdminPasswordHeader = () =>
+    String(selectedState.security.adminPassword || '').trim()
+
+  const syncWizardAdminPassword = value => {
+    adminPassword = String(value || '').trim()
+    if (adminPassword) {
+      sessionStorage.setItem('comparrAdminPassword', adminPassword)
+      return
+    }
+    sessionStorage.removeItem('comparrAdminPassword')
   }
 
   const updateActionButtons = screen => {
@@ -2494,7 +2517,9 @@ function createFirstRunGuideModal() {
             }
             try {
               setWizardStatus(`Testing ${meta.label} connection...`)
-              await runConnectionTest(screen.target, url, token)
+              await runConnectionTest(screen.target, url, token, {
+                adminPasswordHeader: getWizardAdminPasswordHeader(),
+              })
               selectedState.validatedTargets[screen.target] = true
               setWizardStatus(
                 `✅ ${meta.label} connection successful.`,
@@ -2538,7 +2563,9 @@ function createFirstRunGuideModal() {
             }
             try {
               setWizardStatus('Testing TMDb connection...')
-              await runConnectionTest('tmdb', '', token)
+              await runConnectionTest('tmdb', '', token, {
+                adminPasswordHeader: getWizardAdminPasswordHeader(),
+              })
               selectedState.validatedTargets.tmdb = true
               setWizardStatus('✅ TMDb connection successful.', 'success')
             } catch (err) {
@@ -2694,6 +2721,7 @@ function createFirstRunGuideModal() {
           },
           { adminPasswordHeader: adminPassword }
         )
+        syncWizardAdminPassword(adminPassword)
       } catch (err) {
         setWizardStatus(
           err?.message || 'Failed to save security settings.',
@@ -3037,6 +3065,7 @@ function createFirstRunGuideModal() {
             },
             { adminPasswordHeader: adminPassword }
           )
+          syncWizardAdminPassword(adminPassword)
         } catch (err) {
           setWizardStatus(
             err?.message || 'Failed to save security settings.',
