@@ -2170,15 +2170,18 @@ function createFirstRunGuideModal() {
       typeof options?.adminPasswordHeader === 'string'
         ? options.adminPasswordHeader.trim()
         : ''
+    const headers = {
+      'content-type': 'application/json',
+      ...getAdminHeaders(),
+    }
+
+    if (!headers['x-admin-password'] && adminPasswordHeader) {
+      headers['x-admin-password'] = adminPasswordHeader
+    }
+
     const res = await fetch('/api/settings', {
       method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        ...getAdminHeaders(),
-        ...(adminPasswordHeader
-          ? { 'x-admin-password': adminPasswordHeader }
-          : {}),
-      },
+      headers,
       body: JSON.stringify({ settings: updates }),
     })
     if (!res.ok) {
