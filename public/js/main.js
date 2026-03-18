@@ -2165,10 +2165,23 @@ function createFirstRunGuideModal() {
     }
   }
 
-  const saveSettingsSubset = async updates => {
+  const saveSettingsSubset = async (updates, options = {}) => {
+    const adminPasswordHeader =
+      typeof options?.adminPasswordHeader === 'string'
+        ? options.adminPasswordHeader.trim()
+        : ''
+    const headers = {
+      'content-type': 'application/json',
+      ...getAdminHeaders(),
+    }
+
+    if (!headers['x-admin-password'] && adminPasswordHeader) {
+      headers['x-admin-password'] = adminPasswordHeader
+    }
+
     const res = await fetch('/api/settings', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', ...getAdminHeaders() },
+      headers,
       body: JSON.stringify({ settings: updates }),
     })
     if (!res.ok) {
@@ -2674,10 +2687,13 @@ function createFirstRunGuideModal() {
       syncInputValue('setting-access-password', accessPassword)
       syncInputValue('setting-admin-password', adminPassword)
       try {
-        await saveSettingsSubset({
-          ACCESS_PASSWORD: accessPassword,
-          ADMIN_PASSWORD: adminPassword,
-        })
+        await saveSettingsSubset(
+          {
+            ACCESS_PASSWORD: accessPassword,
+            ADMIN_PASSWORD: adminPassword,
+          },
+          { adminPasswordHeader: adminPassword }
+        )
       } catch (err) {
         setWizardStatus(
           err?.message || 'Failed to save security settings.',
@@ -3014,10 +3030,13 @@ function createFirstRunGuideModal() {
         syncInputValue('setting-access-password', accessPassword)
         syncInputValue('setting-admin-password', adminPassword)
         try {
-          await saveSettingsSubset({
-            ACCESS_PASSWORD: accessPassword,
-            ADMIN_PASSWORD: adminPassword,
-          })
+          await saveSettingsSubset(
+            {
+              ACCESS_PASSWORD: accessPassword,
+              ADMIN_PASSWORD: adminPassword,
+            },
+            { adminPasswordHeader: adminPassword }
+          )
         } catch (err) {
           setWizardStatus(
             err?.message || 'Failed to save security settings.',
