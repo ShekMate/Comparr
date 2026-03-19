@@ -48,7 +48,7 @@ export class WebSocketServer {
 
   private isAllowedOrigin(req: ServerRequest) {
     const origin = String(req.headers.get('origin') || '').trim()
-    if (!origin) return true
+    if (!origin) return false
 
     const allowed = getAllowedOrigins()
     const host = String(req.headers.get('host') || '').trim().toLowerCase()

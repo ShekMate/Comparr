@@ -52,6 +52,7 @@ import {
   startBackgroundUpdateJob,
 } from './features/catalog/imdb-datasets.ts'
 import { buildPlexCache } from './integrations/plex/cache.ts'
+import { fetchWithTimeout } from './infra/http/fetch-with-timeout.ts'
 
 // Helper: fetch & persist TMDb providers for a TMDb ID, returning the same shape your UI expects
 async function updateStreamingForTmdbId(tmdbId: number) {
@@ -65,8 +66,10 @@ async function updateStreamingForTmdbId(tmdbId: number) {
   }
 
   // Fetch fresh data from TMDb
-  const providerData = await fetch(
-    `https://api.themoviedb.org/3/movie/${tmdbId}/watch/providers?api_key=${TMDB_KEY}`
+  const providerData = await fetchWithTimeout(
+    `https://api.themoviedb.org/3/movie/${tmdbId}/watch/providers?api_key=${encodeURIComponent(
+      TMDB_KEY
+    )}`
   ).then(r => r.json())
 
   const providers = providerData?.results?.US
@@ -206,8 +209,13 @@ async function loadPersistedState(): Promise<any> {
 async function savePersistedState(state: any) {
   await Deno.mkdir(DATA_DIR, { recursive: true }).catch(() => {})
   const tmp = `${STATE_FILE}.tmp.${Date.now()}`
-  await Deno.writeTextFile(tmp, JSON.stringify(state, null, 2))
-  await Deno.rename(tmp, STATE_FILE)
+  try {
+    await Deno.writeTextFile(tmp, JSON.stringify(state, null, 2))
+    await Deno.rename(tmp, STATE_FILE)
+  } catch (err) {
+    await Deno.remove(tmp).catch(() => {})
+    throw err
+  }
 }
 
 /** tiny helper to send a file from disk */
@@ -235,6 +243,32 @@ const bodyTooLarge = (req: any) => {
   return Number.isFinite(contentLength) && contentLength > max
 }
 
+const isStateChangingMethod = (method: string) =>
+  method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE'
+
+const EXEMPT_ORIGIN_CHECK_PATHS = new Set([
+  '/api/access-password/verify',
+  '/api/access-password/status',
+])
+
+const sanitizeForLog = (value: string, maxLength = 64) =>
+  String(value || '')
+    .replace(/[\r\n\t]/g, ' ')
+    .slice(0, maxLength)
+
+const validateRoomCodeAndUserName = (roomCode: string, userName: string) => {
+  if (!roomCode || !userName) {
+    return 'Missing required query params: roomCode, userName'
+  }
+  if (roomCode.length > 16) {
+    return 'roomCode is too long'
+  }
+  if (userName.length > 64) {
+    return 'userName is too long'
+  }
+  return ''
+}
+
 const server = serve({ port: Number(getPort()) })
 
 const wss = new WebSocketServer({
@@ -247,13 +281,14 @@ const wss = new WebSocketServer({
 })
 
 if (Deno.build.os !== 'windows') {
-  const sigintHandler = () => {
+  const shutdownHandler = () => {
     log.info('Shutting down')
     server.close()
     Deno.exit(0)
   }
 
-  Deno.addSignalListener('SIGINT', sigintHandler)
+  Deno.addSignalListener('SIGINT', shutdownHandler)
+  Deno.addSignalListener('SIGTERM', shutdownHandler)
 }
 
 log.info(`Listening on port ${getPort()}`)
@@ -306,6 +341,20 @@ for await (const req of server) {
 
     const url = new URL(req.url, 'http://local')
     const p = url.pathname
+
+    if (
+      p.startsWith('/api/') &&
+      isStateChangingMethod(req.method) &&
+      !EXEMPT_ORIGIN_CHECK_PATHS.has(p) &&
+      !isValidOrigin(req)
+    ) {
+      await req.respond({
+        status: 403,
+        body: JSON.stringify({ error: 'Invalid request origin.' }),
+        headers: makeHeaders('application/json'),
+      })
+      continue
+    }
 
     if (
       await handleRoutes(req, p, [
@@ -494,9 +543,7 @@ for await (const req of server) {
     // --- API: Refresh movie data (ratings + Plex status)
     if (p.startsWith('/api/refresh-movie/')) {
       // correlation id per call
-      const rid = `${Date.now().toString(36)}-${Math.random()
-        .toString(36)
-        .slice(2, 8)}`
+      const rid = crypto.randomUUID()
       try {
         const rawParam = decodeURIComponent(p.split('/').pop() || '')
         const idParam = rawParam.trim()
@@ -765,11 +812,12 @@ for await (const req of server) {
         const roomCode = url.searchParams.get('roomCode')?.trim() || ''
         const userName = url.searchParams.get('userName')?.trim() || ''
 
-        if (!roomCode || !userName) {
+        const validationError = validateRoomCodeAndUserName(roomCode, userName)
+        if (validationError) {
           await req.respond({
             status: 400,
             body: JSON.stringify({
-              error: 'Missing required query params: roomCode, userName',
+              error: validationError,
             }),
             headers: makeHeaders('application/json'),
           })
@@ -822,18 +870,23 @@ for await (const req of server) {
         const body = decoder.decode(await Deno.readAll(req.body))
         const { csvContent, roomCode, userName, fileName } = JSON.parse(body)
 
-        if (!csvContent || !roomCode || !userName) {
+        const validationError = validateRoomCodeAndUserName(roomCode, userName)
+        if (!csvContent || validationError) {
           await req.respond({
             status: 400,
             body: JSON.stringify({
-              error: 'Missing required fields: csvContent, roomCode, userName',
+              error: validationError || 'Missing required field: csvContent',
             }),
             headers: makeHeaders('application/json'),
           })
           continue
         }
 
-        log.info(`IMDb CSV import requested by ${userName} in room ${roomCode}`)
+        log.info(
+          `IMDb CSV import requested by ${sanitizeForLog(
+            userName
+          )} in room ${sanitizeForLog(roomCode, 16)}`
+        )
 
         // Parse the CSV
         const rows = parseImdbCsv(csvContent)
