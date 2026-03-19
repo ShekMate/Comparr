@@ -96,9 +96,8 @@ const runConnectionCheck = async (
   let headers: HeadersInit = {}
 
   if (normalizedTarget === 'plex') {
-    endpoint = `${serviceUrl}/library/sections?X-Plex-Token=${encodeURIComponent(
-      normalizedToken
-    )}`
+    endpoint = `${serviceUrl}/library/sections`
+    headers = { 'X-Plex-Token': normalizedToken }
   } else if (normalizedTarget === 'radarr') {
     endpoint = `${serviceUrl}/api/v3/system/status`
     headers = { 'X-Api-Key': normalizedToken }
@@ -153,6 +152,22 @@ const parseAdminPassword = (req: any) => {
 
 const hasAdminPasswordConfigured = (settings: Record<string, unknown>) =>
   Boolean(String(settings.ADMIN_PASSWORD ?? '').trim())
+
+const isBootstrappingAdminPassword = (
+  req: any,
+  settings: Record<string, unknown>,
+  incomingSettings: Record<string, unknown>,
+  isLocalRequest: (req: any) => boolean
+) => {
+  if (hasAdminPasswordConfigured(settings)) return false
+  if (!isLocalRequest(req)) return false
+
+  const keys = Object.keys(incomingSettings)
+  if (keys.length !== 1 || keys[0] !== 'ADMIN_PASSWORD') return false
+
+  const candidate = String(incomingSettings.ADMIN_PASSWORD ?? '').trim()
+  return candidate.length > 0
+}
 
 const isAdminAuthorized = (
   req: any,
@@ -378,6 +393,19 @@ export async function handleSettingsRoutes(
     }
 
     const settings = getSettings()
+    if (!hasAdminPasswordConfigured(settings)) {
+      await req.respond({
+        status: 403,
+        body: JSON.stringify({
+          ok: false,
+          message:
+            'Admin password is not configured. Set ADMIN_PASSWORD before running connection tests.',
+        }),
+        headers: makeJsonHeaders(),
+      })
+      return true
+    }
+
     if (!isAdminAuthorized(req, settings, isLocalRequest)) {
       await req.respond({
         status: 403,
@@ -458,7 +486,14 @@ export async function handleSettingsRoutes(
       const incomingSettings =
         ((settings ?? {}) as Record<string, unknown>) || {}
 
-      if (!isAdmin) {
+      const isAdminPasswordBootstrap = isBootstrappingAdminPassword(
+        req,
+        currentSettings,
+        incomingSettings,
+        isLocalRequest
+      )
+
+      if (!isAdmin && !isAdminPasswordBootstrap) {
         const attemptedAdminOnlySettings = Object.keys(
           incomingSettings
         ).filter(key => ADMIN_ONLY_SETTINGS.has(key))
