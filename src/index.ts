@@ -11,8 +11,10 @@ import {
   getRootPath,
   getTmdbApiKey,
   getMaxBodySize,
+  getAccessPassword,
 } from './core/config.ts'
 import { getSettings, updateSettings } from './core/settings.ts'
+import { timingSafeEqual } from './core/security.ts'
 import { getLinkTypeForRequest } from './core/i18n.ts'
 import {
   handleLogin,
@@ -251,6 +253,15 @@ const EXEMPT_ORIGIN_CHECK_PATHS = new Set([
   '/api/access-password/status',
 ])
 
+const EXEMPT_ACCESS_PASSWORD_PATHS = new Set([
+  '/api/access-password/verify',
+  '/api/access-password/status',
+  '/api/settings-access',
+  '/api/client-config',
+])
+
+const streamingUpdateInFlight = new Map<number, Promise<any>>()
+
 const sanitizeForLog = (value: string, maxLength = 64) =>
   String(value || '')
     .replace(/[\r\n\t]/g, ' ')
@@ -267,6 +278,35 @@ const validateRoomCodeAndUserName = (roomCode: string, userName: string) => {
     return 'userName is too long'
   }
   return ''
+}
+
+const parseAccessPassword = (req: any) => {
+  const header = req.headers?.get?.('x-access-password')
+  if (typeof header === 'string' && header.trim()) return header.trim()
+  const auth = req.headers?.get?.('authorization')
+  if (typeof auth === 'string' && auth.toLowerCase().startsWith('bearer ')) {
+    return auth.slice(7).trim()
+  }
+  return ''
+}
+
+const isAccessPasswordAuthorized = (req: any) => {
+  const configuredPassword = getAccessPassword()
+  if (!configuredPassword) return true
+  return timingSafeEqual(parseAccessPassword(req), configuredPassword)
+}
+
+const updateStreamingForTmdbIdDeduped = async (tmdbId: number) => {
+  if (!Number.isFinite(tmdbId) || tmdbId <= 0) {
+    return updateStreamingForTmdbId(tmdbId)
+  }
+  const existing = streamingUpdateInFlight.get(tmdbId)
+  if (existing) return existing
+  const task = updateStreamingForTmdbId(tmdbId).finally(() =>
+    streamingUpdateInFlight.delete(tmdbId)
+  )
+  streamingUpdateInFlight.set(tmdbId, task)
+  return task
 }
 
 const server = serve({ port: Number(getPort()) })
@@ -351,6 +391,20 @@ for await (const req of server) {
       await req.respond({
         status: 403,
         body: JSON.stringify({ error: 'Invalid request origin.' }),
+        headers: makeHeaders('application/json'),
+      })
+      continue
+    }
+
+    if (
+      p.startsWith('/api/') &&
+      isStateChangingMethod(req.method) &&
+      !EXEMPT_ACCESS_PASSWORD_PATHS.has(p) &&
+      !isAccessPasswordAuthorized(req)
+    ) {
+      await req.respond({
+        status: 401,
+        body: JSON.stringify({ error: 'Access password required.' }),
         headers: makeHeaders('application/json'),
       })
       continue
@@ -499,7 +553,7 @@ for await (const req of server) {
     if (p.startsWith('/api/refresh-streaming/')) {
       try {
         const tmdbId = parseInt(p.split('/').pop() || '')
-        const res = await updateStreamingForTmdbId(tmdbId)
+        const res = await updateStreamingForTmdbIdDeduped(tmdbId)
         await req.respond({
           status: res.status,
           body: JSON.stringify(res.body),
@@ -519,7 +573,7 @@ for await (const req of server) {
     if (p.startsWith('/api/update-persisted-movie/') && req.method === 'POST') {
       try {
         const tmdbId = parseInt(p.split('/').pop() || '')
-        const res = await updateStreamingForTmdbId(tmdbId)
+        const res = await updateStreamingForTmdbIdDeduped(tmdbId)
         await req.respond({
           status: res.status,
           body: JSON.stringify({

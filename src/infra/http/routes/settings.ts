@@ -325,6 +325,15 @@ export async function handleSettingsRoutes(
   }
 
   if (pathname === '/api/access-password/status' && req.method === 'GET') {
+    if (!isValidOrigin(req)) {
+      await req.respond({
+        status: 403,
+        body: JSON.stringify({ message: 'Invalid request origin.' }),
+        headers: makeJsonHeaders(),
+      })
+      return true
+    }
+
     const settings = getSettings()
     const configuredPassword = String(settings.ACCESS_PASSWORD ?? '').trim()
 
