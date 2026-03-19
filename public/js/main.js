@@ -978,8 +978,7 @@ function clearSettingsStatusAfterDelay(delayMs = 0) {
 }
 
 function clearCachedAdminPassword() {
-  adminPassword = ''
-  sessionStorage.removeItem('comparrAdminPassword')
+  setAdminPasswordForSession('')
 }
 
 function parseApiErrorMessage(data, fallback = 'Request failed.') {
@@ -1102,6 +1101,17 @@ function getAdminHeaders() {
   return adminPassword ? { 'x-admin-password': adminPassword } : {}
 }
 
+function setAdminPasswordForSession(value) {
+  adminPassword = String(value || '').trim()
+
+  if (adminPassword) {
+    sessionStorage.setItem('comparrAdminPassword', adminPassword)
+    return
+  }
+
+  sessionStorage.removeItem('comparrAdminPassword')
+}
+
 async function fetchSettingsAccess() {
   try {
     const res = await fetch('/api/settings-access')
@@ -1133,8 +1143,7 @@ async function ensureAdminAccess(forcePrompt = false) {
     return false
   }
 
-  adminPassword = String(entered).trim()
-  sessionStorage.setItem('comparrAdminPassword', adminPassword)
+  setAdminPasswordForSession(entered)
   return true
 }
 
@@ -2694,6 +2703,7 @@ function createFirstRunGuideModal() {
           },
           { adminPasswordHeader: adminPassword }
         )
+        setAdminPasswordForSession(adminPassword)
       } catch (err) {
         setWizardStatus(
           err?.message || 'Failed to save security settings.',
@@ -3037,6 +3047,7 @@ function createFirstRunGuideModal() {
             },
             { adminPasswordHeader: adminPassword }
           )
+          setAdminPasswordForSession(adminPassword)
         } catch (err) {
           setWizardStatus(
             err?.message || 'Failed to save security settings.',
