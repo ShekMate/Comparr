@@ -811,7 +811,7 @@ export function recordImdbImportHistoryStart(
   movieCount: number
 ): string {
   const user = getRoomUser(roomCode, userName)
-  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  const id = crypto.randomUUID()
   user.importHistory!.unshift({
     id,
     fileName: fileName.trim() || 'IMDb CSV',
