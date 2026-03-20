@@ -65,7 +65,16 @@ async function saveMetadata(): Promise<void> {
  * Generate cache key from poster path
  */
 function getCacheKey(posterPath: string, source: 'plex' | 'tmdb'): string {
-  return `${source}-${posterPath.replace(/[^a-zA-Z0-9]/g, '_')}`
+  const bytes = new TextEncoder().encode(posterPath)
+  let binary = ''
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte)
+  }
+  const encoded = btoa(binary)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '')
+  return `${source}-${encoded}`
 }
 
 /**

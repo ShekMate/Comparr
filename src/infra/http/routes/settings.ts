@@ -179,12 +179,18 @@ const parseAdminPassword = (req: any) => {
 const hasAdminPasswordConfigured = (settings: Record<string, unknown>) =>
   Boolean(String(settings.ADMIN_PASSWORD ?? '').trim())
 
+const isRemoteBootstrapEnabled = () =>
+  String(Deno.env.get('ALLOW_REMOTE_BOOTSTRAP') ?? '')
+    .trim()
+    .toLowerCase() === 'true'
+
 const isBootstrappingAdminPassword = (
   settings: Record<string, unknown>,
   incomingSettings: Record<string, unknown>
 ) => {
   if (hasAdminPasswordConfigured(settings)) return false
   if (String(settings.ACCESS_PASSWORD ?? '').trim()) return false
+  if (!isLocalRequest(req) && !isRemoteBootstrapEnabled()) return false
 
   const keys = Object.keys(incomingSettings)
   if (keys.length === 0) return false

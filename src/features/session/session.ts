@@ -2785,7 +2785,7 @@ class Session {
 // -------------------------
 // Session registry
 // -------------------------
-const activeSessions: Map<string, Session> = new Map()
+export const activeSessions: Map<string, Session> = new Map()
 
 const ROOM_CODE_MAP = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789'
 const ROOM_CODE_LENGTH = 4
