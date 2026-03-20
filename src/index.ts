@@ -504,6 +504,15 @@ for await (const req of server) {
     const url = new URL(req.url, 'http://local')
     const p = url.pathname
 
+    if (p === '/api/health' && req.method === 'GET') {
+      await req.respond({
+        status: 200,
+        headers: makeHeaders('application/json'),
+        body: JSON.stringify({ ok: true }),
+      })
+      continue
+    }
+
     if (p === '/api/csrf-token' && req.method === 'GET') {
       const token = createCsrfToken()
       const headers = makeHeaders('application/json')
