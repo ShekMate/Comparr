@@ -11,8 +11,10 @@ import {
   getRootPath,
   getTmdbApiKey,
   getMaxBodySize,
+  getAccessPassword,
 } from './core/config.ts'
 import { getSettings, updateSettings } from './core/settings.ts'
+import { timingSafeEqual } from './core/security.ts'
 import { getLinkTypeForRequest } from './core/i18n.ts'
 import {
   handleLogin,
@@ -52,6 +54,7 @@ import {
   startBackgroundUpdateJob,
 } from './features/catalog/imdb-datasets.ts'
 import { buildPlexCache } from './integrations/plex/cache.ts'
+import { tmdbFetch } from './api/tmdb.ts'
 
 // Helper: fetch & persist TMDb providers for a TMDb ID, returning the same shape your UI expects
 async function updateStreamingForTmdbId(tmdbId: number) {
@@ -65,8 +68,9 @@ async function updateStreamingForTmdbId(tmdbId: number) {
   }
 
   // Fetch fresh data from TMDb
-  const providerData = await fetch(
-    `https://api.themoviedb.org/3/movie/${tmdbId}/watch/providers?api_key=${TMDB_KEY}`
+  const providerData = await tmdbFetch(
+    `/movie/${tmdbId}/watch/providers`,
+    TMDB_KEY
   ).then(r => r.json())
 
   const providers = providerData?.results?.US
@@ -188,6 +192,9 @@ async function updateStreamingForTmdbId(tmdbId: number) {
 // --- Persisted state helpers (robust to missing files)
 const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
 const STATE_FILE = `${DATA_DIR}/session-state.json`
+const AUDIT_LOG_FILE = `${DATA_DIR}/audit.log`
+let activeRequests = 0
+let isShuttingDown = false
 
 async function loadPersistedState(): Promise<any> {
   try {
@@ -206,8 +213,33 @@ async function loadPersistedState(): Promise<any> {
 async function savePersistedState(state: any) {
   await Deno.mkdir(DATA_DIR, { recursive: true }).catch(() => {})
   const tmp = `${STATE_FILE}.tmp.${Date.now()}`
-  await Deno.writeTextFile(tmp, JSON.stringify(state, null, 2))
-  await Deno.rename(tmp, STATE_FILE)
+  try {
+    await Deno.writeTextFile(tmp, JSON.stringify(state, null, 2))
+    await Deno.rename(tmp, STATE_FILE)
+  } catch (err) {
+    await Deno.remove(tmp).catch(() => {})
+    throw err
+  }
+}
+
+async function appendAuditLog(
+  event: string,
+  req: any,
+  details: Record<string, unknown> = {}
+) {
+  await Deno.mkdir(DATA_DIR, { recursive: true }).catch(() => {})
+  const ip = String(
+    (req?.conn?.remoteAddr as Deno.NetAddr | undefined)?.hostname || 'unknown'
+  )
+  const entry = {
+    ts: new Date().toISOString(),
+    event,
+    ip,
+    ...details,
+  }
+  await Deno.writeTextFile(AUDIT_LOG_FILE, `${JSON.stringify(entry)}\n`, {
+    append: true,
+  }).catch(() => {})
 }
 
 /** tiny helper to send a file from disk */
@@ -235,6 +267,70 @@ const bodyTooLarge = (req: any) => {
   return Number.isFinite(contentLength) && contentLength > max
 }
 
+const isStateChangingMethod = (method: string) =>
+  method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE'
+
+const EXEMPT_ORIGIN_CHECK_PATHS = new Set([
+  '/api/access-password/verify',
+  '/api/access-password/status',
+])
+
+const EXEMPT_ACCESS_PASSWORD_PATHS = new Set([
+  '/api/access-password/verify',
+  '/api/access-password/status',
+  '/api/settings-access',
+  '/api/client-config',
+])
+
+const streamingUpdateInFlight = new Map<number, Promise<any>>()
+
+const sanitizeForLog = (value: string, maxLength = 64) =>
+  String(value || '')
+    .replace(/[\r\n\t]/g, ' ')
+    .slice(0, maxLength)
+
+const validateRoomCodeAndUserName = (roomCode: string, userName: string) => {
+  if (!roomCode || !userName) {
+    return 'Missing required query params: roomCode, userName'
+  }
+  if (roomCode.length > 16) {
+    return 'roomCode is too long'
+  }
+  if (userName.length > 64) {
+    return 'userName is too long'
+  }
+  return ''
+}
+
+const parseAccessPassword = (req: any) => {
+  const header = req.headers?.get?.('x-access-password')
+  if (typeof header === 'string' && header.trim()) return header.trim()
+  const auth = req.headers?.get?.('authorization')
+  if (typeof auth === 'string' && auth.toLowerCase().startsWith('bearer ')) {
+    return auth.slice(7).trim()
+  }
+  return ''
+}
+
+const isAccessPasswordAuthorized = (req: any) => {
+  const configuredPassword = getAccessPassword()
+  if (!configuredPassword) return true
+  return timingSafeEqual(parseAccessPassword(req), configuredPassword)
+}
+
+const updateStreamingForTmdbIdDeduped = async (tmdbId: number) => {
+  if (!Number.isFinite(tmdbId) || tmdbId <= 0) {
+    return updateStreamingForTmdbId(tmdbId)
+  }
+  const existing = streamingUpdateInFlight.get(tmdbId)
+  if (existing) return existing
+  const task = updateStreamingForTmdbId(tmdbId).finally(() =>
+    streamingUpdateInFlight.delete(tmdbId)
+  )
+  streamingUpdateInFlight.set(tmdbId, task)
+  return task
+}
+
 const server = serve({ port: Number(getPort()) })
 
 const wss = new WebSocketServer({
@@ -247,13 +343,19 @@ const wss = new WebSocketServer({
 })
 
 if (Deno.build.os !== 'windows') {
-  const sigintHandler = () => {
+  const shutdownHandler = async () => {
     log.info('Shutting down')
+    isShuttingDown = true
     server.close()
+    const startedAt = Date.now()
+    while (activeRequests > 0 && Date.now() - startedAt < 5_000) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
     Deno.exit(0)
   }
 
-  Deno.addSignalListener('SIGINT', sigintHandler)
+  Deno.addSignalListener('SIGINT', shutdownHandler)
+  Deno.addSignalListener('SIGTERM', shutdownHandler)
 }
 
 log.info(`Listening on port ${getPort()}`)
@@ -294,7 +396,17 @@ log.info(`  PLEX_URL: ${getPlexUrl() ? '✅ Set' : '❌ Missing'}`)
 log.info(`  PLEX_TOKEN: ${getPlexToken() ? '✅ Set' : '❌ Missing'}`)
 
 for await (const req of server) {
+  activeRequests += 1
   try {
+    if (isShuttingDown) {
+      await req.respond({
+        status: 503,
+        body: JSON.stringify({ error: 'Server is shutting down.' }),
+        headers: makeHeaders('application/json'),
+      })
+      continue
+    }
+
     if (!isValidHost(req)) {
       await req.respond({
         status: 421,
@@ -306,6 +418,41 @@ for await (const req of server) {
 
     const url = new URL(req.url, 'http://local')
     const p = url.pathname
+
+    if (
+      p.startsWith('/api/') &&
+      isStateChangingMethod(req.method) &&
+      !EXEMPT_ORIGIN_CHECK_PATHS.has(p) &&
+      !isValidOrigin(req)
+    ) {
+      await req.respond({
+        status: 403,
+        body: JSON.stringify({ error: 'Invalid request origin.' }),
+        headers: makeHeaders('application/json'),
+      })
+      continue
+    }
+
+    if (
+      p.startsWith('/api/') &&
+      isStateChangingMethod(req.method) &&
+      !EXEMPT_ACCESS_PASSWORD_PATHS.has(p) &&
+      !isAccessPasswordAuthorized(req)
+    ) {
+      await req.respond({
+        status: 401,
+        body: JSON.stringify({ error: 'Access password required.' }),
+        headers: makeHeaders('application/json'),
+      })
+      continue
+    }
+
+    if (p.startsWith('/api/') && isStateChangingMethod(req.method)) {
+      appendAuditLog('state_change_request', req, {
+        method: req.method,
+        path: p,
+      }).catch(() => {})
+    }
 
     if (
       await handleRoutes(req, p, [
@@ -450,7 +597,7 @@ for await (const req of server) {
     if (p.startsWith('/api/refresh-streaming/')) {
       try {
         const tmdbId = parseInt(p.split('/').pop() || '')
-        const res = await updateStreamingForTmdbId(tmdbId)
+        const res = await updateStreamingForTmdbIdDeduped(tmdbId)
         await req.respond({
           status: res.status,
           body: JSON.stringify(res.body),
@@ -470,7 +617,7 @@ for await (const req of server) {
     if (p.startsWith('/api/update-persisted-movie/') && req.method === 'POST') {
       try {
         const tmdbId = parseInt(p.split('/').pop() || '')
-        const res = await updateStreamingForTmdbId(tmdbId)
+        const res = await updateStreamingForTmdbIdDeduped(tmdbId)
         await req.respond({
           status: res.status,
           body: JSON.stringify({
@@ -494,9 +641,7 @@ for await (const req of server) {
     // --- API: Refresh movie data (ratings + Plex status)
     if (p.startsWith('/api/refresh-movie/')) {
       // correlation id per call
-      const rid = `${Date.now().toString(36)}-${Math.random()
-        .toString(36)
-        .slice(2, 8)}`
+      const rid = crypto.randomUUID()
       try {
         const rawParam = decodeURIComponent(p.split('/').pop() || '')
         const idParam = rawParam.trim()
@@ -765,11 +910,12 @@ for await (const req of server) {
         const roomCode = url.searchParams.get('roomCode')?.trim() || ''
         const userName = url.searchParams.get('userName')?.trim() || ''
 
-        if (!roomCode || !userName) {
+        const validationError = validateRoomCodeAndUserName(roomCode, userName)
+        if (validationError) {
           await req.respond({
             status: 400,
             body: JSON.stringify({
-              error: 'Missing required query params: roomCode, userName',
+              error: validationError,
             }),
             headers: makeHeaders('application/json'),
           })
@@ -822,18 +968,23 @@ for await (const req of server) {
         const body = decoder.decode(await Deno.readAll(req.body))
         const { csvContent, roomCode, userName, fileName } = JSON.parse(body)
 
-        if (!csvContent || !roomCode || !userName) {
+        const validationError = validateRoomCodeAndUserName(roomCode, userName)
+        if (!csvContent || validationError) {
           await req.respond({
             status: 400,
             body: JSON.stringify({
-              error: 'Missing required fields: csvContent, roomCode, userName',
+              error: validationError || 'Missing required field: csvContent',
             }),
             headers: makeHeaders('application/json'),
           })
           continue
         }
 
-        log.info(`IMDb CSV import requested by ${userName} in room ${roomCode}`)
+        log.info(
+          `IMDb CSV import requested by ${sanitizeForLog(
+            userName
+          )} in room ${sanitizeForLog(roomCode, 16)}`
+        )
 
         // Parse the CSV
         const rows = parseImdbCsv(csvContent)
@@ -1115,5 +1266,7 @@ for await (const req of server) {
     try {
       await req.respond({ status: 500, body: new TextEncoder().encode('500') })
     } catch {}
+  } finally {
+    activeRequests = Math.max(0, activeRequests - 1)
   }
 }
