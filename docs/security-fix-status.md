@@ -19,6 +19,8 @@ This is a practical status snapshot after the recent hardening patches.
 - IMDb background update job now supports explicit stop on shutdown.
 - WebSocket shutdown now closes active client sockets instead of dropping references.
 - Audit log entries now include method/path context and per-request completion metadata.
+- CSRF double-submit protection added for state-changing API routes (`/api/csrf-token` + `x-csrf-token` verification).
+- Frontend admin-settings password is now in-memory only (no session/local storage persistence).
 
 ## Still recommended / not fully complete
 

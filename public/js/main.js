@@ -10,7 +10,29 @@ let api
 
 // Attach access password to same-origin API calls so protected endpoints can authorize.
 const nativeFetch = window.fetch.bind(window)
-window.fetch = (input, init = {}) => {
+let csrfToken = ''
+let csrfTokenPromise = null
+
+const isStateChangingMethod = method =>
+  ['POST', 'PUT', 'PATCH', 'DELETE'].includes(String(method || 'GET').toUpperCase())
+
+const getCsrfToken = async () => {
+  if (csrfToken) return csrfToken
+  if (csrfTokenPromise) return csrfTokenPromise
+  csrfTokenPromise = nativeFetch('/api/csrf-token', { method: 'GET' })
+    .then(async res => {
+      if (!res.ok) throw new Error('Failed to initialize CSRF token')
+      const payload = await res.json().catch(() => ({}))
+      csrfToken = String(payload?.csrfToken || '')
+      return csrfToken
+    })
+    .finally(() => {
+      csrfTokenPromise = null
+    })
+  return csrfTokenPromise
+}
+
+window.fetch = async (input, init = {}) => {
   try {
     const requestUrl =
       typeof input === 'string' || input instanceof URL
@@ -18,7 +40,7 @@ window.fetch = (input, init = {}) => {
         : new URL(input.url, window.location.origin)
     const isSameOrigin = requestUrl.origin === window.location.origin
     const isApiPath = requestUrl.pathname.includes('/api/')
-    if (!isSameOrigin || !isApiPath) {
+    if (!isSameOrigin || !isApiPath || requestUrl.pathname === '/api/csrf-token') {
       return nativeFetch(input, init)
     }
 
@@ -26,6 +48,13 @@ window.fetch = (input, init = {}) => {
     const accessPassword = sessionStorage.getItem('comparrAccessPassword') || ''
     if (accessPassword && !headers.has('x-access-password')) {
       headers.set('x-access-password', accessPassword)
+    }
+    const method = String(init.method || (input instanceof Request ? input.method : 'GET'))
+    if (isStateChangingMethod(method) && !headers.has('x-csrf-token')) {
+      const token = await getCsrfToken()
+      if (token) {
+        headers.set('x-csrf-token', token)
+      }
     }
 
     return nativeFetch(input, {
@@ -1139,9 +1168,8 @@ function saveDisplaySettingsForm() {
   applyDisplayPreferencesToNavigation(nextPreferences)
 }
 
-// Keep admin password in sessionStorage only (tab-scoped, cleared on close).
-// Do not persist in localStorage. HTTPS is required in production.
-let adminPassword = sessionStorage.getItem('comparrAdminPassword') || ''
+// Keep admin password in-memory only and never persist it in storage.
+let adminPassword = ''
 let settingsAccessState = {
   canAccess: false,
   requiresAdminPassword: false,
@@ -1157,13 +1185,6 @@ function getAdminHeaders() {
 
 function setAdminPasswordForSession(value) {
   adminPassword = String(value || '').trim()
-
-  if (adminPassword) {
-    sessionStorage.setItem('comparrAdminPassword', adminPassword)
-    return
-  }
-
-  sessionStorage.removeItem('comparrAdminPassword')
 }
 
 async function fetchSettingsAccess() {

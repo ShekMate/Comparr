@@ -195,6 +195,7 @@ async function updateStreamingForTmdbId(tmdbId: number) {
 const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
 const STATE_FILE = `${DATA_DIR}/session-state.json`
 const AUDIT_LOG_FILE = `${DATA_DIR}/audit.log`
+const CSRF_COOKIE_NAME = 'comparr_csrf'
 let activeRequests = 0
 let isShuttingDown = false
 let shuttingDownPromise: Promise<void> | null = null
@@ -293,6 +294,7 @@ const EXEMPT_GLOBAL_ACCESS_PASSWORD_PATHS = new Set([
   '/api/client-config',
   '/api/health',
 ])
+const EXEMPT_CSRF_PATHS = new Set(['/api/csrf-token'])
 
 const streamingUpdateInFlight = new Map<number, Promise<any>>()
 
@@ -334,6 +336,31 @@ const shouldRequireAccessPassword = (path: string) => {
   if (!getAccessPassword()) return false
   if (!path.startsWith('/api/')) return false
   return !EXEMPT_GLOBAL_ACCESS_PASSWORD_PATHS.has(path)
+}
+
+const parseCookies = (req: any) => {
+  const rawCookieHeader = String(req?.headers?.get?.('cookie') || '')
+  const cookies = new Map<string, string>()
+  for (const cookiePair of rawCookieHeader.split(';')) {
+    const [rawKey, ...rest] = cookiePair.split('=')
+    const key = String(rawKey || '').trim()
+    if (!key) continue
+    cookies.set(key, rest.join('=').trim())
+  }
+  return cookies
+}
+
+const getCsrfCookieToken = (req: any) =>
+  parseCookies(req).get(CSRF_COOKIE_NAME) || ''
+
+const createCsrfToken = () =>
+  `${crypto.randomUUID()}${crypto.randomUUID().replace(/-/g, '')}`
+
+const isValidCsrfRequest = (req: any) => {
+  const cookieToken = getCsrfCookieToken(req)
+  const headerToken = String(req?.headers?.get?.('x-csrf-token') || '').trim()
+  if (!cookieToken || !headerToken) return false
+  return timingSafeEqual(cookieToken, headerToken)
 }
 
 const updateStreamingForTmdbIdDeduped = async (tmdbId: number) => {
@@ -452,6 +479,72 @@ for await (const req of server) {
 
     const url = new URL(req.url, 'http://local')
     const p = url.pathname
+
+    if (p === '/api/csrf-token' && req.method === 'GET') {
+      const token = createCsrfToken()
+      const headers = makeHeaders('application/json')
+      headers.set(
+        'set-cookie',
+        `${CSRF_COOKIE_NAME}=${token}; Path=/; SameSite=Strict`
+      )
+      await req.respond({
+        status: 200,
+        headers,
+        body: JSON.stringify({ csrfToken: token }),
+      })
+      continue
+    }
+
+    if (
+      p.startsWith('/api/') &&
+      isStateChangingMethod(req.method) &&
+      !EXEMPT_ORIGIN_CHECK_PATHS.has(p) &&
+      !isValidOrigin(req)
+    ) {
+      await req.respond({
+        status: 403,
+        body: JSON.stringify({ error: 'Invalid request origin.' }),
+        headers: makeHeaders('application/json'),
+      })
+      continue
+    }
+
+    if (
+      p.startsWith('/api/') &&
+      isStateChangingMethod(req.method) &&
+      !EXEMPT_CSRF_PATHS.has(p) &&
+      !isValidCsrfRequest(req)
+    ) {
+      await req.respond({
+        status: 403,
+        body: JSON.stringify({ error: 'Invalid CSRF token.' }),
+        headers: makeHeaders('application/json'),
+      })
+      continue
+    }
+
+    if (
+      p.startsWith('/api/') &&
+      shouldRequireAccessPassword(p) &&
+      !isAccessPasswordAuthorized(req)
+    ) {
+      responseStatus = 401
+      auditEvent = 'access_password_denied'
+      await req.respond({
+        status: responseStatus,
+        body: JSON.stringify({ error: 'Access password required.' }),
+        headers: makeHeaders('application/json'),
+      })
+      continue
+    }
+
+    if (p.startsWith('/api/') && isStateChangingMethod(req.method)) {
+      appendAuditLog('state_change_request', req, {
+        method: req.method,
+        path: p,
+        requestId,
+      }).catch(() => {})
+    }
 
     if (
       p.startsWith('/api/') &&
