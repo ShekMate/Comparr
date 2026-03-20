@@ -8,6 +8,89 @@ import { MatchesView } from './MatchesView.js'
 // Global API reference so functions outside main() can access it
 let api
 
+// Attach access password to same-origin API calls so protected endpoints can authorize.
+const nativeFetch = window.fetch.bind(window)
+let csrfToken = ''
+let csrfTokenPromise = null
+
+const isStateChangingMethod = method =>
+  ['POST', 'PUT', 'PATCH', 'DELETE'].includes(String(method || 'GET').toUpperCase())
+
+const getCsrfToken = async () => {
+  if (csrfToken) return csrfToken
+  if (csrfTokenPromise) return csrfTokenPromise
+  csrfTokenPromise = nativeFetch('/api/csrf-token', { method: 'GET' })
+    .then(async res => {
+      if (!res.ok) throw new Error('Failed to initialize CSRF token')
+      const payload = await res.json().catch(() => ({}))
+      csrfToken = String(payload?.csrfToken || '')
+      return csrfToken
+    })
+    .finally(() => {
+      csrfTokenPromise = null
+    })
+  return csrfTokenPromise
+}
+
+window.fetch = async (input, init = {}) => {
+  try {
+    const requestUrl =
+      typeof input === 'string' || input instanceof URL
+        ? new URL(String(input), window.location.origin)
+        : new URL(input.url, window.location.origin)
+    const isSameOrigin = requestUrl.origin === window.location.origin
+    const isApiPath = requestUrl.pathname.includes('/api/')
+    if (!isSameOrigin || !isApiPath || requestUrl.pathname === '/api/csrf-token') {
+      return nativeFetch(input, init)
+    }
+
+    const headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined))
+    const accessPassword = sessionStorage.getItem('comparrAccessPassword') || ''
+    if (accessPassword && !headers.has('x-access-password')) {
+      headers.set('x-access-password', accessPassword)
+    }
+    const method = String(init.method || (input instanceof Request ? input.method : 'GET'))
+    if (isStateChangingMethod(method) && !headers.has('x-csrf-token')) {
+      const token = await getCsrfToken()
+      if (token) {
+        headers.set('x-csrf-token', token)
+      }
+    }
+
+    return nativeFetch(input, {
+      ...init,
+      headers,
+    })
+  } catch {
+    return nativeFetch(input, init)
+  }
+}
+
+const applyI18nCssVariables = () => {
+  const root = document.documentElement
+  const body = document.body
+  if (!root || !body?.dataset) return
+
+  const i18nCssVars = {
+    '--i18n-no-matches': body.dataset.i18nNoMatches || '',
+    '--i18n-loading': body.dataset.i18nLoading || '',
+    '--i18n-exhausted-cards': body.dataset.i18nExhaustedCards || '',
+  }
+
+  for (const [name, value] of Object.entries(i18nCssVars)) {
+    if (!value) continue
+    root.style.setProperty(name, `'${String(value).replace(/'/g, "\\'")}'`)
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', applyI18nCssVariables, {
+    once: true,
+  })
+} else {
+  applyI18nCssVariables()
+}
+
 // ===== ADD THESE HELPER FUNCTIONS HERE =====
 
 // --- Normalize any legacy poster paths to our canonical local proxy
@@ -1085,9 +1168,8 @@ function saveDisplaySettingsForm() {
   applyDisplayPreferencesToNavigation(nextPreferences)
 }
 
-// Keep admin password in sessionStorage only (tab-scoped, cleared on close).
-// Do not persist in localStorage. HTTPS is required in production.
-let adminPassword = sessionStorage.getItem('comparrAdminPassword') || ''
+// Keep admin password in-memory only and never persist it in storage.
+let adminPassword = ''
 let settingsAccessState = {
   canAccess: false,
   requiresAdminPassword: false,
@@ -1103,13 +1185,6 @@ function getAdminHeaders() {
 
 function setAdminPasswordForSession(value) {
   adminPassword = String(value || '').trim()
-
-  if (adminPassword) {
-    sessionStorage.setItem('comparrAdminPassword', adminPassword)
-    return
-  }
-
-  sessionStorage.removeItem('comparrAdminPassword')
 }
 
 async function fetchSettingsAccess() {
@@ -3680,22 +3755,11 @@ async function login(api) {
   }
 
   let skipPasswordPrompt = false
-  let accessPasswordIsRequired = true
   const shouldReturnToModeSelection =
     sessionStorage.getItem('comparrReturnToModeSelection') === '1'
   const storedAccessPassword = sessionStorage.getItem('comparrAccessPassword')
 
-  try {
-    const accessPasswordStatus = await api.getAccessPasswordStatus()
-    accessPasswordIsRequired = accessPasswordStatus.requiresPassword
-  } catch (err) {
-    console.warn('Access password status check failed:', err)
-  }
-
-  if (!accessPasswordIsRequired) {
-    handleVerifiedPassword('')
-    skipPasswordPrompt = true
-  } else if (shouldReturnToModeSelection) {
+  if (shouldReturnToModeSelection) {
     sessionStorage.removeItem('comparrReturnToModeSelection')
 
     if (storedAccessPassword) {
@@ -3706,6 +3770,16 @@ async function login(api) {
       } catch {
         sessionStorage.removeItem('comparrAccessPassword')
       }
+    }
+  }
+
+  if (!skipPasswordPrompt) {
+    try {
+      await api.verifyAccessPassword('')
+      handleVerifiedPassword('')
+      skipPasswordPrompt = true
+    } catch {
+      // Access password is configured; show prompt.
     }
   }
 

@@ -1,6 +1,7 @@
 // src/features/session/imdb-import.ts
 // Handles parsing IMDb CSV exports and looking up movies via TMDb API.
 import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import { tmdbFetch } from '../../api/tmdb.ts'
 
 export interface ImdbCsvRow {
   imdbId: string
@@ -247,9 +248,9 @@ export async function lookupMovieByImdbId(
   tmdbApiKey: string
 ): Promise<TmdbMovieResult | null> {
   try {
-    const response = await fetch(
-      `https://api.themoviedb.org/3/find/${imdbId}?api_key=${tmdbApiKey}&external_source=imdb_id`
-    )
+    const response = await tmdbFetch(`/find/${imdbId}`, tmdbApiKey, {
+      external_source: 'imdb_id',
+    })
 
     if (!response.ok) {
       log.warning(`TMDb find failed for ${imdbId}: HTTP ${response.status}`)
@@ -268,9 +269,9 @@ export async function lookupMovieByImdbId(
     let runtime: number | null = null
     let contentRating: string | null = null
     try {
-      const detailsResp = await fetch(
-        `https://api.themoviedb.org/3/movie/${movie.id}?api_key=${tmdbApiKey}&append_to_response=release_dates`
-      )
+      const detailsResp = await tmdbFetch(`/movie/${movie.id}`, tmdbApiKey, {
+        append_to_response: 'release_dates',
+      })
       if (detailsResp.ok) {
         const details = await detailsResp.json()
         runtime = details.runtime || null

@@ -21,7 +21,7 @@ chown -R "${PUID}:${PGID}" /data || true
 # Run the server as the requested user
 exec gosu "${PUID}:${PGID}" deno run \
   --allow-net \
-  --allow-read \
-  --allow-write \
+  --allow-read=/data,/app \
+  --allow-write=/data \
   --allow-env \
   src/index.ts
