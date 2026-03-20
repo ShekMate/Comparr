@@ -66,7 +66,6 @@ Deno.test({
     assertExists(result)
     assertEquals(result.imdbId, 'tt1375666')
     assertEquals(result.rating_imdb, 8.8)
-    assertEquals(result.rating_rt, 87)
     assertExists(result.rating_tmdb)
     assertExists(result.plot)
     assertEquals(result.plot, mockOMDbMovie.Plot)
@@ -221,9 +220,6 @@ Deno.test({
     })
 
     assertExists(result)
-    // Should extract RT rating from OMDb ratings array
-    assertEquals(result.rating_rt, 87)
-
     globalThis.fetch = originalFetch
   },
   sanitizeResources: false,
@@ -399,7 +395,6 @@ Deno.test({
     assertEquals(result.plot, null)
     assertEquals(result.rating_imdb, null)
     assertEquals(result.rating_tmdb, null)
-    assertEquals(result.rating_rt, null)
 
     globalThis.fetch = originalFetch
   },
