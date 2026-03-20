@@ -30,6 +30,7 @@ import {
   isLocalRequest,
   isValidHost,
   isValidOrigin,
+  isValidStateChangingOrigin,
 } from './infra/http/network-access.ts'
 import { handleSettingsRoutes } from './infra/http/routes/settings.ts'
 import { handleRoutes } from './infra/http/router.ts'
@@ -356,6 +357,15 @@ const getCsrfCookieToken = (req: any) =>
 const createCsrfToken = () =>
   `${crypto.randomUUID()}${crypto.randomUUID().replace(/-/g, '')}`
 
+const shouldUseSecureCookies = (req: any) => {
+  const xfProto = String(req?.headers?.get?.('x-forwarded-proto') || '')
+    .split(',')[0]
+    .trim()
+    .toLowerCase()
+  if (xfProto) return xfProto === 'https'
+  return String(req?.url || '').toLowerCase().startsWith('https://')
+}
+
 const isValidCsrfRequest = (req: any) => {
   const cookieToken = getCsrfCookieToken(req)
   const headerToken = String(req?.headers?.get?.('x-csrf-token') || '').trim()
@@ -483,9 +493,10 @@ for await (const req of server) {
     if (p === '/api/csrf-token' && req.method === 'GET') {
       const token = createCsrfToken()
       const headers = makeHeaders('application/json')
+      const secureFlag = shouldUseSecureCookies(req) ? '; Secure' : ''
       headers.set(
         'set-cookie',
-        `${CSRF_COOKIE_NAME}=${token}; Path=/; SameSite=Strict`
+        `${CSRF_COOKIE_NAME}=${token}; Path=/; SameSite=Strict; HttpOnly${secureFlag}`
       )
       await req.respond({
         status: 200,
@@ -499,7 +510,7 @@ for await (const req of server) {
       p.startsWith('/api/') &&
       isStateChangingMethod(req.method) &&
       !EXEMPT_ORIGIN_CHECK_PATHS.has(p) &&
-      !isValidOrigin(req)
+      !isValidStateChangingOrigin(req)
     ) {
       await req.respond({
         status: 403,
@@ -518,43 +529,6 @@ for await (const req of server) {
       await req.respond({
         status: 403,
         body: JSON.stringify({ error: 'Invalid CSRF token.' }),
-        headers: makeHeaders('application/json'),
-      })
-      continue
-    }
-
-    if (
-      p.startsWith('/api/') &&
-      shouldRequireAccessPassword(p) &&
-      !isAccessPasswordAuthorized(req)
-    ) {
-      responseStatus = 401
-      auditEvent = 'access_password_denied'
-      await req.respond({
-        status: responseStatus,
-        body: JSON.stringify({ error: 'Access password required.' }),
-        headers: makeHeaders('application/json'),
-      })
-      continue
-    }
-
-    if (p.startsWith('/api/') && isStateChangingMethod(req.method)) {
-      appendAuditLog('state_change_request', req, {
-        method: req.method,
-        path: p,
-        requestId,
-      }).catch(() => {})
-    }
-
-    if (
-      p.startsWith('/api/') &&
-      isStateChangingMethod(req.method) &&
-      !EXEMPT_ORIGIN_CHECK_PATHS.has(p) &&
-      !isValidOrigin(req)
-    ) {
-      await req.respond({
-        status: 403,
-        body: JSON.stringify({ error: 'Invalid request origin.' }),
         headers: makeHeaders('application/json'),
       })
       continue
@@ -607,7 +581,7 @@ for await (const req of server) {
     // --- API: Request movie via Jellyseerr/Overseerr
     if (p === '/api/request-movie' && req.method === 'POST') {
       try {
-        if (!isValidOrigin(req)) {
+        if (!isValidStateChangingOrigin(req)) {
           await req.respond({
             status: 403,
             body: JSON.stringify({ error: 'Invalid request origin.' }),

@@ -3,7 +3,7 @@ import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
 import { timingSafeEqual } from '../../../core/security.ts'
 import { apiRateLimiter, loginRateLimiter } from '../ip-rate-limiter.ts'
 import { addSecurityHeaders } from '../security-headers.ts'
-import { isValidOrigin } from '../network-access.ts'
+import { isValidStateChangingOrigin } from '../network-access.ts'
 import { tmdbFetch } from '../../../api/tmdb.ts'
 
 export type SettingsRouteDeps = {
@@ -327,22 +327,10 @@ export async function handleSettingsRoutes(
   }
 
   if (pathname === '/api/access-password/status' && req.method === 'GET') {
-    if (!isValidOrigin(req)) {
-      await req.respond({
-        status: 403,
-        body: JSON.stringify({ message: 'Invalid request origin.' }),
-        headers: makeJsonHeaders(),
-      })
-      return true
-    }
-
-    const settings = getSettings()
-    const configuredPassword = String(settings.ACCESS_PASSWORD ?? '').trim()
-
     await req.respond({
-      status: 200,
+      status: 404,
       body: JSON.stringify({
-        requiresPassword: Boolean(configuredPassword),
+        message: 'Not Found',
       }),
       headers: makeJsonHeaders(),
     })
@@ -394,7 +382,7 @@ export async function handleSettingsRoutes(
       return true
     }
 
-    if (!isValidOrigin(req)) {
+    if (!isValidStateChangingOrigin(req)) {
       await req.respond({
         status: 403,
         body: JSON.stringify({ ok: false, message: 'Invalid request origin.' }),
@@ -478,7 +466,7 @@ export async function handleSettingsRoutes(
   }
 
   if (pathname === '/api/settings' && req.method === 'POST') {
-    if (!isValidOrigin(req)) {
+    if (!isValidStateChangingOrigin(req)) {
       await req.respond({
         status: 403,
         body: JSON.stringify({ error: 'Invalid request origin.' }),

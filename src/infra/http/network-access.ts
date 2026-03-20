@@ -119,6 +119,14 @@ export const isValidOrigin = (req: {
   }
 }
 
+export const isValidStateChangingOrigin = (req: {
+  headers?: { get?: (name: string) => string | null }
+}) => {
+  const origin = String(req?.headers?.get?.('origin') || '').trim()
+  if (!origin) return false
+  return isValidOrigin(req)
+}
+
 export const isLocalRequest = (req: {
   conn?: { remoteAddr?: Deno.NetAddr }
   headers?: { get?: (name: string) => string | null }

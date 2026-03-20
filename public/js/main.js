@@ -3755,22 +3755,11 @@ async function login(api) {
   }
 
   let skipPasswordPrompt = false
-  let accessPasswordIsRequired = true
   const shouldReturnToModeSelection =
     sessionStorage.getItem('comparrReturnToModeSelection') === '1'
   const storedAccessPassword = sessionStorage.getItem('comparrAccessPassword')
 
-  try {
-    const accessPasswordStatus = await api.getAccessPasswordStatus()
-    accessPasswordIsRequired = accessPasswordStatus.requiresPassword
-  } catch (err) {
-    console.warn('Access password status check failed:', err)
-  }
-
-  if (!accessPasswordIsRequired) {
-    handleVerifiedPassword('')
-    skipPasswordPrompt = true
-  } else if (shouldReturnToModeSelection) {
+  if (shouldReturnToModeSelection) {
     sessionStorage.removeItem('comparrReturnToModeSelection')
 
     if (storedAccessPassword) {
@@ -3781,6 +3770,16 @@ async function login(api) {
       } catch {
         sessionStorage.removeItem('comparrAccessPassword')
       }
+    }
+  }
+
+  if (!skipPasswordPrompt) {
+    try {
+      await api.verifyAccessPassword('')
+      handleVerifiedPassword('')
+      skipPasswordPrompt = true
+    } catch {
+      // Access password is configured; show prompt.
     }
   }
 

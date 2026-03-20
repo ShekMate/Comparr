@@ -98,6 +98,11 @@ export class ComparrAPI extends EventTarget {
     const res = await fetch(`${this._basePath}/api/access-password/status`)
     const data = await res.json().catch(() => ({}))
 
+    if (res.status === 404) {
+      // Endpoint intentionally disabled to avoid password-state disclosure.
+      return { requiresPassword: true }
+    }
+
     if (!res.ok) {
       throw new Error(data.message || 'Unable to check access password status.')
     }
