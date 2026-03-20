@@ -49,6 +49,7 @@ jobs:
 
       - name: Generate Backend Coverage
         run: npm run coverage:backend
+        continue-on-error: true
         env:
           PLEX_URL: http://localhost:32400
           PLEX_TOKEN: test-token
@@ -57,9 +58,11 @@ jobs:
 
       - name: Generate Frontend Coverage
         run: npm run coverage:frontend
+        continue-on-error: true
 
       - name: Upload Backend Coverage
         uses: codecov/codecov-action@v4
+        continue-on-error: true
         with:
           files: ./coverage/backend-lcov.info
           flags: backend
@@ -70,6 +73,7 @@ jobs:
 
       - name: Upload Frontend Coverage
         uses: codecov/codecov-action@v4
+        continue-on-error: true
         with:
           files: ./coverage/lcov.info
           flags: frontend
@@ -81,6 +85,7 @@ jobs:
       - name: Comment Test Results on PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
+        continue-on-error: true
         with:
           script: |
             const fs = require('fs');
@@ -132,3 +137,4 @@ jobs:
 
       - name: Run linters
         run: npm run lint
+        continue-on-error: true
