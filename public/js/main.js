@@ -8,6 +8,60 @@ import { MatchesView } from './MatchesView.js'
 // Global API reference so functions outside main() can access it
 let api
 
+// Attach access password to same-origin API calls so protected endpoints can authorize.
+const nativeFetch = window.fetch.bind(window)
+window.fetch = (input, init = {}) => {
+  try {
+    const requestUrl =
+      typeof input === 'string' || input instanceof URL
+        ? new URL(String(input), window.location.origin)
+        : new URL(input.url, window.location.origin)
+    const isSameOrigin = requestUrl.origin === window.location.origin
+    const isApiPath = requestUrl.pathname.includes('/api/')
+    if (!isSameOrigin || !isApiPath) {
+      return nativeFetch(input, init)
+    }
+
+    const headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined))
+    const accessPassword = sessionStorage.getItem('comparrAccessPassword') || ''
+    if (accessPassword && !headers.has('x-access-password')) {
+      headers.set('x-access-password', accessPassword)
+    }
+
+    return nativeFetch(input, {
+      ...init,
+      headers,
+    })
+  } catch {
+    return nativeFetch(input, init)
+  }
+}
+
+const applyI18nCssVariables = () => {
+  const root = document.documentElement
+  const body = document.body
+  if (!root || !body?.dataset) return
+
+  const i18nCssVars = {
+    '--i18n-no-matches': body.dataset.i18nNoMatches || '',
+    '--i18n-loading': body.dataset.i18nLoading || '',
+    '--i18n-exhausted-cards': body.dataset.i18nExhaustedCards || '',
+  }
+
+  for (const [name, value] of Object.entries(i18nCssVars)) {
+    if (!value) continue
+    root.style.setProperty(name, `'${String(value).replace(/'/g, "\\'")}'`)
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', applyI18nCssVariables, {
+    once: true,
+  })
+} else {
+  applyI18nCssVariables()
+}
+
 // ===== ADD THESE HELPER FUNCTIONS HERE =====
 
 // --- Normalize any legacy poster paths to our canonical local proxy

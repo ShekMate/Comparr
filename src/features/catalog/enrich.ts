@@ -4,6 +4,7 @@
 
 import { getIMDbRating } from './imdb-datasets.ts'
 import { getPlexLibraryName, getTmdbApiKey } from '../../core/config.ts'
+import { tmdbFetch } from '../../api/tmdb.ts'
 
 const getTmdbKey = () => getTmdbApiKey()
 const tmdbCache = new Map<string, any>()
@@ -238,28 +239,6 @@ function storeEnrichmentForKeys(
   schedulePersistEnrichmentCache()
 }
 
-async function j(url: string, label = 'fetch') {
-  const t0 = Date.now()
-  const safe = url.replace(/(api_key|apikey|token|key)=([^&]+)/gi, '$1=***')
-  let text = ''
-  try {
-    const res = await fetch(url)
-    text = await res.text()
-    console.log(
-      `[enrich] ${label} ${safe} -> ${res.status} in ${
-        Date.now() - t0
-      }ms sample=${text.slice(0, 240)}…`
-    )
-    if (!res.ok) {
-      throw new Error(`${label} HTTP ${res.status}`)
-    }
-    return JSON.parse(text)
-  } catch (e) {
-    console.error(`[enrich] ${label} FAILED ${safe}: ${e?.message || e}`)
-    return null
-  }
-}
-
 function extractUsContentRating(releaseDates: any): string | null {
   const us = releaseDates?.results?.find((r: any) => r?.iso_3166_1 === 'US')
   if (!us?.release_dates) return null
@@ -286,16 +265,16 @@ async function tmdbSearchMovie(title: string, year?: number | null) {
   }
 
   const q = new URLSearchParams({
-    api_key: TMDB,
     query: title,
     include_adult: 'false',
   })
   if (year) q.set('year', String(year))
 
-  const data = await j(
-    `https://api.themoviedb.org/3/search/movie?${q.toString()}`,
-    'tmdb.search'
-  )
+  const data = await tmdbFetch(
+    '/search/movie',
+    TMDB,
+    Object.fromEntries(q.entries())
+  ).then(r => r.json())
   const result = data?.results?.[0] ?? null
   if (result) tmdbSearchCache.set(cacheKey, result)
   return result
@@ -310,10 +289,9 @@ async function tmdbMovieDetails(id: number) {
     return tmdbCache.get(cacheKey)
   }
 
-  const result = await j(
-    `https://api.themoviedb.org/3/movie/${id}?api_key=${TMDB}&append_to_response=external_ids,watch/providers,credits,release_dates`,
-    'tmdb.details'
-  )
+  const result = await tmdbFetch(`/movie/${id}`, TMDB, {
+    append_to_response: 'external_ids,watch/providers,credits,release_dates',
+  }).then(r => r.json())
   if (result) tmdbCache.set(cacheKey, result)
   return result
 }

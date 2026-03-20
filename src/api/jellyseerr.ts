@@ -7,6 +7,7 @@ import {
   getSeerrUrl,
 } from '../core/config.ts'
 import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import { fetchWithTimeout } from '../infra/http/fetch-with-timeout.ts'
 
 interface RequestResponse {
   success: boolean
@@ -114,7 +115,7 @@ export async function requestMovie(tmdbId: number): Promise<RequestResponse> {
   try {
     log.info(`Requesting movie via ${config.service}: TMDb ID ${tmdbId}`)
 
-    const response = await fetch(`${config.url}/api/v1/request`, {
+    const response = await fetchWithTimeout(`${config.url}/api/v1/request`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -171,7 +172,7 @@ export async function getMediaStatus(
   }
 
   try {
-    const response = await fetch(`${config.url}/api/v1/movie/${tmdbId}`, {
+    const response = await fetchWithTimeout(`${config.url}/api/v1/movie/${tmdbId}`, {
       headers: {
         'X-Api-Key': config.apiKey,
       },

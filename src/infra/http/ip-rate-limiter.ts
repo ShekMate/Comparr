@@ -3,7 +3,8 @@ export class IpRateLimiter {
 
   constructor(
     private readonly maxRequests: number,
-    private readonly windowMs: number
+    private readonly windowMs: number,
+    private readonly maxTrackedIps = 10_000
   ) {}
 
   check(ip: string): boolean {
@@ -14,6 +15,12 @@ export class IpRateLimiter {
       if (now - data.windowStart > this.windowMs) {
         this.attempts.delete(trackedIp)
       }
+    }
+
+    while (this.attempts.size > this.maxTrackedIps) {
+      const oldestKey = this.attempts.keys().next().value
+      if (!oldestKey) break
+      this.attempts.delete(oldestKey)
     }
 
     const current = this.attempts.get(key)
