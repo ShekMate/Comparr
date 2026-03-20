@@ -5,6 +5,7 @@ import { apiRateLimiter, loginRateLimiter } from '../ip-rate-limiter.ts'
 import { addSecurityHeaders } from '../security-headers.ts'
 import { isValidStateChangingOrigin } from '../network-access.ts'
 import { tmdbFetch } from '../../../api/tmdb.ts'
+import { fetchWithTimeout } from '../fetch-with-timeout.ts'
 
 export type SettingsRouteDeps = {
   buildPlexCache: () => Promise<void>
@@ -27,6 +28,29 @@ const makeJsonHeaders = () => {
   const headers = new Headers({ 'content-type': 'application/json' })
   addSecurityHeaders(headers)
   return headers
+}
+
+const ACCESS_PASSWORD_COOKIE_NAME = 'comparr_access'
+
+const parseCookies = (req: any) => {
+  const rawCookieHeader = String(req?.headers?.get?.('cookie') || '')
+  const cookies = new Map<string, string>()
+  for (const cookiePair of rawCookieHeader.split(';')) {
+    const [rawKey, ...rest] = cookiePair.split('=')
+    const key = String(rawKey || '').trim()
+    if (!key) continue
+    cookies.set(key, decodeURIComponent(rest.join('=').trim()))
+  }
+  return cookies
+}
+
+const shouldUseSecureCookies = (req: any) => {
+  const xfProto = String(req?.headers?.get?.('x-forwarded-proto') || '')
+    .split(',')[0]
+    .trim()
+    .toLowerCase()
+  if (xfProto) return xfProto === 'https'
+  return String(req?.url || '').toLowerCase().startsWith('https://')
 }
 
 const isValidHttpUrl = (value: string) => {
@@ -125,7 +149,7 @@ const runConnectionCheck = async (
     const response =
       normalizedTarget === 'tmdb'
         ? await tmdbFetch('/configuration', normalizedToken)
-        : await fetch(endpoint, {
+        : await fetchWithTimeout(endpoint, {
             method: 'GET',
             headers,
           })
@@ -294,13 +318,29 @@ export async function handleSettingsRoutes(
       const decoder = new TextDecoder()
       const bodyText = decoder.decode(await Deno.readAll(req.body))
       const body = bodyText ? JSON.parse(bodyText) : {}
-      const providedPassword = String(body?.accessPassword ?? '')
+      const providedPassword = String(body?.accessPassword ?? '').trim()
       const settings = getSettings()
       const configuredPassword = String(settings.ACCESS_PASSWORD ?? '').trim()
+      const cookiePassword = parseCookies(req).get(ACCESS_PASSWORD_COOKIE_NAME) || ''
+      const candidatePassword = providedPassword || cookiePassword
 
       const isValid =
         !configuredPassword ||
-        timingSafeEqual(providedPassword, configuredPassword)
+        timingSafeEqual(candidatePassword, configuredPassword)
+
+      const headers = makeJsonHeaders()
+      const secureFlag = shouldUseSecureCookies(req) ? '; Secure' : ''
+      if (isValid && configuredPassword) {
+        headers.set(
+          'set-cookie',
+          `${ACCESS_PASSWORD_COOKIE_NAME}=${encodeURIComponent(configuredPassword)}; Path=/; SameSite=Strict; HttpOnly${secureFlag}`
+        )
+      } else if (!isValid) {
+        headers.set(
+          'set-cookie',
+          `${ACCESS_PASSWORD_COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Strict; HttpOnly${secureFlag}`
+        )
+      }
 
       await req.respond({
         status: isValid ? 200 : 401,
@@ -310,7 +350,7 @@ export async function handleSettingsRoutes(
             ? 'Access password verified.'
             : 'Incorrect access password. Please try again.',
         }),
-        headers: makeJsonHeaders(),
+        headers,
       })
     } catch (err) {
       log.error(`Failed to verify access password: ${err}`)

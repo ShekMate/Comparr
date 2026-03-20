@@ -45,10 +45,6 @@ window.fetch = async (input, init = {}) => {
     }
 
     const headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined))
-    const accessPassword = sessionStorage.getItem('comparrAccessPassword') || ''
-    if (accessPassword && !headers.has('x-access-password')) {
-      headers.set('x-access-password', accessPassword)
-    }
     const method = String(init.method || (input instanceof Request ? input.method : 'GET'))
     if (isStateChangingMethod(method) && !headers.has('x-csrf-token')) {
       const token = await getCsrfToken()
@@ -3725,7 +3721,6 @@ async function login(api) {
     setPasswordError('')
     setLoginError('')
     verifiedPassword = accessPassword
-    sessionStorage.setItem('comparrAccessPassword', accessPassword)
     passwordForm.style.display = 'none'
     modeForm.style.display = 'grid'
 
@@ -3757,20 +3752,9 @@ async function login(api) {
   let skipPasswordPrompt = false
   const shouldReturnToModeSelection =
     sessionStorage.getItem('comparrReturnToModeSelection') === '1'
-  const storedAccessPassword = sessionStorage.getItem('comparrAccessPassword')
 
   if (shouldReturnToModeSelection) {
     sessionStorage.removeItem('comparrReturnToModeSelection')
-
-    if (storedAccessPassword) {
-      try {
-        await api.verifyAccessPassword(storedAccessPassword)
-        handleVerifiedPassword(storedAccessPassword)
-        skipPasswordPrompt = true
-      } catch {
-        sessionStorage.removeItem('comparrAccessPassword')
-      }
-    }
   }
 
   if (!skipPasswordPrompt) {

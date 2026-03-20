@@ -40,6 +40,7 @@ import { handleRequestServiceRoutes } from './infra/http/routes/request-service.
 import { handleRoomRoutes } from './infra/http/routes/rooms.ts'
 import { WebSocketServer } from './infra/ws/websocketServer.ts'
 import { addSecurityHeaders } from './infra/http/security-headers.ts'
+import { fetchWithTimeout } from './infra/http/fetch-with-timeout.ts'
 import {
   initializeRadarrCache,
   isMovieInRadarr,
@@ -197,6 +198,7 @@ const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
 const STATE_FILE = `${DATA_DIR}/session-state.json`
 const AUDIT_LOG_FILE = `${DATA_DIR}/audit.log`
 const CSRF_COOKIE_NAME = 'comparr_csrf'
+const ACCESS_PASSWORD_COOKIE_NAME = 'comparr_access'
 let activeRequests = 0
 let isShuttingDown = false
 let shuttingDownPromise: Promise<void> | null = null
@@ -320,6 +322,16 @@ const validateRoomCodeAndUserName = (roomCode: string, userName: string) => {
 const parseAccessPassword = (req: any) => {
   const header = req.headers?.get?.('x-access-password')
   if (typeof header === 'string' && header.trim()) return header.trim()
+
+  const rawCookieHeader = String(req?.headers?.get?.('cookie') || '')
+  for (const cookiePair of rawCookieHeader.split(';')) {
+    const [rawKey, ...rest] = cookiePair.split('=')
+    const key = String(rawKey || '').trim()
+    if (key !== ACCESS_PASSWORD_COOKIE_NAME) continue
+    const cookieValue = decodeURIComponent(rest.join('=').trim())
+    if (cookieValue) return cookieValue
+  }
+
   const auth = req.headers?.get?.('authorization')
   if (typeof auth === 'string' && auth.toLowerCase().startsWith('bearer ')) {
     return auth.slice(7).trim()
@@ -1230,7 +1242,7 @@ for await (const req of server) {
       const tmdbUrl = `https://image.tmdb.org/t/p/w500${normalizedPosterPath}`
 
       try {
-        const posterReq = await fetch(tmdbUrl)
+        const posterReq = await fetchWithTimeout(tmdbUrl)
         if (posterReq.ok) {
           const imageData = new Uint8Array(await posterReq.arrayBuffer())
 
