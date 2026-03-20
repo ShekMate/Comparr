@@ -185,10 +185,8 @@ const isRemoteBootstrapEnabled = () =>
     .toLowerCase() === 'true'
 
 const isBootstrappingAdminPassword = (
-  req: any,
   settings: Record<string, unknown>,
-  incomingSettings: Record<string, unknown>,
-  isLocalRequest: (req: any) => boolean
+  incomingSettings: Record<string, unknown>
 ) => {
   if (hasAdminPasswordConfigured(settings)) return false
   if (String(settings.ACCESS_PASSWORD ?? '').trim()) return false
@@ -534,10 +532,8 @@ export async function handleSettingsRoutes(
         ((settings ?? {}) as Record<string, unknown>) || {}
 
       const isAdminPasswordBootstrap = isBootstrappingAdminPassword(
-        req,
         currentSettings,
-        incomingSettings,
-        isLocalRequest
+        incomingSettings
       )
 
       if (!isAdmin && !isAdminPasswordBootstrap) {
