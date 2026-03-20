@@ -35,7 +35,7 @@ export const serveFile = async (req: ServerRequest, basePath = 'public') => {
 
   if (normalizedPath !== publicRoot && !normalizedPath.startsWith(rootPrefix)) {
     const headers = new Headers({ 'content-type': 'text/plain' })
-    addSecurityHeaders(headers)
+    addSecurityHeaders(headers, req)
     return await req.respond({ status: 403, body: 'Forbidden', headers })
   }
 
@@ -56,7 +56,7 @@ export const serveFile = async (req: ServerRequest, basePath = 'public') => {
     const headers = new Headers({
       'content-type': getContentType(normalizedPath),
     })
-    addSecurityHeaders(headers)
+    addSecurityHeaders(headers, req)
 
     return await req.respond({
       body,
@@ -76,7 +76,7 @@ export const serveFile = async (req: ServerRequest, basePath = 'public') => {
     }
 
     const headers = new Headers({ 'content-type': 'text/plain' })
-    addSecurityHeaders(headers)
+    addSecurityHeaders(headers, req)
     return await req.respond({ status: 404, body: 'Not Found', headers })
   }
 }
