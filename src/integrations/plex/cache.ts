@@ -89,9 +89,10 @@ export async function buildPlexCache(): Promise<void> {
     let imdbIdCount = 0
 
     for (const movie of movies) {
+      const numericYear = Number(movie.year)
       const entry: PlexMovieEntry = {
         title: movie.title,
-        year: movie.year || null,
+        year: Number.isFinite(numericYear) ? numericYear : null,
         guid: movie.guid,
         tmdbId: extractTmdbId(movie.guid),
         imdbId: extractImdbId(movie.guid),

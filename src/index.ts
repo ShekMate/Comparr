@@ -23,6 +23,7 @@ import {
   recordImdbImportHistoryStart,
   finalizeImdbImportHistory,
   getImdbImportHistory,
+  activeSessions,
 } from './features/session/session.ts'
 import { parseImdbCsv } from './features/session/imdb-import.ts'
 import { serveFile } from './infra/http/staticFileServer.ts'
@@ -40,6 +41,8 @@ import { handleRequestServiceRoutes } from './infra/http/routes/request-service.
 import { handleRoomRoutes } from './infra/http/routes/rooms.ts'
 import { WebSocketServer } from './infra/ws/websocketServer.ts'
 import { addSecurityHeaders } from './infra/http/security-headers.ts'
+import { fetchWithTimeout } from './infra/http/fetch-with-timeout.ts'
+import { apiRateLimiter } from './infra/http/ip-rate-limiter.ts'
 import {
   initializeRadarrCache,
   isMovieInRadarr,
@@ -197,6 +200,7 @@ const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
 const STATE_FILE = `${DATA_DIR}/session-state.json`
 const AUDIT_LOG_FILE = `${DATA_DIR}/audit.log`
 const CSRF_COOKIE_NAME = 'comparr_csrf'
+const ACCESS_PASSWORD_COOKIE_NAME = 'comparr_access'
 let activeRequests = 0
 let isShuttingDown = false
 let shuttingDownPromise: Promise<void> | null = null
@@ -320,6 +324,16 @@ const validateRoomCodeAndUserName = (roomCode: string, userName: string) => {
 const parseAccessPassword = (req: any) => {
   const header = req.headers?.get?.('x-access-password')
   if (typeof header === 'string' && header.trim()) return header.trim()
+
+  const rawCookieHeader = String(req?.headers?.get?.('cookie') || '')
+  for (const cookiePair of rawCookieHeader.split(';')) {
+    const [rawKey, ...rest] = cookiePair.split('=')
+    const key = String(rawKey || '').trim()
+    if (key !== ACCESS_PASSWORD_COOKIE_NAME) continue
+    const cookieValue = decodeURIComponent(rest.join('=').trim())
+    if (cookieValue) return cookieValue
+  }
+
   const auth = req.headers?.get?.('authorization')
   if (typeof auth === 'string' && auth.toLowerCase().startsWith('bearer ')) {
     return auth.slice(7).trim()
@@ -490,6 +504,15 @@ for await (const req of server) {
     const url = new URL(req.url, 'http://local')
     const p = url.pathname
 
+    if (p === '/api/health' && req.method === 'GET') {
+      await req.respond({
+        status: 200,
+        headers: makeHeaders('application/json'),
+        body: JSON.stringify({ ok: true }),
+      })
+      continue
+    }
+
     if (p === '/api/csrf-token' && req.method === 'GET') {
       const token = createCsrfToken()
       const headers = makeHeaders('application/json')
@@ -554,7 +577,9 @@ for await (const req of server) {
         method: req.method,
         path: p,
         requestId,
-      }).catch(() => {})
+      }).catch(err =>
+        log.error(`Failed to append state-change audit log: ${err?.message || err}`)
+      )
     }
 
     if (
@@ -1047,6 +1072,21 @@ for await (const req of server) {
     // --- API: Import IMDb watched movies as "seen" (background processing)
     if (p === '/api/imdb-import' && req.method === 'POST') {
       try {
+        const requestIp = String(
+          (req?.conn?.remoteAddr as Deno.NetAddr | undefined)?.hostname ||
+            'unknown'
+        )
+        if (!apiRateLimiter.check(requestIp)) {
+          await req.respond({
+            status: 429,
+            body: JSON.stringify({
+              error: 'Too many import requests. Please wait and retry.',
+            }),
+            headers: makeHeaders('application/json'),
+          })
+          continue
+        }
+
         if (bodyTooLarge(req)) {
           await req.respond({
             status: 413,
@@ -1230,7 +1270,7 @@ for await (const req of server) {
       const tmdbUrl = `https://image.tmdb.org/t/p/w500${normalizedPosterPath}`
 
       try {
-        const posterReq = await fetch(tmdbUrl)
+        const posterReq = await fetchWithTimeout(tmdbUrl)
         if (posterReq.ok) {
           const imageData = new Uint8Array(await posterReq.arrayBuffer())
 
@@ -1378,7 +1418,9 @@ for await (const req of server) {
           requestId,
           status: responseStatus,
           durationMs: Date.now() - requestStartedAt,
-        }).catch(() => {})
+        }).catch(err =>
+          log.error(`Failed to append request audit log: ${err?.message || err}`)
+        )
       }
     } catch {
       // ignore
