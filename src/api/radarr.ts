@@ -92,9 +92,7 @@ export function isMovieInRadarr(tmdbId: number): boolean {
   const now = Date.now()
   if (now - lastCacheUpdate > CACHE_DURATION) {
     log.warning('Radarr cache is stale, triggering refresh')
-    refreshRadarrCache().catch(err =>
-      log.error(`Cache refresh failed: ${err}`)
-    )
+    refreshRadarrCache().catch(err => log.error(`Cache refresh failed: ${err}`))
     return false // Return false for stale cache
   }
 
