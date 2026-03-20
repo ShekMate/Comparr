@@ -51,7 +51,9 @@ import {
 } from './services/cache/poster-cache.ts'
 import {
   initIMDbDatabase,
+  closeIMDbDatabase,
   startBackgroundUpdateJob,
+  stopBackgroundUpdateJob,
 } from './features/catalog/imdb-datasets.ts'
 import { buildPlexCache } from './integrations/plex/cache.ts'
 import { tmdbFetch } from './api/tmdb.ts'
@@ -195,6 +197,7 @@ const STATE_FILE = `${DATA_DIR}/session-state.json`
 const AUDIT_LOG_FILE = `${DATA_DIR}/audit.log`
 let activeRequests = 0
 let isShuttingDown = false
+let shuttingDownPromise: Promise<void> | null = null
 
 async function loadPersistedState(): Promise<any> {
   try {
@@ -235,6 +238,14 @@ async function appendAuditLog(
     ts: new Date().toISOString(),
     event,
     ip,
+    method: String(req?.method || ''),
+    path: (() => {
+      try {
+        return new URL(req?.url || '', 'http://local').pathname
+      } catch {
+        return ''
+      }
+    })(),
     ...details,
   }
   await Deno.writeTextFile(AUDIT_LOG_FILE, `${JSON.stringify(entry)}\n`, {
@@ -275,11 +286,12 @@ const EXEMPT_ORIGIN_CHECK_PATHS = new Set([
   '/api/access-password/status',
 ])
 
-const EXEMPT_ACCESS_PASSWORD_PATHS = new Set([
+const EXEMPT_GLOBAL_ACCESS_PASSWORD_PATHS = new Set([
   '/api/access-password/verify',
   '/api/access-password/status',
   '/api/settings-access',
   '/api/client-config',
+  '/api/health',
 ])
 
 const streamingUpdateInFlight = new Map<number, Promise<any>>()
@@ -318,6 +330,12 @@ const isAccessPasswordAuthorized = (req: any) => {
   return timingSafeEqual(parseAccessPassword(req), configuredPassword)
 }
 
+const shouldRequireAccessPassword = (path: string) => {
+  if (!getAccessPassword()) return false
+  if (!path.startsWith('/api/')) return false
+  return !EXEMPT_GLOBAL_ACCESS_PASSWORD_PATHS.has(path)
+}
+
 const updateStreamingForTmdbIdDeduped = async (tmdbId: number) => {
   if (!Number.isFinite(tmdbId) || tmdbId <= 0) {
     return updateStreamingForTmdbId(tmdbId)
@@ -344,14 +362,24 @@ const wss = new WebSocketServer({
 
 if (Deno.build.os !== 'windows') {
   const shutdownHandler = async () => {
+    if (shuttingDownPromise) {
+      await shuttingDownPromise
+      return
+    }
+    shuttingDownPromise = (async () => {
     log.info('Shutting down')
     isShuttingDown = true
     server.close()
+    stopBackgroundUpdateJob()
+    closeIMDbDatabase()
+    await wss.close().catch(() => {})
     const startedAt = Date.now()
     while (activeRequests > 0 && Date.now() - startedAt < 5_000) {
       await new Promise(resolve => setTimeout(resolve, 100))
     }
     Deno.exit(0)
+    })()
+    await shuttingDownPromise
   }
 
   Deno.addSignalListener('SIGINT', shutdownHandler)
@@ -397,10 +425,15 @@ log.info(`  PLEX_TOKEN: ${getPlexToken() ? '✅ Set' : '❌ Missing'}`)
 
 for await (const req of server) {
   activeRequests += 1
+  const requestStartedAt = Date.now()
+  const requestId = crypto.randomUUID()
+  let responseStatus = 200
+  let auditEvent = ''
   try {
     if (isShuttingDown) {
+      responseStatus = 503
       await req.respond({
-        status: 503,
+        status: responseStatus,
         body: JSON.stringify({ error: 'Server is shutting down.' }),
         headers: makeHeaders('application/json'),
       })
@@ -408,8 +441,9 @@ for await (const req of server) {
     }
 
     if (!isValidHost(req)) {
+      responseStatus = 421
       await req.respond({
-        status: 421,
+        status: responseStatus,
         headers: makeHeaders('application/json'),
         body: JSON.stringify({ error: 'Misdirected Request' }),
       })
@@ -435,12 +469,13 @@ for await (const req of server) {
 
     if (
       p.startsWith('/api/') &&
-      isStateChangingMethod(req.method) &&
-      !EXEMPT_ACCESS_PASSWORD_PATHS.has(p) &&
+      shouldRequireAccessPassword(p) &&
       !isAccessPasswordAuthorized(req)
     ) {
+      responseStatus = 401
+      auditEvent = 'access_password_denied'
       await req.respond({
-        status: 401,
+        status: responseStatus,
         body: JSON.stringify({ error: 'Access password required.' }),
         headers: makeHeaders('application/json'),
       })
@@ -451,6 +486,7 @@ for await (const req of server) {
       appendAuditLog('state_change_request', req, {
         method: req.method,
         path: p,
+        requestId,
       }).catch(() => {})
     }
 
@@ -1263,10 +1299,23 @@ for await (const req of server) {
     await serveFile(req, '/public')
   } catch (err) {
     log.error(`Error handling request: ${err?.message ?? err}`)
+    responseStatus = 500
     try {
       await req.respond({ status: 500, body: new TextEncoder().encode('500') })
     } catch {}
   } finally {
+    try {
+      const reqPath = new URL(req.url, 'http://local').pathname
+      if (reqPath.startsWith('/api/')) {
+        appendAuditLog(auditEvent || 'api_request_complete', req, {
+          requestId,
+          status: responseStatus,
+          durationMs: Date.now() - requestStartedAt,
+        }).catch(() => {})
+      }
+    } catch {
+      // ignore
+    }
     activeRequests = Math.max(0, activeRequests - 1)
   }
 }

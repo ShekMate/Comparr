@@ -15,12 +15,14 @@ This is a practical status snapshot after the recent hardening patches.
 - Rate limiter map now has bounded tracked-IP cardinality.
 - Basic audit log emission for state-changing requests.
 - Shutdown improved with in-flight request drain window.
+- TMDb authentication now supports both v4 bearer tokens and v3 API-key compatibility mode.
+- IMDb background update job now supports explicit stop on shutdown.
+- WebSocket shutdown now closes active client sockets instead of dropping references.
+- Audit log entries now include method/path context and per-request completion metadata.
 
 ## Still recommended / not fully complete
 
 - Full CSP migration to nonce/hash model for inline style attributes and JS-driven inline styles.
 - End-to-end authorization model audit per route (beyond access-password gate).
-- Comprehensive audit logging schema (actor/session IDs, outcome codes, immutable retention policy).
-- Graceful shutdown of long-running background jobs and websocket session-drain semantics.
-- Compatibility strategy for TMDb credentials (v3 key vs v4 bearer token) with explicit configuration and fallback policy.
+- Comprehensive audit logging schema (actor/session IDs, immutable retention policy).
 - Expanded automated security/integration tests for auth/origin/CSRF-like protections.

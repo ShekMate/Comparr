@@ -109,8 +109,11 @@ export class WebSocketServer {
     }
   }
 
-  close() {
+  async close() {
+    const clients = Array.from(this.clients)
     this.clients.clear()
+    this.ipConnections.clear()
+    await Promise.allSettled(clients.map(client => client.close(1001, 'Server shutdown')))
   }
 }
 
