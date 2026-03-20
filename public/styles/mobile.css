@@ -345,6 +345,7 @@
   .login-form .room-code-container {
     width: 100%;
     justify-self: center;
+
     --room-code-control-size: calc(1.5rem + (0.75rem * 2) + 4px);
   }
 
