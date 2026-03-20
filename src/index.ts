@@ -547,6 +547,43 @@ for await (const req of server) {
     }
 
     if (
+      p.startsWith('/api/') &&
+      isStateChangingMethod(req.method) &&
+      !EXEMPT_ORIGIN_CHECK_PATHS.has(p) &&
+      !isValidOrigin(req)
+    ) {
+      await req.respond({
+        status: 403,
+        body: JSON.stringify({ error: 'Invalid request origin.' }),
+        headers: makeHeaders('application/json'),
+      })
+      continue
+    }
+
+    if (
+      p.startsWith('/api/') &&
+      shouldRequireAccessPassword(p) &&
+      !isAccessPasswordAuthorized(req)
+    ) {
+      responseStatus = 401
+      auditEvent = 'access_password_denied'
+      await req.respond({
+        status: responseStatus,
+        body: JSON.stringify({ error: 'Access password required.' }),
+        headers: makeHeaders('application/json'),
+      })
+      continue
+    }
+
+    if (p.startsWith('/api/') && isStateChangingMethod(req.method)) {
+      appendAuditLog('state_change_request', req, {
+        method: req.method,
+        path: p,
+        requestId,
+      }).catch(() => {})
+    }
+
+    if (
       await handleRoutes(req, p, [
         handleConfigDebugRoute,
         async (routeReq, routePath) =>
