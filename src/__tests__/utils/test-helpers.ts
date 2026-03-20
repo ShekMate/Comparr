@@ -2,11 +2,30 @@
 import {
   assertEquals,
   assertExists,
-  assertRejects,
   assertThrows,
 } from 'std/testing/asserts.ts'
 
-export { assertEquals, assertExists, assertRejects, assertThrows }
+export { assertEquals, assertExists, assertThrows }
+
+export async function assertRejects(
+  fn: () => Promise<unknown>,
+  ErrorClass?: new (...args: any[]) => Error
+) {
+  let rejected: unknown
+  try {
+    await fn()
+  } catch (err) {
+    rejected = err
+  }
+  assertExists(rejected)
+  if (ErrorClass) {
+    if (!(rejected instanceof ErrorClass)) {
+      throw new Error(
+        `Expected rejection to be instance of ${ErrorClass.name}, got ${rejected}`
+      )
+    }
+  }
+}
 
 /**
  * Create a mock fetch function that returns predefined responses

@@ -1,5 +1,6 @@
 // cache/posterCache.ts - Local poster storage and serving
 import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import { fetchWithTimeout } from '../../infra/http/fetch-with-timeout.ts'
 
 const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
 const POSTER_CACHE_DIR = `${DATA_DIR}/poster-cache`
@@ -64,7 +65,16 @@ async function saveMetadata(): Promise<void> {
  * Generate cache key from poster path
  */
 function getCacheKey(posterPath: string, source: 'plex' | 'tmdb'): string {
-  return `${source}-${posterPath.replace(/[^a-zA-Z0-9]/g, '_')}`
+  const bytes = new TextEncoder().encode(posterPath)
+  let binary = ''
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte)
+  }
+  const encoded = btoa(binary)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '')
+  return `${source}-${encoded}`
 }
 
 /**
@@ -146,7 +156,7 @@ export async function cachePoster(
 
   try {
     // Download poster
-    const response = await fetch(url)
+    const response = await fetchWithTimeout(url)
     if (!response.ok) {
       log.error(`Failed to download poster from ${url}: ${response.status}`)
       return null

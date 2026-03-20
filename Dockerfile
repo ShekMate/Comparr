@@ -17,5 +17,8 @@ RUN deno cache src/index.ts
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD deno eval "const r = await fetch('http://127.0.0.1:8000/api/health'); if (!r.ok) Deno.exit(1);"
+
 # Default entrypoint (this script sets up /data perms then runs Deno)
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
