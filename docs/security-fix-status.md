@@ -22,7 +22,7 @@ This is a practical status snapshot after the recent hardening patches.
 
 ## Still recommended / not fully complete
 
-- Full CSP migration to nonce/hash model for inline style attributes and JS-driven inline styles.
+- CSP hardened with strict `script-src` and split `style-src-elem`/`style-src-attr`; full nonce/hash migration remains optional future hardening.
 - End-to-end authorization model audit per route (beyond access-password gate).
 - Comprehensive audit logging schema (actor/session IDs, immutable retention policy).
 - Expanded automated security/integration tests for auth/origin/CSRF-like protections.

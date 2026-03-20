@@ -37,6 +37,31 @@ window.fetch = (input, init = {}) => {
   }
 }
 
+const applyI18nCssVariables = () => {
+  const root = document.documentElement
+  const body = document.body
+  if (!root || !body?.dataset) return
+
+  const i18nCssVars = {
+    '--i18n-no-matches': body.dataset.i18nNoMatches || '',
+    '--i18n-loading': body.dataset.i18nLoading || '',
+    '--i18n-exhausted-cards': body.dataset.i18nExhaustedCards || '',
+  }
+
+  for (const [name, value] of Object.entries(i18nCssVars)) {
+    if (!value) continue
+    root.style.setProperty(name, `'${String(value).replace(/'/g, "\\'")}'`)
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', applyI18nCssVariables, {
+    once: true,
+  })
+} else {
+  applyI18nCssVariables()
+}
+
 // ===== ADD THESE HELPER FUNCTIONS HERE =====
 
 // --- Normalize any legacy poster paths to our canonical local proxy
