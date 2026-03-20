@@ -1,5 +1,6 @@
 import { getRadarrApiKey, getRadarrUrl } from '../core/config.ts'
 import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import { fetchWithTimeout } from '../infra/http/fetch-with-timeout.ts'
 
 interface RadarrMovie {
   id: number
@@ -25,7 +26,7 @@ async function fetchRadarrMovies(): Promise<RadarrMovie[]> {
 
   try {
     log.info('Fetching movie library from Radarr...')
-    const response = await fetch(`${radarrUrl}/api/v3/movie`, {
+    const response = await fetchWithTimeout(`${radarrUrl}/api/v3/movie`, {
       headers: {
         'X-Api-Key': radarrApiKey,
       },

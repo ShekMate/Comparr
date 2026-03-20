@@ -5,6 +5,7 @@
 import { gunzip } from 'https://deno.land/x/denoflate@1.2.1/mod.ts'
 import { DB } from 'https://deno.land/x/sqlite@v3.8/mod.ts'
 import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import { fetchWithTimeout } from '../../infra/http/fetch-with-timeout.ts'
 
 const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
 const IMDB_DB_PATH = `${DATA_DIR}/imdb-ratings.db`
@@ -84,7 +85,7 @@ export async function downloadAndBuildIMDbDatabase(): Promise<boolean> {
     await ensureDataDir()
 
     // Download the gzipped TSV file
-    const response = await fetch(IMDB_DUMP_URL)
+    const response = await fetchWithTimeout(IMDB_DUMP_URL)
     if (!response.ok) {
       throw new Error(
         `Failed to download IMDb data: ${response.status} ${response.statusText}`

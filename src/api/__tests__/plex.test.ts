@@ -152,15 +152,15 @@ Deno.test({
 
     // Get random movies - should not repeat
     const drawnMovies = new Set()
-    const movie1 = await getRandomMovie(movies)
+    const movie1 = await getRandomMovie()
     drawnMovies.add(movie1.guid)
     assertExists(movie1)
 
-    const movie2 = await getRandomMovie(movies)
+    const movie2 = await getRandomMovie()
     drawnMovies.add(movie2.guid)
     assertExists(movie2)
 
-    const movie3 = await getRandomMovie(movies)
+    const movie3 = await getRandomMovie()
     drawnMovies.add(movie3.guid)
     assertExists(movie3)
 
@@ -169,7 +169,7 @@ Deno.test({
 
     // Fourth call should throw NoMoreMoviesError since we only have 3 movies
     await assertRejects(
-      async () => await getRandomMovie(movies),
+      async () => await getRandomMovie(),
       NoMoreMoviesError
     )
 
