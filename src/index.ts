@@ -54,7 +54,7 @@ import {
   startBackgroundUpdateJob,
 } from './features/catalog/imdb-datasets.ts'
 import { buildPlexCache } from './integrations/plex/cache.ts'
-import { fetchWithTimeout } from './infra/http/fetch-with-timeout.ts'
+import { tmdbFetch } from './api/tmdb.ts'
 
 // Helper: fetch & persist TMDb providers for a TMDb ID, returning the same shape your UI expects
 async function updateStreamingForTmdbId(tmdbId: number) {
@@ -68,10 +68,9 @@ async function updateStreamingForTmdbId(tmdbId: number) {
   }
 
   // Fetch fresh data from TMDb
-  const providerData = await fetchWithTimeout(
-    `https://api.themoviedb.org/3/movie/${tmdbId}/watch/providers?api_key=${encodeURIComponent(
-      TMDB_KEY
-    )}`
+  const providerData = await tmdbFetch(
+    `/movie/${tmdbId}/watch/providers`,
+    TMDB_KEY
   ).then(r => r.json())
 
   const providers = providerData?.results?.US
@@ -193,6 +192,9 @@ async function updateStreamingForTmdbId(tmdbId: number) {
 // --- Persisted state helpers (robust to missing files)
 const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
 const STATE_FILE = `${DATA_DIR}/session-state.json`
+const AUDIT_LOG_FILE = `${DATA_DIR}/audit.log`
+let activeRequests = 0
+let isShuttingDown = false
 
 async function loadPersistedState(): Promise<any> {
   try {
@@ -218,6 +220,26 @@ async function savePersistedState(state: any) {
     await Deno.remove(tmp).catch(() => {})
     throw err
   }
+}
+
+async function appendAuditLog(
+  event: string,
+  req: any,
+  details: Record<string, unknown> = {}
+) {
+  await Deno.mkdir(DATA_DIR, { recursive: true }).catch(() => {})
+  const ip = String(
+    (req?.conn?.remoteAddr as Deno.NetAddr | undefined)?.hostname || 'unknown'
+  )
+  const entry = {
+    ts: new Date().toISOString(),
+    event,
+    ip,
+    ...details,
+  }
+  await Deno.writeTextFile(AUDIT_LOG_FILE, `${JSON.stringify(entry)}\n`, {
+    append: true,
+  }).catch(() => {})
 }
 
 /** tiny helper to send a file from disk */
@@ -321,9 +343,14 @@ const wss = new WebSocketServer({
 })
 
 if (Deno.build.os !== 'windows') {
-  const shutdownHandler = () => {
+  const shutdownHandler = async () => {
     log.info('Shutting down')
+    isShuttingDown = true
     server.close()
+    const startedAt = Date.now()
+    while (activeRequests > 0 && Date.now() - startedAt < 5_000) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
     Deno.exit(0)
   }
 
@@ -369,7 +396,17 @@ log.info(`  PLEX_URL: ${getPlexUrl() ? '✅ Set' : '❌ Missing'}`)
 log.info(`  PLEX_TOKEN: ${getPlexToken() ? '✅ Set' : '❌ Missing'}`)
 
 for await (const req of server) {
+  activeRequests += 1
   try {
+    if (isShuttingDown) {
+      await req.respond({
+        status: 503,
+        body: JSON.stringify({ error: 'Server is shutting down.' }),
+        headers: makeHeaders('application/json'),
+      })
+      continue
+    }
+
     if (!isValidHost(req)) {
       await req.respond({
         status: 421,
@@ -408,6 +445,13 @@ for await (const req of server) {
         headers: makeHeaders('application/json'),
       })
       continue
+    }
+
+    if (p.startsWith('/api/') && isStateChangingMethod(req.method)) {
+      appendAuditLog('state_change_request', req, {
+        method: req.method,
+        path: p,
+      }).catch(() => {})
     }
 
     if (
@@ -1222,5 +1266,7 @@ for await (const req of server) {
     try {
       await req.respond({ status: 500, body: new TextEncoder().encode('500') })
     } catch {}
+  } finally {
+    activeRequests = Math.max(0, activeRequests - 1)
   }
 }

@@ -26,6 +26,7 @@ import {
   getRootPath,
   getTmdbApiKey,
 } from '../../core/config.ts'
+import { tmdbFetch } from '../../api/tmdb.ts'
 import {
   validateTMDbPoster,
   getBestPosterPath,
@@ -1692,10 +1693,9 @@ class Session {
           log.info(`🎭 Getting all movies for ${person.name}`)
 
           try {
-            const response = await fetch(
-              `https://api.themoviedb.org/3/person/${
-                person.id
-              }/movie_credits?api_key=${getTmdbApiKey()}`
+            const response = await tmdbFetch(
+              `/person/${person.id}/movie_credits`,
+              getTmdbApiKey()
             )
 
             if (response.ok) {
@@ -2578,10 +2578,9 @@ class Session {
     if (!person) throw new Error('No person found')
 
     const page = Math.floor(index / 20) + 1 // Get different pages based on index
-    const response = await fetch(
-      `https://api.themoviedb.org/3/person/${
-        person.id
-      }/movie_credits?api_key=${getTmdbApiKey()}`
+    const response = await tmdbFetch(
+      `/person/${person.id}/movie_credits`,
+      getTmdbApiKey()
     )
 
     if (!response.ok) throw new Error('Failed to get person movies')
@@ -2612,8 +2611,10 @@ class Session {
       // Get IMDb ID from TMDb for more reliable enrichment
       let imdbId = null
       try {
-        const detailsResponse = await fetch(
-          `https://api.themoviedb.org/3/movie/${tmdbId}?api_key=${getTmdbApiKey()}&append_to_response=external_ids`
+        const detailsResponse = await tmdbFetch(
+          `/movie/${tmdbId}`,
+          getTmdbApiKey(),
+          { append_to_response: 'external_ids' }
         )
         if (detailsResponse.ok) {
           const details = await detailsResponse.json()
@@ -3430,9 +3431,9 @@ export async function processImdbImportBackground(
 
     try {
       // 1. Look up movie by IMDb ID via TMDb find endpoint
-      const findResp = await fetch(
-        `https://api.themoviedb.org/3/find/${row.imdbId}?api_key=${TMDB_KEY}&external_source=imdb_id`
-      )
+      const findResp = await tmdbFetch(`/find/${row.imdbId}`, TMDB_KEY, {
+        external_source: 'imdb_id',
+      })
 
       if (!findResp.ok) {
         log.debug(

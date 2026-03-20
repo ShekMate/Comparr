@@ -4,6 +4,7 @@ import { timingSafeEqual } from '../../../core/security.ts'
 import { apiRateLimiter, loginRateLimiter } from '../ip-rate-limiter.ts'
 import { addSecurityHeaders } from '../security-headers.ts'
 import { isValidOrigin } from '../network-access.ts'
+import { tmdbFetch } from '../../../api/tmdb.ts'
 
 export type SettingsRouteDeps = {
   buildPlexCache: () => Promise<void>
@@ -115,18 +116,19 @@ const runConnectionCheck = async (
     endpoint = `${serviceUrl}/api/v1/status`
     headers = { 'X-Api-Key': normalizedToken }
   } else if (normalizedTarget === 'tmdb') {
-    endpoint = `https://api.themoviedb.org/3/configuration?api_key=${encodeURIComponent(
-      normalizedToken
-    )}`
+    endpoint = 'https://api.themoviedb.org/3/configuration'
   } else {
     return { ok: false, message: 'Unknown service target.' }
   }
 
   try {
-    const response = await fetch(endpoint, {
-      method: 'GET',
-      headers,
-    })
+    const response =
+      normalizedTarget === 'tmdb'
+        ? await tmdbFetch('/configuration', normalizedToken)
+        : await fetch(endpoint, {
+            method: 'GET',
+            headers,
+          })
 
     if (!response.ok) {
       return {
