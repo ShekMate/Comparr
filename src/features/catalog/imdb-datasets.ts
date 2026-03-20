@@ -14,6 +14,7 @@ const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000 // 24 hours
 let db: DB | null = null
 let isDownloading = false
 let lastUpdateCheck = 0
+let backgroundJobId: number | null = null
 
 /**
  * Initialize the IMDb database connection
@@ -249,19 +250,27 @@ export async function checkAndUpdateDatabase(): Promise<void> {
  * Start background update job
  */
 export function startBackgroundUpdateJob(): void {
+  if (backgroundJobId !== null) return
   // Initial check on startup
   checkAndUpdateDatabase().catch(err =>
     log.error(`Initial database check failed: ${err}`)
   )
 
   // Check daily
-  setInterval(() => {
+  backgroundJobId = setInterval(() => {
     checkAndUpdateDatabase().catch(err =>
       log.error(`Scheduled database check failed: ${err}`)
     )
   }, UPDATE_INTERVAL_MS)
 
   log.info('📅 IMDb background update job started (checks daily)')
+}
+
+export function stopBackgroundUpdateJob(): void {
+  if (backgroundJobId === null) return
+  clearInterval(backgroundJobId)
+  backgroundJobId = null
+  log.info('🛑 IMDb background update job stopped')
 }
 
 /**

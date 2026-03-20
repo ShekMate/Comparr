@@ -11,8 +11,10 @@ import {
   getRootPath,
   getTmdbApiKey,
   getMaxBodySize,
+  getAccessPassword,
 } from './core/config.ts'
 import { getSettings, updateSettings } from './core/settings.ts'
+import { timingSafeEqual } from './core/security.ts'
 import { getLinkTypeForRequest } from './core/i18n.ts'
 import {
   handleLogin,
@@ -49,9 +51,12 @@ import {
 } from './services/cache/poster-cache.ts'
 import {
   initIMDbDatabase,
+  closeIMDbDatabase,
   startBackgroundUpdateJob,
+  stopBackgroundUpdateJob,
 } from './features/catalog/imdb-datasets.ts'
 import { buildPlexCache } from './integrations/plex/cache.ts'
+import { tmdbFetch } from './api/tmdb.ts'
 
 // Helper: fetch & persist TMDb providers for a TMDb ID, returning the same shape your UI expects
 async function updateStreamingForTmdbId(tmdbId: number) {
@@ -65,8 +70,9 @@ async function updateStreamingForTmdbId(tmdbId: number) {
   }
 
   // Fetch fresh data from TMDb
-  const providerData = await fetch(
-    `https://api.themoviedb.org/3/movie/${tmdbId}/watch/providers?api_key=${TMDB_KEY}`
+  const providerData = await tmdbFetch(
+    `/movie/${tmdbId}/watch/providers`,
+    TMDB_KEY
   ).then(r => r.json())
 
   const providers = providerData?.results?.US
@@ -188,6 +194,11 @@ async function updateStreamingForTmdbId(tmdbId: number) {
 // --- Persisted state helpers (robust to missing files)
 const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
 const STATE_FILE = `${DATA_DIR}/session-state.json`
+const AUDIT_LOG_FILE = `${DATA_DIR}/audit.log`
+const CSRF_COOKIE_NAME = 'comparr_csrf'
+let activeRequests = 0
+let isShuttingDown = false
+let shuttingDownPromise: Promise<void> | null = null
 
 async function loadPersistedState(): Promise<any> {
   try {
@@ -206,8 +217,41 @@ async function loadPersistedState(): Promise<any> {
 async function savePersistedState(state: any) {
   await Deno.mkdir(DATA_DIR, { recursive: true }).catch(() => {})
   const tmp = `${STATE_FILE}.tmp.${Date.now()}`
-  await Deno.writeTextFile(tmp, JSON.stringify(state, null, 2))
-  await Deno.rename(tmp, STATE_FILE)
+  try {
+    await Deno.writeTextFile(tmp, JSON.stringify(state, null, 2))
+    await Deno.rename(tmp, STATE_FILE)
+  } catch (err) {
+    await Deno.remove(tmp).catch(() => {})
+    throw err
+  }
+}
+
+async function appendAuditLog(
+  event: string,
+  req: any,
+  details: Record<string, unknown> = {}
+) {
+  await Deno.mkdir(DATA_DIR, { recursive: true }).catch(() => {})
+  const ip = String(
+    (req?.conn?.remoteAddr as Deno.NetAddr | undefined)?.hostname || 'unknown'
+  )
+  const entry = {
+    ts: new Date().toISOString(),
+    event,
+    ip,
+    method: String(req?.method || ''),
+    path: (() => {
+      try {
+        return new URL(req?.url || '', 'http://local').pathname
+      } catch {
+        return ''
+      }
+    })(),
+    ...details,
+  }
+  await Deno.writeTextFile(AUDIT_LOG_FILE, `${JSON.stringify(entry)}\n`, {
+    append: true,
+  }).catch(() => {})
 }
 
 /** tiny helper to send a file from disk */
@@ -235,6 +279,103 @@ const bodyTooLarge = (req: any) => {
   return Number.isFinite(contentLength) && contentLength > max
 }
 
+const isStateChangingMethod = (method: string) =>
+  method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE'
+
+const EXEMPT_ORIGIN_CHECK_PATHS = new Set([
+  '/api/access-password/verify',
+  '/api/access-password/status',
+])
+
+const EXEMPT_GLOBAL_ACCESS_PASSWORD_PATHS = new Set([
+  '/api/access-password/verify',
+  '/api/access-password/status',
+  '/api/settings-access',
+  '/api/client-config',
+  '/api/health',
+])
+const EXEMPT_CSRF_PATHS = new Set(['/api/csrf-token'])
+
+const streamingUpdateInFlight = new Map<number, Promise<any>>()
+
+const sanitizeForLog = (value: string, maxLength = 64) =>
+  String(value || '')
+    .replace(/[\r\n\t]/g, ' ')
+    .slice(0, maxLength)
+
+const validateRoomCodeAndUserName = (roomCode: string, userName: string) => {
+  if (!roomCode || !userName) {
+    return 'Missing required query params: roomCode, userName'
+  }
+  if (roomCode.length > 16) {
+    return 'roomCode is too long'
+  }
+  if (userName.length > 64) {
+    return 'userName is too long'
+  }
+  return ''
+}
+
+const parseAccessPassword = (req: any) => {
+  const header = req.headers?.get?.('x-access-password')
+  if (typeof header === 'string' && header.trim()) return header.trim()
+  const auth = req.headers?.get?.('authorization')
+  if (typeof auth === 'string' && auth.toLowerCase().startsWith('bearer ')) {
+    return auth.slice(7).trim()
+  }
+  return ''
+}
+
+const isAccessPasswordAuthorized = (req: any) => {
+  const configuredPassword = getAccessPassword()
+  if (!configuredPassword) return true
+  return timingSafeEqual(parseAccessPassword(req), configuredPassword)
+}
+
+const shouldRequireAccessPassword = (path: string) => {
+  if (!getAccessPassword()) return false
+  if (!path.startsWith('/api/')) return false
+  return !EXEMPT_GLOBAL_ACCESS_PASSWORD_PATHS.has(path)
+}
+
+const parseCookies = (req: any) => {
+  const rawCookieHeader = String(req?.headers?.get?.('cookie') || '')
+  const cookies = new Map<string, string>()
+  for (const cookiePair of rawCookieHeader.split(';')) {
+    const [rawKey, ...rest] = cookiePair.split('=')
+    const key = String(rawKey || '').trim()
+    if (!key) continue
+    cookies.set(key, rest.join('=').trim())
+  }
+  return cookies
+}
+
+const getCsrfCookieToken = (req: any) =>
+  parseCookies(req).get(CSRF_COOKIE_NAME) || ''
+
+const createCsrfToken = () =>
+  `${crypto.randomUUID()}${crypto.randomUUID().replace(/-/g, '')}`
+
+const isValidCsrfRequest = (req: any) => {
+  const cookieToken = getCsrfCookieToken(req)
+  const headerToken = String(req?.headers?.get?.('x-csrf-token') || '').trim()
+  if (!cookieToken || !headerToken) return false
+  return timingSafeEqual(cookieToken, headerToken)
+}
+
+const updateStreamingForTmdbIdDeduped = async (tmdbId: number) => {
+  if (!Number.isFinite(tmdbId) || tmdbId <= 0) {
+    return updateStreamingForTmdbId(tmdbId)
+  }
+  const existing = streamingUpdateInFlight.get(tmdbId)
+  if (existing) return existing
+  const task = updateStreamingForTmdbId(tmdbId).finally(() =>
+    streamingUpdateInFlight.delete(tmdbId)
+  )
+  streamingUpdateInFlight.set(tmdbId, task)
+  return task
+}
+
 const server = serve({ port: Number(getPort()) })
 
 const wss = new WebSocketServer({
@@ -247,13 +388,29 @@ const wss = new WebSocketServer({
 })
 
 if (Deno.build.os !== 'windows') {
-  const sigintHandler = () => {
+  const shutdownHandler = async () => {
+    if (shuttingDownPromise) {
+      await shuttingDownPromise
+      return
+    }
+    shuttingDownPromise = (async () => {
     log.info('Shutting down')
+    isShuttingDown = true
     server.close()
+    stopBackgroundUpdateJob()
+    closeIMDbDatabase()
+    await wss.close().catch(() => {})
+    const startedAt = Date.now()
+    while (activeRequests > 0 && Date.now() - startedAt < 5_000) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
     Deno.exit(0)
+    })()
+    await shuttingDownPromise
   }
 
-  Deno.addSignalListener('SIGINT', sigintHandler)
+  Deno.addSignalListener('SIGINT', shutdownHandler)
+  Deno.addSignalListener('SIGTERM', shutdownHandler)
 }
 
 log.info(`Listening on port ${getPort()}`)
@@ -294,10 +451,26 @@ log.info(`  PLEX_URL: ${getPlexUrl() ? '✅ Set' : '❌ Missing'}`)
 log.info(`  PLEX_TOKEN: ${getPlexToken() ? '✅ Set' : '❌ Missing'}`)
 
 for await (const req of server) {
+  activeRequests += 1
+  const requestStartedAt = Date.now()
+  const requestId = crypto.randomUUID()
+  let responseStatus = 200
+  let auditEvent = ''
   try {
-    if (!isValidHost(req)) {
+    if (isShuttingDown) {
+      responseStatus = 503
       await req.respond({
-        status: 421,
+        status: responseStatus,
+        body: JSON.stringify({ error: 'Server is shutting down.' }),
+        headers: makeHeaders('application/json'),
+      })
+      continue
+    }
+
+    if (!isValidHost(req)) {
+      responseStatus = 421
+      await req.respond({
+        status: responseStatus,
         headers: makeHeaders('application/json'),
         body: JSON.stringify({ error: 'Misdirected Request' }),
       })
@@ -306,6 +479,72 @@ for await (const req of server) {
 
     const url = new URL(req.url, 'http://local')
     const p = url.pathname
+
+    if (p === '/api/csrf-token' && req.method === 'GET') {
+      const token = createCsrfToken()
+      const headers = makeHeaders('application/json')
+      headers.set(
+        'set-cookie',
+        `${CSRF_COOKIE_NAME}=${token}; Path=/; SameSite=Strict`
+      )
+      await req.respond({
+        status: 200,
+        headers,
+        body: JSON.stringify({ csrfToken: token }),
+      })
+      continue
+    }
+
+    if (
+      p.startsWith('/api/') &&
+      isStateChangingMethod(req.method) &&
+      !EXEMPT_ORIGIN_CHECK_PATHS.has(p) &&
+      !isValidOrigin(req)
+    ) {
+      await req.respond({
+        status: 403,
+        body: JSON.stringify({ error: 'Invalid request origin.' }),
+        headers: makeHeaders('application/json'),
+      })
+      continue
+    }
+
+    if (
+      p.startsWith('/api/') &&
+      isStateChangingMethod(req.method) &&
+      !EXEMPT_CSRF_PATHS.has(p) &&
+      !isValidCsrfRequest(req)
+    ) {
+      await req.respond({
+        status: 403,
+        body: JSON.stringify({ error: 'Invalid CSRF token.' }),
+        headers: makeHeaders('application/json'),
+      })
+      continue
+    }
+
+    if (
+      p.startsWith('/api/') &&
+      shouldRequireAccessPassword(p) &&
+      !isAccessPasswordAuthorized(req)
+    ) {
+      responseStatus = 401
+      auditEvent = 'access_password_denied'
+      await req.respond({
+        status: responseStatus,
+        body: JSON.stringify({ error: 'Access password required.' }),
+        headers: makeHeaders('application/json'),
+      })
+      continue
+    }
+
+    if (p.startsWith('/api/') && isStateChangingMethod(req.method)) {
+      appendAuditLog('state_change_request', req, {
+        method: req.method,
+        path: p,
+        requestId,
+      }).catch(() => {})
+    }
 
     if (
       await handleRoutes(req, p, [
@@ -450,7 +689,7 @@ for await (const req of server) {
     if (p.startsWith('/api/refresh-streaming/')) {
       try {
         const tmdbId = parseInt(p.split('/').pop() || '')
-        const res = await updateStreamingForTmdbId(tmdbId)
+        const res = await updateStreamingForTmdbIdDeduped(tmdbId)
         await req.respond({
           status: res.status,
           body: JSON.stringify(res.body),
@@ -470,7 +709,7 @@ for await (const req of server) {
     if (p.startsWith('/api/update-persisted-movie/') && req.method === 'POST') {
       try {
         const tmdbId = parseInt(p.split('/').pop() || '')
-        const res = await updateStreamingForTmdbId(tmdbId)
+        const res = await updateStreamingForTmdbIdDeduped(tmdbId)
         await req.respond({
           status: res.status,
           body: JSON.stringify({
@@ -494,9 +733,7 @@ for await (const req of server) {
     // --- API: Refresh movie data (ratings + Plex status)
     if (p.startsWith('/api/refresh-movie/')) {
       // correlation id per call
-      const rid = `${Date.now().toString(36)}-${Math.random()
-        .toString(36)
-        .slice(2, 8)}`
+      const rid = crypto.randomUUID()
       try {
         const rawParam = decodeURIComponent(p.split('/').pop() || '')
         const idParam = rawParam.trim()
@@ -765,11 +1002,12 @@ for await (const req of server) {
         const roomCode = url.searchParams.get('roomCode')?.trim() || ''
         const userName = url.searchParams.get('userName')?.trim() || ''
 
-        if (!roomCode || !userName) {
+        const validationError = validateRoomCodeAndUserName(roomCode, userName)
+        if (validationError) {
           await req.respond({
             status: 400,
             body: JSON.stringify({
-              error: 'Missing required query params: roomCode, userName',
+              error: validationError,
             }),
             headers: makeHeaders('application/json'),
           })
@@ -822,18 +1060,23 @@ for await (const req of server) {
         const body = decoder.decode(await Deno.readAll(req.body))
         const { csvContent, roomCode, userName, fileName } = JSON.parse(body)
 
-        if (!csvContent || !roomCode || !userName) {
+        const validationError = validateRoomCodeAndUserName(roomCode, userName)
+        if (!csvContent || validationError) {
           await req.respond({
             status: 400,
             body: JSON.stringify({
-              error: 'Missing required fields: csvContent, roomCode, userName',
+              error: validationError || 'Missing required field: csvContent',
             }),
             headers: makeHeaders('application/json'),
           })
           continue
         }
 
-        log.info(`IMDb CSV import requested by ${userName} in room ${roomCode}`)
+        log.info(
+          `IMDb CSV import requested by ${sanitizeForLog(
+            userName
+          )} in room ${sanitizeForLog(roomCode, 16)}`
+        )
 
         // Parse the CSV
         const rows = parseImdbCsv(csvContent)
@@ -1112,8 +1355,23 @@ for await (const req of server) {
     await serveFile(req, '/public')
   } catch (err) {
     log.error(`Error handling request: ${err?.message ?? err}`)
+    responseStatus = 500
     try {
       await req.respond({ status: 500, body: new TextEncoder().encode('500') })
     } catch {}
+  } finally {
+    try {
+      const reqPath = new URL(req.url, 'http://local').pathname
+      if (reqPath.startsWith('/api/')) {
+        appendAuditLog(auditEvent || 'api_request_complete', req, {
+          requestId,
+          status: responseStatus,
+          durationMs: Date.now() - requestStartedAt,
+        }).catch(() => {})
+      }
+    } catch {
+      // ignore
+    }
+    activeRequests = Math.max(0, activeRequests - 1)
   }
 }

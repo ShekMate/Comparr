@@ -31,6 +31,13 @@ export const serveFile = async (req: ServerRequest, basePath = 'public') => {
   const reqPathRaw = urlPath === '' ? 'index.html' : urlPath
 
   const normalizedPath = join(publicRoot, reqPathRaw)
+  const rootPrefix = publicRoot.endsWith('/') ? publicRoot : `${publicRoot}/`
+
+  if (normalizedPath !== publicRoot && !normalizedPath.startsWith(rootPrefix)) {
+    const headers = new Headers({ 'content-type': 'text/plain' })
+    addSecurityHeaders(headers)
+    return await req.respond({ status: 403, body: 'Forbidden', headers })
+  }
 
   log.debug(`serveFile(${normalizedPath})`)
 

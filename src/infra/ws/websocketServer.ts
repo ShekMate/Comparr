@@ -48,7 +48,7 @@ export class WebSocketServer {
 
   private isAllowedOrigin(req: ServerRequest) {
     const origin = String(req.headers.get('origin') || '').trim()
-    if (!origin) return true
+    if (!origin) return false
 
     const allowed = getAllowedOrigins()
     const host = String(req.headers.get('host') || '').trim().toLowerCase()
@@ -109,8 +109,11 @@ export class WebSocketServer {
     }
   }
 
-  close() {
+  async close() {
+    const clients = Array.from(this.clients)
     this.clients.clear()
+    this.ipConnections.clear()
+    await Promise.allSettled(clients.map(client => client.close(1001, 'Server shutdown')))
   }
 }
 

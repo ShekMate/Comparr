@@ -13,6 +13,7 @@ import {
   PlexMediaProviders,
   PlexVideo,
 } from './plex.types.ts'
+import { fetchWithTimeout } from '../infra/http/fetch-with-timeout.ts'
 
 const getPlexConfig = () => {
   const plexUrl = getPlexUrl()
@@ -45,12 +46,12 @@ export const getSections = async (): Promise<
   const { plexUrl, plexToken } = getPlexConfig()
   log.debug(`getSections: ${plexUrl}/library/sections`)
 
-  const req = await fetch(
-    `${plexUrl}/library/sections?X-Plex-Token=${plexToken}`,
-    {
-      headers: { accept: 'application/json' },
-    }
-  )
+  const req = await fetchWithTimeout(`${plexUrl}/library/sections`, {
+    headers: {
+      accept: 'application/json',
+      'X-Plex-Token': plexToken,
+    },
+  })
 
   if (req.ok) {
     return await req.json()
@@ -107,10 +108,13 @@ const loadAllMovies = async () => {
     const { plexUrl, plexToken } = getPlexConfig()
     log.debug(`Loading movies from ${movieSection.title} library`)
 
-    const req = await fetch(
-      `${plexUrl}/library/sections/${movieSection.key}/all?X-Plex-Token=${plexToken}`,
+    const req = await fetchWithTimeout(
+      `${plexUrl}/library/sections/${movieSection.key}/all`,
       {
-        headers: { accept: 'application/json' },
+        headers: {
+          accept: 'application/json',
+          'X-Plex-Token': plexToken,
+        },
       }
     )
 
@@ -332,12 +336,12 @@ export const getServerId = (() => {
     if (serverId) return serverId
     const { plexUrl, plexToken } = getPlexConfig()
 
-    const req = await fetch(
-      `${plexUrl}/media/providers?X-Plex-Token=${plexToken}`,
-      {
-        headers: { accept: 'application/json' },
-      }
-    )
+    const req = await fetchWithTimeout(`${plexUrl}/media/providers`, {
+      headers: {
+        accept: 'application/json',
+        'X-Plex-Token': plexToken,
+      },
+    })
 
     if (!req.ok) {
       if (req.status === 401) {
@@ -369,9 +373,13 @@ export const proxyPoster = async (req: ServerRequest, key: string) => {
 
   const posterUrl = encodeURIComponent(`/library/metadata/${key}`)
   const { plexUrl, plexToken } = getPlexConfig()
-  const url = `${plexUrl}/photo/:/transcode?X-Plex-Token=${plexToken}&width=${width}&height=${height}&minSize=1&upscale=1&url=${posterUrl}`
+  const url = `${plexUrl}/photo/:/transcode?width=${width}&height=${height}&minSize=1&upscale=1&url=${posterUrl}`
   try {
-    const posterReq = await fetch(url)
+    const posterReq = await fetchWithTimeout(url, {
+      headers: {
+        'X-Plex-Token': plexToken,
+      },
+    })
 
     if (!posterReq.ok) {
       if (posterReq.status === 401) {
