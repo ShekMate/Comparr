@@ -156,16 +156,16 @@ const hasAdminPasswordConfigured = (settings: Record<string, unknown>) =>
   Boolean(String(settings.ADMIN_PASSWORD ?? '').trim())
 
 const isBootstrappingAdminPassword = (
-  req: any,
   settings: Record<string, unknown>,
-  incomingSettings: Record<string, unknown>,
-  isLocalRequest: (req: any) => boolean
+  incomingSettings: Record<string, unknown>
 ) => {
   if (hasAdminPasswordConfigured(settings)) return false
-  if (!isLocalRequest(req)) return false
+  if (String(settings.ACCESS_PASSWORD ?? '').trim()) return false
 
   const keys = Object.keys(incomingSettings)
-  if (keys.length !== 1 || keys[0] !== 'ADMIN_PASSWORD') return false
+  if (keys.length === 0) return false
+  if (!keys.every(key => key === 'ADMIN_PASSWORD' || key === 'ACCESS_PASSWORD'))
+    return false
 
   const candidate = String(incomingSettings.ADMIN_PASSWORD ?? '').trim()
   return candidate.length > 0
@@ -486,10 +486,8 @@ export async function handleSettingsRoutes(
         ((settings ?? {}) as Record<string, unknown>) || {}
 
       const isAdminPasswordBootstrap = isBootstrappingAdminPassword(
-        req,
         currentSettings,
-        incomingSettings,
-        isLocalRequest
+        incomingSettings
       )
 
       if (!isAdmin && !isAdminPasswordBootstrap) {

@@ -35,7 +35,6 @@ jobs:
 
       - name: Run Backend Tests (Deno)
         run: npm run test:backend
-        continue-on-error: true
         env:
           PLEX_URL: http://localhost:32400
           PLEX_TOKEN: test-token
@@ -47,7 +46,6 @@ jobs:
 
       - name: Run Frontend Tests (Vitest)
         run: npm run test:frontend
-        continue-on-error: true
 
       - name: Generate Backend Coverage
         run: npm run coverage:backend
@@ -64,6 +62,7 @@ jobs:
 
       - name: Upload Backend Coverage
         uses: codecov/codecov-action@v4
+        continue-on-error: true
         with:
           files: ./coverage/backend-lcov.info
           flags: backend
@@ -71,10 +70,10 @@ jobs:
           fail_ci_if_error: false
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        continue-on-error: true
 
       - name: Upload Frontend Coverage
         uses: codecov/codecov-action@v4
+        continue-on-error: true
         with:
           files: ./coverage/lcov.info
           flags: frontend
@@ -82,7 +81,6 @@ jobs:
           fail_ci_if_error: false
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        continue-on-error: true
 
       - name: Comment Test Results on PR
         if: github.event_name == 'pull_request'
