@@ -702,6 +702,17 @@ for await (const req of server) {
       continue
     }
 
+    const routeResponse = await handleRoutes(req, p, [
+      handleConfigDebugRoute,
+      handleRequestServiceRoutes,
+      handleRoomRoutes,
+      handleMatchesRoute,
+    ])
+    if (routeResponse) {
+      await req.respondWith(routeResponse)
+      continue
+    }
+
     // --- API: Request movie via Jellyseerr/Overseerr
     if (p === '/api/request-movie' && req.method === 'POST') {
       try {
