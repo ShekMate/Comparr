@@ -137,7 +137,7 @@ export async function requestMovie(tmdbId: number): Promise<RequestResponse> {
       // Try to parse the actual error message from Jellyseerr/Overseerr
       let errorMessage = response.statusText
       try {
-        const errorData = JSON.parse(errorText)
+        const errorData: { message?: string } = JSON.parse(errorText)
         errorMessage = errorData.message || errorMessage
       } catch {
         // If not JSON, use the raw text or status text
@@ -172,11 +172,14 @@ export async function getMediaStatus(
   }
 
   try {
-    const response = await fetchWithTimeout(`${config.url}/api/v1/movie/${tmdbId}`, {
-      headers: {
-        'X-Api-Key': config.apiKey,
-      },
-    })
+    const response = await fetchWithTimeout(
+      `${config.url}/api/v1/movie/${tmdbId}`,
+      {
+        headers: {
+          'X-Api-Key': config.apiKey,
+        },
+      }
+    )
 
     if (!response.ok) {
       return null
