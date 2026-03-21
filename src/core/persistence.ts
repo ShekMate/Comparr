@@ -1,7 +1,7 @@
 // persistence.ts (Deno)
 // Minimal file-based persistence for per-room user responses
 
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import * as log from 'jsr:@std/log'
 
 export type PersistedResponse = {
   guid: string

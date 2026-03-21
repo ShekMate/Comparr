@@ -5,7 +5,7 @@
 import { getIMDbRating } from './imdb-datasets.ts'
 import { getPlexLibraryName, getTmdbApiKey } from '../../core/config.ts'
 import { tmdbFetch } from '../../api/tmdb.ts'
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import * as log from 'jsr:@std/log'
 
 const getTmdbKey = () => getTmdbApiKey()
 const tmdbCache = new Map<string, any>()
