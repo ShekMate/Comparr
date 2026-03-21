@@ -409,10 +409,11 @@ const updateStreamingForTmdbIdDeduped = async (tmdbId: number) => {
 }
 
 
-const serveCompat = (options: { port: number }) => {
+const serveCompat = (options: { port: number; hostname?: string }) => {
   const queue: CompatRequest[] = []
   const waiters: Array<(value: IteratorResult<CompatRequest>) => void> = []
   const abortController = new AbortController()
+  const hostname = options.hostname ?? '0.0.0.0'
   let closed = false
 
   const flush = () => {
@@ -430,7 +431,7 @@ const serveCompat = (options: { port: number }) => {
     }
   }
 
-  Deno.serve({ port: options.port, signal: abortController.signal }, (request, info) => {
+  Deno.serve({ port: options.port, hostname, signal: abortController.signal }, (request, info) => {
     if (closed) return new Response('Server shutting down', { status: 503 })
 
     return new Promise<Response>(resolve => {
@@ -492,7 +493,7 @@ const serveCompat = (options: { port: number }) => {
   }
 }
 
-const server = serveCompat({ port: Number(getPort()) })
+const server = serveCompat({ port: Number(getPort()), hostname: '0.0.0.0' })
 
 const wss = new WebSocketServer({
   onConnection: (ws, req) =>
