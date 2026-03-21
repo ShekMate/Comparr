@@ -1,10 +1,10 @@
-import { ServerRequest } from 'https://deno.land/std@0.79.0/http/server.ts'
+import type { CompatRequest } from './compat-request.ts'
 import {
   extname,
   join,
   normalize,
-} from 'https://deno.land/std@0.79.0/path/posix.ts'
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+} from 'node:path/posix'
+import * as log from 'jsr:@std/log'
 import { translateHTML } from '../../core/i18n.ts'
 import { addSecurityHeaders } from './security-headers.ts'
 
@@ -24,7 +24,10 @@ function normalizeURL(url: string): string {
     : normalizedUrl
 }
 
-export const serveFile = async (req: ServerRequest, basePath = 'public') => {
+export const serveFile = async (
+  req: CompatRequest,
+  basePath = 'public'
+): Promise<Response> => {
   const publicRoot = join(Deno.cwd(), basePath.replace(/^\/+/, ''))
   const urlPath = normalizeURL(req.url).replace(/^\/+/, '') // strip leading '/'
   // Use index.html for root path (handles both '/' and '/?query=params')
@@ -36,7 +39,7 @@ export const serveFile = async (req: ServerRequest, basePath = 'public') => {
   if (normalizedPath !== publicRoot && !normalizedPath.startsWith(rootPrefix)) {
     const headers = new Headers({ 'content-type': 'text/plain' })
     addSecurityHeaders(headers, req)
-    return await req.respond({ status: 403, body: 'Forbidden', headers })
+    return new Response('Forbidden', { status: 403, headers })
   }
 
   log.debug(`serveFile(${normalizedPath})`)
@@ -58,10 +61,7 @@ export const serveFile = async (req: ServerRequest, basePath = 'public') => {
     })
     addSecurityHeaders(headers, req)
 
-    return await req.respond({
-      body,
-      headers,
-    })
+    return new Response(body, { status: 200, headers })
   } catch (err) {
     // --- DEBUG for missing posters: show the final filesystem path that caused 404
     try {
@@ -77,7 +77,7 @@ export const serveFile = async (req: ServerRequest, basePath = 'public') => {
 
     const headers = new Headers({ 'content-type': 'text/plain' })
     addSecurityHeaders(headers, req)
-    return await req.respond({ status: 404, body: 'Not Found', headers })
+    return new Response('Not Found', { status: 404, headers })
   }
 }
 

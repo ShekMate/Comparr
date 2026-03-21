@@ -3,7 +3,7 @@ import {
   assertEquals,
   assertExists,
   assertThrows,
-} from 'std/testing/asserts.ts'
+} from 'jsr:@std/assert'
 
 export { assertEquals, assertExists, assertThrows }
 

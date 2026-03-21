@@ -1,6 +1,5 @@
-import { ServerRequest } from 'https://deno.land/std@0.79.0/http/server.ts'
-import { assert } from 'https://deno.land/std@0.79.0/_util/assert.ts'
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import { assert } from '../core/assert.ts'
+import * as log from 'jsr:@std/log'
 import {
   getCollectionFilter,
   getLibraryFilter,
@@ -359,14 +358,16 @@ export const getServerId = (() => {
   }
 })()
 
-export const proxyPoster = async (req: ServerRequest, key: string) => {
-  const [, search] = req.url.split('?')
-  const searchParams = new URLSearchParams(search)
+export const proxyPoster = async (
+  req: Request,
+  key: string
+): Promise<Response> => {
+  const { searchParams } = new URL(req.url)
 
   const width = searchParams.has('w') ? Number(searchParams.get('w')) : 500
 
   if (Number.isNaN(width)) {
-    return req.respond({ status: 404 })
+    return new Response(null, { status: 404 })
   }
 
   const height = width * 1.5
@@ -374,6 +375,7 @@ export const proxyPoster = async (req: ServerRequest, key: string) => {
   const posterUrl = encodeURIComponent(`/library/metadata/${key}`)
   const { plexUrl, plexToken } = getPlexConfig()
   const url = `${plexUrl}/photo/:/transcode?width=${width}&height=${height}&minSize=1&upscale=1&url=${posterUrl}`
+
   try {
     const posterReq = await fetchWithTimeout(url, {
       headers: {
@@ -384,33 +386,30 @@ export const proxyPoster = async (req: ServerRequest, key: string) => {
     if (!posterReq.ok) {
       if (posterReq.status === 401) {
         throw new PlexTokenError(`Authentication error: ${posterReq.url}`)
-      } else {
-        throw new Error(
-          `${posterReq.url} returned ${
-            posterReq.status
-          }: ${await posterReq.text()}`
-        )
       }
+
+      throw new Error(
+        `${posterReq.url} returned ${posterReq.status}: ${await posterReq.text()}`
+      )
     }
 
     const imageData = new Uint8Array(await posterReq.arrayBuffer())
 
-    // Cache the downloaded poster
     const { cachePoster } = await import('../services/cache/poster-cache.ts')
     cachePoster(key, 'plex', url).catch(err =>
       log.error(`Failed to cache Plex poster: ${err}`)
     )
 
-    await req.respond({
+    return new Response(imageData, {
       status: 200,
-      body: imageData,
       headers: new Headers({
         'content-type': 'image/jpeg',
-        'cache-control': 'public, max-age=604800, immutable', // Cache for 7 days
+        'cache-control': 'public, max-age=604800, immutable',
       }),
     })
   } catch (err) {
     log.error(`Failed to load ${url}. ${err}`)
+    return new Response(null, { status: 500 })
   }
 }
 

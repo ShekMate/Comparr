@@ -1,4 +1,4 @@
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import * as log from 'jsr:@std/log'
 
 import { getTmdbApiKey } from '../../core/config.ts'
 import { tmdbFetch } from '../../api/tmdb.ts'
