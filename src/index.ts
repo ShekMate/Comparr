@@ -677,17 +677,28 @@ for await (const req of server) {
       )
     }
 
-    if (
-      await handleSettingsRoutes(req, p, {
-        buildPlexCache,
-        clearAllMoviesCache,
-        getPlexLibraryName,
-        getSettings,
-        isLocalRequest,
-        refreshRadarrCache,
-        updateSettings,
-      })
-    ) {
+    const settingsRouteResponse = await handleSettingsRoutes(req, p, {
+      buildPlexCache,
+      clearAllMoviesCache,
+      getPlexLibraryName,
+      getSettings,
+      isLocalRequest,
+      refreshRadarrCache,
+      updateSettings,
+    })
+    if (settingsRouteResponse) {
+      await req.respondWith(settingsRouteResponse)
+      continue
+    }
+
+    const routeResponse = await handleRoutes(req, p, [
+      handleConfigDebugRoute,
+      handleRequestServiceRoutes,
+      handleRoomRoutes,
+      handleMatchesRoute,
+    ])
+    if (routeResponse) {
+      await req.respondWith(routeResponse)
       continue
     }
 
@@ -1314,7 +1325,7 @@ for await (const req of server) {
 
     // --- WebSocket for app events/login
     if (p === '/ws') {
-      wss.connect(req)
+      await req.respondWith(await wss.connect(req))
       continue
     }
 
@@ -1361,7 +1372,10 @@ for await (const req of server) {
       if (cachedPosterPath?.startsWith('/cached-poster/')) {
         const filename = cachedPosterPath.slice('/cached-poster/'.length)
         const served = await serveCachedPoster(filename, req)
-        if (served) continue
+        if (served) {
+          await req.respondWith(served)
+          continue
+        }
       }
 
       const tmdbUrl = `https://image.tmdb.org/t/p/w500${normalizedPosterPath}`
@@ -1460,7 +1474,7 @@ for await (const req of server) {
     // --- Serve SPA + static files from ./public (explicit fast-paths)
     // Serve index.html through the templated static server so ${...} variables resolve
     if (p === '/' || p === '/index.html') {
-      await serveFile(req, '/public')
+      await req.respondWith(await serveFile(req, '/public'))
       continue
     }
 
@@ -1481,7 +1495,9 @@ for await (const req of server) {
     if (p.startsWith('/cached-poster/')) {
       const filename = p.slice('/cached-poster/'.length)
       const served = await serveCachedPoster(filename, req)
-      if (!served) {
+      if (served) {
+        await req.respondWith(served)
+      } else {
         await req.respond({ status: 404, body: 'Not Found' })
       }
       continue // handled
@@ -1494,13 +1510,15 @@ for await (const req of server) {
     if (p.startsWith('/cached-poster/')) {
       const filename = p.slice('/cached-poster/'.length)
       const served = await serveCachedPoster(filename, req)
-      if (!served) {
+      if (served) {
+        await req.respondWith(served)
+      } else {
         await req.respond({ status: 404, body: 'Not Found' })
       }
       continue // handled
     }
 
-    await serveFile(req, '/public')
+    await req.respondWith(await serveFile(req, '/public'))
   } catch (err) {
     log.error(`Error handling request: ${err?.message ?? err}`)
     responseStatus = 500

@@ -270,23 +270,21 @@ export function prefetchPoster(
 export async function serveCachedPoster(
   filename: string,
   req: CompatRequest
-): Promise<boolean> {
+): Promise<Response | null> {
   const filepath = `${POSTER_CACHE_DIR}/${filename}`
 
   try {
     const imageData = await Deno.readFile(filepath)
-    await req.respond({
+    return new Response(imageData, {
       status: 200,
-      body: imageData,
       headers: new Headers({
         'content-type': 'image/jpeg',
         'cache-control': 'public, max-age=31536000, immutable', // Cache for 1 year
       }),
     })
-    return true
   } catch (err) {
     log.error(`Failed to serve cached poster ${filename}: ${err}`)
-    return false
+    return null
   }
 }
 

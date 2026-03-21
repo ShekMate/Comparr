@@ -282,7 +282,7 @@ export async function handleSettingsRoutes(
   req: CompatRequest,
   pathname: string,
   deps: SettingsRouteDeps
-): Promise<boolean> {
+): Promise<Response | null> {
   const {
     buildPlexCache,
     clearAllMoviesCache,
@@ -298,29 +298,25 @@ export async function handleSettingsRoutes(
     const hasAdminPassword = hasAdminPasswordConfigured(settings)
     const canAccess = true
 
-    await req.respond({
-      status: 200,
-      body: JSON.stringify({
+    return new Response(
+      JSON.stringify({
         canAccess,
         requiresAdminPassword: hasAdminPassword,
       }),
-      headers: makeJsonHeaders(req),
-    })
-    return true
+      { status: 200, headers: makeJsonHeaders(req) }
+    )
   }
 
   if (pathname === '/api/access-password/verify' && req.method === 'POST') {
     const ip = getClientIp(req)
     if (!loginRateLimiter.check(ip)) {
-      await req.respond({
-        status: 429,
-        body: JSON.stringify({
+      return new Response(
+        JSON.stringify({
           success: false,
           message: 'Too many attempts. Please wait and retry.',
         }),
-        headers: makeJsonHeaders(req),
-      })
-      return true
+        { status: 429, headers: makeJsonHeaders(req) }
+      )
     }
 
     try {
@@ -353,39 +349,34 @@ export async function handleSettingsRoutes(
         )
       }
 
-      await req.respond({
-        status: isValid ? 200 : 401,
-        body: JSON.stringify({
+      return new Response(
+        JSON.stringify({
           success: isValid,
           message: isValid
             ? 'Access password verified.'
             : 'Incorrect access password. Please try again.',
         }),
-        headers,
-      })
+        { status: isValid ? 200 : 401, headers }
+      )
     } catch (err) {
       log.error(`Failed to verify access password: ${err}`)
-      await req.respond({
-        status: 400,
-        body: JSON.stringify({
+      return new Response(
+        JSON.stringify({
           success: false,
           message: 'Could not verify access password. Please try again.',
         }),
-        headers: makeJsonHeaders(req),
-      })
+        { status: 400, headers: makeJsonHeaders(req) }
+      )
     }
-    return true
   }
 
   if (pathname === '/api/access-password/status' && req.method === 'GET') {
-    await req.respond({
-      status: 404,
-      body: JSON.stringify({
+    return new Response(
+      JSON.stringify({
         message: 'Not Found',
       }),
-      headers: makeJsonHeaders(req),
-    })
-    return true
+      { status: 404, headers: makeJsonHeaders(req) }
+    )
   }
 
   if (pathname === '/api/client-config') {
@@ -400,9 +391,8 @@ export async function handleSettingsRoutes(
       Boolean(String(settings.JELLYFIN_URL || '').trim()) &&
       Boolean(String(settings.JELLYFIN_API_KEY || '').trim())
     const tmdbConfigured = Boolean(String(settings.TMDB_API_KEY || '').trim())
-    await req.respond({
-      status: 200,
-      body: JSON.stringify({
+    return new Response(
+      JSON.stringify({
         plexLibraryName: getPlexLibraryName(),
         plexConfigured,
         embyConfigured,
@@ -414,58 +404,49 @@ export async function handleSettingsRoutes(
           String(settings.SETUP_WIZARD_COMPLETED || '').toLowerCase() ===
           'true',
       }),
-      headers: makeJsonHeaders(req),
-    })
-    return true
+      { status: 200, headers: makeJsonHeaders(req) }
+    )
   }
 
   if (pathname === '/api/settings-test' && req.method === 'POST') {
     const ip = getClientIp(req)
     if (!apiRateLimiter.check(ip)) {
-      await req.respond({
-        status: 429,
-        body: JSON.stringify({
+      return new Response(
+        JSON.stringify({
           ok: false,
           message: 'Too many requests. Please wait.',
         }),
-        headers: makeJsonHeaders(req),
-      })
-      return true
+        { status: 429, headers: makeJsonHeaders(req) }
+      )
     }
 
     if (!isValidStateChangingOrigin(req)) {
-      await req.respond({
-        status: 403,
-        body: JSON.stringify({ ok: false, message: 'Invalid request origin.' }),
-        headers: makeJsonHeaders(req),
-      })
-      return true
+      return new Response(
+        JSON.stringify({ ok: false, message: 'Invalid request origin.' }),
+        { status: 403, headers: makeJsonHeaders(req) }
+      )
     }
 
     const settings = getSettings()
     if (!hasAdminPasswordConfigured(settings)) {
-      await req.respond({
-        status: 403,
-        body: JSON.stringify({
+      return new Response(
+        JSON.stringify({
           ok: false,
           message:
             'Admin password is not configured. Set ADMIN_PASSWORD before running connection tests.',
         }),
-        headers: makeJsonHeaders(req),
-      })
-      return true
+        { status: 403, headers: makeJsonHeaders(req) }
+      )
     }
 
     if (!isAdminAuthorized(req, settings, isLocalRequest)) {
-      await req.respond({
-        status: 403,
-        body: JSON.stringify({
+      return new Response(
+        JSON.stringify({
           ok: false,
           message: getAdminAuthFailureMessage(req, settings, isLocalRequest),
         }),
-        headers: makeJsonHeaders(req),
-      })
-      return true
+        { status: 403, headers: makeJsonHeaders(req) }
+      )
     }
 
     try {
@@ -482,47 +463,39 @@ export async function handleSettingsRoutes(
         payload?.token || ''
       )
 
-      await req.respond({
+      return new Response(JSON.stringify(result), {
         status: result.ok ? 200 : 400,
-        body: JSON.stringify(result),
         headers: makeJsonHeaders(req),
       })
     } catch (err) {
-      await req.respond({
-        status: 500,
-        body: JSON.stringify({
+      return new Response(
+        JSON.stringify({
           ok: false,
           message: 'An internal error occurred.',
         }),
-        headers: makeJsonHeaders(req),
-      })
+        { status: 500, headers: makeJsonHeaders(req) }
+      )
     }
-
-    return true
   }
 
   if (pathname === '/api/settings' && req.method === 'GET') {
     const settings = getSettings()
     const isAdmin = isAdminAuthorized(req, settings, isLocalRequest)
 
-    await req.respond({
-      status: 200,
-      body: JSON.stringify({
+    return new Response(
+      JSON.stringify({
         settings: sanitizeSettingsForClient(settings, isAdmin),
       }),
-      headers: makeJsonHeaders(req),
-    })
-    return true
+      { status: 200, headers: makeJsonHeaders(req) }
+    )
   }
 
   if (pathname === '/api/settings' && req.method === 'POST') {
     if (!isValidStateChangingOrigin(req)) {
-      await req.respond({
-        status: 403,
-        body: JSON.stringify({ error: 'Invalid request origin.' }),
-        headers: makeJsonHeaders(req),
-      })
-      return true
+      return new Response(
+        JSON.stringify({ error: 'Invalid request origin.' }),
+        { status: 403, headers: makeJsonHeaders(req) }
+      )
     }
 
     const currentSettings = getSettings()
@@ -549,18 +522,16 @@ export async function handleSettingsRoutes(
           attemptedAdminOnlySettings.length ===
             Object.keys(incomingSettings).length
         ) {
-          await req.respond({
-            status: 403,
-            body: JSON.stringify({
+          return new Response(
+            JSON.stringify({
               error: getAdminAuthFailureMessage(
                 req,
                 currentSettings,
                 isLocalRequest
               ),
             }),
-            headers: makeJsonHeaders(req),
-          })
-          return true
+            { status: 403, headers: makeJsonHeaders(req) }
+          )
         }
 
         for (const key of attemptedAdminOnlySettings) {
@@ -599,36 +570,30 @@ export async function handleSettingsRoutes(
         )
       }
 
-      await req.respond({
-        status: 200,
-        body: JSON.stringify({
+      return new Response(
+        JSON.stringify({
           settings: sanitizeSettingsForClient(updated, isAdmin),
         }),
-        headers: makeJsonHeaders(req),
-      })
+        { status: 200, headers: makeJsonHeaders(req) }
+      )
     } catch (err) {
       if (err instanceof SettingsValidationError) {
-        await req.respond({
-          status: 400,
-          body: JSON.stringify({
+        return new Response(
+          JSON.stringify({
             error: 'Invalid settings payload',
             details: err.details,
           }),
-          headers: makeJsonHeaders(req),
-        })
-        return true
+          { status: 400, headers: makeJsonHeaders(req) }
+        )
       }
 
       log.error(`Settings update failed: ${err}`)
-      await req.respond({
-        status: 500,
-        body: JSON.stringify({ error: 'Failed to update settings' }),
-        headers: makeJsonHeaders(req),
-      })
+      return new Response(
+        JSON.stringify({ error: 'Failed to update settings' }),
+        { status: 500, headers: makeJsonHeaders(req) }
+      )
     }
-
-    return true
   }
 
-  return false
+  return null
 }
