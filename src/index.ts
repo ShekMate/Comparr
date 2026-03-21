@@ -274,7 +274,7 @@ async function respondFile(req: any, filePath: string, contentType?: string) {
 const makeHeaders = (contentType?: string) => {
   const headers = new Headers()
   if (contentType) headers.set('content-type', contentType)
-  addSecurityHeaders(headers)
+  addSecurityHeaders(headers, req)
   return headers
 }
 
@@ -285,7 +285,10 @@ const bodyTooLarge = (req: any) => {
 }
 
 const isStateChangingMethod = (method: string) =>
-  method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE'
+  method === 'POST' ||
+  method === 'PUT' ||
+  method === 'PATCH' ||
+  method === 'DELETE'
 
 const EXEMPT_ORIGIN_CHECK_PATHS = new Set([
   '/api/access-password/verify',
@@ -377,7 +380,9 @@ const shouldUseSecureCookies = (req: any) => {
     .trim()
     .toLowerCase()
   if (xfProto) return xfProto === 'https'
-  return String(req?.url || '').toLowerCase().startsWith('https://')
+  return String(req?.url || '')
+    .toLowerCase()
+    .startsWith('https://')
 }
 
 const isValidCsrfRequest = (req: any) => {
@@ -418,17 +423,17 @@ if (Deno.build.os !== 'windows') {
       return
     }
     shuttingDownPromise = (async () => {
-    log.info('Shutting down')
-    isShuttingDown = true
-    server.close()
-    stopBackgroundUpdateJob()
-    closeIMDbDatabase()
-    await wss.close().catch(() => {})
-    const startedAt = Date.now()
-    while (activeRequests > 0 && Date.now() - startedAt < 5_000) {
-      await new Promise(resolve => setTimeout(resolve, 100))
-    }
-    Deno.exit(0)
+      log.info('Shutting down')
+      isShuttingDown = true
+      server.close()
+      stopBackgroundUpdateJob()
+      closeIMDbDatabase()
+      await wss.close().catch(() => {})
+      const startedAt = Date.now()
+      while (activeRequests > 0 && Date.now() - startedAt < 5_000) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+      Deno.exit(0)
     })()
     await shuttingDownPromise
   }
@@ -578,7 +583,9 @@ for await (const req of server) {
         path: p,
         requestId,
       }).catch(err =>
-        log.error(`Failed to append state-change audit log: ${err?.message || err}`)
+        log.error(
+          `Failed to append state-change audit log: ${err?.message || err}`
+        )
       )
     }
 
@@ -1419,7 +1426,9 @@ for await (const req of server) {
           status: responseStatus,
           durationMs: Date.now() - requestStartedAt,
         }).catch(err =>
-          log.error(`Failed to append request audit log: ${err?.message || err}`)
+          log.error(
+            `Failed to append request audit log: ${err?.message || err}`
+          )
         )
       }
     } catch {

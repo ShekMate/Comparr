@@ -218,8 +218,9 @@ Comparr persists application settings in `/data/settings.json` after you save th
 | `LOG_LEVEL`              | Logging verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR`   | `INFO`            |
 | `MOVIE_BATCH_SIZE`       | Number of movies to load at once                         | `20`              |
 | `ROOT_PATH`              | Base path if running behind a reverse proxy              | _(none)_          |
+| `FRAME_ANCESTORS`        | CSP `frame-ancestors` value (default: `'none'`)          | `'none'`          |
 | `STREAMING_PROFILE_MODE` | Availability filtering mode (`anywhere`, etc.)           | `anywhere`        |
-| `LINK_TYPE`              | Movie link behavior (`app` or `plex.tv`)                | `app`             |
+| `LINK_TYPE`              | Movie link behavior (`app` or `plex.tv`)                 | `app`             |
 
 #### Library Filtering
 

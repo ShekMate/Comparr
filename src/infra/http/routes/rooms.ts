@@ -7,9 +7,9 @@ import {
 } from '../../../features/session/session.ts'
 import { addSecurityHeaders } from '../security-headers.ts'
 
-const makeJsonHeaders = () => {
+const makeJsonHeaders = (req?: any) => {
   const headers = new Headers({ 'content-type': 'application/json' })
-  addSecurityHeaders(headers)
+  addSecurityHeaders(headers, req)
   return headers
 }
 
@@ -21,7 +21,7 @@ export async function handleRoomRoutes(req: any, path: string) {
     if (!isValidRoomCode(roomCode)) {
       await req.respond({
         status: 400,
-        headers: makeJsonHeaders(),
+        headers: makeJsonHeaders(req),
         body: JSON.stringify({
           success: false,
           exists: false,
@@ -33,7 +33,7 @@ export async function handleRoomRoutes(req: any, path: string) {
 
     await req.respond({
       status: 200,
-      headers: makeJsonHeaders(),
+      headers: makeJsonHeaders(req),
       body: JSON.stringify({
         success: true,
         exists: doesRoomCodeExist(roomCode),
@@ -48,7 +48,7 @@ export async function handleRoomRoutes(req: any, path: string) {
       const roomCode = await generateUniqueRoomCode()
       await req.respond({
         status: 200,
-        headers: makeJsonHeaders(),
+        headers: makeJsonHeaders(req),
         body: JSON.stringify({ success: true, roomCode }),
       })
       return true
@@ -56,7 +56,7 @@ export async function handleRoomRoutes(req: any, path: string) {
       log.error(`Failed to generate room code: ${err}`)
       await req.respond({
         status: 500,
-        headers: makeJsonHeaders(),
+        headers: makeJsonHeaders(req),
         body: JSON.stringify({
           success: false,
           message:

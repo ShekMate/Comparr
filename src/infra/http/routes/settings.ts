@@ -24,9 +24,9 @@ const getClientIp = (req: any) => {
   return String(hostname || 'unknown')
 }
 
-const makeJsonHeaders = () => {
+const makeJsonHeaders = (req?: any) => {
   const headers = new Headers({ 'content-type': 'application/json' })
-  addSecurityHeaders(headers)
+  addSecurityHeaders(headers, req)
   return headers
 }
 
@@ -50,7 +50,9 @@ const shouldUseSecureCookies = (req: any) => {
     .trim()
     .toLowerCase()
   if (xfProto) return xfProto === 'https'
-  return String(req?.url || '').toLowerCase().startsWith('https://')
+  return String(req?.url || '')
+    .toLowerCase()
+    .startsWith('https://')
 }
 
 const isValidHttpUrl = (value: string) => {
@@ -301,7 +303,7 @@ export async function handleSettingsRoutes(
         canAccess,
         requiresAdminPassword: hasAdminPassword,
       }),
-      headers: makeJsonHeaders(),
+      headers: makeJsonHeaders(req),
     })
     return true
   }
@@ -315,7 +317,7 @@ export async function handleSettingsRoutes(
           success: false,
           message: 'Too many attempts. Please wait and retry.',
         }),
-        headers: makeJsonHeaders(),
+        headers: makeJsonHeaders(req),
       })
       return true
     }
@@ -327,19 +329,22 @@ export async function handleSettingsRoutes(
       const providedPassword = String(body?.accessPassword ?? '').trim()
       const settings = getSettings()
       const configuredPassword = String(settings.ACCESS_PASSWORD ?? '').trim()
-      const cookiePassword = parseCookies(req).get(ACCESS_PASSWORD_COOKIE_NAME) || ''
+      const cookiePassword =
+        parseCookies(req).get(ACCESS_PASSWORD_COOKIE_NAME) || ''
       const candidatePassword = providedPassword || cookiePassword
 
       const isValid =
         !configuredPassword ||
         timingSafeEqual(candidatePassword, configuredPassword)
 
-      const headers = makeJsonHeaders()
+      const headers = makeJsonHeaders(req)
       const secureFlag = shouldUseSecureCookies(req) ? '; Secure' : ''
       if (isValid && configuredPassword) {
         headers.set(
           'set-cookie',
-          `${ACCESS_PASSWORD_COOKIE_NAME}=${encodeURIComponent(configuredPassword)}; Path=/; SameSite=Strict; HttpOnly${secureFlag}`
+          `${ACCESS_PASSWORD_COOKIE_NAME}=${encodeURIComponent(
+            configuredPassword
+          )}; Path=/; SameSite=Strict; HttpOnly${secureFlag}`
         )
       } else if (!isValid) {
         headers.set(
@@ -366,7 +371,7 @@ export async function handleSettingsRoutes(
           success: false,
           message: 'Could not verify access password. Please try again.',
         }),
-        headers: makeJsonHeaders(),
+        headers: makeJsonHeaders(req),
       })
     }
     return true
@@ -378,7 +383,7 @@ export async function handleSettingsRoutes(
       body: JSON.stringify({
         message: 'Not Found',
       }),
-      headers: makeJsonHeaders(),
+      headers: makeJsonHeaders(req),
     })
     return true
   }
@@ -409,7 +414,7 @@ export async function handleSettingsRoutes(
           String(settings.SETUP_WIZARD_COMPLETED || '').toLowerCase() ===
           'true',
       }),
-      headers: makeJsonHeaders(),
+      headers: makeJsonHeaders(req),
     })
     return true
   }
@@ -423,7 +428,7 @@ export async function handleSettingsRoutes(
           ok: false,
           message: 'Too many requests. Please wait.',
         }),
-        headers: makeJsonHeaders(),
+        headers: makeJsonHeaders(req),
       })
       return true
     }
@@ -432,7 +437,7 @@ export async function handleSettingsRoutes(
       await req.respond({
         status: 403,
         body: JSON.stringify({ ok: false, message: 'Invalid request origin.' }),
-        headers: makeJsonHeaders(),
+        headers: makeJsonHeaders(req),
       })
       return true
     }
@@ -446,7 +451,7 @@ export async function handleSettingsRoutes(
           message:
             'Admin password is not configured. Set ADMIN_PASSWORD before running connection tests.',
         }),
-        headers: makeJsonHeaders(),
+        headers: makeJsonHeaders(req),
       })
       return true
     }
@@ -458,7 +463,7 @@ export async function handleSettingsRoutes(
           ok: false,
           message: getAdminAuthFailureMessage(req, settings, isLocalRequest),
         }),
-        headers: makeJsonHeaders(),
+        headers: makeJsonHeaders(req),
       })
       return true
     }
@@ -481,7 +486,7 @@ export async function handleSettingsRoutes(
       await req.respond({
         status: result.ok ? 200 : 400,
         body: JSON.stringify(result),
-        headers: makeJsonHeaders(),
+        headers: makeJsonHeaders(req),
       })
     } catch (err) {
       await req.respond({
@@ -490,7 +495,7 @@ export async function handleSettingsRoutes(
           ok: false,
           message: 'An internal error occurred.',
         }),
-        headers: makeJsonHeaders(),
+        headers: makeJsonHeaders(req),
       })
     }
 
@@ -506,7 +511,7 @@ export async function handleSettingsRoutes(
       body: JSON.stringify({
         settings: sanitizeSettingsForClient(settings, isAdmin),
       }),
-      headers: makeJsonHeaders(),
+      headers: makeJsonHeaders(req),
     })
     return true
   }
@@ -516,7 +521,7 @@ export async function handleSettingsRoutes(
       await req.respond({
         status: 403,
         body: JSON.stringify({ error: 'Invalid request origin.' }),
-        headers: makeJsonHeaders(),
+        headers: makeJsonHeaders(req),
       })
       return true
     }
@@ -555,7 +560,7 @@ export async function handleSettingsRoutes(
                 isLocalRequest
               ),
             }),
-            headers: makeJsonHeaders(),
+            headers: makeJsonHeaders(req),
           })
           return true
         }
@@ -601,7 +606,7 @@ export async function handleSettingsRoutes(
         body: JSON.stringify({
           settings: sanitizeSettingsForClient(updated, isAdmin),
         }),
-        headers: makeJsonHeaders(),
+        headers: makeJsonHeaders(req),
       })
     } catch (err) {
       if (err instanceof SettingsValidationError) {
@@ -611,7 +616,7 @@ export async function handleSettingsRoutes(
             error: 'Invalid settings payload',
             details: err.details,
           }),
-          headers: makeJsonHeaders(),
+          headers: makeJsonHeaders(req),
         })
         return true
       }
@@ -620,7 +625,7 @@ export async function handleSettingsRoutes(
       await req.respond({
         status: 500,
         body: JSON.stringify({ error: 'Failed to update settings' }),
-        headers: makeJsonHeaders(),
+        headers: makeJsonHeaders(req),
       })
     }
 
