@@ -81,6 +81,7 @@ export class WebSocketServer {
       const ws = new WebSocket(socket)
 
       ws.once('close', () => {
+        this.clients.delete(ws)
         const current = this.ipConnections.get(clientIp) ?? 0
         if (current <= 1) this.ipConnections.delete(clientIp)
         else this.ipConnections.set(clientIp, current - 1)

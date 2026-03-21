@@ -87,7 +87,12 @@ const getContentType = (path: string): string => {
     '.json': 'application/json',
     '.css': 'text/css',
     '.svg': 'image/svg+xml',
+    '.ico': 'image/x-icon',
     '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.webp': 'image/webp',
+    '.gif': 'image/gif',
     '.js': 'application/javascript',
   }
 
