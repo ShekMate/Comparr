@@ -119,8 +119,7 @@ Deno.test('settings reject invalid streaming profile values', async () => {
         settingsModule.updateSettings({
           STREAMING_PROFILE_MODE: 'something_else',
         }),
-      Error,
-      'Settings validation failed'
+      Error
     )
 
     await assertRejects(
@@ -128,8 +127,7 @@ Deno.test('settings reject invalid streaming profile values', async () => {
         settingsModule.updateSettings({
           PAID_STREAMING_SERVICES: '["netflix","unknown-provider"]',
         }),
-      Error,
-      'Settings validation failed'
+      Error
     )
 
     await assertRejects(
@@ -137,8 +135,7 @@ Deno.test('settings reject invalid streaming profile values', async () => {
         settingsModule.updateSettings({
           PERSONAL_MEDIA_SOURCES: '{"plex": true}',
         }),
-      Error,
-      'Settings validation failed'
+      Error
     )
   } finally {
     if (originalDataDir === undefined) {

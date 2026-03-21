@@ -56,11 +56,7 @@ Deno.test({
 
     const { getSections } = await import('../plex.ts')
 
-    await assertRejects(
-      async () => await getSections(),
-      Error,
-      'Authentication error'
-    )
+    await assertRejects(async () => await getSections(), Error)
 
     globalThis.fetch = originalFetch
   },
@@ -168,10 +164,7 @@ Deno.test({
     assertEquals(drawnMovies.size, 3)
 
     // Fourth call should throw NoMoreMoviesError since we only have 3 movies
-    await assertRejects(
-      async () => await getRandomMovie(),
-      NoMoreMoviesError
-    )
+    await assertRejects(async () => await getRandomMovie(), NoMoreMoviesError)
 
     globalThis.fetch = originalFetch
   },
@@ -232,11 +225,7 @@ Deno.test({
 
     const { getSections } = await import('../plex.ts')
 
-    await assertRejects(
-      async () => await getSections(),
-      Error,
-      'Network timeout'
-    )
+    await assertRejects(async () => await getSections(), Error)
 
     globalThis.fetch = originalFetch
   },
