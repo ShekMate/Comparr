@@ -264,14 +264,13 @@ async function respondFile(
   req: CompatRequest,
   filePath: string,
   contentType?: string
-) {
+): Promise<Response | null> {
   try {
     const body = await Deno.readFile(filePath)
     const headers = makeHeaders(contentType)
-    await req.respond({ status: 200, headers, body })
-    return true
+    return new Response(body, { status: 200, headers })
   } catch (_) {
-    return false
+    return null
   }
 }
 
@@ -688,17 +687,6 @@ for await (const req of server) {
     })
     if (settingsRouteResponse) {
       await req.respondWith(settingsRouteResponse)
-      continue
-    }
-
-    const routeResponse = await handleRoutes(req, p, [
-      handleConfigDebugRoute,
-      handleRequestServiceRoutes,
-      handleRoomRoutes,
-      handleMatchesRoute,
-    ])
-    if (routeResponse) {
-      await req.respondWith(routeResponse)
       continue
     }
 
@@ -1465,7 +1453,9 @@ for await (const req of server) {
         'public/favicon.ico',
         'image/x-icon'
       )
-      if (!served) {
+      if (served) {
+        await req.respondWith(served)
+      } else {
         await req.respond({ status: 404 })
       }
       continue
@@ -1479,11 +1469,16 @@ for await (const req of server) {
     }
 
     if (p.startsWith('/js/')) {
-      await respondFile(
+      const served = await respondFile(
         req,
         'public' + p,
         'application/javascript; charset=utf-8'
       )
+      if (served) {
+        await req.respondWith(served)
+      } else {
+        await req.respond({ status: 404, body: 'Not Found' })
+      }
       continue
     }
     //if (p.startsWith('/assets/')) {
