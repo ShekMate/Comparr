@@ -582,7 +582,13 @@ async function loadState(): Promise<PersistedState> {
   await ensureDataDir()
   try {
     const raw = await Deno.readTextFile(STATE_FILE)
-    const parsed: any = JSON.parse(raw)
+    let parsed: any
+    try {
+      parsed = JSON.parse(raw)
+    } catch (err) {
+      log.warning(`Failed to parse persisted session state JSON: ${err}`)
+      throw new Error('invalid session state json')
+    }
     if (!parsed || typeof parsed !== 'object') throw new Error('bad state')
 
     // Accept both shapes:
@@ -1357,8 +1363,30 @@ class Session {
   }
 
   handleMessage = async (user: User, msg: string) => {
+    let decodedMessage: WebSocketMessage
     try {
-      const decodedMessage: WebSocketMessage = JSON.parse(msg)
+      decodedMessage = JSON.parse(msg)
+    } catch (err) {
+      log.warning(
+        `Received invalid WebSocket JSON from ${user.name}: ${
+          err?.message || err
+        }`
+      )
+      try {
+        this.users.get(user)?.send(
+          JSON.stringify({
+            type: 'error',
+            payload: { message: 'Invalid message format' },
+          })
+        )
+      } catch {
+        // no-op
+      }
+      this.users.get(user)?.close(1003, 'Invalid message format')
+      return
+    }
+
+    try {
       log.debug(
         `Received WebSocket message from ${user.name}: type=${decodedMessage.type}`
       )
@@ -2949,9 +2977,26 @@ export const handleLogin = (
 ): Promise<User> => {
   return new Promise(resolve => {
     const handler = async (msg: string) => {
+      let data: WebSocketMessage
       try {
-        const data: WebSocketMessage = JSON.parse(msg)
+        data = JSON.parse(msg)
+      } catch (err) {
+        log.warning(
+          `Failed to parse login message JSON: ${err?.message || err}`
+        )
+        const response: WebSocketLoginResponseMessage = {
+          type: 'loginResponse',
+          payload: {
+            success: false,
+            message: 'Invalid message format.',
+          },
+        }
+        ws.send(JSON.stringify(response))
+        ws.close(1003, 'Invalid login message format')
+        return
+      }
 
+      try {
         if (data.type === 'login') {
           log.info(`Got a login attempt from ${data.payload.name}`)
 

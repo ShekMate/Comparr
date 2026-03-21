@@ -21,9 +21,17 @@ export const getTranslationPaths = async () => {
 const populateTranslations = async () => {
   const translationPaths = await getTranslationPaths()
   for (const translationPath of translationPaths) {
-    const translation = await Deno.readTextFile(translationPath).then(text =>
-      JSON.parse(text)
-    )
+    let translation: Record<string, string> = {}
+    try {
+      const text = await Deno.readTextFile(translationPath)
+      translation = JSON.parse(text)
+    } catch (err) {
+      console.error(
+        `Encountered an error parsing translation file ${translationPath}`,
+        err
+      )
+      translation = {}
+    }
     if (typeof translation.LANG === 'string') {
       translations.set(translation.LANG, translation)
     }
