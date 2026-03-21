@@ -1,7 +1,7 @@
 // src/index.ts
-import { serve } from 'https://deno.land/std@0.79.0/http/server.ts'
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
-import { clearAllMoviesCache, getServerId, proxyPoster } from './api/plex.ts'
+import * as log from 'jsr:@std/log'
+import { clearAllMoviesCache, getServerId } from './api/plex.ts'
+import type { CompatRequest, CompatResponseInit } from './infra/http/compat-request.ts'
 import {
   getLinkType,
   getPlexLibraryName,
@@ -233,7 +233,7 @@ async function savePersistedState(state: any) {
 
 async function appendAuditLog(
   event: string,
-  req: any,
+  req: CompatRequest,
   details: Record<string, unknown> = {}
 ) {
   await Deno.mkdir(DATA_DIR, { recursive: true }).catch(() => {})
@@ -260,14 +260,17 @@ async function appendAuditLog(
 }
 
 /** tiny helper to send a file from disk */
-async function respondFile(req: any, filePath: string, contentType?: string) {
+async function respondFile(
+  req: CompatRequest,
+  filePath: string,
+  contentType?: string
+): Promise<Response | null> {
   try {
     const body = await Deno.readFile(filePath)
     const headers = makeHeaders(contentType)
-    await req.respond({ status: 200, headers, body })
-    return true
+    return new Response(body, { status: 200, headers })
   } catch (_) {
-    return false
+    return null
   }
 }
 
@@ -278,7 +281,7 @@ const makeHeaders = (contentType?: string) => {
   return headers
 }
 
-const bodyTooLarge = (req: any) => {
+const bodyTooLarge = (req: CompatRequest) => {
   const max = getMaxBodySize()
   const contentLength = Number(req.headers.get('content-length') || '0')
   return Number.isFinite(contentLength) && contentLength > max
@@ -324,7 +327,7 @@ const validateRoomCodeAndUserName = (roomCode: string, userName: string) => {
   return ''
 }
 
-const parseAccessPassword = (req: any) => {
+const parseAccessPassword = (req: CompatRequest) => {
   const header = req.headers?.get?.('x-access-password')
   if (typeof header === 'string' && header.trim()) return header.trim()
 
@@ -344,7 +347,7 @@ const parseAccessPassword = (req: any) => {
   return ''
 }
 
-const isAccessPasswordAuthorized = (req: any) => {
+const isAccessPasswordAuthorized = (req: CompatRequest) => {
   const configuredPassword = getAccessPassword()
   if (!configuredPassword) return true
   return timingSafeEqual(parseAccessPassword(req), configuredPassword)
@@ -356,7 +359,7 @@ const shouldRequireAccessPassword = (path: string) => {
   return !EXEMPT_GLOBAL_ACCESS_PASSWORD_PATHS.has(path)
 }
 
-const parseCookies = (req: any) => {
+const parseCookies = (req: CompatRequest) => {
   const rawCookieHeader = String(req?.headers?.get?.('cookie') || '')
   const cookies = new Map<string, string>()
   for (const cookiePair of rawCookieHeader.split(';')) {
@@ -368,13 +371,13 @@ const parseCookies = (req: any) => {
   return cookies
 }
 
-const getCsrfCookieToken = (req: any) =>
+const getCsrfCookieToken = (req: CompatRequest) =>
   parseCookies(req).get(CSRF_COOKIE_NAME) || ''
 
 const createCsrfToken = () =>
   `${crypto.randomUUID()}${crypto.randomUUID().replace(/-/g, '')}`
 
-const shouldUseSecureCookies = (req: any) => {
+const shouldUseSecureCookies = (req: CompatRequest) => {
   const xfProto = String(req?.headers?.get?.('x-forwarded-proto') || '')
     .split(',')[0]
     .trim()
@@ -385,7 +388,7 @@ const shouldUseSecureCookies = (req: any) => {
     .startsWith('https://')
 }
 
-const isValidCsrfRequest = (req: any) => {
+const isValidCsrfRequest = (req: CompatRequest) => {
   const cookieToken = getCsrfCookieToken(req)
   const headerToken = String(req?.headers?.get?.('x-csrf-token') || '').trim()
   if (!cookieToken || !headerToken) return false
@@ -405,7 +408,91 @@ const updateStreamingForTmdbIdDeduped = async (tmdbId: number) => {
   return task
 }
 
-const server = serve({ port: Number(getPort()) })
+
+const serveCompat = (options: { port: number }) => {
+  const queue: CompatRequest[] = []
+  const waiters: Array<(value: IteratorResult<CompatRequest>) => void> = []
+  const abortController = new AbortController()
+  let closed = false
+
+  const flush = () => {
+    while (queue.length > 0 && waiters.length > 0) {
+      const req = queue.shift()!
+      const waiter = waiters.shift()!
+      waiter({ value: req, done: false })
+    }
+
+    if (closed) {
+      while (waiters.length > 0 && queue.length === 0) {
+        const waiter = waiters.shift()!
+        waiter({ value: undefined as never, done: true })
+      }
+    }
+  }
+
+  Deno.serve({ port: options.port, signal: abortController.signal }, (request, info) => {
+    if (closed) return new Response('Server shutting down', { status: 503 })
+
+    return new Promise<Response>(resolve => {
+      const parsedUrl = new URL(request.url)
+      let responder: ((response: Response) => void) | null = resolve
+
+      const req: CompatRequest = {
+        method: request.method,
+        url: `${parsedUrl.pathname}${parsedUrl.search}`,
+        headers: request.headers,
+        conn: { remoteAddr: info.remoteAddr },
+        rawRequest: request,
+        respond: async init => {
+          if (!responder) return
+          const resolveResponse = responder
+          responder = null
+          resolveResponse(
+            new Response(init.body ?? null, {
+              status: init.status ?? 200,
+              headers: init.headers,
+            })
+          )
+        },
+        respondWith: async response => {
+          if (!responder) return
+          const resolveResponse = responder
+          responder = null
+          resolveResponse(response)
+        },
+        text: () => request.text(),
+        json: <T = unknown>() => request.json() as Promise<T>,
+      }
+
+      queue.push(req)
+      flush()
+    })
+  })
+
+  return {
+    close() {
+      if (closed) return
+      closed = true
+      abortController.abort()
+      flush()
+    },
+    [Symbol.asyncIterator]() {
+      return {
+        next() {
+          if (queue.length > 0) {
+            return Promise.resolve({ value: queue.shift()!, done: false })
+          }
+          if (closed) {
+            return Promise.resolve({ value: undefined as never, done: true })
+          }
+          return new Promise(resolve => waiters.push(resolve))
+        },
+      }
+    },
+  }
+}
+
+const server = serveCompat({ port: Number(getPort()) })
 
 const wss = new WebSocketServer({
   onConnection: (ws, req) =>
@@ -589,24 +676,28 @@ for await (const req of server) {
       )
     }
 
-    if (
-      await handleRoutes(req, p, [
-        handleConfigDebugRoute,
-        async (routeReq, routePath) =>
-          await handleSettingsRoutes(routeReq, routePath, {
-            buildPlexCache,
-            clearAllMoviesCache,
-            getPlexLibraryName,
-            getSettings,
-            isLocalRequest,
-            refreshRadarrCache,
-            updateSettings,
-          }),
-        handleRequestServiceRoutes,
-        handleRoomRoutes,
-        handleMatchesRoute,
-      ])
-    ) {
+    const settingsRouteResponse = await handleSettingsRoutes(req, p, {
+      buildPlexCache,
+      clearAllMoviesCache,
+      getPlexLibraryName,
+      getSettings,
+      isLocalRequest,
+      refreshRadarrCache,
+      updateSettings,
+    })
+    if (settingsRouteResponse) {
+      await req.respondWith(settingsRouteResponse)
+      continue
+    }
+
+    const routeResponse = await handleRoutes(req, p, [
+      handleConfigDebugRoute,
+      handleRequestServiceRoutes,
+      handleRoomRoutes,
+      handleMatchesRoute,
+    ])
+    if (routeResponse) {
+      await req.respondWith(routeResponse)
       continue
     }
 
@@ -629,8 +720,7 @@ for await (const req of server) {
           })
           continue
         }
-        const decoder = new TextDecoder()
-        const body = decoder.decode(await Deno.readAll(req.body))
+        const body = await req.text()
         const { tmdbId } = JSON.parse(body)
 
         if (!tmdbId || typeof tmdbId !== 'number') {
@@ -1114,8 +1204,7 @@ for await (const req of server) {
           continue
         }
 
-        const decoder = new TextDecoder()
-        const body = decoder.decode(await Deno.readAll(req.body))
+        const body = await req.text()
         const { csvContent, roomCode, userName, fileName } = JSON.parse(body)
 
         const validationError = validateRoomCodeAndUserName(roomCode, userName)
@@ -1224,7 +1313,7 @@ for await (const req of server) {
 
     // --- WebSocket for app events/login
     if (p === '/ws') {
-      wss.connect(req)
+      await req.respondWith(await wss.connect(req))
       continue
     }
 
@@ -1271,7 +1360,10 @@ for await (const req of server) {
       if (cachedPosterPath?.startsWith('/cached-poster/')) {
         const filename = cachedPosterPath.slice('/cached-poster/'.length)
         const served = await serveCachedPoster(filename, req)
-        if (served) continue
+        if (served) {
+          await req.respondWith(served)
+          continue
+        }
       }
 
       const tmdbUrl = `https://image.tmdb.org/t/p/w500${normalizedPosterPath}`
@@ -1310,7 +1402,7 @@ for await (const req of server) {
     // Handle match actions (seen/pass)
     if (p === '/api/match-action' && req.method === 'POST') {
       try {
-        const body = await req.body()
+        const body = await req.json()
         const { guid, action, roomCode, userName } = body as {
           guid: string
           action: 'seen' | 'pass'
@@ -1361,7 +1453,9 @@ for await (const req of server) {
         'public/favicon.ico',
         'image/x-icon'
       )
-      if (!served) {
+      if (served) {
+        await req.respondWith(served)
+      } else {
         await req.respond({ status: 404 })
       }
       continue
@@ -1370,16 +1464,21 @@ for await (const req of server) {
     // --- Serve SPA + static files from ./public (explicit fast-paths)
     // Serve index.html through the templated static server so ${...} variables resolve
     if (p === '/' || p === '/index.html') {
-      await serveFile(req, '/public')
+      await req.respondWith(await serveFile(req, '/public'))
       continue
     }
 
     if (p.startsWith('/js/')) {
-      await respondFile(
+      const served = await respondFile(
         req,
         'public' + p,
         'application/javascript; charset=utf-8'
       )
+      if (served) {
+        await req.respondWith(served)
+      } else {
+        await req.respond({ status: 404, body: 'Not Found' })
+      }
       continue
     }
     //if (p.startsWith('/assets/')) {
@@ -1391,7 +1490,9 @@ for await (const req of server) {
     if (p.startsWith('/cached-poster/')) {
       const filename = p.slice('/cached-poster/'.length)
       const served = await serveCachedPoster(filename, req)
-      if (!served) {
+      if (served) {
+        await req.respondWith(served)
+      } else {
         await req.respond({ status: 404, body: 'Not Found' })
       }
       continue // handled
@@ -1404,13 +1505,15 @@ for await (const req of server) {
     if (p.startsWith('/cached-poster/')) {
       const filename = p.slice('/cached-poster/'.length)
       const served = await serveCachedPoster(filename, req)
-      if (!served) {
+      if (served) {
+        await req.respondWith(served)
+      } else {
         await req.respond({ status: 404, body: 'Not Found' })
       }
       continue // handled
     }
 
-    await serveFile(req, '/public')
+    await req.respondWith(await serveFile(req, '/public'))
   } catch (err) {
     log.error(`Error handling request: ${err?.message ?? err}`)
     responseStatus = 500
