@@ -107,10 +107,9 @@ export const getAllowedOrigins = () =>
 export const getVersion = async () => {
   try {
     const pkgText = await Deno.readTextFile(Deno.cwd() + '/package.json')
-    const pkg: { version?: string } = JSON.parse(pkgText)
-    return typeof pkg.version === 'string' ? pkg.version : 'unknown'
-  } catch (err) {
-    log.warning(`Failed to read or parse package.json version: ${err}`)
+    const pkg: { version: string } = JSON.parse(pkgText)
+    return pkg.version
+  } catch {
     return 'unknown'
   }
 }
