@@ -1,4 +1,5 @@
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import type { CompatRequest } from '../compat-request.ts'
+import * as log from 'jsr:@std/log'
 import { addSecurityHeaders } from '../security-headers.ts'
 import {
   getMediaStatus,
@@ -6,13 +7,13 @@ import {
 } from '../../../api/jellyseerr.ts'
 import { isMovieInRadarr } from '../../../api/radarr.ts'
 
-const makeJsonHeaders = (req?: any) => {
+const makeJsonHeaders = (req?: CompatRequest) => {
   const headers = new Headers({ 'content-type': 'application/json' })
   addSecurityHeaders(headers, req)
   return headers
 }
 
-export async function handleRequestServiceRoutes(req: any, path: string) {
+export async function handleRequestServiceRoutes(req: CompatRequest, path: string) {
   if (path === '/api/request-service-status') {
     await req.respond({
       status: 200,

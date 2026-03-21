@@ -1,5 +1,6 @@
+import type { CompatRequest } from '../compat-request.ts'
 import { SettingsValidationError } from '../../../core/settings.ts'
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import * as log from 'jsr:@std/log'
 import { timingSafeEqual } from '../../../core/security.ts'
 import { apiRateLimiter, loginRateLimiter } from '../ip-rate-limiter.ts'
 import { addSecurityHeaders } from '../security-headers.ts'
@@ -12,19 +13,19 @@ export type SettingsRouteDeps = {
   clearAllMoviesCache: () => void
   getPlexLibraryName: () => string
   getSettings: () => Record<string, unknown>
-  isLocalRequest: (req: any) => boolean
+  isLocalRequest: (req: CompatRequest) => boolean
   refreshRadarrCache: () => Promise<void>
   updateSettings: (
     settings: Record<string, unknown>
   ) => Promise<Record<string, unknown>>
 }
 
-const getClientIp = (req: any) => {
+const getClientIp = (req: CompatRequest) => {
   const hostname = req?.conn?.remoteAddr?.hostname
   return String(hostname || 'unknown')
 }
 
-const makeJsonHeaders = (req?: any) => {
+const makeJsonHeaders = (req?: CompatRequest) => {
   const headers = new Headers({ 'content-type': 'application/json' })
   addSecurityHeaders(headers, req)
   return headers
@@ -32,7 +33,7 @@ const makeJsonHeaders = (req?: any) => {
 
 const ACCESS_PASSWORD_COOKIE_NAME = 'comparr_access'
 
-const parseCookies = (req: any) => {
+const parseCookies = (req: CompatRequest) => {
   const rawCookieHeader = String(req?.headers?.get?.('cookie') || '')
   const cookies = new Map<string, string>()
   for (const cookiePair of rawCookieHeader.split(';')) {
@@ -44,7 +45,7 @@ const parseCookies = (req: any) => {
   return cookies
 }
 
-const shouldUseSecureCookies = (req: any) => {
+const shouldUseSecureCookies = (req: CompatRequest) => {
   const xfProto = String(req?.headers?.get?.('x-forwarded-proto') || '')
     .split(',')[0]
     .trim()
@@ -172,7 +173,7 @@ const runConnectionCheck = async (
   }
 }
 
-const parseAdminPassword = (req: any) => {
+const parseAdminPassword = (req: CompatRequest) => {
   const header = req.headers?.get?.('x-admin-password')
   if (typeof header === 'string') return header.trim()
   return ''
@@ -204,9 +205,9 @@ const isBootstrappingAdminPassword = (
 }
 
 const isAdminAuthorized = (
-  req: any,
+  req: CompatRequest,
   settings: Record<string, unknown>,
-  isLocalRequest: (req: any) => boolean
+  isLocalRequest: (req: CompatRequest) => boolean
 ) => {
   const configuredPassword = String(settings.ADMIN_PASSWORD ?? '').trim()
   if (!configuredPassword) {
@@ -217,9 +218,9 @@ const isAdminAuthorized = (
 }
 
 const getAdminAuthFailureMessage = (
-  req: any,
+  req: CompatRequest,
   settings: Record<string, unknown>,
-  isLocalRequest: (req: any) => boolean
+  isLocalRequest: (req: CompatRequest) => boolean
 ) => {
   if (hasAdminPasswordConfigured(settings)) {
     return 'Admin password required. Enter the configured admin password and retry.'
@@ -278,7 +279,7 @@ const sanitizeSettingsForClient = (
 }
 
 export async function handleSettingsRoutes(
-  req: any,
+  req: CompatRequest,
   pathname: string,
   deps: SettingsRouteDeps
 ): Promise<boolean> {
@@ -323,8 +324,7 @@ export async function handleSettingsRoutes(
     }
 
     try {
-      const decoder = new TextDecoder()
-      const bodyText = decoder.decode(await Deno.readAll(req.body))
+      const bodyText = await req.text()
       const body = bodyText ? JSON.parse(bodyText) : {}
       const providedPassword = String(body?.accessPassword ?? '').trim()
       const settings = getSettings()
@@ -469,8 +469,7 @@ export async function handleSettingsRoutes(
     }
 
     try {
-      const decoder = new TextDecoder()
-      const body = decoder.decode(await Deno.readAll(req.body))
+      const body = await req.text()
       const payload = JSON.parse(body) as {
         target?: string
         url?: string
@@ -530,8 +529,7 @@ export async function handleSettingsRoutes(
     const isAdmin = isAdminAuthorized(req, currentSettings, isLocalRequest)
 
     try {
-      const decoder = new TextDecoder()
-      const body = decoder.decode(await Deno.readAll(req.body))
+      const body = await req.text()
       const { settings } = JSON.parse(body)
       const incomingSettings =
         ((settings ?? {}) as Record<string, unknown>) || {}

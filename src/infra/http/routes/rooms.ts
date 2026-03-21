@@ -1,4 +1,5 @@
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import type { CompatRequest } from '../compat-request.ts'
+import * as log from 'jsr:@std/log'
 import {
   doesRoomCodeExist,
   generateUniqueRoomCode,
@@ -7,13 +8,13 @@ import {
 } from '../../../features/session/session.ts'
 import { addSecurityHeaders } from '../security-headers.ts'
 
-const makeJsonHeaders = (req?: any) => {
+const makeJsonHeaders = (req?: CompatRequest) => {
   const headers = new Headers({ 'content-type': 'application/json' })
   addSecurityHeaders(headers, req)
   return headers
 }
 
-export async function handleRoomRoutes(req: any, path: string) {
+export async function handleRoomRoutes(req: CompatRequest, path: string) {
   if (path === '/api/rooms/exists') {
     const url = new URL(req.url, 'http://local')
     const roomCode = normalizeRoomCode(url.searchParams.get('code') || '')

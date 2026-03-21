@@ -1,13 +1,14 @@
+import type { CompatRequest } from '../compat-request.ts'
 import { addSecurityHeaders } from '../security-headers.ts'
 import { getMatchesForUser } from '../../../features/session/session.ts'
 
-const makeJsonHeaders = (req?: any) => {
+const makeJsonHeaders = (req?: CompatRequest) => {
   const headers = new Headers({ 'content-type': 'application/json' })
   addSecurityHeaders(headers, req)
   return headers
 }
 
-export async function handleMatchesRoute(req: any, path: string) {
+export async function handleMatchesRoute(req: CompatRequest, path: string) {
   if (path !== '/api/matches') {
     return false
   }

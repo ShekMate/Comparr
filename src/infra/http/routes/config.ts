@@ -1,3 +1,4 @@
+import type { CompatRequest } from '../compat-request.ts'
 import {
   getJellyseerrApiKey,
   getJellyseerrUrl,
@@ -12,7 +13,7 @@ import {
   getTmdbApiKey,
 } from '../../../core/config.ts'
 
-export async function handleConfigDebugRoute(req: any, path: string) {
+export async function handleConfigDebugRoute(req: CompatRequest, path: string) {
   if (path !== '/api/debug/config') {
     return false
   }
