@@ -1,5 +1,5 @@
 // cache/posterCache.ts - Local poster storage and serving
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import * as log from 'jsr:@std/log'
 import { fetchWithTimeout } from '../../infra/http/fetch-with-timeout.ts'
 
 const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'

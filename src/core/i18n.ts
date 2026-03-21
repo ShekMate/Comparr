@@ -1,5 +1,5 @@
 import { Accepts } from 'https://deno.land/x/accepts@2.1.0/mod.ts'
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import * as log from 'jsr:@std/log'
 import {
   getLinkType,
   getPlexLibraryName,
