@@ -430,7 +430,7 @@ const serveCompat = (options: { port: number }) => {
     }
   }
 
-  Deno.serve({ port: options.port, signal: abortController.signal }, (request, info) => {
+  Deno.serve({ port: options.port, hostname: '0.0.0.0', signal: abortController.signal }, (request, info) => {
     if (closed) return new Response('Server shutting down', { status: 503 })
 
     return new Promise<Response>(resolve => {
