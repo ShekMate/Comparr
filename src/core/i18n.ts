@@ -21,12 +21,15 @@ export const getTranslationPaths = async () => {
 const populateTranslations = async () => {
   const translationPaths = await getTranslationPaths()
   for (const translationPath of translationPaths) {
-    const translation = await Deno.readTextFile(translationPath).then(text =>
-      JSON.parse(text)
-    )
-    if (typeof translation.LANG === 'string') {
-      translations.set(translation.LANG, translation)
-    }
+    const translation = await Deno.readTextFile(translationPath).then(text => {
+      try {
+        return JSON.parse(text)
+      } catch {
+        return null
+      }
+    })
+    if (!translation || typeof translation.LANG !== 'string') continue
+    translations.set(translation.LANG, translation)
   }
 }
 

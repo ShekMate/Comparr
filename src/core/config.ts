@@ -105,9 +105,13 @@ export const getAllowedOrigins = () =>
     .map(value => value.trim().toLowerCase())
     .filter(Boolean)
 export const getVersion = async () => {
-  const pkgText = await Deno.readTextFile(Deno.cwd() + '/package.json')
-  const pkg: { version: string } = JSON.parse(pkgText)
-  return pkg.version
+  try {
+    const pkgText = await Deno.readTextFile(Deno.cwd() + '/package.json')
+    const pkg: { version: string } = JSON.parse(pkgText)
+    return pkg.version
+  } catch {
+    return 'unknown'
+  }
 }
 
 function getLogLevel(): keyof typeof log.LogLevels {
