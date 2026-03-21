@@ -267,14 +267,14 @@ async function respondFile(
 ): Promise<Response | null> {
   try {
     const body = await Deno.readFile(filePath)
-    const headers = makeHeaders(contentType)
+    const headers = makeHeaders(req, contentType)
     return new Response(body, { status: 200, headers })
   } catch (_) {
     return null
   }
 }
 
-const makeHeaders = (contentType?: string) => {
+const makeHeaders = (req: CompatRequest, contentType?: string) => {
   const headers = new Headers()
   if (contentType) headers.set('content-type', contentType)
   addSecurityHeaders(headers, req)
@@ -578,7 +578,7 @@ for await (const req of server) {
       await req.respond({
         status: responseStatus,
         body: JSON.stringify({ error: 'Server is shutting down.' }),
-        headers: makeHeaders('application/json'),
+        headers: makeHeaders(req, 'application/json'),
       })
       continue
     }
@@ -587,7 +587,7 @@ for await (const req of server) {
       responseStatus = 421
       await req.respond({
         status: responseStatus,
-        headers: makeHeaders('application/json'),
+        headers: makeHeaders(req, 'application/json'),
         body: JSON.stringify({ error: 'Misdirected Request' }),
       })
       continue
@@ -599,7 +599,7 @@ for await (const req of server) {
     if (p === '/api/health' && req.method === 'GET') {
       await req.respond({
         status: 200,
-        headers: makeHeaders('application/json'),
+        headers: makeHeaders(req, 'application/json'),
         body: JSON.stringify({ ok: true }),
       })
       continue
@@ -607,7 +607,7 @@ for await (const req of server) {
 
     if (p === '/api/csrf-token' && req.method === 'GET') {
       const token = createCsrfToken()
-      const headers = makeHeaders('application/json')
+      const headers = makeHeaders(req, 'application/json')
       const secureFlag = shouldUseSecureCookies(req) ? '; Secure' : ''
       headers.set(
         'set-cookie',
@@ -630,7 +630,7 @@ for await (const req of server) {
       await req.respond({
         status: 403,
         body: JSON.stringify({ error: 'Invalid request origin.' }),
-        headers: makeHeaders('application/json'),
+        headers: makeHeaders(req, 'application/json'),
       })
       continue
     }
@@ -644,7 +644,7 @@ for await (const req of server) {
       await req.respond({
         status: 403,
         body: JSON.stringify({ error: 'Invalid CSRF token.' }),
-        headers: makeHeaders('application/json'),
+        headers: makeHeaders(req, 'application/json'),
       })
       continue
     }
@@ -659,7 +659,7 @@ for await (const req of server) {
       await req.respond({
         status: responseStatus,
         body: JSON.stringify({ error: 'Access password required.' }),
-        headers: makeHeaders('application/json'),
+        headers: makeHeaders(req, 'application/json'),
       })
       continue
     }
@@ -708,7 +708,7 @@ for await (const req of server) {
           await req.respond({
             status: 403,
             body: JSON.stringify({ error: 'Invalid request origin.' }),
-            headers: makeHeaders('application/json'),
+            headers: makeHeaders(req, 'application/json'),
           })
           continue
         }
@@ -716,7 +716,7 @@ for await (const req of server) {
           await req.respond({
             status: 413,
             body: JSON.stringify({ error: 'Payload too large' }),
-            headers: makeHeaders('application/json'),
+            headers: makeHeaders(req, 'application/json'),
           })
           continue
         }
@@ -730,7 +730,7 @@ for await (const req of server) {
               success: false,
               message: 'Invalid TMDb ID',
             }),
-            headers: makeHeaders('application/json'),
+            headers: makeHeaders(req, 'application/json'),
           })
           continue
         }
@@ -756,7 +756,7 @@ for await (const req of server) {
                 ? 'This title is already in your Radarr library.'
                 : 'This title is already available in Plex.',
             }),
-            headers: makeHeaders('application/json'),
+            headers: makeHeaders(req, 'application/json'),
           })
           continue
         }
@@ -765,7 +765,7 @@ for await (const req of server) {
         await req.respond({
           status: result.success ? 200 : 500,
           body: JSON.stringify(result),
-          headers: makeHeaders('application/json'),
+          headers: makeHeaders(req, 'application/json'),
         })
       } catch (err) {
         log.error(`Error handling movie request: ${err}`)
@@ -788,7 +788,7 @@ for await (const req of server) {
         await req.respond({
           status: 500,
           body: JSON.stringify({ success: false, message: errorMessage }),
-          headers: makeHeaders('application/json'),
+          headers: makeHeaders(req, 'application/json'),
         })
       }
       continue
@@ -802,7 +802,7 @@ for await (const req of server) {
         await req.respond({
           status: 200,
           body: JSON.stringify({ ok: true }),
-          headers: makeHeaders('application/json'),
+          headers: makeHeaders(req, 'application/json'),
         })
       } catch (err) {
         log.error(`Radarr cache refresh failed: ${err?.message || err}`)
@@ -812,7 +812,7 @@ for await (const req of server) {
             ok: false,
             error: 'An internal error occurred.',
           }),
-          headers: makeHeaders('application/json'),
+          headers: makeHeaders(req, 'application/json'),
         })
       }
       continue
@@ -826,14 +826,14 @@ for await (const req of server) {
         await req.respond({
           status: res.status,
           body: JSON.stringify(res.body),
-          headers: makeHeaders('application/json'),
+          headers: makeHeaders(req, 'application/json'),
         })
       } catch (err) {
         log.error(`Error refreshing streaming data: ${err}`)
         await req.respond({
           status: 500,
           body: JSON.stringify({ error: 'Failed to refresh' }),
-          headers: makeHeaders('application/json'),
+          headers: makeHeaders(req, 'application/json'),
         })
       }
       continue
@@ -850,14 +850,14 @@ for await (const req of server) {
             tmdbId,
             ...res.body, // includes streamingServices + streamingLink for the card dropdowns
           }),
-          headers: makeHeaders('application/json'),
+          headers: makeHeaders(req, 'application/json'),
         })
       } catch (err) {
         log.error(`Error updating persisted movie: ${err}`)
         await req.respond({
           status: 500,
           body: JSON.stringify({ error: 'Failed to update persisted movie' }),
-          headers: makeHeaders('application/json'),
+          headers: makeHeaders(req, 'application/json'),
         })
       }
       continue
@@ -895,7 +895,7 @@ for await (const req of server) {
             await req.respond({
               status: 400,
               body: JSON.stringify({ error: 'Invalid ID', rid }),
-              headers: makeHeaders('application/json'),
+              headers: makeHeaders(req, 'application/json'),
             })
             continue
           }
@@ -980,7 +980,7 @@ for await (const req of server) {
             await req.respond({
               status: 404,
               body: JSON.stringify({ error: 'Movie not found', rid }),
-              headers: makeHeaders('application/json'),
+              headers: makeHeaders(req, 'application/json'),
             })
             continue
           }
@@ -1011,7 +1011,7 @@ for await (const req of server) {
               detail: e?.message || String(e),
               rid,
             }),
-            headers: makeHeaders('application/json'),
+            headers: makeHeaders(req, 'application/json'),
           })
           continue
         }
@@ -1109,7 +1109,7 @@ for await (const req of server) {
               enriched.originalLanguage || movieData.originalLanguage || null,
             rid,
           }),
-          headers: makeHeaders('application/json'),
+          headers: makeHeaders(req, 'application/json'),
         })
         log.info(`[refresh ${rid}] OK`)
       } catch (err) {
@@ -1123,7 +1123,7 @@ for await (const req of server) {
             detail: 'An internal error occurred.',
             rid,
           }),
-          headers: makeHeaders('application/json'),
+          headers: makeHeaders(req, 'application/json'),
         })
       }
       continue
@@ -1142,7 +1142,7 @@ for await (const req of server) {
             body: JSON.stringify({
               error: validationError,
             }),
-            headers: makeHeaders('application/json'),
+            headers: makeHeaders(req, 'application/json'),
           })
           continue
         }
@@ -1151,7 +1151,7 @@ for await (const req of server) {
         await req.respond({
           status: 200,
           body: JSON.stringify({ history }),
-          headers: makeHeaders('application/json'),
+          headers: makeHeaders(req, 'application/json'),
         })
       } catch (err) {
         log.error(`IMDb history fetch failed: ${err?.message || err}`)
@@ -1160,7 +1160,7 @@ for await (const req of server) {
           body: JSON.stringify({
             error: 'Failed to fetch IMDb import history',
           }),
-          headers: makeHeaders('application/json'),
+          headers: makeHeaders(req, 'application/json'),
         })
       }
       continue
@@ -1179,7 +1179,7 @@ for await (const req of server) {
             body: JSON.stringify({
               error: 'Too many import requests. Please wait and retry.',
             }),
-            headers: makeHeaders('application/json'),
+            headers: makeHeaders(req, 'application/json'),
           })
           continue
         }
@@ -1188,7 +1188,7 @@ for await (const req of server) {
           await req.respond({
             status: 413,
             body: JSON.stringify({ error: 'Payload too large' }),
-            headers: makeHeaders('application/json'),
+            headers: makeHeaders(req, 'application/json'),
           })
           continue
         }
@@ -1199,7 +1199,7 @@ for await (const req of server) {
             body: JSON.stringify({
               error: 'TMDb API key is required for IMDb import',
             }),
-            headers: makeHeaders('application/json'),
+            headers: makeHeaders(req, 'application/json'),
           })
           continue
         }
@@ -1214,7 +1214,7 @@ for await (const req of server) {
             body: JSON.stringify({
               error: validationError || 'Missing required field: csvContent',
             }),
-            headers: makeHeaders('application/json'),
+            headers: makeHeaders(req, 'application/json'),
           })
           continue
         }
@@ -1246,7 +1246,7 @@ for await (const req of server) {
           await req.respond({
             status: 200,
             body: JSON.stringify({ status: 'completed', total: 0 }),
-            headers: makeHeaders('application/json'),
+            headers: makeHeaders(req, 'application/json'),
           })
           continue
         }
@@ -1278,7 +1278,7 @@ for await (const req of server) {
         await req.respond({
           status: 202,
           body: JSON.stringify({ status: 'started', total: rows.length }),
-          headers: makeHeaders('application/json'),
+          headers: makeHeaders(req, 'application/json'),
         })
 
         log.info(
@@ -1292,7 +1292,7 @@ for await (const req of server) {
             error: 'IMDb import failed',
             detail: 'An internal error occurred.',
           }),
-          headers: makeHeaders('application/json'),
+          headers: makeHeaders(req, 'application/json'),
         })
       }
       continue
@@ -1306,7 +1306,7 @@ for await (const req of server) {
           error:
             'IMDb URL import is temporarily disabled. Please use CSV import.',
         }),
-        headers: makeHeaders('application/json'),
+        headers: makeHeaders(req, 'application/json'),
       })
       continue
     }
@@ -1340,7 +1340,7 @@ for await (const req of server) {
       await req.respond({
         status: 302,
         headers: (() => {
-          const h = makeHeaders()
+          const h = makeHeaders(req)
           h.set('Location', location)
           return h
         })(),
@@ -1385,7 +1385,7 @@ for await (const req of server) {
             status: 200,
             body: imageData,
             headers: (() => {
-              const h = makeHeaders('image/jpeg')
+              const h = makeHeaders(req, 'image/jpeg')
               h.set('cache-control', 'public, max-age=31536000, immutable')
               return h
             })(),
@@ -1420,7 +1420,7 @@ for await (const req of server) {
           await req.respond({
             status: 404,
             body: JSON.stringify({ error: 'Room not found' }),
-            headers: makeHeaders('application/json'),
+            headers: makeHeaders(req, 'application/json'),
           })
           continue
         }
@@ -1433,14 +1433,14 @@ for await (const req of server) {
         await req.respond({
           status: 200,
           body: JSON.stringify({ success: true, removedCount }),
-          headers: makeHeaders('application/json'),
+          headers: makeHeaders(req, 'application/json'),
         })
       } catch (err) {
         log.error(`Failed to process match action: ${err}`)
         await req.respond({
           status: 500,
           body: JSON.stringify({ error: 'Failed to process match action' }),
-          headers: makeHeaders('application/json'),
+          headers: makeHeaders(req, 'application/json'),
         })
       }
       continue
