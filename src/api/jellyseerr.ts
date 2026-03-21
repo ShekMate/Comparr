@@ -6,7 +6,7 @@ import {
   getSeerrApiKey,
   getSeerrUrl,
 } from '../core/config.ts'
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import * as log from 'jsr:@std/log'
 import { fetchWithTimeout } from '../infra/http/fetch-with-timeout.ts'
 
 interface RequestResponse {
