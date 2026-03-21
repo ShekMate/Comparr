@@ -1,5 +1,7 @@
 // Add this utility to a new file: src/features/media/poster-validation.ts
 
+import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+
 // Cache for poster validation results to avoid repeated checks
 const posterValidationCache = new Map<string, boolean>()
 const MAX_POSTER_CACHE_SIZE = 5000 // Limit cache to 5000 entries (suitable for large libraries)
@@ -11,7 +13,7 @@ function addToPosterCache(key: string, value: boolean): void {
     const firstKey = posterValidationCache.keys().next().value
     if (firstKey !== undefined) {
       posterValidationCache.delete(firstKey)
-      console.log(`🧹 Poster cache full, removed oldest entry: ${firstKey}`)
+      log.debug(`Poster cache full, removed oldest entry: ${firstKey}`)
     }
   }
   posterValidationCache.set(key, value)
@@ -41,17 +43,17 @@ export async function validateTMDbPoster(posterPath: string): Promise<boolean> {
       })
 
       if (response.ok) {
-        console.log(`✅ Valid TMDb poster found: ${posterPath} (${size})`)
+        log.info(`Valid TMDb poster found: ${posterPath} (${size})`)
         addToPosterCache(posterPath, true)
         return true
       }
     }
 
-    console.log(`❌ No valid TMDb poster found: ${posterPath}`)
+    log.debug(`No valid TMDb poster found: ${posterPath}`)
     addToPosterCache(posterPath, false)
     return false
   } catch (error) {
-    console.log(`🔍 Poster validation failed for ${posterPath}:`, error.message)
+    log.debug(`Poster validation failed for ${posterPath}: ${error?.message || error}`)
     addToPosterCache(posterPath, false)
     return false
   }
@@ -96,19 +98,19 @@ export async function getBestPosterPath(
 export function isMovieValid(movie: any, posterPath: string | null): boolean {
   // Must have a title
   if (!movie.title || movie.title.trim() === '') {
-    console.log(`❌ Skipping movie: no title`)
+    log.debug('Skipping movie: no title')
     return false
   }
 
   // Must have a valid poster (if you want to enforce this)
   if (!posterPath) {
-    console.log(`❌ Skipping movie: ${movie.title} - no valid poster`)
+    log.debug(`Skipping movie: ${movie.title} - no valid poster`)
     return false
   }
 
   // Optional: Must have a year
   if (!movie.year || movie.year === 'N/A') {
-    console.log(`⚠️  Movie ${movie.title} has no year, but allowing`)
+    log.info(`Movie ${movie.title} has no year, but allowing`)
   }
 
   return true
