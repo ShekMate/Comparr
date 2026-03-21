@@ -1,5 +1,5 @@
 // cache/plexCache.ts - Fast Plex availability checking
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import * as log from 'jsr:@std/log'
 import { getAllMovies } from '../../api/plex.ts'
 
 interface PlexMovieEntry {

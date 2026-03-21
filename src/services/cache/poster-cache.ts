@@ -1,5 +1,6 @@
+import type { CompatRequest } from '../../infra/http/compat-request.ts'
 // cache/posterCache.ts - Local poster storage and serving
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import * as log from 'jsr:@std/log'
 import { fetchWithTimeout } from '../../infra/http/fetch-with-timeout.ts'
 
 const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
@@ -268,24 +269,22 @@ export function prefetchPoster(
  */
 export async function serveCachedPoster(
   filename: string,
-  req: any
-): Promise<boolean> {
+  req: CompatRequest
+): Promise<Response | null> {
   const filepath = `${POSTER_CACHE_DIR}/${filename}`
 
   try {
     const imageData = await Deno.readFile(filepath)
-    await req.respond({
+    return new Response(imageData, {
       status: 200,
-      body: imageData,
       headers: new Headers({
         'content-type': 'image/jpeg',
         'cache-control': 'public, max-age=31536000, immutable', // Cache for 1 year
       }),
     })
-    return true
   } catch (err) {
     log.error(`Failed to serve cached poster ${filename}: ${err}`)
-    return false
+    return null
   }
 }
 
