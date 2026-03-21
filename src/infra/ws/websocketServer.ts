@@ -1,13 +1,5 @@
-import { EventEmitter } from 'https://deno.land/std@0.79.0/node/events.ts'
-import { ServerRequest } from 'https://deno.land/std@0.79.0/http/server.ts'
-import {
-  acceptWebSocket,
-  isWebSocketCloseEvent,
-  isWebSocketPingEvent,
-  isWebSocketPongEvent,
-} from 'https://deno.land/std@0.79.0/ws/mod.ts'
-
-import type { WebSocket as STDWebSocket } from 'https://deno.land/std@0.79.0/ws/mod.ts'
+import type { CompatRequest } from '../http/compat-request.ts'
+import { EventEmitter } from 'node:events'
 import { getAllowedOrigins } from '../../core/config.ts'
 
 export class WebSocketError extends Error {}
@@ -33,7 +25,7 @@ const matchAllowedOrigin = (candidate: string, origin: string, host: string) => 
 }
 
 interface Options {
-  onConnection: (ws: WebSocket, req: ServerRequest) => void
+  onConnection: (ws: WebSocket, req: CompatRequest) => void
   onError: (error: Error) => void
 }
 
@@ -46,7 +38,7 @@ export class WebSocketServer {
     this.options = options
   }
 
-  private isAllowedOrigin(req: ServerRequest) {
+  private isAllowedOrigin(req: CompatRequest) {
     const origin = String(req.headers.get('origin') || '').trim()
     if (!origin) return false
 
@@ -57,7 +49,9 @@ export class WebSocketServer {
       const target = origin.toLowerCase()
       return allowed.some(item => matchAllowedOrigin(item, target, host))
     }
+
     if (!host) return false
+
     try {
       return new URL(origin).host.toLowerCase() === host
     } catch {
@@ -65,12 +59,11 @@ export class WebSocketServer {
     }
   }
 
-  private getClientIp(req: ServerRequest) {
+  private getClientIp(req: CompatRequest) {
     return String((req.conn.remoteAddr as Deno.NetAddr | undefined)?.hostname || 'unknown')
   }
 
-  async connect(req: ServerRequest) {
-    const { conn, r: bufReader, w: bufWriter, headers } = req
+  async connect(req: CompatRequest) {
     const clientIp = this.getClientIp(req)
 
     if (!this.isAllowedOrigin(req)) {
@@ -85,16 +78,12 @@ export class WebSocketServer {
     }
 
     try {
-      const sock = await acceptWebSocket({
-        conn,
-        bufReader,
-        bufWriter,
-        headers,
-      })
-      this.ipConnections.set(clientIp, openCount + 1)
+      const { socket, response } = Deno.upgradeWebSocket(req.rawRequest)
+      await req.respondWith(response)
 
-      const ws: WebSocket = new WebSocket()
-      ws.open(sock)
+      this.ipConnections.set(clientIp, openCount + 1)
+      const ws = new WebSocket(socket)
+
       ws.once('close', () => {
         const current = this.ipConnections.get(clientIp) ?? 0
         if (current <= 1) this.ipConnections.delete(clientIp)
@@ -104,7 +93,7 @@ export class WebSocketServer {
       this.clients.add(ws)
       this.options.onConnection(ws, req)
     } catch (err) {
-      this.options.onError(err)
+      this.options.onError(err as Error)
       await req.respond({ status: 400 })
     }
   }
@@ -118,100 +107,91 @@ export class WebSocketServer {
 }
 
 export class WebSocket extends EventEmitter {
-  webSocket?: STDWebSocket
+  webSocket?: globalThis.WebSocket
   state: WebSocketState = WebSocketState.CONNECTING
 
-  async open(sock: STDWebSocket) {
+  constructor(socket?: globalThis.WebSocket) {
+    super()
+    if (socket) this.open(socket)
+  }
+
+  open(sock: globalThis.WebSocket) {
     this.webSocket = sock
-    this.state = WebSocketState.OPEN
-    this.emit('open')
-    this.heartbeat()
-    try {
-      for await (const ev of sock) {
-        if (typeof ev === 'string') {
-          const byteLength = new TextEncoder().encode(ev).byteLength
-          if (byteLength > MAX_WS_MESSAGE_BYTES) {
-            await sock.close(1009, 'Message too big')
-            break
-          }
-          this.emit('message', ev)
-        } else if (ev instanceof Uint8Array) {
-          if (ev.byteLength > MAX_WS_MESSAGE_BYTES) {
-            await sock.close(1009, 'Message too big')
-            break
-          }
-          this.emit('message', ev)
-        } else if (isWebSocketPingEvent(ev)) {
-          const [, body] = ev
-          this.emit('ping', body)
-        } else if (isWebSocketPongEvent(ev)) {
-          const [, body] = ev
-          this.emit('pong', body)
-        } else if (isWebSocketCloseEvent(ev)) {
-          const { code } = ev
-          this.state = WebSocketState.CLOSED
-          this.emit('close', code)
+
+    sock.onopen = () => {
+      this.state = WebSocketState.OPEN
+      this.emit('open')
+    }
+
+    sock.onmessage = event => {
+      const payload = event.data
+      if (typeof payload === 'string') {
+        const byteLength = new TextEncoder().encode(payload).byteLength
+        if (byteLength > MAX_WS_MESSAGE_BYTES) {
+          this.close(1009, 'Message too big').catch(() => {})
+          return
         }
+        this.emit('message', payload)
+        return
       }
-    } catch (err) {
-      this.emit('close', err)
-      if (!sock.isClosed) {
-        await sock.close(1000).catch(e => {
-          throw new WebSocketError(e)
-        })
+
+      if (payload instanceof ArrayBuffer) {
+        const bytes = new Uint8Array(payload)
+        if (bytes.byteLength > MAX_WS_MESSAGE_BYTES) {
+          this.close(1009, 'Message too big').catch(() => {})
+          return
+        }
+        this.emit('message', bytes)
       }
+    }
+
+    sock.onerror = () => {
+      this.emit('error', new WebSocketError('WebSocket error'))
+    }
+
+    sock.onclose = event => {
+      this.state = WebSocketState.CLOSED
+      this.emit('close', event.code)
     }
   }
 
-  async heartbeat() {
-    while (this.state === WebSocketState.OPEN) {
-      if (this.isClosed) {
-        this.emit('close', 1001)
-        break
-      }
-
-      await new Promise(resolve => setTimeout(() => resolve, 2_000))
-    }
-  }
-
-  ping(message?: string | Uint8Array) {
-    if (this.state === WebSocketState.CONNECTING) {
-      throw new WebSocketError('WebSocket is not open: state 0 (CONNECTING)')
-    }
-    return this.webSocket!.ping(message)
+  ping(_message?: string | Uint8Array) {
+    // Native browser-style WebSocket does not expose ping frames.
+    return
   }
 
   send(message: string | Uint8Array) {
-    if (this.state === WebSocketState.CONNECTING) {
+    if (this.state === WebSocketState.CONNECTING || !this.webSocket) {
       throw new WebSocketError('WebSocket is not open: state 0 (CONNECTING)')
     }
-    return this.webSocket!.send(message)
+
+    if (message instanceof Uint8Array) {
+      this.webSocket.send(message)
+      return
+    }
+
+    this.webSocket.send(message)
   }
 
   close(code = 1000, reason?: string): Promise<void> {
     if (
       this.state === WebSocketState.CLOSING ||
-      this.state === WebSocketState.CLOSED
+      this.state === WebSocketState.CLOSED ||
+      !this.webSocket
     ) {
       return Promise.resolve()
     }
 
     this.state = WebSocketState.CLOSING
-    return this.webSocket!.close(code, reason!)
+    this.webSocket.close(code, reason)
+    return Promise.resolve()
   }
 
   closeForce() {
-    if (
-      this.state === WebSocketState.CLOSING ||
-      this.state === WebSocketState.CLOSED
-    ) {
-      return
-    }
-    this.state = WebSocketState.CLOSING
-    return this.webSocket!.closeForce()
+    return this.close(1001)
   }
 
-  get isClosed(): boolean | undefined {
-    return this.webSocket!.isClosed
+  get isClosed(): boolean {
+    return this.state === WebSocketState.CLOSED
   }
 }

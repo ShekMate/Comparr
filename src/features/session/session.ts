@@ -1,6 +1,6 @@
 // deno-lint-ignore-file
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
-import { assert } from 'https://deno.land/std@0.79.0/_util/assert.ts'
+import * as log from 'jsr:@std/log'
+import { assert } from '../../core/assert.ts'
 import {
   getAllMovies,
   getRandomMovie,
