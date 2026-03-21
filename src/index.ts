@@ -1,6 +1,7 @@
 // src/index.ts
 import * as log from 'jsr:@std/log'
 import { clearAllMoviesCache, getServerId } from './api/plex.ts'
+import type { CompatRequest, CompatResponseInit } from './infra/http/compat-request.ts'
 import {
   getLinkType,
   getPlexLibraryName,
@@ -232,7 +233,7 @@ async function savePersistedState(state: any) {
 
 async function appendAuditLog(
   event: string,
-  req: any,
+  req: CompatRequest,
   details: Record<string, unknown> = {}
 ) {
   await Deno.mkdir(DATA_DIR, { recursive: true }).catch(() => {})
@@ -259,7 +260,11 @@ async function appendAuditLog(
 }
 
 /** tiny helper to send a file from disk */
-async function respondFile(req: any, filePath: string, contentType?: string) {
+async function respondFile(
+  req: CompatRequest,
+  filePath: string,
+  contentType?: string
+) {
   try {
     const body = await Deno.readFile(filePath)
     const headers = makeHeaders(contentType)
@@ -277,7 +282,7 @@ const makeHeaders = (contentType?: string) => {
   return headers
 }
 
-const bodyTooLarge = (req: any) => {
+const bodyTooLarge = (req: CompatRequest) => {
   const max = getMaxBodySize()
   const contentLength = Number(req.headers.get('content-length') || '0')
   return Number.isFinite(contentLength) && contentLength > max
@@ -323,7 +328,7 @@ const validateRoomCodeAndUserName = (roomCode: string, userName: string) => {
   return ''
 }
 
-const parseAccessPassword = (req: any) => {
+const parseAccessPassword = (req: CompatRequest) => {
   const header = req.headers?.get?.('x-access-password')
   if (typeof header === 'string' && header.trim()) return header.trim()
 
@@ -343,7 +348,7 @@ const parseAccessPassword = (req: any) => {
   return ''
 }
 
-const isAccessPasswordAuthorized = (req: any) => {
+const isAccessPasswordAuthorized = (req: CompatRequest) => {
   const configuredPassword = getAccessPassword()
   if (!configuredPassword) return true
   return timingSafeEqual(parseAccessPassword(req), configuredPassword)
@@ -355,7 +360,7 @@ const shouldRequireAccessPassword = (path: string) => {
   return !EXEMPT_GLOBAL_ACCESS_PASSWORD_PATHS.has(path)
 }
 
-const parseCookies = (req: any) => {
+const parseCookies = (req: CompatRequest) => {
   const rawCookieHeader = String(req?.headers?.get?.('cookie') || '')
   const cookies = new Map<string, string>()
   for (const cookiePair of rawCookieHeader.split(';')) {
@@ -367,13 +372,13 @@ const parseCookies = (req: any) => {
   return cookies
 }
 
-const getCsrfCookieToken = (req: any) =>
+const getCsrfCookieToken = (req: CompatRequest) =>
   parseCookies(req).get(CSRF_COOKIE_NAME) || ''
 
 const createCsrfToken = () =>
   `${crypto.randomUUID()}${crypto.randomUUID().replace(/-/g, '')}`
 
-const shouldUseSecureCookies = (req: any) => {
+const shouldUseSecureCookies = (req: CompatRequest) => {
   const xfProto = String(req?.headers?.get?.('x-forwarded-proto') || '')
     .split(',')[0]
     .trim()
@@ -384,7 +389,7 @@ const shouldUseSecureCookies = (req: any) => {
     .startsWith('https://')
 }
 
-const isValidCsrfRequest = (req: any) => {
+const isValidCsrfRequest = (req: CompatRequest) => {
   const cookieToken = getCsrfCookieToken(req)
   const headerToken = String(req?.headers?.get?.('x-csrf-token') || '').trim()
   if (!cookieToken || !headerToken) return false
@@ -404,24 +409,6 @@ const updateStreamingForTmdbIdDeduped = async (tmdbId: number) => {
   return task
 }
 
-
-type CompatResponseInit = {
-  status?: number
-  headers?: HeadersInit
-  body?: BodyInit | null
-}
-
-type CompatRequest = {
-  method: string
-  url: string
-  headers: Headers
-  conn: { remoteAddr?: Deno.NetAddr | Deno.UnixAddr }
-  rawRequest: Request
-  respond: (init: CompatResponseInit) => Promise<void>
-  respondWith: (response: Response) => Promise<void>
-  text: () => Promise<string>
-  json: <T = unknown>() => Promise<T>
-}
 
 const serveCompat = (options: { port: number }) => {
   const queue: CompatRequest[] = []

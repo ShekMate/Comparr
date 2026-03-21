@@ -1,3 +1,4 @@
+import type { CompatRequest } from './compat-request.ts'
 import {
   extname,
   join,
@@ -23,7 +24,7 @@ function normalizeURL(url: string): string {
     : normalizedUrl
 }
 
-export const serveFile = async (req: any, basePath = 'public') => {
+export const serveFile = async (req: CompatRequest, basePath = 'public') => {
   const publicRoot = join(Deno.cwd(), basePath.replace(/^\/+/, ''))
   const urlPath = normalizeURL(req.url).replace(/^\/+/, '') // strip leading '/'
   // Use index.html for root path (handles both '/' and '/?query=params')

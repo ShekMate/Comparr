@@ -1,3 +1,4 @@
+import type { CompatRequest } from '../../infra/http/compat-request.ts'
 // cache/posterCache.ts - Local poster storage and serving
 import * as log from 'jsr:@std/log'
 import { fetchWithTimeout } from '../../infra/http/fetch-with-timeout.ts'
@@ -268,7 +269,7 @@ export function prefetchPoster(
  */
 export async function serveCachedPoster(
   filename: string,
-  req: any
+  req: CompatRequest
 ): Promise<boolean> {
   const filepath = `${POSTER_CACHE_DIR}/${filename}`
 

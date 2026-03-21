@@ -1,3 +1,4 @@
+import type { CompatRequest } from '../http/compat-request.ts'
 import { EventEmitter } from 'node:events'
 import { getAllowedOrigins } from '../../core/config.ts'
 
@@ -24,7 +25,7 @@ const matchAllowedOrigin = (candidate: string, origin: string, host: string) => 
 }
 
 interface Options {
-  onConnection: (ws: WebSocket, req: any) => void
+  onConnection: (ws: WebSocket, req: CompatRequest) => void
   onError: (error: Error) => void
 }
 
@@ -37,7 +38,7 @@ export class WebSocketServer {
     this.options = options
   }
 
-  private isAllowedOrigin(req: any) {
+  private isAllowedOrigin(req: CompatRequest) {
     const origin = String(req.headers.get('origin') || '').trim()
     if (!origin) return false
 
@@ -58,11 +59,11 @@ export class WebSocketServer {
     }
   }
 
-  private getClientIp(req: any) {
+  private getClientIp(req: CompatRequest) {
     return String((req.conn.remoteAddr as Deno.NetAddr | undefined)?.hostname || 'unknown')
   }
 
-  async connect(req: any) {
+  async connect(req: CompatRequest) {
     const clientIp = this.getClientIp(req)
 
     if (!this.isAllowedOrigin(req)) {
