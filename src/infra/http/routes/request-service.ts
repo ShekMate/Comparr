@@ -13,14 +13,15 @@ const makeJsonHeaders = (req?: CompatRequest) => {
   return headers
 }
 
-export async function handleRequestServiceRoutes(req: CompatRequest, path: string) {
+export async function handleRequestServiceRoutes(
+  req: CompatRequest,
+  path: string
+): Promise<Response | null> {
   if (path === '/api/request-service-status') {
-    await req.respond({
-      status: 200,
-      body: JSON.stringify({ configured: isRequestServiceConfigured() }),
-      headers: makeJsonHeaders(req),
-    })
-    return true
+    return new Response(
+      JSON.stringify({ configured: isRequestServiceConfigured() }),
+      { status: 200, headers: makeJsonHeaders(req) }
+    )
   }
 
   if (path.startsWith('/api/check-movie-status')) {
@@ -29,30 +30,24 @@ export async function handleRequestServiceRoutes(req: CompatRequest, path: strin
       const tmdbId = parseInt(url.searchParams.get('tmdbId') || '')
 
       if (!tmdbId || Number.isNaN(tmdbId)) {
-        await req.respond({
-          status: 400,
-          body: JSON.stringify({ error: 'Invalid or missing TMDb ID' }),
-          headers: makeJsonHeaders(req),
-        })
-        return true
+        return new Response(
+          JSON.stringify({ error: 'Invalid or missing TMDb ID' }),
+          { status: 400, headers: makeJsonHeaders(req) }
+        )
       }
 
       const inPlex = isMovieInRadarr(tmdbId)
-      await req.respond({
+      return new Response(JSON.stringify({ inPlex, tmdbId }), {
         status: 200,
-        body: JSON.stringify({ inPlex, tmdbId }),
         headers: makeJsonHeaders(req),
       })
     } catch (err) {
       log.error(`Error checking movie status: ${err}`)
-      await req.respond({
+      return new Response(JSON.stringify({ error: 'Failed to check status' }), {
         status: 500,
-        body: JSON.stringify({ error: 'Failed to check status' }),
         headers: makeJsonHeaders(req),
       })
     }
-
-    return true
   }
 
   if (path.startsWith('/api/check-request-status')) {
@@ -61,36 +56,36 @@ export async function handleRequestServiceRoutes(req: CompatRequest, path: strin
       const tmdbId = parseInt(url.searchParams.get('tmdbId') || '')
 
       if (!tmdbId || Number.isNaN(tmdbId)) {
-        await req.respond({
-          status: 400,
-          body: JSON.stringify({ error: 'Invalid or missing TMDb ID' }),
-          headers: makeJsonHeaders(req),
-        })
-        return true
+        return new Response(
+          JSON.stringify({ error: 'Invalid or missing TMDb ID' }),
+          { status: 400, headers: makeJsonHeaders(req) }
+        )
       }
 
       const status = await getMediaStatus(tmdbId)
-      await req.respond({
-        status: 200,
-        body: JSON.stringify({
+      return new Response(
+        JSON.stringify({
           available: status?.available || false,
           pending: status?.pending || false,
           processing: status?.processing || false,
           tmdbId,
         }),
-        headers: makeJsonHeaders(req),
-      })
+        {
+          status: 200,
+          headers: makeJsonHeaders(req),
+        }
+      )
     } catch (err) {
       log.error(`Error checking request status: ${err}`)
-      await req.respond({
-        status: 500,
-        body: JSON.stringify({ error: 'Failed to check request status' }),
-        headers: makeJsonHeaders(req),
-      })
+      return new Response(
+        JSON.stringify({ error: 'Failed to check request status' }),
+        {
+          status: 500,
+          headers: makeJsonHeaders(req),
+        }
+      )
     }
-
-    return true
   }
 
-  return false
+  return null
 }

@@ -678,23 +678,27 @@ for await (const req of server) {
     }
 
     if (
-      await handleRoutes(req, p, [
-        handleConfigDebugRoute,
-        async (routeReq, routePath) =>
-          await handleSettingsRoutes(routeReq, routePath, {
-            buildPlexCache,
-            clearAllMoviesCache,
-            getPlexLibraryName,
-            getSettings,
-            isLocalRequest,
-            refreshRadarrCache,
-            updateSettings,
-          }),
-        handleRequestServiceRoutes,
-        handleRoomRoutes,
-        handleMatchesRoute,
-      ])
+      await handleSettingsRoutes(req, p, {
+        buildPlexCache,
+        clearAllMoviesCache,
+        getPlexLibraryName,
+        getSettings,
+        isLocalRequest,
+        refreshRadarrCache,
+        updateSettings,
+      })
     ) {
+      continue
+    }
+
+    const routeResponse = await handleRoutes(req, p, [
+      handleConfigDebugRoute,
+      handleRequestServiceRoutes,
+      handleRoomRoutes,
+      handleMatchesRoute,
+    ])
+    if (routeResponse) {
+      await req.respondWith(routeResponse)
       continue
     }
 

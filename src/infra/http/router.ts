@@ -1,16 +1,21 @@
 import type { CompatRequest } from './compat-request.ts'
-export type RouteHandler = (req: CompatRequest, path: string) => Promise<boolean>
+
+export type RouteHandler = (
+  req: CompatRequest,
+  path: string
+) => Promise<Response | null>
 
 export async function handleRoutes(
   req: CompatRequest,
   path: string,
   handlers: RouteHandler[]
-): Promise<boolean> {
+): Promise<Response | null> {
   for (const handler of handlers) {
-    if (await handler(req, path)) {
-      return true
+    const response = await handler(req, path)
+    if (response) {
+      return response
     }
   }
 
-  return false
+  return null
 }

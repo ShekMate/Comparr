@@ -13,14 +13,16 @@ import {
   getTmdbApiKey,
 } from '../../../core/config.ts'
 
-export async function handleConfigDebugRoute(req: CompatRequest, path: string) {
+export async function handleConfigDebugRoute(
+  _req: CompatRequest,
+  path: string
+): Promise<Response | null> {
   if (path !== '/api/debug/config') {
-    return false
+    return null
   }
 
-  await req.respond({
-    status: 200,
-    body: JSON.stringify(
+  return new Response(
+    JSON.stringify(
       {
         tmdb_configured: !!getTmdbApiKey(),
         plex_configured: !!(getPlexUrl() && getPlexToken()),
@@ -32,8 +34,9 @@ export async function handleConfigDebugRoute(req: CompatRequest, path: string) {
       null,
       2
     ),
-    headers: new Headers({ 'content-type': 'application/json' }),
-  })
-
-  return true
+    {
+      status: 200,
+      headers: new Headers({ 'content-type': 'application/json' }),
+    }
+  )
 }

@@ -8,9 +8,12 @@ const makeJsonHeaders = (req?: CompatRequest) => {
   return headers
 }
 
-export async function handleMatchesRoute(req: CompatRequest, path: string) {
+export async function handleMatchesRoute(
+  req: CompatRequest,
+  path: string
+): Promise<Response | null> {
   if (path !== '/api/matches') {
-    return false
+    return null
   }
 
   const url = new URL(req.url, 'http://local')
@@ -18,29 +21,22 @@ export async function handleMatchesRoute(req: CompatRequest, path: string) {
   const userName = url.searchParams.get('user') || ''
 
   if (!roomCode || !userName) {
-    await req.respond({
+    return new Response(JSON.stringify({ error: 'Missing room code or user' }), {
       status: 400,
-      body: JSON.stringify({ error: 'Missing room code or user' }),
       headers: makeJsonHeaders(req),
     })
-    return true
   }
 
   const matches = getMatchesForUser(roomCode, userName)
   if (matches === null) {
-    await req.respond({
+    return new Response(JSON.stringify({ error: 'Room not found' }), {
       status: 404,
-      body: JSON.stringify({ error: 'Room not found' }),
       headers: makeJsonHeaders(req),
     })
-    return true
   }
 
-  await req.respond({
+  return new Response(JSON.stringify({ matches }), {
     status: 200,
-    body: JSON.stringify({ matches }),
     headers: makeJsonHeaders(req),
   })
-
-  return true
 }
