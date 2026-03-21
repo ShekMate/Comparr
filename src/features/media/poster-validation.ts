@@ -1,6 +1,6 @@
 // Add this utility to a new file: src/features/media/poster-validation.ts
 
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import * as log from 'jsr:@std/log'
 
 // Cache for poster validation results to avoid repeated checks
 const posterValidationCache = new Map<string, boolean>()

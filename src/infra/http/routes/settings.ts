@@ -1,5 +1,5 @@
 import { SettingsValidationError } from '../../../core/settings.ts'
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import * as log from 'jsr:@std/log'
 import { timingSafeEqual } from '../../../core/security.ts'
 import { apiRateLimiter, loginRateLimiter } from '../ip-rate-limiter.ts'
 import { addSecurityHeaders } from '../security-headers.ts'
@@ -323,8 +323,7 @@ export async function handleSettingsRoutes(
     }
 
     try {
-      const decoder = new TextDecoder()
-      const bodyText = decoder.decode(await Deno.readAll(req.body))
+      const bodyText = await req.text()
       const body = bodyText ? JSON.parse(bodyText) : {}
       const providedPassword = String(body?.accessPassword ?? '').trim()
       const settings = getSettings()
@@ -469,8 +468,7 @@ export async function handleSettingsRoutes(
     }
 
     try {
-      const decoder = new TextDecoder()
-      const body = decoder.decode(await Deno.readAll(req.body))
+      const body = await req.text()
       const payload = JSON.parse(body) as {
         target?: string
         url?: string
@@ -530,8 +528,7 @@ export async function handleSettingsRoutes(
     const isAdmin = isAdminAuthorized(req, currentSettings, isLocalRequest)
 
     try {
-      const decoder = new TextDecoder()
-      const body = decoder.decode(await Deno.readAll(req.body))
+      const body = await req.text()
       const { settings } = JSON.parse(body)
       const incomingSettings =
         ((settings ?? {}) as Record<string, unknown>) || {}

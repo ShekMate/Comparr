@@ -1,7 +1,6 @@
 // src/index.ts
-import { serve } from 'https://deno.land/std@0.79.0/http/server.ts'
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
-import { clearAllMoviesCache, getServerId, proxyPoster } from './api/plex.ts'
+import * as log from 'jsr:@std/log'
+import { clearAllMoviesCache, getServerId } from './api/plex.ts'
 import {
   getLinkType,
   getPlexLibraryName,
@@ -405,7 +404,109 @@ const updateStreamingForTmdbIdDeduped = async (tmdbId: number) => {
   return task
 }
 
-const server = serve({ port: Number(getPort()) })
+
+type CompatResponseInit = {
+  status?: number
+  headers?: HeadersInit
+  body?: BodyInit | null
+}
+
+type CompatRequest = {
+  method: string
+  url: string
+  headers: Headers
+  conn: { remoteAddr?: Deno.NetAddr | Deno.UnixAddr }
+  rawRequest: Request
+  respond: (init: CompatResponseInit) => Promise<void>
+  respondWith: (response: Response) => Promise<void>
+  text: () => Promise<string>
+  json: <T = unknown>() => Promise<T>
+}
+
+const serveCompat = (options: { port: number }) => {
+  const queue: CompatRequest[] = []
+  const waiters: Array<(value: IteratorResult<CompatRequest>) => void> = []
+  const abortController = new AbortController()
+  let closed = false
+
+  const flush = () => {
+    while (queue.length > 0 && waiters.length > 0) {
+      const req = queue.shift()!
+      const waiter = waiters.shift()!
+      waiter({ value: req, done: false })
+    }
+
+    if (closed) {
+      while (waiters.length > 0 && queue.length === 0) {
+        const waiter = waiters.shift()!
+        waiter({ value: undefined as never, done: true })
+      }
+    }
+  }
+
+  Deno.serve({ port: options.port, signal: abortController.signal }, (request, info) => {
+    if (closed) return new Response('Server shutting down', { status: 503 })
+
+    return new Promise<Response>(resolve => {
+      const parsedUrl = new URL(request.url)
+      let responder: ((response: Response) => void) | null = resolve
+
+      const req: CompatRequest = {
+        method: request.method,
+        url: `${parsedUrl.pathname}${parsedUrl.search}`,
+        headers: request.headers,
+        conn: { remoteAddr: info.remoteAddr },
+        rawRequest: request,
+        respond: async init => {
+          if (!responder) return
+          const resolveResponse = responder
+          responder = null
+          resolveResponse(
+            new Response(init.body ?? null, {
+              status: init.status ?? 200,
+              headers: init.headers,
+            })
+          )
+        },
+        respondWith: async response => {
+          if (!responder) return
+          const resolveResponse = responder
+          responder = null
+          resolveResponse(response)
+        },
+        text: () => request.text(),
+        json: <T = unknown>() => request.json() as Promise<T>,
+      }
+
+      queue.push(req)
+      flush()
+    })
+  })
+
+  return {
+    close() {
+      if (closed) return
+      closed = true
+      abortController.abort()
+      flush()
+    },
+    [Symbol.asyncIterator]() {
+      return {
+        next() {
+          if (queue.length > 0) {
+            return Promise.resolve({ value: queue.shift()!, done: false })
+          }
+          if (closed) {
+            return Promise.resolve({ value: undefined as never, done: true })
+          }
+          return new Promise(resolve => waiters.push(resolve))
+        },
+      }
+    },
+  }
+}
+
+const server = serveCompat({ port: Number(getPort()) })
 
 const wss = new WebSocketServer({
   onConnection: (ws, req) =>
@@ -629,8 +730,7 @@ for await (const req of server) {
           })
           continue
         }
-        const decoder = new TextDecoder()
-        const body = decoder.decode(await Deno.readAll(req.body))
+        const body = await req.text()
         const { tmdbId } = JSON.parse(body)
 
         if (!tmdbId || typeof tmdbId !== 'number') {
@@ -1114,8 +1214,7 @@ for await (const req of server) {
           continue
         }
 
-        const decoder = new TextDecoder()
-        const body = decoder.decode(await Deno.readAll(req.body))
+        const body = await req.text()
         const { csvContent, roomCode, userName, fileName } = JSON.parse(body)
 
         const validationError = validateRoomCodeAndUserName(roomCode, userName)
@@ -1310,7 +1409,7 @@ for await (const req of server) {
     // Handle match actions (seen/pass)
     if (p === '/api/match-action' && req.method === 'POST') {
       try {
-        const body = await req.body()
+        const body = await req.json()
         const { guid, action, roomCode, userName } = body as {
           guid: string
           action: 'seen' | 'pass'

@@ -4,7 +4,7 @@
 
 import { gunzip } from 'https://deno.land/x/denoflate@1.2.1/mod.ts'
 import { DB } from 'https://deno.land/x/sqlite@v3.8/mod.ts'
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import * as log from 'jsr:@std/log'
 import { fetchWithTimeout } from '../../infra/http/fetch-with-timeout.ts'
 
 const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
