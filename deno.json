@@ -1,23 +1,37 @@
 {
   "compilerOptions": {
     "allowJs": true,
-    "lib": ["deno.window"],
+    "lib": [
+      "deno.window"
+    ],
     "strict": true
   },
   "lint": {
     "files": {
-      "include": ["src/"],
-      "exclude": ["src/testdata/"]
+      "include": [
+        "src/"
+      ],
+      "exclude": [
+        "src/testdata/"
+      ]
     },
     "rules": {
-      "tags": ["recommended"],
-      "exclude": ["no-explicit-any"]
+      "tags": [
+        "recommended"
+      ],
+      "exclude": [
+        "no-explicit-any"
+      ]
     }
   },
   "fmt": {
     "files": {
-      "include": ["src/"],
-      "exclude": ["src/testdata/"]
+      "include": [
+        "src/"
+      ],
+      "exclude": [
+        "src/testdata/"
+      ]
     },
     "options": {
       "useTabs": false,
@@ -29,13 +43,15 @@
   },
   "test": {
     "files": {
-      "include": ["src/**/*.test.ts", "src/**/__tests__/**/*.ts"]
+      "include": [
+        "src/**/*.test.ts",
+        "src/**/__tests__/**/*.ts"
+      ]
     }
   },
   "tasks": {
     "test": "deno test --allow-all --coverage=coverage/",
     "test:watch": "deno test --allow-all --watch",
     "coverage": "deno coverage coverage/ --lcov --output=coverage/lcov.info"
-  },
-  "importMap": "./import_map.json"
+  }
 }

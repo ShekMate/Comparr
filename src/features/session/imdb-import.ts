@@ -1,6 +1,6 @@
 // src/features/session/imdb-import.ts
 // Handles parsing IMDb CSV exports and looking up movies via TMDb API.
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import * as log from 'jsr:@std/log'
 import { tmdbFetch } from '../../api/tmdb.ts'
 
 export interface ImdbCsvRow {
