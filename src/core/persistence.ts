@@ -1,6 +1,8 @@
 // persistence.ts (Deno)
 // Minimal file-based persistence for per-room user responses
 
+import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+
 export type PersistedResponse = {
   guid: string
   key?: string | null
@@ -61,7 +63,7 @@ export function saveStateSoon() {
       await Deno.writeTextFile(tmpFile, JSON.stringify(state, null, 2))
       await Deno.rename(tmpFile, STATE_FILE) // atomic-ish on same fs
     } catch (e) {
-      console.error('Failed to persist session state:', e)
+      log.error(`Failed to persist session state: ${e}`)
     } finally {
       writeQueued = false
     }

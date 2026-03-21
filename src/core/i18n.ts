@@ -1,4 +1,5 @@
 import { Accepts } from 'https://deno.land/x/accepts@2.1.0/mod.ts'
+import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
 import {
   getLinkType,
   getPlexLibraryName,
@@ -60,7 +61,7 @@ export const translateHTML = async (
     try {
       await populateTranslations()
     } catch (err) {
-      console.error('Encountered an error reading translation files', err)
+      log.error(`Encountered an error reading translation files: ${err}`)
     }
   }
 

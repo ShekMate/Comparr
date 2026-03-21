@@ -5,6 +5,7 @@
 import { getIMDbRating } from './imdb-datasets.ts'
 import { getPlexLibraryName, getTmdbApiKey } from '../../core/config.ts'
 import { tmdbFetch } from '../../api/tmdb.ts'
+import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
 
 const getTmdbKey = () => getTmdbApiKey()
 const tmdbCache = new Map<string, any>()
@@ -165,7 +166,7 @@ async function loadPersistentEnrichmentCache() {
         value: sanitizeEnrichmentPayload(entry.value),
       })
     }
-    console.log(
+    log.info(
       `[enrich] loaded ${enrichmentCache.size} persisted enrichment cache entries`
     )
   } catch {
@@ -199,7 +200,7 @@ function schedulePersistEnrichmentCache() {
       await Deno.writeTextFile(tmp, JSON.stringify(payload))
       await Deno.rename(tmp, ENRICH_CACHE_FILE)
     } catch (err) {
-      console.error(
+      log.error(
         `[enrich] failed to persist enrichment cache: ${err?.message || err}`
       )
     }
@@ -526,7 +527,7 @@ export async function enrich({
       })
     }
   } catch (err) {
-    console.log(`[enrich] Failed to check Plex status: ${err?.message || err}`)
+    log.error(`[enrich] Failed to check Plex status: ${err?.message || err}`)
   }
 
   const result: EnrichmentPayload = {
