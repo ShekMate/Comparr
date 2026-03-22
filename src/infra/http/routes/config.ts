@@ -1,9 +1,5 @@
 import type { CompatRequest } from '../compat-request.ts'
 import {
-  getJellyseerrApiKey,
-  getJellyseerrUrl,
-  getOverseerrApiKey,
-  getOverseerrUrl,
   getSeerrApiKey,
   getSeerrUrl,
   getPlexToken,
@@ -27,8 +23,6 @@ export async function handleConfigDebugRoute(
         tmdb_configured: !!getTmdbApiKey(),
         plex_configured: !!(getPlexUrl() && getPlexToken()),
         radarr_configured: !!(getRadarrUrl() && getRadarrApiKey()),
-        jellyseerr_configured: !!(getJellyseerrUrl() && getJellyseerrApiKey()),
-        overseerr_configured: !!(getOverseerrUrl() && getOverseerrApiKey()),
         seerr_configured: !!(getSeerrUrl() && getSeerrApiKey()),
       },
       null,
