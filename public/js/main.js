@@ -4205,68 +4205,6 @@ async function appendRatedRow(
     console.log('🧩 DEBUG streamingLink:', streamingLink)
     console.log('🧩 DEBUG movie:', movie.title, movie.guid)
 
-    // Helper to render service list items - NOW WITH CLICKABLE LINKS
-    const renderServiceItems = services => {
-      if (!services || services.length === 0)
-        return '<div class="service-item">None available</div>'
-
-      // If we have a streamingLink, wrap the entire list in a link container
-      if (streamingLink) {
-        return `
-          <a href="${streamingLink}" target="_blank" rel="noopener noreferrer" class="service-link-wrapper">
-            ${services
-              .map(s => {
-                const logoUrl = s.logo_path
-                  ? s.logo_path.startsWith('/assets/')
-                    ? `${basePath}${s.logo_path}`
-                    : `https://image.tmdb.org/t/p/original${s.logo_path}`
-                  : null
-
-                return `<div class="service-item">
-                ${
-                  logoUrl
-                    ? `<img src="${logoUrl}" alt="${s.name}" class="service-logo-small">`
-                    : ''
-                }
-                <span>${s.name}</span>
-              </div>`
-              })
-              .join('')}
-            <div class="service-footer">
-              <i class="fas fa-external-link-alt"></i> View on JustWatch
-            </div>
-          </a>
-        `
-      }
-
-      // Fallback if no link available
-      return services
-        .map(s => {
-          const logoUrl = s.logo_path
-            ? s.logo_path.startsWith('/assets/')
-              ? `${basePath}${s.logo_path}`
-              : `https://image.tmdb.org/t/p/original${s.logo_path}`
-            : null
-
-          return `<div class="service-item">
-          ${
-            logoUrl
-              ? `<img src="${logoUrl}" alt="${s.name}" class="service-logo-small">`
-              : ''
-          }
-          <span>${s.name}</span>
-        </div>`
-        })
-        .join('')
-    }
-
-    const hasSubscription =
-      streamingServices.subscription &&
-      streamingServices.subscription.filter(
-        s => s.name !== window.PLEX_LIBRARY_NAME
-      ).length > 0
-    const hasFree = streamingServices.free && streamingServices.free.length > 0
-
     const whereToWatchPillsHtml = watchProviders.length
       ? `<div class="where-to-watch">
           <div class="where-to-watch-title">Where to Watch</div>
@@ -4401,61 +4339,15 @@ async function appendRatedRow(
           })()}
           ${whereToWatchPillsHtml}
 
-        <div class="watch-card-actions">
-          <div class="service-dropdown">
-            <button class="service-dropdown-btn ${
-              !hasSubscription ? 'disabled' : ''
-            }" type="button" ${!hasSubscription ? 'disabled' : ''}>
-              SUBSCRIPTION
-            </button>
-            ${
-              hasSubscription
-                ? `
-              <div class="service-dropdown-menu">
-                ${renderServiceItems(
-                  streamingServices.subscription.filter(
-                    s => s.name !== window.PLEX_LIBRARY_NAME
-                  )
-                )}
-              </div>
-            `
-                : ''
-            }
-          </div>
-          
-          <div class="service-dropdown">
-            <button class="service-dropdown-btn ${
-              !hasFree ? 'disabled' : ''
-            }" type="button" ${!hasFree ? 'disabled' : ''}>
-              FREE
-            </button>
-            ${
-              hasFree
-                ? `
-              <div class="service-dropdown-menu">
-                ${renderServiceItems(streamingServices.free)}
-              </div>
-            `
-                : ''
-            }
-          </div>
-          
-          ${
-            isInPlex
-              ? `
-            <div class="plex-status">
-              <i class="fas fa-check-circle"></i> ${window.PLEX_LIBRARY_NAME}
-            </div>
-          `
-              : tmdbId && requestServiceConfigured
-              ? `
-            <button class="add-to-plex-btn" data-movie-id="${movieId}">
-              <i class="fas fa-plus"></i> ADD TO PLEX
-            </button>
-          `
-              : ``
-          }
-        </div>
+        ${
+          !isInPlex && tmdbId && requestServiceConfigured
+            ? `
+        <button class="add-to-plex-btn" data-movie-id="${movieId}">
+          <i class="fas fa-plus"></i> ADD TO PLEX
+        </button>
+        `
+            : ''
+        }
         
         <!-- Move to other lists buttons -->
         <div class="list-actions">
@@ -4494,59 +4386,6 @@ async function appendRatedRow(
       likesList.dataset.originalOrder = filteredOrder.join(',')
       applyCurrentWatchListSort()
     }
-
-    // Add dropdown toggle handlers (only for enabled buttons)
-    const dropdownBtns = card.querySelectorAll(
-      '.service-dropdown-btn:not(.disabled)'
-    )
-    dropdownBtns.forEach(btn => {
-      btn.addEventListener('click', e => {
-        const dropdown = btn.nextElementSibling
-        if (!dropdown) return
-
-        const isOpen = dropdown.classList.contains('show')
-
-        // Close all other dropdowns
-        document
-          .querySelectorAll('.service-dropdown-menu.show')
-          .forEach(menu => {
-            if (menu !== dropdown) {
-              menu.classList.remove('show')
-              menu.previousElementSibling.classList.remove('open')
-            }
-          })
-
-        // Toggle this dropdown
-        dropdown.classList.toggle('show')
-        btn.classList.toggle('open')
-
-        // Stop propagation so outside click handler doesn't immediately close it
-        e.stopPropagation()
-      })
-    })
-
-    // CRITICAL FIX: Allow links inside dropdown to work
-    const dropdowns = card.querySelectorAll('.service-dropdown-menu')
-    dropdowns.forEach(dropdown => {
-      dropdown.addEventListener('click', e => {
-        // If clicking on a link, let it navigate naturally
-        // Just stop propagation so outside click handler doesn't close dropdown
-        if (!e.target.closest('a')) {
-          e.stopPropagation()
-        }
-      })
-    })
-
-    // Close dropdowns when clicking outside
-    const closeHandler = e => {
-      if (!card.contains(e.target)) {
-        card.querySelectorAll('.service-dropdown-menu.show').forEach(menu => {
-          menu.classList.remove('show')
-          menu.previousElementSibling.classList.remove('open')
-        })
-      }
-    }
-    document.addEventListener('click', closeHandler)
 
     // Add click handler for Add to Plex button
     if (!isInPlex && tmdbId && requestServiceConfigured) {
