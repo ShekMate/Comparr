@@ -204,6 +204,12 @@ const isBootstrappingAdminPassword = (
   return candidate.length > 0
 }
 
+// While SETUP_WIZARD_COMPLETED is false the server operates in setup mode.
+// All admin-gated actions are permitted so the wizard can configure everything
+// (including the admin password itself) without a chicken-and-egg auth problem.
+const isSetupWizardActive = (settings: Record<string, unknown>) =>
+  String(settings.SETUP_WIZARD_COMPLETED ?? '').toLowerCase() !== 'true'
+
 const isAdminAuthorized = (
   req: CompatRequest,
   settings: Record<string, unknown>,
@@ -434,25 +440,29 @@ export async function handleSettingsRoutes(
     }
 
     const settings = getSettings()
-    if (!hasAdminPasswordConfigured(settings)) {
-      return new Response(
-        JSON.stringify({
-          ok: false,
-          message:
-            'Admin password is not configured. Set ADMIN_PASSWORD before running connection tests.',
-        }),
-        { status: 403, headers: makeJsonHeaders(req) }
-      )
-    }
+    // During initial setup the wizard must be able to test connections before
+    // (or while) configuring the admin password — skip auth for both guards.
+    if (!isSetupWizardActive(settings)) {
+      if (!hasAdminPasswordConfigured(settings)) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            message:
+              'Admin password is not configured. Set ADMIN_PASSWORD before running connection tests.',
+          }),
+          { status: 403, headers: makeJsonHeaders(req) }
+        )
+      }
 
-    if (!isAdminAuthorized(req, settings, isLocalRequest)) {
-      return new Response(
-        JSON.stringify({
-          ok: false,
-          message: getAdminAuthFailureMessage(req, settings, isLocalRequest),
-        }),
-        { status: 403, headers: makeJsonHeaders(req) }
-      )
+      if (!isAdminAuthorized(req, settings, isLocalRequest)) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            message: getAdminAuthFailureMessage(req, settings, isLocalRequest),
+          }),
+          { status: 403, headers: makeJsonHeaders(req) }
+        )
+      }
     }
 
     try {
@@ -505,7 +515,9 @@ export async function handleSettingsRoutes(
     }
 
     const currentSettings = getSettings()
-    const isAdmin = isAdminAuthorized(req, currentSettings, isLocalRequest)
+    const isAdmin =
+      isSetupWizardActive(currentSettings) ||
+      isAdminAuthorized(req, currentSettings, isLocalRequest)
 
     try {
       const body = await req.text()
