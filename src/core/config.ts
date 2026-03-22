@@ -1,4 +1,5 @@
 import * as log from 'jsr:@std/log'
+import { ConsoleHandler } from 'jsr:@std/log'
 import { getSetting } from './settings.ts'
 
 const getSettingTrimmed = (name: Parameters<typeof getSetting>[0]) => {
@@ -129,7 +130,7 @@ function getLogLevel(): keyof typeof log.LogLevels {
 
 await log.setup({
   handlers: {
-    console: new log.handlers.ConsoleHandler(getLogLevel()),
+    console: new ConsoleHandler(getLogLevel()),
   },
 
   loggers: {
