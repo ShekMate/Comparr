@@ -403,6 +403,9 @@ export async function handleSettingsRoutes(
         setupWizardCompleted:
           String(settings.SETUP_WIZARD_COMPLETED || '').toLowerCase() ===
           'true',
+        accessPasswordSet: Boolean(
+          String(settings.ACCESS_PASSWORD ?? '').trim()
+        ),
       }),
       { status: 200, headers: makeJsonHeaders(req) }
     )
