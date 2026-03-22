@@ -176,3 +176,76 @@ Deno.test(
     }
   }
 )
+
+Deno.test('PORT from env is not overridden by settings.json', async () => {
+  const dataDir = await Deno.makeTempDir({
+    prefix: 'comparr-settings-port-env-only-load-',
+  })
+  const originalDataDir = Deno.env.get('DATA_DIR')
+  const originalPort = Deno.env.get('PORT')
+
+  Deno.env.set('DATA_DIR', dataDir)
+  Deno.env.set('PORT', '8000')
+
+  try {
+    await Deno.writeTextFile(
+      `${dataDir}/settings.json`,
+      JSON.stringify({ PORT: '8001', ACCESS_PASSWORD: 'from-file' }, null, 2)
+    )
+
+    const settingsModule = await import(uniqueSettingsModulePath())
+    const settings = settingsModule.getSettings()
+
+    assertEquals(settings.PORT, '8000')
+    assertEquals(settings.ACCESS_PASSWORD, 'from-file')
+  } finally {
+    if (originalDataDir === undefined) {
+      Deno.env.delete('DATA_DIR')
+    } else {
+      Deno.env.set('DATA_DIR', originalDataDir)
+    }
+    if (originalPort === undefined) {
+      Deno.env.delete('PORT')
+    } else {
+      Deno.env.set('PORT', originalPort)
+    }
+    await Deno.remove(dataDir, { recursive: true }).catch(() => {})
+  }
+})
+
+Deno.test('updating settings does not persist PORT to settings.json', async () => {
+  const dataDir = await Deno.makeTempDir({
+    prefix: 'comparr-settings-port-env-only-save-',
+  })
+  const originalDataDir = Deno.env.get('DATA_DIR')
+  const originalPort = Deno.env.get('PORT')
+
+  Deno.env.set('DATA_DIR', dataDir)
+  Deno.env.set('PORT', '8000')
+
+  try {
+    const settingsModule = await import(uniqueSettingsModulePath())
+
+    await settingsModule.updateSettings({
+      PORT: '8001',
+      ACCESS_PASSWORD: 'persist-me',
+    })
+
+    const disk = JSON.parse(await Deno.readTextFile(`${dataDir}/settings.json`))
+    assertEquals('PORT' in disk, false)
+    assertEquals(disk.ACCESS_PASSWORD, 'persist-me')
+    assertEquals(settingsModule.getSettings().PORT, '8000')
+  } finally {
+    if (originalDataDir === undefined) {
+      Deno.env.delete('DATA_DIR')
+    } else {
+      Deno.env.set('DATA_DIR', originalDataDir)
+    }
+    if (originalPort === undefined) {
+      Deno.env.delete('PORT')
+    } else {
+      Deno.env.set('PORT', originalPort)
+    }
+    await Deno.remove(dataDir, { recursive: true }).catch(() => {})
+  }
+})

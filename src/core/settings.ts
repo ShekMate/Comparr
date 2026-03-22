@@ -78,6 +78,8 @@ const SETTINGS_KEYS: SettingsKey[] = [
   'SETUP_WIZARD_COMPLETED',
 ]
 
+const ENV_ONLY_KEYS = new Set<SettingsKey>(['PORT'])
+
 const DEFAULTS: Partial<Settings> = {
   PORT: '8000',
   ACCESS_PASSWORD: '',
@@ -142,6 +144,9 @@ const loadSettingsFile = async (): Promise<Partial<Settings>> => {
     }
     const sanitized: Partial<Settings> = {}
     for (const key of SETTINGS_KEYS) {
+      if (ENV_ONLY_KEYS.has(key)) {
+        continue
+      }
       if (key in parsed) {
         sanitized[key] = normalizeValue(
           (parsed as Record<string, unknown>)[key]
@@ -160,7 +165,12 @@ const loadSettingsFile = async (): Promise<Partial<Settings>> => {
 const persistSettings = async () => {
   await Deno.mkdir(DATA_DIR, { recursive: true }).catch(() => {})
   const tmp = `${SETTINGS_FILE}.tmp.${Date.now()}`
-  await Deno.writeTextFile(tmp, JSON.stringify(settingsCache, null, 2))
+  const persistedSettings = SETTINGS_KEYS.reduce((acc, key) => {
+    if (ENV_ONLY_KEYS.has(key)) return acc
+    acc[key] = settingsCache[key]
+    return acc
+  }, {} as Partial<Settings>)
+  await Deno.writeTextFile(tmp, JSON.stringify(persistedSettings, null, 2))
   await Deno.rename(tmp, SETTINGS_FILE)
 }
 
@@ -185,6 +195,9 @@ export const updateSettings = async (
   const touchedKeys = new Set<SettingsKey>()
 
   for (const key of SETTINGS_KEYS) {
+    if (ENV_ONLY_KEYS.has(key)) {
+      continue
+    }
     if (Object.prototype.hasOwnProperty.call(updates, key)) {
       settingsCache[key] = normalizeValue(updates[key])
       touchedKeys.add(key)
