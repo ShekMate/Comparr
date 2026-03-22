@@ -1,6 +1,9 @@
 #!/bin/sh
 set -e
 
+# Trap any error and log it before exiting
+trap 'echo "[entrypoint] ERROR: script failed at line $LINENO with exit code $?" >&2' ERR
+
 # Allow users to choose the UID/GID that should own /data
 PUID="${PUID:-1000}"
 PGID="${PGID:-1000}"
@@ -51,6 +54,11 @@ fi
 
 # de-duplicate host list
 ALLOWED_NET_HOSTS=$(printf '%s' "$ALLOWED_NET_HOSTS" | tr ',' '\n' | sed '/^$/d' | awk '!seen[$0]++' | paste -sd ',' -)
+
+echo "[entrypoint] PUID=${PUID} PGID=${PGID}"
+echo "[entrypoint] ALLOWED_NET_HOSTS=${ALLOWED_NET_HOSTS}"
+echo "[entrypoint] Deno version: $(deno --version 2>&1 | head -1)"
+echo "[entrypoint] Starting server as uid=${PUID} gid=${PGID}"
 
 # Run the server as the requested user
 exec gosu "${PUID}:${PGID}" deno run \

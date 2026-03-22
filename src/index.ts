@@ -1,4 +1,12 @@
 // src/index.ts
+// Global error handlers - log before process exits so Docker logs capture the crash reason
+globalThis.addEventListener('error', event => {
+  console.error('[FATAL] Uncaught error:', event.error ?? event.message)
+})
+globalThis.addEventListener('unhandledrejection', event => {
+  console.error('[FATAL] Unhandled promise rejection:', event.reason)
+})
+
 import * as log from 'jsr:@std/log'
 import { clearAllMoviesCache, getServerId } from './api/plex.ts'
 import type { CompatRequest, CompatResponseInit } from './infra/http/compat-request.ts'
@@ -497,7 +505,18 @@ const serveCompat = (options: { port: number; hostname?: string }) => {
 const host = getHost()
 const port = Number(getPort())
 
-const server = serveCompat({ port, hostname: host })
+log.info(`[startup] Deno ${Deno.version.deno} | OS: ${Deno.build.os} ${Deno.build.arch}`)
+log.info(`[startup] Binding server to ${host}:${port}`)
+log.info(`[startup] DATA_DIR=${Deno.env.get('DATA_DIR') ?? '/data'}`)
+
+let server: ReturnType<typeof serveCompat>
+try {
+  server = serveCompat({ port, hostname: host })
+  log.info(`[startup] Server created successfully`)
+} catch (err) {
+  log.error(`[startup] FAILED to create server: ${err}`)
+  throw err
+}
 
 const wss = new WebSocketServer({
   onConnection: (ws, req) =>
@@ -542,7 +561,13 @@ initializeRadarrCache().catch(err =>
 )
 
 // Initialize IMDb ratings database and start background update job
-initIMDbDatabase()
+log.info(`[startup] Initializing IMDb database (requires --allow-ffi)`)
+try {
+  initIMDbDatabase()
+  log.info(`[startup] IMDb database init complete`)
+} catch (err) {
+  log.error(`[startup] IMDb database init FAILED: ${err}`)
+}
 startBackgroundUpdateJob()
 
 // Initialize Plex availability cache
