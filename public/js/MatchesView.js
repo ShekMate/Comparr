@@ -74,7 +74,7 @@ export class MatchesView {
         return `
       <div class="watch-card" data-guid="${movie.guid}">
         <!-- Collapsed header (always visible) -->
-        <div class="watch-card-collapsed" onclick="this.closest('.watch-card').classList.toggle('expanded')">
+        <div class="watch-card-collapsed">
           <div class="watch-card-header-compact">
             <div class="watch-card-title-compact">
               ${escapeHtml(movie.title)}
@@ -365,6 +365,13 @@ export class MatchesView {
   }
 
   attachEventListeners() {
+    // Watch card expand/collapse
+    document.querySelectorAll('.matches-list .watch-card-collapsed').forEach(el => {
+      el.addEventListener('click', () => {
+        el.closest('.watch-card').classList.toggle('expanded')
+      })
+    })
+
     // Streaming dropdown toggles - handles both subscription and free buttons
     document
       .querySelectorAll('.matches-list .service-dropdown-btn:not(.disabled)')
