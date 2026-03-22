@@ -1226,6 +1226,12 @@ async function loadClientConfig() {
     if (data?.plexLibraryName) {
       window.PLEX_LIBRARY_NAME = data.plexLibraryName
     }
+    if (data?.embyLibraryName) {
+      window.EMBY_LIBRARY_NAME = data.embyLibraryName
+    }
+    if (data?.jellyfinLibraryName) {
+      window.JELLYFIN_LIBRARY_NAME = data.jellyfinLibraryName
+    }
     if (data?.paidStreamingServices !== undefined) {
       window.PAID_STREAMING_SERVICES = data.paidStreamingServices
     }
@@ -1802,14 +1808,6 @@ function initializeIntegrationTestButtons() {
       key: 'setting-jellyfin-api-key',
     },
     radarr: { url: 'setting-radarr-url', key: 'setting-radarr-api-key' },
-    jellyseerr: {
-      url: 'setting-jellyseerr-url',
-      key: 'setting-jellyseerr-api-key',
-    },
-    overseerr: {
-      url: 'setting-overseerr-url',
-      key: 'setting-overseerr-api-key',
-    },
     seerr: {
       url: 'setting-seerr-url',
       key: 'setting-seerr-api-key',
@@ -1822,8 +1820,6 @@ function initializeIntegrationTestButtons() {
     emby: 'Emby',
     jellyfin: 'Jellyfin',
     radarr: 'Radarr',
-    jellyseerr: 'Jellyseerr',
-    overseerr: 'Overseerr',
     seerr: 'Seerr',
     tmdb: 'TMDB',
   }
@@ -1918,12 +1914,11 @@ function getAdminSelectedRequestServiceType() {
   const selected = document.querySelector(
     'input[name="admin-request-service-type"]:checked'
   )
-  return selected?.value || 'jellyseerr'
+  return selected?.value || 'seerr'
 }
 
 function setAdminSelectedRequestServiceType(type) {
-  const normalizedType =
-    type === 'overseerr' || type === 'seerr' ? type : 'jellyseerr'
+  const normalizedType = type === 'seerr' ? 'seerr' : 'seerr'
   const radio = document.querySelector(
     `input[name="admin-request-service-type"][value="${normalizedType}"]`
   )
@@ -1931,38 +1926,17 @@ function setAdminSelectedRequestServiceType(type) {
 }
 
 function inferRequestServiceTypeFromSettingsValues() {
-  const hasJelly = Boolean(
-    document.getElementById('setting-jellyseerr-url')?.value?.trim() &&
-      document.getElementById('setting-jellyseerr-api-key')?.value?.trim()
-  )
-  const hasOver = Boolean(
-    document.getElementById('setting-overseerr-url')?.value?.trim() &&
-      document.getElementById('setting-overseerr-api-key')?.value?.trim()
-  )
   const hasSeerr = Boolean(
     document.getElementById('setting-seerr-url')?.value?.trim() &&
       document.getElementById('setting-seerr-api-key')?.value?.trim()
   )
 
   if (hasSeerr) return 'seerr'
-  if (hasOver && !hasJelly) return 'overseerr'
-  return 'jellyseerr'
+  return 'seerr'
 }
 
 function normalizeRequestServiceSettingsForSelection(settings) {
-  const selectedRequestService = getAdminSelectedRequestServiceType()
-  const selectedKeys = {
-    jellyseerr: ['JELLYSEERR_URL', 'JELLYSEERR_API_KEY'],
-    overseerr: ['OVERSEERR_URL', 'OVERSEERR_API_KEY'],
-    seerr: ['SEERR_URL', 'SEERR_API_KEY'],
-  }
-
-  Object.entries(selectedKeys).forEach(([service, keys]) => {
-    if (service === selectedRequestService) return
-    keys.forEach(key => {
-      settings[key] = ''
-    })
-  })
+  // Only Seerr is supported — nothing to normalize
 }
 
 function collectSettingsForm() {
@@ -2199,13 +2173,9 @@ function createFirstRunGuideModal() {
     subscriptions: [],
     validatedTargets: {},
     requestServices: {
-      requestServiceType: 'jellyseerr',
+      requestServiceType: 'seerr',
       radarrUrl: '',
       radarrApiKey: '',
-      jellyseerrUrl: '',
-      jellyseerrApiKey: '',
-      overseerrUrl: '',
-      overseerrApiKey: '',
       seerrUrl: '',
       seerrApiKey: '',
     },
@@ -2217,10 +2187,6 @@ function createFirstRunGuideModal() {
     requestServiceType: 'first-run-request-service-type',
     radarrUrl: 'first-run-radarr-url',
     radarrApiKey: 'first-run-radarr-api-key',
-    jellyseerrUrl: 'first-run-jellyseerr-url',
-    jellyseerrApiKey: 'first-run-jellyseerr-api-key',
-    overseerrUrl: 'first-run-overseerr-url',
-    overseerrApiKey: 'first-run-overseerr-api-key',
     seerrUrl: 'first-run-seerr-url',
     seerrApiKey: 'first-run-seerr-api-key',
   }
@@ -2361,10 +2327,7 @@ function createFirstRunGuideModal() {
   const persistRequestInputs = () => {
     Object.entries(requestFieldIds).forEach(([key, id]) => {
       if (key === 'requestServiceType') {
-        selectedState.requestServices[key] =
-          body.querySelector(`input[name="${id}"]:checked`)?.value ||
-          selectedState.requestServices[key] ||
-          'jellyseerr'
+        selectedState.requestServices[key] = 'seerr'
         return
       }
       selectedState.requestServices[key] =
@@ -2748,71 +2711,17 @@ function createFirstRunGuideModal() {
       renderRequirementCopy('')
       title.textContent = 'Movie Requests (optional)'
       copy.textContent =
-        'Integrate Radarr plus Seerr, Jellyseerr, or Overseerr to enable movie requests for titles not in your media sources.'
-      const selectedRequestService =
-        selectedState.requestServices.requestServiceType === 'overseerr'
-          ? 'overseerr'
-          : selectedState.requestServices.requestServiceType === 'seerr'
-          ? 'seerr'
-          : 'jellyseerr'
-      const requestServiceLabel =
-        selectedRequestService === 'overseerr'
-          ? 'Overseerr'
-          : selectedRequestService === 'seerr'
-          ? 'Seerr'
-          : 'Jellyseerr'
-      const requestServiceUrlValue =
-        selectedState.requestServices[`${selectedRequestService}Url`]
-      const requestServiceApiKeyValue =
-        selectedState.requestServices[`${selectedRequestService}ApiKey`]
+        'Integrate Radarr and Seerr to enable movie requests for titles not in your media sources.'
       body.innerHTML = `
         <label class="first-run-guide-field-label">Radarr URL</label>
-        <input id="${
-          requestFieldIds.radarrUrl
-        }" class="first-run-guide-input" type="url" placeholder="http://localhost" value="${
-        selectedState.requestServices.radarrUrl
-      }" />
+        <input id="${requestFieldIds.radarrUrl}" class="first-run-guide-input" type="url" placeholder="http://localhost" value="${selectedState.requestServices.radarrUrl}" />
         <label class="first-run-guide-field-label">Radarr API Key</label>
-        <input id="${
-          requestFieldIds.radarrApiKey
-        }" class="first-run-guide-input" type="text" value="${
-        selectedState.requestServices.radarrApiKey
-      }" />
-        <label class="first-run-guide-field-label">Request Service</label>
-        <div class="first-run-guide-radio-group">
-          <label><input type="radio" name="${
-            requestFieldIds.requestServiceType
-          }" value="jellyseerr" ${
-        selectedRequestService === 'jellyseerr' ? 'checked' : ''
-      } /> Jellyseerr</label>
-          <label><input type="radio" name="${
-            requestFieldIds.requestServiceType
-          }" value="overseerr" ${
-        selectedRequestService === 'overseerr' ? 'checked' : ''
-      } /> Overseerr</label>
-          <label><input type="radio" name="${
-            requestFieldIds.requestServiceType
-          }" value="seerr" ${
-        selectedRequestService === 'seerr' ? 'checked' : ''
-      } /> Seerr</label>
-        </div>
-        <label class="first-run-guide-field-label">${requestServiceLabel} URL</label>
-        <input id="${
-          requestFieldIds[`${selectedRequestService}Url`]
-        }" class="first-run-guide-input" type="url" placeholder="http://localhost" value="${requestServiceUrlValue}" />
-        <label class="first-run-guide-field-label">${requestServiceLabel} API Key</label>
-        <input id="${
-          requestFieldIds[`${selectedRequestService}ApiKey`]
-        }" class="first-run-guide-input" type="text" value="${requestServiceApiKeyValue}" />
+        <input id="${requestFieldIds.radarrApiKey}" class="first-run-guide-input" type="text" value="${selectedState.requestServices.radarrApiKey}" />
+        <label class="first-run-guide-field-label">Seerr URL</label>
+        <input id="${requestFieldIds.seerrUrl}" class="first-run-guide-input" type="url" placeholder="http://localhost" value="${selectedState.requestServices.seerrUrl}" />
+        <label class="first-run-guide-field-label">Seerr API Key</label>
+        <input id="${requestFieldIds.seerrApiKey}" class="first-run-guide-input" type="text" value="${selectedState.requestServices.seerrApiKey}" />
       `
-      body
-        .querySelectorAll(`input[name="${requestFieldIds.requestServiceType}"]`)
-        .forEach(radio => {
-          radio.addEventListener('change', () => {
-            persistRequestInputs()
-            renderScreen(screen)
-          })
-        })
       return
     }
 
@@ -3058,52 +2967,21 @@ function createFirstRunGuideModal() {
         setWizardStatus('Radarr URL and API Key are required.', 'error')
         return null
       }
-      const selectedRequestService =
-        s.requestServiceType === 'overseerr'
-          ? 'overseerr'
-          : s.requestServiceType === 'seerr'
-          ? 'seerr'
-          : 'jellyseerr'
-      const selectedRequestServiceLabel =
-        selectedRequestService === 'overseerr'
-          ? 'Overseerr'
-          : selectedRequestService === 'seerr'
-          ? 'Seerr'
-          : 'Jellyseerr'
-      const selectedRequestServiceUrl = s[`${selectedRequestService}Url`]
-      const selectedRequestServiceApiKey = s[`${selectedRequestService}ApiKey`]
-      if (!selectedRequestServiceUrl && !selectedRequestServiceApiKey) {
-        setWizardStatus(
-          `Add ${selectedRequestServiceLabel} details, or click Skip.`,
-          'error'
-        )
+      if (!s.seerrUrl && !s.seerrApiKey) {
+        setWizardStatus('Add Seerr details, or click Skip.', 'error')
         return null
       }
-      if (
-        !isValidUrl(selectedRequestServiceUrl) ||
-        !selectedRequestServiceApiKey
-      ) {
-        setWizardStatus(
-          `${selectedRequestServiceLabel} URL and API Key are both required.`,
-          'error'
-        )
+      if (!isValidUrl(s.seerrUrl) || !s.seerrApiKey) {
+        setWizardStatus('Seerr URL and API Key are both required.', 'error')
         return null
       }
-
-      const hasJelly = selectedRequestService === 'jellyseerr'
-      const hasOver = selectedRequestService === 'overseerr'
-      const hasSeerr = selectedRequestService === 'seerr'
 
       try {
         await saveSettingsSubset({
           RADARR_URL: s.radarrUrl,
           RADARR_API_KEY: s.radarrApiKey,
-          JELLYSEERR_URL: hasJelly ? s.jellyseerrUrl : '',
-          JELLYSEERR_API_KEY: hasJelly ? s.jellyseerrApiKey : '',
-          OVERSEERR_URL: hasOver ? s.overseerrUrl : '',
-          OVERSEERR_API_KEY: hasOver ? s.overseerrApiKey : '',
-          SEERR_URL: hasSeerr ? s.seerrUrl : '',
-          SEERR_API_KEY: hasSeerr ? s.seerrApiKey : '',
+          SEERR_URL: s.seerrUrl,
+          SEERR_API_KEY: s.seerrApiKey,
         })
       } catch (err) {
         setWizardStatus(
@@ -4193,7 +4071,9 @@ async function appendRatedRow(
       ...(streamingServices.subscription || []),
       ...(streamingServices.free || []),
     ]
-    const isInPlex = allServices.some(s => s.name === window.PLEX_LIBRARY_NAME)
+    const isInPersonalLibrary = allServices.some(s =>
+      isPersonalLibraryService(s.name)
+    )
 
     // Check if request service is configured
     const requestServiceConfigured = await checkRequestServiceStatus()
@@ -4205,45 +4085,43 @@ async function appendRatedRow(
     console.log('🧩 DEBUG streamingLink:', streamingLink)
     console.log('🧩 DEBUG movie:', movie.title, movie.guid)
 
-    const whereToWatchPillsHtml = watchProviders.length
-      ? `<div class="where-to-watch">
-          <div class="where-to-watch-title">Where to Watch</div>
-          <div class="provider-pill-list">
-            ${watchProviders
-              .map(provider => {
-                const logoUrl = provider.logo_path
-                  ? provider.logo_path.startsWith('/assets/')
-                    ? `${basePath}${provider.logo_path}`
-                    : `https://image.tmdb.org/t/p/w92${provider.logo_path}`
-                  : null
+    const addPillHtml =
+      !isInPersonalLibrary && tmdbId && requestServiceConfigured
+        ? `<button class="provider-pill provider-pill-add add-to-plex-btn" data-movie-id="${movieId}">
+            <i class="fas fa-plus"></i>
+            <span class="provider-pill-name">Add to ${getPersonalLibraryName()}</span>
+          </button>`
+        : ''
 
-                return `<span class="provider-pill">
-                  ${
-                    logoUrl
-                      ? `<img src="${logoUrl}" alt="${provider.name}" class="provider-pill-logo">`
-                      : ''
-                  }
-                  <span class="provider-pill-name">${provider.name}</span>
-                </span>`
-              })
-              .join('')}
-          </div>
-        </div>`
-      : ''
+    const providerPillsHtml = watchProviders
+      .map(provider => {
+        const logoUrl = provider.logo_path
+          ? provider.logo_path.startsWith('/assets/')
+            ? `${basePath}${provider.logo_path}`
+            : `https://image.tmdb.org/t/p/w92${provider.logo_path}`
+          : null
+        return `<span class="provider-pill">
+          ${logoUrl ? `<img src="${logoUrl}" alt="${provider.name}" class="provider-pill-logo">` : ''}
+          <span class="provider-pill-name">${provider.name}</span>
+        </span>`
+      })
+      .join('')
+
+    const whereToWatchPillsHtml =
+      addPillHtml || watchProviders.length
+        ? `<div class="where-to-watch">
+            <div class="where-to-watch-title">Where to Watch</div>
+            <div class="provider-pill-list">
+              ${addPillHtml}${providerPillsHtml}
+            </div>
+          </div>`
+        : ''
 
     // DEBUG: Log button rendering conditions
     console.log('🧩 Button rendering debug for', movie.title)
-    console.log('  isInPlex:', isInPlex)
+    console.log('  isInPersonalLibrary:', isInPersonalLibrary)
     console.log('  movieId:', movieId)
     console.log('  requestServiceConfigured:', requestServiceConfigured)
-    console.log(
-      '  Will show:',
-      isInPlex
-        ? 'AllVids badge'
-        : movieId && requestServiceConfigured
-        ? 'Add to Plex button'
-        : 'Nothing'
-    )
 
     // Get metadata for badges - use the same field names as CardView
     const genres = movie.genres || [] // Array of genre names like ["Comedy", "Horror"]
@@ -4308,14 +4186,15 @@ async function appendRatedRow(
       <div class="watch-card-collapsed">
         <div class="watch-card-header-compact">
           <div class="watch-card-title-compact">
-            ${movie.title} <span class="watch-card-year">(${
-      movie.year || 'N/A'
-    })</span>
+            ${movie.title} <span class="watch-card-year">(${movie.year || 'N/A'})</span>
           </div>
+          <button class="list-action-btn refresh-movie-btn header-refresh-btn" data-movie-id="${tmdbId || movieId || ''}" title="Refresh ratings and status">
+            <i class="fas fa-sync-alt"></i>
+          </button>
           <div class="expand-icon"><i class="fas fa-chevron-down"></i></div>
         </div>
       </div>
-         
+
       <!-- Expandable details (hidden by default) -->
       <div class="watch-card-details">
         <div class="watch-card-poster">
@@ -4325,51 +4204,26 @@ async function appendRatedRow(
           })()}" alt="${movie.title}">
         </div>
         <div class="watch-card-content">
-          ${
-            movie.summary
-              ? `<p class="watch-card-summary">${movie.summary}</p>`
-              : ''
-          }
+          ${movie.summary ? `<p class="watch-card-summary">${movie.summary}</p>` : ''}
           ${metadataBadgesHTML}
           ${(() => {
             const ratingHtml = buildRatingHtml(movie, basePath)
-            return ratingHtml
-              ? `<div class="watch-card-ratings">${ratingHtml}</div>`
-              : ''
+            return ratingHtml ? `<div class="watch-card-ratings">${ratingHtml}</div>` : ''
           })()}
           ${whereToWatchPillsHtml}
 
-        ${
-          !isInPlex && tmdbId && requestServiceConfigured
-            ? `
-        <button class="add-to-plex-btn" data-movie-id="${movieId}">
-          <i class="fas fa-plus"></i> ADD TO PLEX
-        </button>
-        `
-            : ''
-        }
-        
-        <!-- Move to other lists buttons -->
-        <div class="list-actions">
-          <button class="list-action-btn move-to-seen" data-guid="${
-            movie.guid
-          }" title="Mark as Seen">
-            <i class="fas fa-eye"></i>
-          </button>
-          <button class="list-action-btn move-to-pass" data-guid="${
-            movie.guid
-          }" title="Move to Pass">
-            <i class="fas fa-thumbs-down"></i>
-          </button>
-          <button class="list-action-btn refresh-movie-btn" data-movie-id="${
-            tmdbId || movieId || ''
-          }" title="Refresh ratings and status">
-            <i class="fas fa-sync-alt"></i>
-          </button>
+          <!-- Move to other lists buttons -->
+          <div class="list-actions">
+            <button class="list-action-btn move-to-seen" data-guid="${movie.guid}" title="Mark as Seen">
+              <i class="fas fa-eye"></i>
+            </button>
+            <button class="list-action-btn move-to-pass" data-guid="${movie.guid}" title="Move to Pass">
+              <i class="fas fa-thumbs-down"></i>
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  `
+    `
 
     card.querySelector('.watch-card-collapsed').addEventListener('click', () => {
       card.classList.toggle('expanded')
@@ -4387,18 +4241,19 @@ async function appendRatedRow(
       applyCurrentWatchListSort()
     }
 
-    // Add click handler for Add to Plex button
-    if (!isInPlex && tmdbId && requestServiceConfigured) {
+    // Add click handler for Request pill
+    if (!isInPersonalLibrary && tmdbId && requestServiceConfigured) {
       const addBtn = card.querySelector('.add-to-plex-btn')
       addBtn?.addEventListener('click', () =>
         handleMovieRequest(parseInt(tmdbId), movie.title, addBtn)
       )
     }
 
-    // Add click handler for Refresh button - always works now, uses guid fallback
+    // Add click handler for Refresh button (now in header)
     const refreshBtn = card.querySelector('.refresh-movie-btn')
     if (refreshBtn) {
-      refreshBtn.addEventListener('click', async () => {
+      refreshBtn.addEventListener('click', async e => {
+        e.stopPropagation() // Prevent card expand/collapse toggle
         const icon = refreshBtn.querySelector('i')
 
         // Show loading state
@@ -4453,48 +4308,41 @@ async function appendRatedRow(
             ratingEl.innerHTML = ratingHtml
           }
 
-          // Update Plex status / Add to Plex button
-          const actionsContainer = card.querySelector('.watch-card-actions')
-          const existingBtn = actionsContainer.querySelector('.add-to-plex-btn')
-          const existingStatus = actionsContainer.querySelector('.plex-status')
+          // Update library status / Add pill
+          const existingAddBtn = card.querySelector('.add-to-plex-btn')
+          const inLibrary = data.inLibrary || data.inPlex || data.inEmby || data.inJellyfin
 
-          if (data.inPlex) {
-            // Replace button with Plex status badge
-            if (existingBtn) {
-              existingBtn.outerHTML = `
-                <div class="plex-status">
-                  <i class="fas fa-check-circle"></i> ${window.PLEX_LIBRARY_NAME}
-                </div>
-              `
-            }
-          } else if (
-            !existingBtn &&
-            !existingStatus &&
-            requestServiceConfigured
-          ) {
-            // Add the button if it wasn't there before (use potentially updated tmdbId from card dataset)
-            const refreshBtnElement = actionsContainer.querySelector(
-              '.refresh-movie-btn'
-            )
-            if (refreshBtnElement) {
-              const finalTmdbId = parseInt(card.dataset.tmdbId)
-              if (finalTmdbId) {
-                refreshBtnElement.insertAdjacentHTML(
-                  'beforebegin',
-                  `
-                  <button class="add-to-plex-btn" data-movie-id="${finalTmdbId}">
-                    <i class="fas fa-plus"></i> ADD TO PLEX
-                  </button>
-                `
-                )
-                // Add handler to the new button
-                const newAddBtn = actionsContainer.querySelector(
-                  '.add-to-plex-btn'
-                )
-                newAddBtn?.addEventListener('click', () =>
-                  handleMovieRequest(finalTmdbId, movie.title, newAddBtn)
-                )
+          if (inLibrary && existingAddBtn) {
+            // Movie is now in library — remove the add pill
+            existingAddBtn.remove()
+          } else if (!inLibrary && !existingAddBtn && requestServiceConfigured) {
+            // Add pill wasn't there before but now we have a tmdbId — inject it
+            const finalTmdbId = parseInt(card.dataset.tmdbId)
+            if (finalTmdbId) {
+              const pillList = card.querySelector('.provider-pill-list')
+              const newPillHtml = `<button class="provider-pill provider-pill-add add-to-plex-btn" data-movie-id="${finalTmdbId}">
+                <i class="fas fa-plus"></i>
+                <span class="provider-pill-name">Add to ${getPersonalLibraryName()}</span>
+              </button>`
+              if (pillList) {
+                pillList.insertAdjacentHTML('afterbegin', newPillHtml)
+              } else {
+                // Create where-to-watch section if it doesn't exist
+                const content = card.querySelector('.watch-card-content')
+                if (content) {
+                  content.insertAdjacentHTML(
+                    'beforeend',
+                    `<div class="where-to-watch">
+                      <div class="where-to-watch-title">Where to Watch</div>
+                      <div class="provider-pill-list">${newPillHtml}</div>
+                    </div>`
+                  )
+                }
               }
+              const newAddBtn = card.querySelector('.add-to-plex-btn')
+              newAddBtn?.addEventListener('click', () =>
+                handleMovieRequest(finalTmdbId, movie.title, newAddBtn)
+              )
             }
           }
 
@@ -4529,43 +4377,41 @@ async function appendRatedRow(
             }
           }
 
+          // Update Where to Watch provider pills (preserve add pill)
           const whereToWatchContainer = card.querySelector('.where-to-watch')
-          const providers = getWatchProviders(data)
+          const refreshedProviders = getWatchProviders(data)
+          const refreshedProviderPills = refreshedProviders
+            .map(provider => {
+              const bp = document.body.dataset.basePath || ''
+              const logoUrl = provider.logo_path
+                ? provider.logo_path.startsWith('/assets/')
+                  ? `${bp}${provider.logo_path}`
+                  : `https://image.tmdb.org/t/p/w92${provider.logo_path}`
+                : null
+              return `<span class="provider-pill">${
+                logoUrl
+                  ? `<img src="${logoUrl}" alt="${provider.name}" class="provider-pill-logo">`
+                  : ''
+              }<span class="provider-pill-name">${provider.name}</span></span>`
+            })
+            .join('')
+
           if (whereToWatchContainer) {
-            if (providers.length > 0) {
-              const pills = providers
-                .map(provider => {
-                  const logoUrl = provider.logo_path
-                    ? provider.logo_path.startsWith('/assets/')
-                      ? `${document.body.dataset.basePath || ''}${
-                          provider.logo_path
-                        }`
-                      : `https://image.tmdb.org/t/p/w92${provider.logo_path}`
-                    : null
-                  return `<span class="provider-pill">${
-                    logoUrl
-                      ? `<img src="${logoUrl}" alt="${provider.name}" class="provider-pill-logo">`
-                      : ''
-                  }<span class="provider-pill-name">${
-                    provider.name
-                  }</span></span>`
-                })
-                .join('')
-              const list = whereToWatchContainer.querySelector(
-                '.provider-pill-list'
-              )
-              if (list) {
-                list.innerHTML = pills
-              } else {
-                whereToWatchContainer.insertAdjacentHTML(
-                  'beforeend',
-                  `<div class="provider-pill-list">${pills}</div>`
+            const list = whereToWatchContainer.querySelector('.provider-pill-list')
+            const currentAddBtn = card.querySelector('.add-to-plex-btn')
+            if (list) {
+              // Re-render provider pills, preserving add pill at front
+              list.innerHTML = (currentAddBtn ? currentAddBtn.outerHTML : '') + refreshedProviderPills
+              // Re-attach click handler to add pill if present
+              const reattachedBtn = list.querySelector('.add-to-plex-btn')
+              if (reattachedBtn) {
+                const finalTmdbId = parseInt(card.dataset.tmdbId)
+                reattachedBtn.addEventListener('click', () =>
+                  handleMovieRequest(finalTmdbId, movie.title, reattachedBtn)
                 )
               }
-              whereToWatchContainer.style.display = ''
-            } else {
-              whereToWatchContainer.style.display = 'none'
             }
+            whereToWatchContainer.style.display = refreshedProviders.length || card.querySelector('.add-to-plex-btn') ? '' : 'none'
           }
 
           // Show success feedback - just change icon
@@ -5043,7 +4889,7 @@ function getWatchProviders(movie) {
         (provider?.id === 0 && provider?.type === 'subscription')
 
       const resolvedName = isPersonalLibraryProvider
-        ? String(window.PLEX_LIBRARY_NAME || fallbackName).trim()
+        ? String(fallbackName || window.PLEX_LIBRARY_NAME).trim()
         : fallbackName
 
       if (!resolvedName) return
@@ -5092,18 +4938,28 @@ function getStreamingServices(movie) {
     }
   }
 
-  // Fallback for Plex-only (no legacy /poster/ check)
-  const isInPlex =
+  // Fallback: detect personal library from guid format
+  const isPlexGuid =
     !!movie.guid &&
     (movie.guid.includes('plex://') ||
-      (!movie.guid.includes('tmdb://') && !movie.guid.includes('imdb://')))
+      (!movie.guid.includes('tmdb://') &&
+        !movie.guid.includes('imdb://') &&
+        !movie.guid.includes('emby://') &&
+        !movie.guid.includes('jellyfin://')))
+  const isEmbyGuid = !!movie.guid && movie.guid.includes('emby://')
+  const isJellyfinGuid = !!movie.guid && movie.guid.includes('jellyfin://')
 
-  if (isInPlex) {
+  if (isPlexGuid || isEmbyGuid || isJellyfinGuid) {
+    const libraryName = isEmbyGuid
+      ? window.EMBY_LIBRARY_NAME
+      : isJellyfinGuid
+      ? window.JELLYFIN_LIBRARY_NAME
+      : window.PLEX_LIBRARY_NAME
     return {
       subscription: [
         {
           id: 0,
-          name: window.PLEX_LIBRARY_NAME,
+          name: libraryName,
           logo_path: '/assets/logos/allvids.svg',
           type: 'subscription',
         },
@@ -5135,6 +4991,24 @@ async function checkRequestServiceStatus() {
   }
   requestServiceConfiguredCache = false
   return false
+}
+
+// Returns the configured personal library name (Plex > Emby > Jellyfin)
+function getPersonalLibraryName() {
+  if (window.PLEX_CONFIGURED) return window.PLEX_LIBRARY_NAME
+  if (window.EMBY_CONFIGURED) return window.EMBY_LIBRARY_NAME
+  if (window.JELLYFIN_CONFIGURED) return window.JELLYFIN_LIBRARY_NAME
+  return window.PLEX_LIBRARY_NAME
+}
+
+// Returns true if the given service name belongs to any configured personal library
+function isPersonalLibraryService(name) {
+  if (!name) return false
+  return (
+    (window.PLEX_CONFIGURED && name === window.PLEX_LIBRARY_NAME) ||
+    (window.EMBY_CONFIGURED && name === window.EMBY_LIBRARY_NAME) ||
+    (window.JELLYFIN_CONFIGURED && name === window.JELLYFIN_LIBRARY_NAME)
+  )
 }
 
 // Handle movie request
@@ -5173,7 +5047,7 @@ async function handleMovieRequest(tmdbId, movieTitle, buttonElement) {
       // Check status again in 30 seconds
       setTimeout(refreshWatchListStatus, 30000)
     } else {
-      buttonElement.innerHTML = '<i class="fas fa-download"></i> ADD TO PLEX'
+      buttonElement.innerHTML = `<i class="fas fa-plus"></i> Add to ${getPersonalLibraryName()}`
       buttonElement.disabled = false
       alert(
         `Failed to request "${movieTitle}": ${
@@ -5183,7 +5057,7 @@ async function handleMovieRequest(tmdbId, movieTitle, buttonElement) {
     }
   } catch (err) {
     console.error('❌Error requesting movie:', err)
-    buttonElement.innerHTML = '<i class="fas fa-download"></i> ADD TO PLEX'
+    buttonElement.innerHTML = `<i class="fas fa-plus"></i> Add to ${getPersonalLibraryName()}`
     buttonElement.disabled = false
     alert(`Error requesting "${movieTitle}".`)
   }
@@ -5242,37 +5116,29 @@ async function refreshWatchListStatus() {
         if (plexResponse.ok) {
           const plexData = await plexResponse.json()
 
-          if (plexData.inPlex) {
-            const actionsContainer = card.querySelector('.watch-card-actions')
-            const btnToReplace = actionsContainer.querySelector(
-              '.add-to-plex-btn'
-            )
-
-            if (btnToReplace) {
-              btnToReplace.outerHTML = `
-                <div class="plex-status">
-                  <i class="fas fa-check-circle"></i> ${window.PLEX_LIBRARY_NAME}
-                </div>
-              `
+          if (plexData.inLibrary || plexData.inPlex) {
+            const btnToRemove = card.querySelector('.add-to-plex-btn')
+            if (btnToRemove) {
+              btnToRemove.remove()
               plexUpdated++
             }
           }
         }
       }
 
-      // 2. Check if "ADD TO PLEX" button should show "Requested" instead
-      if (addBtn && !addBtn.classList.contains('requested')) {
+      // 2. Check if request pill should show "Requested" instead
+      const currentAddBtn = card.querySelector('.add-to-plex-btn')
+      if (currentAddBtn && !currentAddBtn.classList.contains('requested')) {
         const requestResponse = await fetch(
           `/api/check-request-status?tmdbId=${tmdbId}`
         )
         if (requestResponse.ok) {
           const requestData = await requestResponse.json()
 
-          // If movie is pending/processing in Jellyseerr/Overseerr, update button
           if (requestData.pending || requestData.processing) {
-            addBtn.innerHTML = '<i class="fas fa-check"></i> Requested'
-            addBtn.classList.add('requested')
-            addBtn.disabled = true
+            currentAddBtn.innerHTML = '<i class="fas fa-check"></i><span class="provider-pill-name"> Requested</span>'
+            currentAddBtn.classList.add('requested')
+            currentAddBtn.disabled = true
           }
         }
       }
@@ -5301,7 +5167,7 @@ async function refreshWatchListStatus() {
         if (subMenu) {
           const services = (
             streamingData.streamingServices?.subscription || []
-          ).filter(s => s.name !== window.PLEX_LIBRARY_NAME)
+          ).filter(s => !isPersonalLibraryService(s.name))
           subMenu.innerHTML = renderServiceItems(
             services,
             streamingData.streamingLink
@@ -5481,18 +5347,10 @@ async function checkDailyRefresh() {
         if (plexResponse.ok) {
           const plexData = await plexResponse.json()
 
-          if (plexData.inPlex) {
-            const actionsContainer = card.querySelector('.watch-card-actions')
-            const btnToReplace = actionsContainer.querySelector(
-              '.add-to-plex-btn'
-            )
-
-            if (btnToReplace) {
-              btnToReplace.outerHTML = `
-                <div class="plex-status">
-                  <i class="fas fa-check-circle"></i> ${window.PLEX_LIBRARY_NAME}
-                </div>
-              `
+          if (plexData.inLibrary || plexData.inPlex) {
+            const btnToRemove = card.querySelector('.add-to-plex-btn')
+            if (btnToRemove) {
+              btnToRemove.remove()
               plexUpdated++
             }
           }
@@ -5760,8 +5618,10 @@ const main = async () => {
     `🎬 Tracking ${ratedTmdbIds.size} unique TMDb IDs from rated movies`
   )
 
-  // Get Plex library name from server config (fallback to default)
+  // Get library names from server config (fallback to defaults)
   window.PLEX_LIBRARY_NAME = 'My Plex Library'
+  window.EMBY_LIBRARY_NAME = 'My Emby Library'
+  window.JELLYFIN_LIBRARY_NAME = 'My Jellyfin Library'
   window.PLEX_CONFIGURED = false
   window.EMBY_CONFIGURED = false
   window.JELLYFIN_CONFIGURED = false

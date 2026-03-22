@@ -12,6 +12,8 @@ export type SettingsRouteDeps = {
   buildPlexCache: () => Promise<void>
   clearAllMoviesCache: () => void
   getPlexLibraryName: () => string
+  getEmbyLibraryName: () => string
+  getJellyfinLibraryName: () => string
   getSettings: () => Record<string, unknown>
   isLocalRequest: (req: CompatRequest) => boolean
   refreshRadarrCache: () => Promise<void>
@@ -135,11 +137,7 @@ const runConnectionCheck = async (
   } else if (normalizedTarget === 'jellyfin') {
     endpoint = `${serviceUrl}/System/Info`
     headers = { 'X-Emby-Token': normalizedToken }
-  } else if (
-    normalizedTarget === 'jellyseerr' ||
-    normalizedTarget === 'overseerr' ||
-    normalizedTarget === 'seerr'
-  ) {
+  } else if (normalizedTarget === 'seerr') {
     endpoint = `${serviceUrl}/api/v1/status`
     headers = { 'X-Api-Key': normalizedToken }
   } else if (normalizedTarget === 'tmdb') {
@@ -259,10 +257,6 @@ const ADMIN_ONLY_SETTINGS = new Set([
   'MOVIE_BATCH_SIZE',
   'RADARR_URL',
   'RADARR_API_KEY',
-  'JELLYSEERR_URL',
-  'JELLYSEERR_API_KEY',
-  'OVERSEERR_URL',
-  'OVERSEERR_API_KEY',
   'SEERR_URL',
   'SEERR_API_KEY',
   'ACCESS_PASSWORD',
@@ -293,6 +287,8 @@ export async function handleSettingsRoutes(
     buildPlexCache,
     clearAllMoviesCache,
     getPlexLibraryName,
+    getEmbyLibraryName,
+    getJellyfinLibraryName,
     getSettings,
     isLocalRequest,
     refreshRadarrCache,
@@ -400,6 +396,8 @@ export async function handleSettingsRoutes(
     return new Response(
       JSON.stringify({
         plexLibraryName: getPlexLibraryName(),
+        embyLibraryName: getEmbyLibraryName(),
+        jellyfinLibraryName: getJellyfinLibraryName(),
         plexConfigured,
         embyConfigured,
         jellyfinConfigured,

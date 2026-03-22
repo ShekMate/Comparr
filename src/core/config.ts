@@ -80,12 +80,6 @@ export const getRadarrUrl = () => normalizeUrl(getSettingTrimmed('RADARR_URL'))
 export const getRadarrApiKey = () => getSettingTrimmed('RADARR_API_KEY')
 export const getAccessPassword = () =>
   getSettingTrimmed('ACCESS_PASSWORD') ?? ''
-export const getJellyseerrUrl = () =>
-  normalizeUrl(getSettingTrimmed('JELLYSEERR_URL'))
-export const getJellyseerrApiKey = () => getSettingTrimmed('JELLYSEERR_API_KEY')
-export const getOverseerrUrl = () =>
-  normalizeUrl(getSettingTrimmed('OVERSEERR_URL'))
-export const getOverseerrApiKey = () => getSettingTrimmed('OVERSEERR_API_KEY')
 export const getSeerrUrl = () => normalizeUrl(getSettingTrimmed('SEERR_URL'))
 export const getSeerrApiKey = () => getSettingTrimmed('SEERR_API_KEY')
 export const getTmdbApiKey = () => getSettingTrimmed('TMDB_API_KEY')

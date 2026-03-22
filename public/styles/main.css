@@ -3118,6 +3118,37 @@ body:not(.is-logged-in) .card-stack:empty::after {
   transform: rotate(180deg);
 }
 
+/* Refresh button in card header - only visible when expanded */
+.header-refresh-btn {
+  display: none;
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  cursor: pointer;
+  color: #14b8a6;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.watch-card.expanded .header-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+}
+
+.header-refresh-btn:hover:not(:disabled) {
+  filter: brightness(1.3);
+}
+
+.header-refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.header-refresh-btn i.fa-spin {
+  animation: fa-spin 1s infinite linear;
+}
+
 /* Expandable details (hidden by default) */
 .watch-card-details {
   display: none;
@@ -3486,29 +3517,45 @@ body:not(.is-logged-in) .card-stack:empty::after {
   line-height: 1;
 }
 
-/* Add to Plex Button */
+/* Request pill - styled to match provider pills but with action appearance */
+.provider-pill-add {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.provider-pill-add:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.provider-pill-add:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.provider-pill-add.requested {
+  background: linear-gradient(135deg, #10b981, #059669);
+  cursor: default;
+}
+
+.provider-pill-add.requested:hover {
+  transform: none;
+}
+
+/* Legacy selector kept for backwards compat - now rendered as pill */
 .add-to-plex-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.6rem 1rem;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: white;
-  border: none;
-  border-radius: var(--radius-md);
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  padding: 0.3rem 0.65rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 500;
   white-space: nowrap;
-}
-
-.add-to-plex-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
 }
 
 .add-to-plex-btn:disabled {
