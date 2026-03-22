@@ -34,12 +34,12 @@ const validateConfiguration = () => {
   ].filter(Boolean)
 
   if (configuredServices.length > 1) {
-    log.warning(
+    log.warn(
       `⚠️  Multiple request services configured (${configuredServices.join(
         ', '
       )}). Only one should be set.`
     )
-    log.warning(
+    log.warn(
       '⚠️  Seerr is preferred, then Jellyseerr, then Overseerr. Remove extra configuration keys.'
     )
   }
@@ -69,9 +69,9 @@ const getServiceConfig = () => {
 
   // Prioritize Seerr, then Jellyseerr, then Overseerr
   if (seerrConfigured && (jellyseerrConfigured || overseerrConfigured)) {
-    log.warning('Multiple request services configured - using Seerr')
+    log.warn('Multiple request services configured - using Seerr')
   } else if (jellyseerrConfigured && overseerrConfigured) {
-    log.warning('Multiple request services configured - using Jellyseerr')
+    log.warn('Multiple request services configured - using Jellyseerr')
   }
 
   if (seerrConfigured) {
@@ -108,7 +108,7 @@ export async function requestMovie(tmdbId: number): Promise<RequestResponse> {
   const config = getServiceConfig()
 
   if (!config) {
-    log.warning('No Seerr, Jellyseerr, or Overseerr configured')
+    log.warn('No Seerr, Jellyseerr, or Overseerr configured')
     return { success: false, message: 'Request service not configured' }
   }
 

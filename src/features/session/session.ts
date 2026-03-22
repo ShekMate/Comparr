@@ -586,7 +586,7 @@ async function loadState(): Promise<PersistedState> {
     try {
       parsed = JSON.parse(raw)
     } catch (err) {
-      log.warning(`Failed to parse persisted session state JSON: ${err}`)
+      log.warn(`Failed to parse persisted session state JSON: ${err}`)
       throw new Error('invalid session state json')
     }
     if (!parsed || typeof parsed !== 'object') throw new Error('bad state')
@@ -1127,7 +1127,7 @@ class Session {
       // Persist the response change
       upsertRoomUser(this.roomCode, actingUser)
       saveState(persistedState).catch(err =>
-        log.warning(`Failed to save state on match removal: ${err}`)
+        log.warn(`Failed to save state on match removal: ${err}`)
       )
     }
 
@@ -1347,7 +1347,7 @@ class Session {
     // persist presence (even if ws is null now)
     upsertRoomUser(this.roomCode, user)
     saveState(persistedState).catch(err =>
-      log.warning(`Failed to save state on add(): ${err}`)
+      log.warn(`Failed to save state on add(): ${err}`)
     )
   }
 
@@ -1367,7 +1367,7 @@ class Session {
     try {
       decodedMessage = JSON.parse(msg)
     } catch (err) {
-      log.warning(
+      log.warn(
         `Received invalid WebSocket JSON from ${user.name}: ${
           err?.message || err
         }`
@@ -1535,7 +1535,7 @@ class Session {
           // Persist: user responses + (optionally) liked state can be derived, so we just save users + movieIndex
           upsertRoomUser(this.roomCode, user)
           await saveState(persistedState).catch(err =>
-            log.warning(`Failed to save state on response: ${err}`)
+            log.warn(`Failed to save state on response: ${err}`)
           )
           break
         }
@@ -1643,7 +1643,7 @@ class Session {
     const tmdbConfigured = Boolean(getTmdbApiKey())
 
     if (!tmdbConfigured && !effectiveShowMyPlexOnly) {
-      log.warning(
+      log.warn(
         'TMDb API key is missing; falling back to Plex library movies for swipe results.'
       )
     }
@@ -1804,7 +1804,7 @@ class Session {
             streamingServices: effectiveStreamingServices,
           })
         } catch (err) {
-          log.warning(
+          log.warn(
             `TMDb candidate fetch failed at attempt ${attemptNumber}; trying room library fallback: ${err}`
           )
           return await fetchPlexCandidate()
@@ -1849,7 +1849,7 @@ class Session {
           break
         }
         if (elapsedMs >= effectiveHardTimeoutMs) {
-          log.warning(
+          log.warn(
             `⏱️ Hard timeout reached after ${elapsedMs}ms; ending batch generation with ${validMovies.length} movie(s).`
           )
           break
@@ -1869,7 +1869,7 @@ class Session {
 
           log.error(`Error fetching movie attempt ${attemptNumber}:`, err)
           if (hasPersonFilters && personMovies.length > 0) {
-            log.warning('Person movie fetch failed, falling back to discovery')
+            log.warn('Person movie fetch failed, falling back to discovery')
             hasPersonFilters = false
           }
           queueNextCandidate()
@@ -1973,14 +1973,14 @@ class Session {
                     )
                   }
                 } catch (retryErr) {
-                  log.warning(
+                  log.warn(
                     `Forced enrichment retry failed for ${plexMovie.title}: ${retryErr}`
                   )
                 }
               }
             }
           } catch (e) {
-            log.warning(`Enrichment failed for ${plexMovie.title}: ${e}`)
+            log.warn(`Enrichment failed for ${plexMovie.title}: ${e}`)
           }
 
           const candidateTmdbId = extra?.tmdbId ?? tmdbIdFromGuid
@@ -2307,7 +2307,7 @@ class Session {
           log.error(`Error details:`, err.message)
 
           if (hasPersonFilters && personMovies.length > 0) {
-            log.warning(
+            log.warn(
               'Person movie failed, falling back to discovery for remaining movies'
             )
             hasPersonFilters = false
@@ -2326,7 +2326,7 @@ class Session {
       // Add to global movie index
       addMoviesToIndex(validMovies)
       await saveState(persistedState).catch(err =>
-        log.warning(`Failed to save state after batch: ${err}`)
+        log.warn(`Failed to save state after batch: ${err}`)
       )
 
       // Send only unseen movies to each user
@@ -2523,7 +2523,7 @@ class Session {
 
       if (tmdbMappingsPersisted) {
         await saveState(persistedState).catch(err =>
-          log.warning(`Failed to save state after backfilling TMDb IDs: ${err}`)
+          log.warn(`Failed to save state after backfilling TMDb IDs: ${err}`)
         )
       }
     } catch (err) {
@@ -2923,7 +2923,7 @@ async function hydratePersistedMoviesWithPlexAvailability(): Promise<number> {
 
   if (updatedGuids.length > 0) {
     await saveState(persistedState).catch(err =>
-      log.warning(`Failed to persist Plex availability backfill: ${err}`)
+      log.warn(`Failed to persist Plex availability backfill: ${err}`)
     )
   }
 
@@ -2981,7 +2981,7 @@ export const handleLogin = (
       try {
         data = JSON.parse(msg)
       } catch (err) {
-        log.warning(
+        log.warn(
           `Failed to parse login message JSON: ${err?.message || err}`
         )
         const response: WebSocketLoginResponseMessage = {
@@ -3018,7 +3018,7 @@ export const handleLogin = (
             accessPassword &&
             !timingSafeEqual(data.payload.accessPassword, accessPassword)
           ) {
-            log.warning(`Invalid access password from ${data.payload.name}`)
+            log.warn(`Invalid access password from ${data.payload.name}`)
             const response: WebSocketLoginResponseMessage = {
               type: 'loginResponse',
               payload: {
@@ -3090,7 +3090,7 @@ export const handleLogin = (
           }
 
           ensurePlexHydrationReady().catch(err => {
-            log.warning(
+            log.warn(
               `Continuing login for ${
                 data.payload.name
               } while Plex hydration finishes in background: ${
@@ -3203,7 +3203,7 @@ export const handleLogin = (
           // Persist (make sure this user is in the room set)
           upsertRoomUser(session.roomCode, user)
           saveState(persistedState).catch(err =>
-            log.warning(`Failed to save state on login: ${err}`)
+            log.warn(`Failed to save state on login: ${err}`)
           )
           if (responsesMutated) {
             log.debug(
@@ -3365,7 +3365,7 @@ export async function bulkImportSeen(
 
   // Save state
   await saveState(persistedState).catch(err =>
-    log.warning(`Failed to save state after IMDb import: ${err}`)
+    log.warn(`Failed to save state after IMDb import: ${err}`)
   )
 
   log.info(
@@ -3413,7 +3413,7 @@ function sendToUser(roomCode: string, userName: string, message: any): boolean {
     ws.send(JSON.stringify(message))
     return true
   } catch (err) {
-    log.warning(`Failed to send WS message to ${userName}: ${err}`)
+    log.warn(`Failed to send WS message to ${userName}: ${err}`)
     return false
   }
 }
@@ -3632,11 +3632,11 @@ export async function processImdbImportBackground(
       // Save state periodically (every 25 movies)
       if (imported % 25 === 0) {
         await saveState(persistedState).catch(err =>
-          log.warning(`Failed to save state during import: ${err}`)
+          log.warn(`Failed to save state during import: ${err}`)
         )
       }
     } catch (err) {
-      log.warning(
+      log.warn(
         `[IMDb Import] Failed to process ${row.imdbId}: ${err?.message || err}`
       )
       skipped++
@@ -3653,13 +3653,13 @@ export async function processImdbImportBackground(
 
   // Final save
   await saveState(persistedState).catch(err =>
-    log.warning(`Failed to save state after import: ${err}`)
+    log.warn(`Failed to save state after import: ${err}`)
   )
 
   if (importHistoryId) {
     finalizeImdbImportHistory(roomCode, userName, importHistoryId, 'successful')
     await saveState(persistedState).catch(err =>
-      log.warning(`Failed to save import history state: ${err}`)
+      log.warn(`Failed to save import history state: ${err}`)
     )
   }
 

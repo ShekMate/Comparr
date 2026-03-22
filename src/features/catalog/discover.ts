@@ -131,7 +131,7 @@ export async function discoverMovies(
     } on page`
   )
   if (data.results?.length === 0) {
-    log.warning('⚠️ TMDb returned no results for current filters')
+    log.warn('⚠️ TMDb returned no results for current filters')
   }
 
   return data
