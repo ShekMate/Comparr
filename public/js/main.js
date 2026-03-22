@@ -3034,6 +3034,12 @@ function createFirstRunGuideModal() {
         return null
       }
       await loadClientConfig()
+      // Force settings form to re-hydrate so admin settings reflect wizard values
+      settingsHydratedWithAdminAccess = false
+      if (settingsUiHydrated) {
+        await hydrateSettingsForm()
+        settingsHydratedWithAdminAccess = true
+      }
       document.dispatchEvent(new CustomEvent('comparr:source-config-updated'))
       return { type: 'complete' }
     }
