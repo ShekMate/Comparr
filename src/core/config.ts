@@ -54,6 +54,7 @@ const parseJsonArraySetting = (value: string): string[] => {
 export const getPlexUrl = () => normalizePlexUrl(getSettingTrimmed('PLEX_URL'))
 export const getPlexToken = () => getSettingTrimmed('PLEX_TOKEN')
 export const getPort = () => getSettingTrimmed('PORT') ?? '8000'
+export const getHost = () => (Deno.env.get('HOST') ?? '0.0.0.0').trim() || '0.0.0.0'
 export const LOG_LEVEL = getSettingTrimmed('LOG_LEVEL') ?? 'INFO'
 export const getMovieBatchSize = () =>
   getSettingTrimmed('MOVIE_BATCH_SIZE') ?? '20'
