@@ -54,7 +54,9 @@ ALLOWED_NET_HOSTS=$(printf '%s' "$ALLOWED_NET_HOSTS" | tr ',' '\n' | sed '/^$/d'
 
 # Run the server as the requested user
 exec gosu "${PUID}:${PGID}" deno run \
+  --unstable \
   --allow-net="${ALLOWED_NET_HOSTS}" \
+  --allow-ffi \
   --allow-read=/data,/app \
   --allow-write=/data \
   --allow-env="${ALLOWED_ENV_VARS}" \
