@@ -406,6 +406,9 @@ export async function handleSettingsRoutes(
         accessPasswordSet: Boolean(
           String(settings.ACCESS_PASSWORD ?? '').trim()
         ),
+        adminPasswordSet: Boolean(
+          String(settings.ADMIN_PASSWORD ?? '').trim()
+        ),
       }),
       { status: 200, headers: makeJsonHeaders(req) }
     )

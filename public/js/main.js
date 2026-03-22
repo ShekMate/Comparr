@@ -1250,6 +1250,9 @@ async function loadClientConfig() {
     if (data?.accessPasswordSet !== undefined) {
       window.ACCESS_PASSWORD_SET = Boolean(data.accessPasswordSet)
     }
+    if (data?.adminPasswordSet !== undefined) {
+      window.ADMIN_PASSWORD_SET = Boolean(data.adminPasswordSet)
+    }
     updateHostManagedSubscriptionServiceOptions()
   } catch (err) {
     console.warn('Client config fetch failed:', err)
@@ -2462,34 +2465,101 @@ function createFirstRunGuideModal() {
       renderRequirementCopy('')
       title.textContent = 'Security Settings'
       copy.textContent = ''
+
       const existingAccessPassword =
         selectedState.security.accessPassword ||
         document.getElementById('setting-access-password')?.value ||
         ''
       const accessPasswordAlreadySet =
         Boolean(existingAccessPassword) || Boolean(window.ACCESS_PASSWORD_SET)
-      const accessPasswordPlaceholder = accessPasswordAlreadySet
-        ? '(already configured — leave blank to keep)'
-        : '(optional)'
+      const adminPasswordAlreadySet = Boolean(window.ADMIN_PASSWORD_SET)
+      // If the session already authenticated with admin password, use it
+      const sessionAdminPassword =
+        getAdminHeaders()['x-admin-password'] || ''
+      const needsAdminAuth = adminPasswordAlreadySet && !sessionAdminPassword
+
+      // Access password section: show "configured" badge + Change toggle if
+      // already set, otherwise show the input directly
+      const accessSection = accessPasswordAlreadySet
+        ? `<div class="first-run-password-configured" id="first-run-access-configured">
+            <span class="first-run-password-status-badge"><i class="fas fa-check-circle" aria-hidden="true"></i> Configured</span>
+            <button type="button" class="first-run-change-password-btn" id="first-run-access-change-btn">Change →</button>
+          </div>
+          <div id="first-run-access-input-wrap" hidden>
+            <input id="first-run-access-password" class="first-run-guide-input" type="password" placeholder="New access password" autocomplete="new-password" />
+          </div>`
+        : `<input id="first-run-access-password" class="first-run-guide-input" type="password" placeholder="(optional)" autocomplete="new-password" />`
+
+      // Admin password section: same pattern
+      const adminSection = adminPasswordAlreadySet
+        ? `<div class="first-run-password-configured" id="first-run-admin-configured">
+            <span class="first-run-password-status-badge"><i class="fas fa-check-circle" aria-hidden="true"></i> Configured</span>
+            <button type="button" class="first-run-change-password-btn" id="first-run-admin-change-btn">Change →</button>
+          </div>
+          <div id="first-run-admin-input-wrap" hidden>
+            <input id="first-run-admin-password" class="first-run-guide-input" type="password" placeholder="New admin password" autocomplete="new-password" />
+          </div>`
+        : `<input id="first-run-admin-password" class="first-run-guide-input" type="password" placeholder="(optional)" autocomplete="new-password" />`
+
+      // Current admin password field: shown when admin password is set and we
+      // don't already have it in the session. User must enter it to save changes.
+      const adminAuthSection = needsAdminAuth
+        ? `<div class="first-run-admin-auth-section">
+            <label class="first-run-guide-field-label first-run-guide-security-label">Current Admin Password</label>
+            <p class="first-run-guide-instruction">Required to save any changes on this screen.</p>
+            <input id="first-run-current-admin-password" class="first-run-guide-input" type="password" placeholder="Enter current admin password" autocomplete="current-password" />
+          </div>`
+        : ''
+
       body.innerHTML = `
         <label class="first-run-guide-field-label first-run-guide-security-label">Access Password</label>
-        <p class="first-run-guide-instruction">Require a password for anyone to access your comparr instance.</p>
-        <input id="first-run-access-password" class="first-run-guide-input" type="password" value="${existingAccessPassword}" placeholder="${accessPasswordPlaceholder}" autocomplete="new-password" />
+        <p class="first-run-guide-instruction">Require a password for anyone to access your Comparr instance.</p>
+        ${accessSection}
         <label class="first-run-guide-field-label first-run-guide-security-label first-run-guide-admin-password-label">Admin Settings Password</label>
         <p class="first-run-guide-instruction">Set a password for admin settings so your users cannot edit them.</p>
-        <input id="first-run-admin-password" class="first-run-guide-input" type="password" value="${
-          selectedState.security.adminPassword || ''
-        }" placeholder="(optional)" autocomplete="new-password" />
+        ${adminSection}
+        ${adminAuthSection}
       `
+
+      // Expand access password input on Change click
+      body
+        .querySelector('#first-run-access-change-btn')
+        ?.addEventListener('click', () => {
+          body.querySelector('#first-run-access-configured').hidden = true
+          body.querySelector('#first-run-access-input-wrap').hidden = false
+          body.querySelector('#first-run-access-password')?.focus()
+          initializePasswordVisibilityToggles()
+          updateSecurityActionState()
+        })
+
+      // Expand admin password input on Change click
+      body
+        .querySelector('#first-run-admin-change-btn')
+        ?.addEventListener('click', () => {
+          body.querySelector('#first-run-admin-configured').hidden = true
+          body.querySelector('#first-run-admin-input-wrap').hidden = false
+          body.querySelector('#first-run-admin-password')?.focus()
+          initializePasswordVisibilityToggles()
+          updateSecurityActionState()
+        })
 
       const updateSecurityActionState = () => {
         const accessPassword =
           body.querySelector('#first-run-access-password')?.value?.trim() || ''
         const adminPassword =
           body.querySelector('#first-run-admin-password')?.value?.trim() || ''
+        const currentAdminPassword =
+          body
+            .querySelector('#first-run-current-admin-password')
+            ?.value?.trim() || ''
         const hasTypedPassword = Boolean(accessPassword || adminPassword)
-        const hasPassword = hasTypedPassword || accessPasswordAlreadySet
-        nextButton.disabled = !hasPassword
+        const hasPassword =
+          hasTypedPassword || accessPasswordAlreadySet || adminPasswordAlreadySet
+        // Block Next if the user is making changes but hasn't provided the
+        // current admin password needed to authenticate the save
+        const needsCurrentAdminToSave =
+          needsAdminAuth && hasTypedPassword && !currentAdminPassword
+        nextButton.disabled = !hasPassword || needsCurrentAdminToSave
         skipButton.disabled = hasTypedPassword
       }
 
@@ -2498,6 +2568,9 @@ function createFirstRunGuideModal() {
         ?.addEventListener('input', updateSecurityActionState)
       body
         .querySelector('#first-run-admin-password')
+        ?.addEventListener('input', updateSecurityActionState)
+      body
+        .querySelector('#first-run-current-admin-password')
         ?.addEventListener('input', updateSecurityActionState)
 
       initializePasswordVisibilityToggles()
@@ -2765,32 +2838,78 @@ function createFirstRunGuideModal() {
     const current = history[history.length - 1] || { type: 'security' }
 
     if (current.type === 'security') {
-      const accessPassword =
-        body.querySelector('#first-run-access-password')?.value || ''
-      const adminPassword =
-        body.querySelector('#first-run-admin-password')?.value || ''
+      const accessPasswordInput = body.querySelector('#first-run-access-password')
+      const adminPasswordInput = body.querySelector('#first-run-admin-password')
+      const currentAdminPasswordInput = body.querySelector(
+        '#first-run-current-admin-password'
+      )
 
-      selectedState.security.accessPassword = accessPassword
-      selectedState.security.adminPassword = adminPassword
+      // A field is "changed" only when it was explicitly revealed via the
+      // Change toggle (or was never configured, so always visible) AND has a value
+      const accessChangeActive =
+        body.querySelector('#first-run-access-input-wrap')?.hidden === false ||
+        !window.ACCESS_PASSWORD_SET
+      const adminChangeActive =
+        body.querySelector('#first-run-admin-input-wrap')?.hidden === false ||
+        !window.ADMIN_PASSWORD_SET
 
-      if (accessPassword || !window.ACCESS_PASSWORD_SET) {
-        syncInputValue('setting-access-password', accessPassword)
+      const newAccessPassword =
+        accessChangeActive && accessPasswordInput?.value
+          ? accessPasswordInput.value
+          : null
+      const newAdminPassword =
+        adminChangeActive && adminPasswordInput?.value
+          ? adminPasswordInput.value
+          : null
+
+      // Auth header: when admin password exists use the current-admin field (or
+      // the session value); when it doesn't exist yet use the new password itself
+      // (bootstrap — the new password authenticates its own creation)
+      const currentAdminPassword =
+        currentAdminPasswordInput?.value ||
+        getAdminHeaders()['x-admin-password'] ||
+        ''
+      const authHeader = window.ADMIN_PASSWORD_SET
+        ? currentAdminPassword
+        : newAdminPassword || ''
+
+      // Build the save payload — only include keys that actually changed
+      const settingsToSave = {}
+      if (newAccessPassword !== null) {
+        settingsToSave.ACCESS_PASSWORD = newAccessPassword
+        syncInputValue('setting-access-password', newAccessPassword)
+        selectedState.security.accessPassword = newAccessPassword
+      } else if (!window.ACCESS_PASSWORD_SET) {
+        // Field shown but left blank — save empty (user opted for no password)
+        settingsToSave.ACCESS_PASSWORD = ''
+        syncInputValue('setting-access-password', '')
+        selectedState.security.accessPassword = ''
       }
-      syncInputValue('setting-admin-password', adminPassword)
+      if (newAdminPassword !== null) {
+        settingsToSave.ADMIN_PASSWORD = newAdminPassword
+        syncInputValue('setting-admin-password', newAdminPassword)
+        selectedState.security.adminPassword = newAdminPassword
+      } else if (!window.ADMIN_PASSWORD_SET) {
+        settingsToSave.ADMIN_PASSWORD = ''
+        syncInputValue('setting-admin-password', '')
+        selectedState.security.adminPassword = ''
+      }
 
-      // If the access password field was left blank and a password was already
-      // configured, omit ACCESS_PASSWORD from the save so the existing value
-      // is preserved rather than cleared.
-      const securitySettingsToSave = { ADMIN_PASSWORD: adminPassword }
-      if (accessPassword || !window.ACCESS_PASSWORD_SET) {
-        securitySettingsToSave.ACCESS_PASSWORD = accessPassword
+      // Nothing actually changed — just advance
+      if (Object.keys(settingsToSave).length === 0) {
+        return { type: 'flow' }
       }
 
       try {
-        await saveSettingsSubset(securitySettingsToSave, {
-          adminPasswordHeader: adminPassword,
+        await saveSettingsSubset(settingsToSave, {
+          adminPasswordHeader: authHeader,
         })
-        setAdminPasswordForSession(adminPassword)
+        // Keep session updated with whichever admin password is now active
+        if (newAdminPassword) {
+          setAdminPasswordForSession(newAdminPassword)
+        } else if (currentAdminPassword) {
+          setAdminPasswordForSession(currentAdminPassword)
+        }
       } catch (err) {
         setWizardStatus(
           err?.message || 'Failed to save security settings.',
@@ -3088,7 +3207,12 @@ function createFirstRunGuideModal() {
       document.getElementById('setting-access-password')?.value || ''
     selectedState.security.adminPassword = ''
 
-    const initial = { type: 'security' }
+    // Skip security screen entirely when both passwords are already configured.
+    // The user can change them via the Settings tab.
+    const initial =
+      window.ACCESS_PASSWORD_SET && window.ADMIN_PASSWORD_SET
+        ? { type: 'flow' }
+        : { type: 'security' }
     history.splice(0, history.length, initial)
     renderScreen(initial)
   }
@@ -3116,35 +3240,7 @@ function createFirstRunGuideModal() {
     await withButtonLoading(skipButton, 'Loading...', async () => {
       const current = history[history.length - 1]
       if (current?.type === 'security') {
-        const accessPassword =
-          body.querySelector('#first-run-access-password')?.value || ''
-        const adminPassword =
-          body.querySelector('#first-run-admin-password')?.value || ''
-
-        selectedState.security.accessPassword = accessPassword
-        selectedState.security.adminPassword = adminPassword
-
-        if (accessPassword || !window.ACCESS_PASSWORD_SET) {
-          syncInputValue('setting-access-password', accessPassword)
-        }
-        syncInputValue('setting-admin-password', adminPassword)
-
-        const skipSecuritySettingsToSave = { ADMIN_PASSWORD: adminPassword }
-        if (accessPassword || !window.ACCESS_PASSWORD_SET) {
-          skipSecuritySettingsToSave.ACCESS_PASSWORD = accessPassword
-        }
-        try {
-          await saveSettingsSubset(skipSecuritySettingsToSave, {
-            adminPasswordHeader: adminPassword,
-          })
-          setAdminPasswordForSession(adminPassword)
-        } catch (err) {
-          setWizardStatus(
-            err?.message || 'Failed to save security settings.',
-            'error'
-          )
-          return
-        }
+        // Skip means advance without making any changes — no save needed
         history.push({ type: 'flow' })
         renderScreen({ type: 'flow' })
         return
