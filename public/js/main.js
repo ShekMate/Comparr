@@ -3172,6 +3172,7 @@ async function hydrateSettingsUiIfAuthorized() {
       await hydrateSettingsForm()
       settingsHydratedWithAdminAccess = true
     }
+    updateAdminOnlySettingsVisibility()
     return true
   }
 
