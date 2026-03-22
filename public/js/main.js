@@ -2004,7 +2004,17 @@ async function hydrateSettingsForm() {
     })
 
     hydratePaidStreamingServicesSetting(settings.PAID_STREAMING_SERVICES)
-    hydratePersonalMediaSourcesSetting(settings.PERSONAL_MEDIA_SOURCES)
+
+    let personalMediaSources = settings.PERSONAL_MEDIA_SOURCES
+    if (!personalMediaSources || personalMediaSources === '[]') {
+      const autoSources = []
+      if (settings.PLEX_URL && settings.PLEX_TOKEN) autoSources.push('plex')
+      if (settings.EMBY_URL && settings.EMBY_API_KEY) autoSources.push('emby')
+      if (settings.JELLYFIN_URL && settings.JELLYFIN_API_KEY)
+        autoSources.push('jellyfin')
+      if (autoSources.length > 0) personalMediaSources = JSON.stringify(autoSources)
+    }
+    hydratePersonalMediaSourcesSetting(personalMediaSources)
     setAdminSelectedRequestServiceType(
       inferRequestServiceTypeFromSettingsValues()
     )
@@ -2849,6 +2859,14 @@ function createFirstRunGuideModal() {
         return null
       }
       selectedState.sources = checked
+      try {
+        await saveSettingsSubset({
+          PERSONAL_MEDIA_SOURCES: JSON.stringify(checked),
+        })
+      } catch (err) {
+        setWizardStatus(err?.message || 'Failed to save sources.', 'error')
+        return null
+      }
       return { type: 'service', target: checked[0], index: 0 }
     }
 
