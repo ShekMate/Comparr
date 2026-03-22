@@ -522,7 +522,8 @@ const wss = new WebSocketServer({
   onConnection: (ws, req) =>
     handleLogin(
       ws,
-      String((req.conn.remoteAddr as Deno.NetAddr)?.hostname || 'unknown')
+      String((req.conn.remoteAddr as Deno.NetAddr)?.hostname || 'unknown'),
+      parseAccessPassword(req)
     ),
   onError: err => log.error(err),
 })

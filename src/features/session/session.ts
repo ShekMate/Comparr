@@ -2973,7 +2973,8 @@ export const getSession = (roomCode: string, ws: WebSocket): Session => {
 // -------------------------
 export const handleLogin = (
   ws: WebSocket,
-  clientIp = 'unknown'
+  clientIp = 'unknown',
+  cookieAccessPassword = ''
 ): Promise<User> => {
   return new Promise(resolve => {
     const handler = async (msg: string) => {
@@ -3012,11 +3013,12 @@ export const handleLogin = (
             return
           }
 
-          // Check access password
+          // Check access password (accept either WS payload or cookie from upgrade request)
           const accessPassword = getAccessPassword()
+          const candidatePassword = data.payload.accessPassword || cookieAccessPassword
           if (
             accessPassword &&
-            !timingSafeEqual(data.payload.accessPassword, accessPassword)
+            !timingSafeEqual(candidatePassword, accessPassword)
           ) {
             log.warn(`Invalid access password from ${data.payload.name}`)
             const response: WebSocketLoginResponseMessage = {
