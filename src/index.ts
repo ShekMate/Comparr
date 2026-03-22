@@ -24,7 +24,13 @@ import {
   getMaxBodySize,
   getAccessPassword,
 } from './core/config.ts'
-import { getSettings, updateSettings } from './core/settings.ts'
+import { getSettings, updateSettings, resetSettings } from './core/settings.ts'
+import {
+  getAllRooms,
+  clearAllRooms,
+  clearRooms,
+  clearUsersFromRoom,
+} from './core/persistence.ts'
 import { timingSafeEqual } from './core/security.ts'
 import { getLinkTypeForRequest } from './core/i18n.ts'
 import {
@@ -732,6 +738,11 @@ for await (const req of server) {
       isLocalRequest,
       refreshRadarrCache,
       updateSettings,
+      resetSettings,
+      getAllRooms,
+      clearAllRooms,
+      clearRooms,
+      clearUsersFromRoom,
     })
     if (settingsRouteResponse) {
       await req.respondWith(settingsRouteResponse)

@@ -104,3 +104,34 @@ export function getAllUsers(
 ): Record<string, { responses: PersistedResponse[] }> {
   return getRoom(roomCode).users
 }
+
+export function getAllRooms(): Record<string, PersistedRoom> {
+  return { ...state.rooms }
+}
+
+export function clearAllRooms(): void {
+  state.rooms = {}
+  saveStateSoon()
+}
+
+export function clearRooms(roomCodes: string[]): void {
+  for (const code of roomCodes) {
+    delete state.rooms[code]
+  }
+  saveStateSoon()
+}
+
+export function clearUsersFromRoom(
+  roomCode: string,
+  userNames: string[]
+): void {
+  if (!state.rooms[roomCode]) return
+  for (const name of userNames) {
+    delete state.rooms[roomCode].users[name]
+  }
+  // Remove the room entirely if no users remain
+  if (Object.keys(state.rooms[roomCode].users).length === 0) {
+    delete state.rooms[roomCode]
+  }
+  saveStateSoon()
+}

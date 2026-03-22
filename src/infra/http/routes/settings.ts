@@ -20,6 +20,11 @@ export type SettingsRouteDeps = {
   updateSettings: (
     settings: Record<string, unknown>
   ) => Promise<Record<string, unknown>>
+  resetSettings: () => Promise<Record<string, unknown>>
+  getAllRooms: () => Record<string, { users: Record<string, unknown> }>
+  clearAllRooms: () => void
+  clearRooms: (roomCodes: string[]) => void
+  clearUsersFromRoom: (roomCode: string, userNames: string[]) => void
 }
 
 const getClientIp = (req: CompatRequest) => {
@@ -293,6 +298,11 @@ export async function handleSettingsRoutes(
     isLocalRequest,
     refreshRadarrCache,
     updateSettings,
+    resetSettings,
+    getAllRooms,
+    clearAllRooms,
+    clearRooms,
+    clearUsersFromRoom,
   } = deps
 
   if (pathname === '/api/settings-access') {
@@ -607,6 +617,124 @@ export async function handleSettingsRoutes(
       log.error(`Settings update failed: ${err}`)
       return new Response(
         JSON.stringify({ error: 'Failed to update settings' }),
+        { status: 500, headers: makeJsonHeaders(req) }
+      )
+    }
+  }
+
+  if (pathname === '/api/admin/reset-settings' && req.method === 'POST') {
+    if (!isValidStateChangingOrigin(req)) {
+      return new Response(
+        JSON.stringify({ success: false, message: 'Invalid request origin.' }),
+        { status: 403, headers: makeJsonHeaders(req) }
+      )
+    }
+    const settings = getSettings()
+    if (
+      !isSetupWizardActive(settings) &&
+      !isAdminAuthorized(req, settings, isLocalRequest)
+    ) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: getAdminAuthFailureMessage(req, settings, isLocalRequest),
+        }),
+        { status: 403, headers: makeJsonHeaders(req) }
+      )
+    }
+    try {
+      await resetSettings()
+      clearAllMoviesCache()
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: makeJsonHeaders(req),
+      })
+    } catch (err) {
+      log.error(`Reset settings failed: ${err}`)
+      return new Response(
+        JSON.stringify({ success: false, message: 'Failed to reset settings.' }),
+        { status: 500, headers: makeJsonHeaders(req) }
+      )
+    }
+  }
+
+  if (pathname === '/api/admin/user-history' && req.method === 'GET') {
+    const settings = getSettings()
+    if (
+      !isSetupWizardActive(settings) &&
+      !isAdminAuthorized(req, settings, isLocalRequest)
+    ) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: getAdminAuthFailureMessage(req, settings, isLocalRequest),
+        }),
+        { status: 403, headers: makeJsonHeaders(req) }
+      )
+    }
+    const rooms = getAllRooms()
+    const summary = Object.entries(rooms).map(([roomCode, room]) => ({
+      roomCode,
+      users: Object.keys(room.users),
+    }))
+    return new Response(JSON.stringify({ success: true, rooms: summary }), {
+      status: 200,
+      headers: makeJsonHeaders(req),
+    })
+  }
+
+  if (pathname === '/api/admin/clear-user-history' && req.method === 'POST') {
+    if (!isValidStateChangingOrigin(req)) {
+      return new Response(
+        JSON.stringify({ success: false, message: 'Invalid request origin.' }),
+        { status: 403, headers: makeJsonHeaders(req) }
+      )
+    }
+    const settings = getSettings()
+    if (
+      !isSetupWizardActive(settings) &&
+      !isAdminAuthorized(req, settings, isLocalRequest)
+    ) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: getAdminAuthFailureMessage(req, settings, isLocalRequest),
+        }),
+        { status: 403, headers: makeJsonHeaders(req) }
+      )
+    }
+    try {
+      const bodyText = await req.text()
+      const body = bodyText ? JSON.parse(bodyText) : {}
+      // body.clearAll = true → wipe everything
+      // body.rooms = [{ roomCode, users?: string[] }] → partial clear
+      if (body.clearAll === true) {
+        clearAllRooms()
+      } else if (Array.isArray(body.rooms)) {
+        for (const entry of body.rooms as Array<{
+          roomCode: string
+          users?: string[]
+        }>) {
+          const code = String(entry.roomCode || '').trim()
+          if (!code) continue
+          if (!entry.users || entry.users.length === 0) {
+            clearRooms([code])
+          } else {
+            clearUsersFromRoom(code, entry.users)
+          }
+        }
+      }
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: makeJsonHeaders(req),
+      })
+    } catch (err) {
+      log.error(`Clear user history failed: ${err}`)
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: 'Failed to clear user history.',
+        }),
         { status: 500, headers: makeJsonHeaders(req) }
       )
     }
