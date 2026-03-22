@@ -58,7 +58,8 @@ try {
 } catch {
   console.log('');
 }
-DENO_EOF)
+DENO_EOF
+  )
   if [ -n "$settings_hosts" ]; then
     ALLOWED_NET_HOSTS="${ALLOWED_NET_HOSTS},${settings_hosts}"
   fi
