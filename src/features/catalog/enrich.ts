@@ -3,7 +3,7 @@
 // Priority: 1) Local IMDb database, 2) TMDb API
 
 import { getIMDbRating } from './imdb-datasets.ts'
-import { getPlexLibraryName, getTmdbApiKey } from '../../core/config.ts'
+import { getPlexLibraryName, getEmbyLibraryName, getJellyfinLibraryName, getTmdbApiKey } from '../../core/config.ts'
 import { tmdbFetch } from '../../api/tmdb.ts'
 import * as log from 'jsr:@std/log'
 
@@ -503,31 +503,38 @@ export async function enrich({
 
   try {
     const { isMovieInPlex } = await import('../../integrations/plex/cache.ts')
+    const { isMovieInEmby } = await import('../../integrations/emby/cache.ts')
+    const { isMovieInJellyfin } = await import('../../integrations/jellyfin/cache.ts')
 
     const tmdbId = det?.id || hit?.id
     const imdbFromTmdb = det?.external_ids?.imdb_id
-
-    const inPlex = isMovieInPlex({
+    const params = {
       tmdbId,
       imdbId: imdbFromTmdb || imdbId || undefined,
       title,
       year,
-    })
+    }
 
-    const plexLibraryName = getPlexLibraryName() || 'Plex'
-    if (
-      inPlex &&
-      !streamingServices.subscription.some(s => s.name === plexLibraryName)
-    ) {
-      streamingServices.subscription.unshift({
-        id: 0,
-        name: plexLibraryName,
-        logo_path: '/assets/logos/allvids.svg',
-        type: 'subscription',
-      })
+    const addLibraryBadge = (libraryName: string) => {
+      if (!streamingServices.subscription.some(s => s.name === libraryName)) {
+        streamingServices.subscription.unshift({
+          id: 0,
+          name: libraryName,
+          logo_path: '/assets/logos/allvids.svg',
+          type: 'subscription',
+        })
+      }
+    }
+
+    if (isMovieInPlex(params)) {
+      addLibraryBadge(getPlexLibraryName() || 'Plex')
+    } else if (isMovieInEmby(params)) {
+      addLibraryBadge(getEmbyLibraryName() || 'Emby')
+    } else if (isMovieInJellyfin(params)) {
+      addLibraryBadge(getJellyfinLibraryName() || 'Jellyfin')
     }
   } catch (err) {
-    log.error(`[enrich] Failed to check Plex status: ${err?.message || err}`)
+    log.error(`[enrich] Failed to check personal library status: ${err?.message || err}`)
   }
 
   const result: EnrichmentPayload = {

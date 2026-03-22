@@ -4089,7 +4089,7 @@ async function appendRatedRow(
       !isInPersonalLibrary && tmdbId && requestServiceConfigured
         ? `<button class="provider-pill provider-pill-add add-to-plex-btn" data-movie-id="${movieId}">
             <i class="fas fa-plus"></i>
-            <span class="provider-pill-name">Add to ${getPersonalLibraryName()}</span>
+            <span class="provider-pill-name">Request</span>
           </button>`
         : ''
 
@@ -5020,7 +5020,7 @@ async function handleMovieRequest(tmdbId, movieTitle, buttonElement) {
 
   buttonElement.disabled = true
   buttonElement.innerHTML =
-    '<i class="fas fa-spinner fa-spin"></i> Requesting...'
+    '<i class="fas fa-spinner fa-spin"></i><span class="provider-pill-name"> Requesting...</span>'
 
   try {
     const response = await fetch('/api/request-movie', {
@@ -5047,7 +5047,7 @@ async function handleMovieRequest(tmdbId, movieTitle, buttonElement) {
       // Check status again in 30 seconds
       setTimeout(refreshWatchListStatus, 30000)
     } else {
-      buttonElement.innerHTML = `<i class="fas fa-plus"></i> Add to ${getPersonalLibraryName()}`
+      buttonElement.innerHTML = `<i class="fas fa-plus"></i><span class="provider-pill-name"> Request</span>`
       buttonElement.disabled = false
       alert(
         `Failed to request "${movieTitle}": ${

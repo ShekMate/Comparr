@@ -1090,11 +1090,13 @@ for await (const req of server) {
             ? ratingParts.join(' <span class="rating-separator">&bull;</span> ')
             : ''
 
-        // Check if movie is in Plex from streamingServices (already computed during enrich)
-        const plexLibraryName = getPlexLibraryName() || 'Plex'
+        // Check if movie is in any personal library (from streamingServices, computed during enrich)
+        const personalLibraryNames = new Set(
+          [getPlexLibraryName(), getEmbyLibraryName(), getJellyfinLibraryName()].filter(Boolean)
+        )
         const inPlex =
           enriched.streamingServices?.subscription?.some(
-            (s: any) => s.name === plexLibraryName
+            (s: any) => personalLibraryNames.has(s.name)
           ) || false
 
         // Persist updates if we have state

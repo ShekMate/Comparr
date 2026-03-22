@@ -17,8 +17,12 @@ import {
   isMovieInPlex,
   waitForPlexCacheReady,
 } from '../../integrations/plex/cache.ts'
+import { isMovieInEmby } from '../../integrations/emby/cache.ts'
+import { isMovieInJellyfin } from '../../integrations/jellyfin/cache.ts'
 import {
   getAccessPassword,
+  getEmbyLibraryName,
+  getJellyfinLibraryName,
   getMovieBatchSize,
   getPaidStreamingServices,
   getPersonalMediaSources,
@@ -2879,21 +2883,29 @@ async function hydratePersistedMoviesWithPlexAvailability(): Promise<number> {
     const imdbId = extractImdbIdFromMovie(movie as MediaItem)
     const year = parseYear((movie as MediaItem).year as any)
 
-    const inPlex = isMovieInPlex({
+    const movieParams = {
       tmdbId: tmdbId ?? undefined,
       imdbId: imdbId ?? undefined,
       title: (movie as MediaItem).title,
       year: year ?? undefined,
-    })
+    }
 
-    if (inPlex) {
+    const libraryName = isMovieInPlex(movieParams)
+      ? getPlexLibraryName() || 'Plex'
+      : isMovieInEmby(movieParams)
+      ? getEmbyLibraryName() || 'Emby'
+      : isMovieInJellyfin(movieParams)
+      ? getJellyfinLibraryName() || 'Jellyfin'
+      : null
+
+    if (libraryName) {
       const alreadyTagged = normalized.subscription.some(
-        service => service?.name === getPlexLibraryName()
+        service => service?.name === libraryName
       )
       if (!alreadyTagged) {
         normalized.subscription.unshift({
           id: 0,
-          name: getPlexLibraryName(),
+          name: libraryName,
           logo_path: '/assets/logos/allvids.svg',
           type: 'subscription',
         })
