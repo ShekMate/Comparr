@@ -3,6 +3,7 @@ import * as log from 'jsr:@std/log'
 import { clearAllMoviesCache, getServerId } from './api/plex.ts'
 import type { CompatRequest, CompatResponseInit } from './infra/http/compat-request.ts'
 import {
+  getHost,
   getLinkType,
   getPlexLibraryName,
   getPlexToken,
@@ -493,7 +494,10 @@ const serveCompat = (options: { port: number; hostname?: string }) => {
   }
 }
 
-const server = serveCompat({ port: Number(getPort()), hostname: '0.0.0.0' })
+const host = getHost()
+const port = Number(getPort())
+
+const server = serveCompat({ port, hostname: host })
 
 const wss = new WebSocketServer({
   onConnection: (ws, req) =>
@@ -530,7 +534,7 @@ if (Deno.build.os !== 'windows') {
   Deno.addSignalListener('SIGTERM', shutdownHandler)
 }
 
-log.info(`Listening on port ${getPort()}`)
+log.info(`Listening on http://${host}:${port}`)
 
 // Initialize Radarr cache in background
 initializeRadarrCache().catch(err =>
