@@ -2487,11 +2487,10 @@ function createFirstRunGuideModal() {
           body.querySelector('#first-run-access-password')?.value?.trim() || ''
         const adminPassword =
           body.querySelector('#first-run-admin-password')?.value?.trim() || ''
-        const hasPassword = Boolean(
-          accessPassword || adminPassword || accessPasswordAlreadySet
-        )
+        const hasTypedPassword = Boolean(accessPassword || adminPassword)
+        const hasPassword = hasTypedPassword || accessPasswordAlreadySet
         nextButton.disabled = !hasPassword
-        skipButton.disabled = hasPassword
+        skipButton.disabled = hasTypedPassword
       }
 
       body
