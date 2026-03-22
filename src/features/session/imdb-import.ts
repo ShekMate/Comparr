@@ -143,7 +143,7 @@ export function parseImdbCsv(csvText: string): ImdbCsvRow[] {
   const typeIdx = header.findIndex(h => h.toLowerCase() === 'title type')
 
   if (constIdx < 0) {
-    log.warning('IMDb CSV: "Const" column not found in header')
+    log.warn('IMDb CSV: "Const" column not found in header')
     return []
   }
 
@@ -253,7 +253,7 @@ export async function lookupMovieByImdbId(
     })
 
     if (!response.ok) {
-      log.warning(`TMDb find failed for ${imdbId}: HTTP ${response.status}`)
+      log.warn(`TMDb find failed for ${imdbId}: HTTP ${response.status}`)
       return null
     }
 

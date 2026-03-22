@@ -67,7 +67,7 @@ export const serveFile = async (
     try {
       const urlPath = normalizeURL(req.url)
       if (urlPath.startsWith('/tmdb-poster/')) {
-        log.warning(
+        log.warn(
           `[POSTER DEBUG] 404 while serving poster -> URL: ${urlPath} | FS: ${normalizedPath}`
         )
       }

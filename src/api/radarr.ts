@@ -20,7 +20,7 @@ async function fetchRadarrMovies(): Promise<RadarrMovie[]> {
   const radarrUrl = getRadarrUrl()
   const radarrApiKey = getRadarrApiKey()
   if (!radarrUrl || !radarrApiKey) {
-    log.warning('Radarr URL or API key not configured')
+    log.warn('Radarr URL or API key not configured')
     return []
   }
 
@@ -66,7 +66,7 @@ export async function refreshRadarrCache(): Promise<void> {
   log.info(`✅ Radarr cache updated with ${movieCache.size} movies`)
 
   if (skippedCount > 0) {
-    log.warning(
+    log.warn(
       `⚠️ Radarr cache size limit reached. ${skippedCount} movies skipped. Consider increasing MAX_RADARR_CACHE_SIZE.`
     )
   }
@@ -91,7 +91,7 @@ export function isMovieInRadarr(tmdbId: number): boolean {
   // Check if cache needs refresh (fallback safety)
   const now = Date.now()
   if (now - lastCacheUpdate > CACHE_DURATION) {
-    log.warning('Radarr cache is stale, triggering refresh')
+    log.warn('Radarr cache is stale, triggering refresh')
     refreshRadarrCache().catch(err => log.error(`Cache refresh failed: ${err}`))
     return false // Return false for stale cache
   }

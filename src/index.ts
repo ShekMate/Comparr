@@ -768,7 +768,7 @@ for await (const req of server) {
         try {
           await waitForPlexCacheReady()
         } catch (err) {
-          log.warning(
+          log.warn(
             `Plex cache not ready when handling request-movie: ${
               err?.message || err
             }`
@@ -921,7 +921,7 @@ for await (const req of server) {
           if (!Number.isNaN(maybe)) {
             tmdbId = maybe
           } else {
-            log.warning(`[refresh ${rid}] invalid idParam`)
+            log.warn(`[refresh ${rid}] invalid idParam`)
             await req.respond({
               status: 400,
               body: JSON.stringify({ error: 'Invalid ID', rid }),
@@ -1004,7 +1004,7 @@ for await (const req of server) {
             }
             log.info(`[refresh ${rid}] fabricated movieData for enrichment`)
           } else {
-            log.warning(
+            log.warn(
               `[refresh ${rid}] not found in state and no ids to fabricate`
             )
             await req.respond({
@@ -1116,7 +1116,7 @@ for await (const req of server) {
             log.error(`[refresh ${rid}] persist failed: ${e?.message || e}`)
           }
         } else {
-          log.warning(
+          log.warn(
             `[refresh ${rid}] no persistedState.movieIndex; skipping persist`
           )
         }
