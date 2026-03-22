@@ -2217,6 +2217,13 @@
               >
                 Security
               </button>
+              <button
+                type="button"
+                class="settings-admin-tab settings-admin-tab--danger"
+                data-admin-tab-target="settings-reset"
+              >
+                Reset
+              </button>
             </div>
           </div>
 
@@ -2963,6 +2970,99 @@
             </div>
           </div>
 
+          <div
+            class="settings-section"
+            id="settings-reset"
+            data-admin-section="true"
+            data-admin-tab-panel="true"
+            hidden
+          >
+            <h4>Reset</h4>
+
+            <!-- Reset Settings Card -->
+            <div class="reset-card reset-card--danger">
+              <div class="reset-card__header">
+                <div class="reset-card__icon">
+                  <i class="fas fa-undo-alt"></i>
+                </div>
+                <div class="reset-card__info">
+                  <h5 class="reset-card__title">Reset Settings</h5>
+                  <p class="reset-card__desc">
+                    Clears all configuration and integrations. Your browser will
+                    refresh to the Setup Wizard. User names and room codes are
+                    preserved.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                class="reset-action-btn reset-action-btn--danger"
+                id="reset-settings-btn"
+              >
+                <i class="fas fa-undo-alt"></i>
+                Reset Settings
+              </button>
+            </div>
+
+            <!-- Clear User History Card -->
+            <div class="reset-card">
+              <div class="reset-card__header">
+                <div class="reset-card__icon reset-card__icon--warn">
+                  <i class="fas fa-users-slash"></i>
+                </div>
+                <div class="reset-card__info">
+                  <h5 class="reset-card__title">Clear User History</h5>
+                  <p class="reset-card__desc">
+                    Remove swipe history for specific rooms and users, or wipe
+                    everything at once.
+                  </p>
+                </div>
+              </div>
+
+              <div class="user-history-controls">
+                <div class="user-history-toolbar">
+                  <button
+                    type="button"
+                    class="user-history-select-btn"
+                    id="user-history-select-all"
+                  >
+                    Select All
+                  </button>
+                  <button
+                    type="button"
+                    class="user-history-select-btn"
+                    id="user-history-deselect-all"
+                  >
+                    Deselect All
+                  </button>
+                  <button
+                    type="button"
+                    class="user-history-refresh-btn"
+                    id="user-history-refresh"
+                    title="Refresh list"
+                  >
+                    <i class="fas fa-sync-alt"></i>
+                  </button>
+                </div>
+                <div class="user-history-list" id="user-history-list">
+                  <div class="user-history-empty">
+                    <i class="fas fa-circle-notch fa-spin"></i>
+                    Loading…
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="reset-action-btn reset-action-btn--warn"
+                id="clear-user-history-btn"
+              >
+                <i class="fas fa-trash-alt"></i>
+                Clear Selected
+              </button>
+            </div>
+          </div>
+
           <div class="settings-footer-actions">
             <button
               class="reset-filters-btn settings-defaults-reset-btn"
@@ -2998,6 +3098,31 @@
         </a>
       </p>
     </footer>
+
+    <!-- Reset confirmation modal -->
+    <div class="reset-modal-overlay" id="reset-modal-overlay" hidden>
+      <div class="reset-modal" role="dialog" aria-modal="true" aria-labelledby="reset-modal-title">
+        <div class="reset-modal__icon" id="reset-modal-icon">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <h3 class="reset-modal__title" id="reset-modal-title"></h3>
+        <p class="reset-modal__body" id="reset-modal-body"></p>
+        <div class="reset-modal__confirm-row">
+          <input
+            type="text"
+            class="reset-modal__input"
+            id="reset-modal-input"
+            placeholder='Type "YES" to confirm'
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+        <div class="reset-modal__actions">
+          <button type="button" class="reset-modal__cancel" id="reset-modal-cancel">Cancel</button>
+          <button type="button" class="reset-modal__confirm" id="reset-modal-confirm" disabled></button>
+        </div>
+      </div>
+    </div>
 
     <!-- Load JS from site root -->
     <script src="/js/main.js?v=20260301a" type="module" defer></script>

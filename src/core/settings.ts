@@ -204,3 +204,13 @@ export const updateSettings = async (
 }
 
 export const getSettingsKeys = (): SettingsKey[] => [...SETTINGS_KEYS]
+
+export const resetSettings = async (): Promise<Settings> => {
+  for (const key of SETTINGS_KEYS) {
+    if (ENV_ONLY_KEYS.has(key)) continue
+    settingsCache[key] = normalizeValue(DEFAULTS[key] ?? '')
+  }
+  syncEnv(settingsCache)
+  await persistSettings()
+  return getSettings()
+}

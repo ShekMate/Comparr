@@ -1401,11 +1401,310 @@ function initializeAdminSettingsTabs() {
       clearSettingsStatusAfterDelay()
       activeAdminSettingsTab = target
       applyAdminSettingsTabVisibility()
+      if (target === 'settings-reset') {
+        initializeResetTab()
+        loadUserHistory()
+      }
     })
   })
 
   tabsContainer.dataset.boundAdminTabs = 'true'
 }
+
+// ─── Reset Tab Logic ──────────────────────────────────────────
+
+function openResetModal({ title, body, confirmLabel, confirmClass, onConfirm }) {
+  const overlay = document.getElementById('reset-modal-overlay')
+  const titleEl = document.getElementById('reset-modal-title')
+  const bodyEl = document.getElementById('reset-modal-body')
+  const input = document.getElementById('reset-modal-input')
+  const confirmBtn = document.getElementById('reset-modal-confirm')
+  const cancelBtn = document.getElementById('reset-modal-cancel')
+  const iconEl = document.getElementById('reset-modal-icon')
+
+  if (!overlay) return
+
+  titleEl.textContent = title
+  bodyEl.textContent = body
+  confirmBtn.textContent = confirmLabel
+  confirmBtn.className = `reset-modal__confirm${confirmClass ? ' ' + confirmClass : ''}`
+  iconEl.className = `reset-modal__icon${confirmClass?.includes('warn') ? ' reset-modal__icon--warn' : ''}`
+  input.value = ''
+  confirmBtn.disabled = true
+  overlay.hidden = false
+  setTimeout(() => input.focus(), 80)
+
+  const onInput = () => {
+    const valid = input.value.trim().toUpperCase() === 'YES'
+    confirmBtn.disabled = !valid
+    input.classList.toggle('is-valid', valid)
+  }
+
+  const cleanup = () => {
+    input.removeEventListener('input', onInput)
+    confirmBtn.removeEventListener('click', onConfirmClick)
+    cancelBtn.removeEventListener('click', onCancel)
+    overlay.removeEventListener('click', onOverlayClick)
+    overlay.hidden = true
+  }
+
+  const onConfirmClick = async () => {
+    if (input.value.trim().toUpperCase() !== 'YES') return
+    cleanup()
+    await onConfirm()
+  }
+
+  const onCancel = () => cleanup()
+  const onOverlayClick = (e) => { if (e.target === overlay) cleanup() }
+
+  input.addEventListener('input', onInput)
+  confirmBtn.addEventListener('click', onConfirmClick)
+  cancelBtn.addEventListener('click', onCancel)
+  overlay.addEventListener('click', onOverlayClick)
+}
+
+async function handleResetSettings() {
+  openResetModal({
+    title: 'Reset All Settings?',
+    body: 'This will clear ALL settings and integrations. Your browser will refresh to the Setup Wizard. User names and room codes will be preserved. Type "YES" and click Reset to confirm.',
+    confirmLabel: 'Reset',
+    confirmClass: '',
+    onConfirm: async () => {
+      const base = document.body.dataset.basePath || ''
+      try {
+        const res = await fetch(`${base}/api/admin/reset-settings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...getAdminHeaders() },
+        })
+        if (!res.ok) throw new Error('Request failed')
+        // Clear all localStorage that relates to settings/state
+        const keysToRemove = []
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i)
+          if (k) keysToRemove.push(k)
+        }
+        keysToRemove.forEach(k => localStorage.removeItem(k))
+        sessionStorage.clear()
+        window.location.reload()
+      } catch (err) {
+        setSettingsStatus(`Failed to reset: ${err?.message || err}`)
+        pulseSettingsStatus('error')
+      }
+    },
+  })
+}
+
+let userHistoryData = []
+
+async function loadUserHistory() {
+  const listEl = document.getElementById('user-history-list')
+  if (!listEl) return
+  listEl.innerHTML = '<div class="user-history-empty"><i class="fas fa-circle-notch fa-spin"></i> Loading…</div>'
+  const base = document.body.dataset.basePath || ''
+  try {
+    const res = await fetch(`${base}/api/admin/user-history`, {
+      headers: { ...getAdminHeaders() },
+    })
+    const data = await res.json()
+    if (!data.success) throw new Error(data.message || 'Failed to load')
+    userHistoryData = data.rooms || []
+    renderUserHistory(userHistoryData, listEl)
+  } catch (err) {
+    listEl.innerHTML = `<div class="user-history-empty"><i class="fas fa-exclamation-circle"></i> ${err?.message || 'Failed to load history'}</div>`
+  }
+}
+
+function renderUserHistory(rooms, listEl) {
+  if (!rooms.length) {
+    listEl.innerHTML = '<div class="user-history-empty"><i class="fas fa-check-circle"></i> No user history found.</div>'
+    return
+  }
+  listEl.innerHTML = ''
+  rooms.forEach(room => {
+    const roomEl = document.createElement('div')
+    roomEl.className = 'user-history-room'
+    roomEl.dataset.roomCode = room.roomCode
+
+    const header = document.createElement('div')
+    header.className = 'user-history-room-header'
+
+    const roomCb = document.createElement('input')
+    roomCb.type = 'checkbox'
+    roomCb.className = 'user-history-room-checkbox'
+    roomCb.dataset.room = room.roomCode
+
+    const roomLabel = document.createElement('span')
+    roomLabel.className = 'user-history-room-label'
+    roomLabel.textContent = room.roomCode
+
+    const roomCount = document.createElement('span')
+    roomCount.className = 'user-history-room-count'
+    roomCount.textContent = `${room.users.length} user${room.users.length !== 1 ? 's' : ''}`
+
+    const toggleIcon = document.createElement('i')
+    toggleIcon.className = 'fas fa-chevron-down user-history-room-toggle'
+
+    header.appendChild(roomCb)
+    header.appendChild(roomLabel)
+    header.appendChild(roomCount)
+    header.appendChild(toggleIcon)
+
+    const usersEl = document.createElement('div')
+    usersEl.className = 'user-history-users'
+    room.users.forEach(userName => {
+      const userEl = document.createElement('div')
+      userEl.className = 'user-history-user'
+
+      const userCb = document.createElement('input')
+      userCb.type = 'checkbox'
+      userCb.className = 'user-history-user-checkbox'
+      userCb.dataset.room = room.roomCode
+      userCb.dataset.user = userName
+
+      const userNameEl = document.createElement('span')
+      userNameEl.className = 'user-history-user-name'
+      userNameEl.textContent = userName
+
+      userEl.appendChild(userCb)
+      userEl.appendChild(userNameEl)
+      usersEl.appendChild(userEl)
+    })
+
+    // Toggle expand/collapse
+    header.addEventListener('click', (e) => {
+      if (e.target === roomCb) return
+      roomEl.classList.toggle('is-expanded')
+    })
+
+    // Room checkbox cascades to users
+    roomCb.addEventListener('change', () => {
+      usersEl.querySelectorAll('.user-history-user-checkbox').forEach(cb => {
+        cb.checked = roomCb.checked
+      })
+    })
+
+    // User checkbox affects room checkbox state
+    usersEl.addEventListener('change', () => {
+      const userCbs = Array.from(usersEl.querySelectorAll('.user-history-user-checkbox'))
+      const allChecked = userCbs.every(cb => cb.checked)
+      const anyChecked = userCbs.some(cb => cb.checked)
+      roomCb.checked = allChecked
+      roomCb.indeterminate = !allChecked && anyChecked
+    })
+
+    roomEl.appendChild(header)
+    roomEl.appendChild(usersEl)
+    listEl.appendChild(roomEl)
+  })
+}
+
+function getSelectedHistory() {
+  const listEl = document.getElementById('user-history-list')
+  if (!listEl) return null
+
+  const roomCheckboxes = listEl.querySelectorAll('.user-history-room-checkbox:checked')
+  // If all rooms fully selected, use clearAll
+  const totalRooms = listEl.querySelectorAll('.user-history-room-checkbox').length
+  if (roomCheckboxes.length === totalRooms && totalRooms > 0) {
+    // Verify all users are also checked
+    const allUserCbs = listEl.querySelectorAll('.user-history-user-checkbox')
+    const allUserChecked = Array.from(allUserCbs).every(cb => cb.checked)
+    if (allUserChecked || allUserCbs.length === 0) return { clearAll: true }
+  }
+
+  const rooms = []
+  listEl.querySelectorAll('.user-history-room').forEach(roomEl => {
+    const roomCode = roomEl.dataset.roomCode
+    const roomCb = roomEl.querySelector('.user-history-room-checkbox')
+    const userCbs = Array.from(roomEl.querySelectorAll('.user-history-user-checkbox'))
+    const checkedUsers = userCbs.filter(cb => cb.checked).map(cb => cb.dataset.user)
+    if (roomCb.checked || checkedUsers.length > 0) {
+      const entry = { roomCode }
+      if (!roomCb.checked || roomCb.indeterminate) {
+        entry.users = checkedUsers
+      }
+      rooms.push(entry)
+    }
+  })
+  return rooms.length ? { rooms } : null
+}
+
+async function handleClearUserHistory() {
+  const selection = getSelectedHistory()
+  if (!selection) {
+    setSettingsStatus('Select at least one room or user to clear.')
+    pulseSettingsStatus('error')
+    return
+  }
+
+  const isAll = selection.clearAll
+  openResetModal({
+    title: 'Clear User History?',
+    body: isAll
+      ? 'This will permanently delete all user history across all rooms. This cannot be undone.'
+      : 'This will permanently delete the selected user history. This cannot be undone.',
+    confirmLabel: 'Clear',
+    confirmClass: 'reset-modal__confirm--warn',
+    onConfirm: async () => {
+      const base = document.body.dataset.basePath || ''
+      try {
+        const res = await fetch(`${base}/api/admin/clear-user-history`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...getAdminHeaders() },
+          body: JSON.stringify(selection),
+        })
+        if (!res.ok) throw new Error('Request failed')
+        setSettingsStatus('User history cleared successfully.')
+        pulseSettingsStatus('success')
+        await loadUserHistory()
+      } catch (err) {
+        setSettingsStatus(`Failed to clear: ${err?.message || err}`)
+        pulseSettingsStatus('error')
+      }
+    },
+  })
+}
+
+function initializeResetTab() {
+  const resetBtn = document.getElementById('reset-settings-btn')
+  const clearBtn = document.getElementById('clear-user-history-btn')
+  const selectAll = document.getElementById('user-history-select-all')
+  const deselectAll = document.getElementById('user-history-deselect-all')
+  const refresh = document.getElementById('user-history-refresh')
+
+  if (resetBtn && !resetBtn.dataset.boundReset) {
+    resetBtn.addEventListener('click', handleResetSettings)
+    resetBtn.dataset.boundReset = 'true'
+  }
+  if (clearBtn && !clearBtn.dataset.boundClear) {
+    clearBtn.addEventListener('click', handleClearUserHistory)
+    clearBtn.dataset.boundClear = 'true'
+  }
+  if (selectAll && !selectAll.dataset.boundSelect) {
+    selectAll.addEventListener('click', () => {
+      document.querySelectorAll('.user-history-room-checkbox, .user-history-user-checkbox').forEach(cb => {
+        cb.checked = true
+        cb.indeterminate = false
+      })
+    })
+    selectAll.dataset.boundSelect = 'true'
+  }
+  if (deselectAll && !deselectAll.dataset.boundDeselect) {
+    deselectAll.addEventListener('click', () => {
+      document.querySelectorAll('.user-history-room-checkbox, .user-history-user-checkbox').forEach(cb => {
+        cb.checked = false
+        cb.indeterminate = false
+      })
+    })
+    deselectAll.dataset.boundDeselect = 'true'
+  }
+  if (refresh && !refresh.dataset.boundRefresh) {
+    refresh.addEventListener('click', loadUserHistory)
+    refresh.dataset.boundRefresh = 'true'
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 
 function updateAdminOnlySettingsVisibility() {
   const canSeeAdmin = hasAdminSettingsAccess
