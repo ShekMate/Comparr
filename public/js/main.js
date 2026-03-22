@@ -1247,6 +1247,9 @@ async function loadClientConfig() {
     if (data?.setupWizardCompleted !== undefined) {
       window.SETUP_WIZARD_COMPLETED = Boolean(data.setupWizardCompleted)
     }
+    if (data?.accessPasswordSet !== undefined) {
+      window.ACCESS_PASSWORD_SET = Boolean(data.accessPasswordSet)
+    }
     updateHostManagedSubscriptionServiceOptions()
   } catch (err) {
     console.warn('Client config fetch failed:', err)
@@ -2459,14 +2462,19 @@ function createFirstRunGuideModal() {
       renderRequirementCopy('')
       title.textContent = 'Security Settings'
       copy.textContent = ''
+      const existingAccessPassword =
+        selectedState.security.accessPassword ||
+        document.getElementById('setting-access-password')?.value ||
+        ''
+      const accessPasswordAlreadySet =
+        Boolean(existingAccessPassword) || Boolean(window.ACCESS_PASSWORD_SET)
+      const accessPasswordPlaceholder = accessPasswordAlreadySet
+        ? '(already configured — leave blank to keep)'
+        : '(optional)'
       body.innerHTML = `
         <label class="first-run-guide-field-label first-run-guide-security-label">Access Password</label>
         <p class="first-run-guide-instruction">Require a password for anyone to access your comparr instance.</p>
-        <input id="first-run-access-password" class="first-run-guide-input" type="password" value="${
-          selectedState.security.accessPassword ||
-          document.getElementById('setting-access-password')?.value ||
-          ''
-        }" placeholder="(optional)" autocomplete="new-password" />
+        <input id="first-run-access-password" class="first-run-guide-input" type="password" value="${existingAccessPassword}" placeholder="${accessPasswordPlaceholder}" autocomplete="new-password" />
         <label class="first-run-guide-field-label first-run-guide-security-label first-run-guide-admin-password-label">Admin Settings Password</label>
         <p class="first-run-guide-instruction">Set a password for admin settings so your users cannot edit them.</p>
         <input id="first-run-admin-password" class="first-run-guide-input" type="password" value="${
@@ -2479,7 +2487,9 @@ function createFirstRunGuideModal() {
           body.querySelector('#first-run-access-password')?.value?.trim() || ''
         const adminPassword =
           body.querySelector('#first-run-admin-password')?.value?.trim() || ''
-        const hasPassword = Boolean(accessPassword || adminPassword)
+        const hasPassword = Boolean(
+          accessPassword || adminPassword || accessPasswordAlreadySet
+        )
         nextButton.disabled = !hasPassword
         skipButton.disabled = hasPassword
       }
@@ -2764,16 +2774,23 @@ function createFirstRunGuideModal() {
       selectedState.security.accessPassword = accessPassword
       selectedState.security.adminPassword = adminPassword
 
-      syncInputValue('setting-access-password', accessPassword)
+      if (accessPassword || !window.ACCESS_PASSWORD_SET) {
+        syncInputValue('setting-access-password', accessPassword)
+      }
       syncInputValue('setting-admin-password', adminPassword)
+
+      // If the access password field was left blank and a password was already
+      // configured, omit ACCESS_PASSWORD from the save so the existing value
+      // is preserved rather than cleared.
+      const securitySettingsToSave = { ADMIN_PASSWORD: adminPassword }
+      if (accessPassword || !window.ACCESS_PASSWORD_SET) {
+        securitySettingsToSave.ACCESS_PASSWORD = accessPassword
+      }
+
       try {
-        await saveSettingsSubset(
-          {
-            ACCESS_PASSWORD: accessPassword,
-            ADMIN_PASSWORD: adminPassword,
-          },
-          { adminPasswordHeader: adminPassword }
-        )
+        await saveSettingsSubset(securitySettingsToSave, {
+          adminPasswordHeader: adminPassword,
+        })
         setAdminPasswordForSession(adminPassword)
       } catch (err) {
         setWizardStatus(
@@ -3108,16 +3125,19 @@ function createFirstRunGuideModal() {
         selectedState.security.accessPassword = accessPassword
         selectedState.security.adminPassword = adminPassword
 
-        syncInputValue('setting-access-password', accessPassword)
+        if (accessPassword || !window.ACCESS_PASSWORD_SET) {
+          syncInputValue('setting-access-password', accessPassword)
+        }
         syncInputValue('setting-admin-password', adminPassword)
+
+        const skipSecuritySettingsToSave = { ADMIN_PASSWORD: adminPassword }
+        if (accessPassword || !window.ACCESS_PASSWORD_SET) {
+          skipSecuritySettingsToSave.ACCESS_PASSWORD = accessPassword
+        }
         try {
-          await saveSettingsSubset(
-            {
-              ACCESS_PASSWORD: accessPassword,
-              ADMIN_PASSWORD: adminPassword,
-            },
-            { adminPasswordHeader: adminPassword }
-          )
+          await saveSettingsSubset(skipSecuritySettingsToSave, {
+            adminPasswordHeader: adminPassword,
+          })
           setAdminPasswordForSession(adminPassword)
         } catch (err) {
           setWizardStatus(
