@@ -499,6 +499,7 @@ export async function handleSettingsRoutes(
     return new Response(
       JSON.stringify({
         settings: sanitizeSettingsForClient(settings, isAdmin),
+        isAdmin,
       }),
       { status: 200, headers: makeJsonHeaders(req) }
     )
