@@ -1,9 +1,6 @@
 #!/bin/sh
 set -e
 
-# Trap any error and log it before exiting
-trap 'echo "[entrypoint] ERROR: script failed at line $LINENO with exit code $?" >&2' ERR
-
 # Allow users to choose the UID/GID that should own /data
 PUID="${PUID:-1000}"
 PGID="${PGID:-1000}"
