@@ -2404,6 +2404,12 @@ async function saveSettingsForm() {
     if (data?.settings?.PERSONAL_MEDIA_SOURCES !== undefined) {
       window.PERSONAL_MEDIA_SOURCES = data.settings.PERSONAL_MEDIA_SOURCES
     }
+    // If the admin password was changed, update the session so subsequent
+    // requests use the new password instead of the now-stale old one.
+    const savedAdminPassword = String(settings.ADMIN_PASSWORD || '').trim()
+    if (savedAdminPassword) {
+      setAdminPasswordForSession(savedAdminPassword)
+    }
     await loadClientConfig()
     document.dispatchEvent(new CustomEvent('comparr:source-config-updated'))
     updateHostManagedSubscriptionServiceOptions()
