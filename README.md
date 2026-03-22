@@ -211,7 +211,8 @@ Comparr persists application settings in `/data/settings.json` after you save th
 
 | Variable                 | Description                                              | Default           |
 | ------------------------ | -------------------------------------------------------- | ----------------- |
-| `PORT`                   | Internal web server port                                 | `8000`            |
+| `HOST`                   | Interface to bind the web server to                      | `0.0.0.0`         |
+| `PORT`                   | Internal web server port (startup env var; not persisted in UI settings) | `8000`            |
 | `PLEX_LIBRARY_NAME`      | Display name for your Plex library                       | `My Plex Library` |
 | `ACCESS_PASSWORD`        | Password to access the app (leave empty for no password) | _(none)_          |
 | `ADMIN_PASSWORD`         | Password required for admin settings                     | _(none)_          |
