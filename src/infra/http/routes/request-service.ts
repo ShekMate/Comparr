@@ -6,6 +6,9 @@ import {
   isRequestServiceConfigured,
 } from '../../../api/jellyseerr.ts'
 import { isMovieInRadarr } from '../../../api/radarr.ts'
+import { isMovieInPlex } from '../../../integrations/plex/cache.ts'
+import { isMovieInEmby } from '../../../integrations/emby/cache.ts'
+import { isMovieInJellyfin } from '../../../integrations/jellyfin/cache.ts'
 
 const makeJsonHeaders = (req?: CompatRequest) => {
   const headers = new Headers({ 'content-type': 'application/json' })
@@ -36,11 +39,16 @@ export async function handleRequestServiceRoutes(
         )
       }
 
-      const inPlex = isMovieInRadarr(tmdbId)
-      return new Response(JSON.stringify({ inPlex, tmdbId }), {
-        status: 200,
-        headers: makeJsonHeaders(req),
-      })
+      const inRadarr = isMovieInRadarr(tmdbId)
+      const inPlex = isMovieInPlex({ tmdbId })
+      const inEmby = isMovieInEmby({ tmdbId })
+      const inJellyfin = isMovieInJellyfin({ tmdbId })
+      const inLibrary = inRadarr || inPlex || inEmby || inJellyfin
+
+      return new Response(
+        JSON.stringify({ inLibrary, inPlex, inEmby, inJellyfin, inRadarr, tmdbId }),
+        { status: 200, headers: makeJsonHeaders(req) }
+      )
     } catch (err) {
       log.error(`Error checking movie status: ${err}`)
       return new Response(JSON.stringify({ error: 'Failed to check status' }), {

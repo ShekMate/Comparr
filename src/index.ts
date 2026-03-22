@@ -13,6 +13,8 @@ import type { CompatRequest, CompatResponseInit } from './infra/http/compat-requ
 import {
   getHost,
   getLinkType,
+  getEmbyLibraryName,
+  getJellyfinLibraryName,
   getPlexLibraryName,
   getPlexToken,
   getPlexUrl,
@@ -69,6 +71,8 @@ import {
   stopBackgroundUpdateJob,
 } from './features/catalog/imdb-datasets.ts'
 import { buildPlexCache } from './integrations/plex/cache.ts'
+import { buildEmbyCache } from './integrations/emby/cache.ts'
+import { buildJellyfinCache } from './integrations/jellyfin/cache.ts'
 import { tmdbFetch } from './api/tmdb.ts'
 
 // Helper: fetch & persist TMDb providers for a TMDb ID, returning the same shape your UI expects
@@ -577,9 +581,20 @@ import {
   isMovieInPlex,
   waitForPlexCacheReady,
 } from './integrations/plex/cache.ts'
+import { initEmbyCache, isMovieInEmby } from './integrations/emby/cache.ts'
+import {
+  initJellyfinCache,
+  isMovieInJellyfin,
+} from './integrations/jellyfin/cache.ts'
 const plexCacheReady = initPlexCache()
 plexCacheReady.catch(err =>
   log.error(`Failed to initialize Plex cache: ${err}`)
+)
+initEmbyCache().catch(err =>
+  log.error(`Failed to initialize Emby cache: ${err}`)
+)
+initJellyfinCache().catch(err =>
+  log.error(`Failed to initialize Jellyfin cache: ${err}`)
 )
 ensurePlexHydrationReady().catch(err =>
   log.error(`Failed to hydrate persisted watch list: ${err?.message || err}`)
@@ -711,6 +726,8 @@ for await (const req of server) {
       buildPlexCache,
       clearAllMoviesCache,
       getPlexLibraryName,
+      getEmbyLibraryName,
+      getJellyfinLibraryName,
       getSettings,
       isLocalRequest,
       refreshRadarrCache,
@@ -778,14 +795,20 @@ for await (const req of server) {
 
         const inRadarr = isMovieInRadarr(tmdbId)
         const inPlex = isMovieInPlex({ tmdbId })
-        if (inRadarr || inPlex) {
+        const inEmby = isMovieInEmby({ tmdbId })
+        const inJellyfin = isMovieInJellyfin({ tmdbId })
+        if (inRadarr || inPlex || inEmby || inJellyfin) {
           await req.respond({
             status: 200,
             body: JSON.stringify({
               success: false,
               message: inRadarr
                 ? 'This title is already in your Radarr library.'
-                : 'This title is already available in Plex.',
+                : inPlex
+                ? 'This title is already available in your Plex library.'
+                : inEmby
+                ? 'This title is already available in your Emby library.'
+                : 'This title is already available in your Jellyfin library.',
             }),
             headers: makeHeaders(req, 'application/json'),
           })
@@ -805,7 +828,7 @@ for await (const req of server) {
         let errorMessage = 'Internal server error'
         if (err.message?.includes('ECONNREFUSED')) {
           errorMessage =
-            'Unable to connect to request service (Seerr/Jellyseerr/Overseerr). Please check if the service is running.'
+            'Unable to connect to Seerr. Please check if the service is running.'
         } else if (
           err.message?.includes('401') ||
           err.message?.includes('403')

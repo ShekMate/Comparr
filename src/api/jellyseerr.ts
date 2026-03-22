@@ -1,11 +1,4 @@
-import {
-  getJellyseerrApiKey,
-  getJellyseerrUrl,
-  getOverseerrApiKey,
-  getOverseerrUrl,
-  getSeerrApiKey,
-  getSeerrUrl,
-} from '../core/config.ts'
+import { getSeerrApiKey, getSeerrUrl } from '../core/config.ts'
 import * as log from 'jsr:@std/log'
 import { fetchWithTimeout } from '../infra/http/fetch-with-timeout.ts'
 
@@ -22,98 +15,34 @@ interface MediaStatus {
   processing: boolean
 }
 
-// Validate configuration on startup
-const validateConfiguration = () => {
-  const seerrConfigured = !!(getSeerrUrl() && getSeerrApiKey())
-  const jellyseerrConfigured = !!(getJellyseerrUrl() && getJellyseerrApiKey())
-  const overseerrConfigured = !!(getOverseerrUrl() && getOverseerrApiKey())
-  const configuredServices = [
-    seerrConfigured ? 'Seerr' : '',
-    jellyseerrConfigured ? 'Jellyseerr' : '',
-    overseerrConfigured ? 'Overseerr' : '',
-  ].filter(Boolean)
-
-  if (configuredServices.length > 1) {
-    log.warn(
-      `⚠️  Multiple request services configured (${configuredServices.join(
-        ', '
-      )}). Only one should be set.`
-    )
-    log.warn(
-      '⚠️  Seerr is preferred, then Jellyseerr, then Overseerr. Remove extra configuration keys.'
-    )
-  }
-
-  if (seerrConfigured) {
-    log.info('✅ Seerr request service configured')
-  } else if (jellyseerrConfigured) {
-    log.info('✅ Jellyseerr request service configured')
-  } else if (overseerrConfigured) {
-    log.info('✅ Overseerr request service configured')
-  } else {
-    log.info('ℹ️  No request service configured (Seerr/Jellyseerr/Overseerr)')
-  }
-}
-
-// Determine which service is configured
 const getServiceConfig = () => {
-  const seerrUrl = getSeerrUrl()
-  const seerrApiKey = getSeerrApiKey()
-  const jellyseerrUrl = getJellyseerrUrl()
-  const jellyseerrApiKey = getJellyseerrApiKey()
-  const overseerrUrl = getOverseerrUrl()
-  const overseerrApiKey = getOverseerrApiKey()
-  const seerrConfigured = !!(seerrUrl && seerrApiKey)
-  const jellyseerrConfigured = !!(jellyseerrUrl && jellyseerrApiKey)
-  const overseerrConfigured = !!(overseerrUrl && overseerrApiKey)
+  const url = getSeerrUrl()
+  const apiKey = getSeerrApiKey()
 
-  // Prioritize Seerr, then Jellyseerr, then Overseerr
-  if (seerrConfigured && (jellyseerrConfigured || overseerrConfigured)) {
-    log.warn('Multiple request services configured - using Seerr')
-  } else if (jellyseerrConfigured && overseerrConfigured) {
-    log.warn('Multiple request services configured - using Jellyseerr')
-  }
-
-  if (seerrConfigured) {
-    return {
-      url: seerrUrl!,
-      apiKey: seerrApiKey!,
-      service: 'seerr',
-    }
-  }
-
-  if (jellyseerrConfigured) {
-    return {
-      url: jellyseerrUrl!,
-      apiKey: jellyseerrApiKey!,
-      service: 'jellyseerr',
-    }
-  }
-
-  if (overseerrConfigured) {
-    return {
-      url: overseerrUrl!,
-      apiKey: overseerrApiKey!,
-      service: 'overseerr',
-    }
+  if (url && apiKey) {
+    return { url, apiKey }
   }
 
   return null
 }
 
-// Run validation on module load
-validateConfiguration()
+// Log configured state on module load
+if (getServiceConfig()) {
+  log.info('✅ Seerr request service configured')
+} else {
+  log.info('ℹ️  No Seerr request service configured')
+}
 
 export async function requestMovie(tmdbId: number): Promise<RequestResponse> {
   const config = getServiceConfig()
 
   if (!config) {
-    log.warn('No Seerr, Jellyseerr, or Overseerr configured')
+    log.warn('No Seerr configured')
     return { success: false, message: 'Request service not configured' }
   }
 
   try {
-    log.info(`Requesting movie via ${config.service}: TMDb ID ${tmdbId}`)
+    log.info(`Requesting movie via Seerr: TMDb ID ${tmdbId}`)
 
     const response = await fetchWithTimeout(`${config.url}/api/v1/request`, {
       method: 'POST',
@@ -130,21 +59,17 @@ export async function requestMovie(tmdbId: number): Promise<RequestResponse> {
 
     if (!response.ok) {
       const errorText = await response.text()
-      log.error(
-        `${config.service} API error: ${response.status} - ${errorText}`
-      )
+      log.error(`Seerr API error: ${response.status} - ${errorText}`)
 
-      // Try to parse the actual error message from Jellyseerr/Overseerr
       let errorMessage = response.statusText
       try {
         const errorData: { message?: string } = JSON.parse(errorText)
         errorMessage = errorData.message || errorMessage
       } catch {
-        // If not JSON, use the raw text or status text
         errorMessage = errorText || errorMessage
       }
 
-      return { success: false, message: `Request failed: ${errorMessage}` } // ✅ CORRECT
+      return { success: false, message: `Request failed: ${errorMessage}` }
     }
 
     const data = await response.json()
@@ -167,9 +92,7 @@ export async function getMediaStatus(
 ): Promise<MediaStatus | null> {
   const config = getServiceConfig()
 
-  if (!config) {
-    return null
-  }
+  if (!config) return null
 
   try {
     const response = await fetchWithTimeout(
@@ -181,15 +104,13 @@ export async function getMediaStatus(
       }
     )
 
-    if (!response.ok) {
-      return null
-    }
+    if (!response.ok) return null
 
     const data = await response.json()
 
     return {
-      available: data.mediaInfo?.status === 5, // Status 5 = Available
-      pending: data.mediaInfo?.status === 2 || data.mediaInfo?.status === 3, // Pending or Processing
+      available: data.mediaInfo?.status === 5,
+      pending: data.mediaInfo?.status === 2 || data.mediaInfo?.status === 3,
       processing: data.mediaInfo?.status === 3,
     }
   } catch (error) {
