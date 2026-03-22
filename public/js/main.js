@@ -4367,7 +4367,7 @@ async function appendRatedRow(
 
     card.innerHTML = `
       <!-- Collapsed header (always visible) -->
-      <div class="watch-card-collapsed" onclick="this.closest('.watch-card').classList.toggle('expanded')">
+      <div class="watch-card-collapsed">
         <div class="watch-card-header-compact">
           <div class="watch-card-title-compact">
             ${movie.title} <span class="watch-card-year">(${
@@ -4478,6 +4478,10 @@ async function appendRatedRow(
       </div>
     </div>
   `
+
+    card.querySelector('.watch-card-collapsed').addEventListener('click', () => {
+      card.classList.toggle('expanded')
+    })
 
     likesList?.appendChild(card)
 
@@ -4817,7 +4821,7 @@ async function appendRatedRow(
 
     card.innerHTML = `
       <!-- Collapsed header (always visible) -->
-      <div class="watch-card-collapsed" onclick="this.closest('.watch-card').classList.toggle('expanded')">
+      <div class="watch-card-collapsed">
         <div class="watch-card-header-compact">
           <div class="watch-card-title-compact">
             ${movie.title} <span class="watch-card-year">(${
@@ -4868,6 +4872,10 @@ async function appendRatedRow(
     `
 
     // Add event listeners for pass list actions
+    card.querySelector('.watch-card-collapsed').addEventListener('click', () => {
+      card.classList.toggle('expanded')
+    })
+
     const moveToWatchBtn = card.querySelector('.move-to-watch')
     const moveToSeenBtn = card.querySelector('.move-to-seen')
 
@@ -4942,7 +4950,7 @@ async function appendRatedRow(
 
     card.innerHTML = `
       <!-- Collapsed header (always visible) -->
-      <div class="watch-card-collapsed" onclick="this.closest('.watch-card').classList.toggle('expanded')">
+      <div class="watch-card-collapsed">
         <div class="watch-card-header-compact">
           <div class="watch-card-title-compact">
             ${movie.title} <span class="watch-card-year">(${
@@ -4993,6 +5001,10 @@ async function appendRatedRow(
     `
 
     // Add event listeners for seen list actions
+    card.querySelector('.watch-card-collapsed').addEventListener('click', () => {
+      card.classList.toggle('expanded')
+    })
+
     const moveToWatchBtn = card.querySelector('.move-to-watch')
     const moveToPassBtn = card.querySelector('.move-to-pass')
 
