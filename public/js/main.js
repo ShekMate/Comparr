@@ -1980,6 +1980,29 @@ async function hydrateSettingsForm() {
     }
     const data = await res.json()
     const settings = data?.settings || {}
+
+    // If the server says admin auth failed but the frontend believes it has
+    // admin access, the password is wrong or local-request access is blocked.
+    // Re-prompt so the user can enter the correct password.
+    if (data?.isAdmin === false && hasAdminSettingsAccess) {
+      clearCachedAdminPassword()
+      hasAdminSettingsAccess = false
+      settingsHydratedWithAdminAccess = false
+      updateAdminOnlySettingsVisibility()
+      const retry = window.prompt(
+        'Admin authentication failed. Re-enter your admin password (or leave blank if none is set):'
+      )
+      if (retry !== null) {
+        setAdminPasswordForSession(retry)
+        if (retry) {
+          hasAdminSettingsAccess = true
+          updateAdminOnlySettingsVisibility()
+          await hydrateSettingsForm()
+        }
+      }
+      return
+    }
+
     document.querySelectorAll('[data-setting-key]').forEach(el => {
       const key = el.dataset.settingKey
       if (!key) return
