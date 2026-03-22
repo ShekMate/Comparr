@@ -7,7 +7,7 @@ USER root
 # Install gosu (privilege drop) and libsqlite3 (used by @db/sqlite via FFI)
 # Installing the system library avoids @denosaurs/plug downloading a native
 # binary at runtime, which requires network access and writable env vars.
-RUN apt-get update && apt-get install -y --no-install-recommends gosu libsqlite3-dev && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends gosu libsqlite3-0 && rm -rf /var/lib/apt/lists/*
 
 # Copy application files
 ADD . .
