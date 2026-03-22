@@ -38,6 +38,10 @@ for var_name in $URL_ENV_VARS; do
   extract_host "$var_value"
 done
 
+if [ -n "${HOST:-}" ]; then
+  ALLOWED_NET_HOSTS="${ALLOWED_NET_HOSTS},${HOST}"
+fi
+
 if [ -f /data/settings.json ]; then
   settings_hosts=$(deno eval --allow-read=/data "try { const raw = await Deno.readTextFile('/data/settings.json'); const settings = JSON.parse(raw); const keys = ['PLEX_URL','EMBY_URL','JELLYFIN_URL','RADARR_URL','JELLYSEERR_URL','OVERSEERR_URL','SEERR_URL','IMDB_SYNC_URL']; const hosts = []; for (const key of keys) { const value = String(settings?.[key] ?? '').trim(); if (!value) continue; try { hosts.push(new URL(value).host); } catch {} } console.log(hosts.join(',')); } catch { console.log(''); }")
   if [ -n "$settings_hosts" ]; then
