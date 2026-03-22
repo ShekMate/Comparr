@@ -1199,6 +1199,11 @@ async function fetchSettingsAccess() {
 }
 
 async function ensureAdminAccess(forcePrompt = false) {
+  // Always refresh access state so we never act on stale data (e.g. after
+  // the setup wizard sets a new admin password, requiresAdminPassword could
+  // still be false from the initial page-load fetch).
+  settingsAccessState = await fetchSettingsAccess()
+
   if (!settingsAccessState.canAccess) return false
 
   if (!settingsAccessState.requiresAdminPassword) {
@@ -1501,11 +1506,29 @@ async function loadUserHistory() {
   if (!listEl) return
   listEl.innerHTML = '<div class="user-history-empty"><i class="fas fa-circle-notch fa-spin"></i> Loading…</div>'
   const base = document.body.dataset.basePath || ''
-  try {
+
+  const doFetch = async () => {
     const res = await fetch(`${base}/api/admin/user-history`, {
       headers: { ...getAdminHeaders() },
     })
     const data = await res.json()
+    return { res, data }
+  }
+
+  try {
+    let { res, data } = await doFetch()
+
+    // If auth failed, prompt for the admin password once and retry.
+    if (res.status === 403) {
+      clearCachedAdminPassword()
+      const hasAccess = await ensureAdminAccess(true)
+      if (!hasAccess || !adminPassword) {
+        listEl.innerHTML = `<div class="user-history-empty"><i class="fas fa-exclamation-circle"></i> Admin password required to view user history.</div>`
+        return
+      }
+      ;({ res, data } = await doFetch())
+    }
+
     if (!data.success) throw new Error(data.message || 'Failed to load')
     userHistoryData = data.rooms || []
     renderUserHistory(userHistoryData, listEl)
@@ -2281,24 +2304,24 @@ async function hydrateSettingsForm() {
     const settings = data?.settings || {}
 
     // If the server says admin auth failed but the frontend believes it has
-    // admin access, the password is wrong or local-request access is blocked.
-    // Re-prompt so the user can enter the correct password.
+    // admin access, the cached password is wrong or missing.  Re-prompt once
+    // (non-recursively) via ensureAdminAccess so the user can correct it.
     if (data?.isAdmin === false && hasAdminSettingsAccess) {
       clearCachedAdminPassword()
       hasAdminSettingsAccess = false
       settingsHydratedWithAdminAccess = false
       updateAdminOnlySettingsVisibility()
-      const retry = window.prompt(
-        'Admin authentication failed. Re-enter your admin password (or leave blank if none is set):'
-      )
-      if (retry !== null) {
-        setAdminPasswordForSession(retry)
-        if (retry) {
-          hasAdminSettingsAccess = true
-          updateAdminOnlySettingsVisibility()
-          await hydrateSettingsForm()
-        }
+
+      // Re-prompt with forcePrompt=true so the stale-state bypass is skipped.
+      const hasAccess = await ensureAdminAccess(true)
+      if (hasAccess && adminPassword) {
+        hasAdminSettingsAccess = true
+        updateAdminOnlySettingsVisibility()
+        // One non-recursive retry with the freshly entered password.
+        await hydrateSettingsForm()
       }
+      // If the user cancelled or left it blank, stay on the page but without
+      // admin access (admin-only fields remain hidden).
       return
     }
 
@@ -3586,13 +3609,8 @@ function bindSettingsAccessGuards() {
     trigger.addEventListener(
       'click',
       async e => {
-        if (!settingsAccessState.requiresAdminPassword) {
-          hasAdminSettingsAccess = true
-          updateAdminOnlySettingsVisibility()
-          await hydrateSettingsUiIfAuthorized()
-          return
-        }
-
+        // ensureAdminAccess() always refreshes settingsAccessState first, so
+        // stale state from page-load can never bypass the password prompt.
         const hasAccess = await ensureAdminAccess()
         if (!hasAccess) {
           e.preventDefault()
@@ -3607,6 +3625,7 @@ function bindSettingsAccessGuards() {
         }
 
         hasAdminSettingsAccess = true
+        updateAdminOnlySettingsVisibility()
         await hydrateSettingsUiIfAuthorized()
       },
       true
