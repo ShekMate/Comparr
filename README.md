@@ -171,6 +171,13 @@ Then run:
 docker-compose up -d
 ```
 
+You can also use an [`env_file`](https://docs.docker.com/compose/compose-file/compose-file-v3/#env_file) instead of listing variables inline — copy `.env.example` to `.env`, fill in your values, and reference it with:
+
+```yaml
+    env_file:
+      - .env
+```
+
 ### Unraid
 
 1. Go to the **Docker** tab in Unraid
