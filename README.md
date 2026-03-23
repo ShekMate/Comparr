@@ -117,7 +117,7 @@ docker run -d \
   -e PUID=1000 \
   -e PGID=1000 \
   -v /path/to/comparr/data:/data \
-  ghcr.io/shekmit/comparr-dev:latest
+  ghcr.io/shekmit/comparr:latest
 ```
 
 ### Unraid
@@ -125,11 +125,16 @@ docker run -d \
 1. Go to the **Docker** tab in Unraid
 2. Click **Add Container**
 3. Configure the following:
-   - **Repository**: `ghcr.io/shekmit/comparr-dev:latest`
+   - **Repository**: `ghcr.io/shekmit/comparr:latest`
    - **Port**: `8000` → `8000`
    - **Path**: `/data` → `/mnt/user/appdata/comparr`
    - **PUID** / **PGID**: set to match your Unraid user (run `id` in terminal)
 4. Start the container and open the web UI to complete setup
+
+### Image Tags
+
+- `ghcr.io/shekmit/comparr:latest` → latest stable release
+- `ghcr.io/shekmit/comparr:<version>` → pinned immutable release tag
 
 ---
 
@@ -143,21 +148,21 @@ The setup wizard runs automatically on first boot.
 
 These are the only environment variables Comparr uses — they control how the container runs, not the app itself:
 
-| Variable   | Description                         | Default     |
-| ---------- | ----------------------------------- | ----------- |
-| `PUID`     | User ID to run the container as     | `1000`      |
-| `PGID`     | Group ID to run the container as    | `1000`      |
-| `PORT`     | Port the server listens on          | `8000`      |
-| `DATA_DIR` | Path inside the container for data  | `/data`     |
+| Variable   | Description                        | Default |
+| ---------- | ---------------------------------- | ------- |
+| `PUID`     | User ID to run the container as    | `1000`  |
+| `PGID`     | Group ID to run the container as   | `1000`  |
+| `PORT`     | Port the server listens on         | `8000`  |
+| `DATA_DIR` | Path inside the container for data | `/data` |
 
 ### Advanced / Reverse Proxy Variables
 
-| Variable          | Description                                              | Default   |
-| ----------------- | -------------------------------------------------------- | --------- |
-| `TRUST_PROXY`     | Set `true` if behind a trusted reverse proxy             | `false`   |
-| `ALLOWED_ORIGINS` | Comma-separated allowed origins for Host/Origin checks   | _(all)_   |
-| `MAX_BODY_SIZE`   | Max HTTP request body in bytes                           | `1048576` |
-| `FRAME_ANCESTORS` | CSP `frame-ancestors` value                              | `'none'`  |
+| Variable          | Description                                            | Default   |
+| ----------------- | ------------------------------------------------------ | --------- |
+| `TRUST_PROXY`     | Set `true` if behind a trusted reverse proxy           | `false`   |
+| `ALLOWED_ORIGINS` | Comma-separated allowed origins for Host/Origin checks | _(all)_   |
+| `MAX_BODY_SIZE`   | Max HTTP request body in bytes                         | `1048576` |
+| `FRAME_ANCESTORS` | CSP `frame-ancestors` value                            | `'none'`  |
 
 ### Getting Your Plex Token
 

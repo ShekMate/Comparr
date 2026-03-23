@@ -1,10 +1,10 @@
 services:
   comparr:
-    image: ghcr.io/shekmit/comparr-dev:latest
+    image: ghcr.io/shekmit/comparr:latest
     container_name: comparr
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - '8000:8000'
     environment:
       - PUID=1000
       - PGID=1000
