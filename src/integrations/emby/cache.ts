@@ -181,3 +181,11 @@ export function isMovieInEmby(params: {
 export async function refreshEmbyCache(): Promise<void> {
   await buildEmbyCache()
 }
+
+export function getAllEmbyMovies(): { tmdbId: number; title: string; year: number | null }[] {
+  return Array.from(cache.byTmdbId.entries()).map(([tmdbId, entry]) => ({
+    tmdbId,
+    title: entry.title,
+    year: entry.year,
+  }))
+}

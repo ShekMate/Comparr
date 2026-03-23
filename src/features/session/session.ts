@@ -17,8 +17,8 @@ import {
   isMovieInPlex,
   waitForPlexCacheReady,
 } from '../../integrations/plex/cache.ts'
-import { isMovieInEmby } from '../../integrations/emby/cache.ts'
-import { isMovieInJellyfin } from '../../integrations/jellyfin/cache.ts'
+import { isMovieInEmby, getAllEmbyMovies } from '../../integrations/emby/cache.ts'
+import { isMovieInJellyfin, getAllJellyfinMovies } from '../../integrations/jellyfin/cache.ts'
 import {
   getAccessPassword,
   getEmbyLibraryName,
@@ -505,6 +505,7 @@ interface WebSocketNextBatchMessage {
       paidSubscriptions?: boolean
       freeStreaming?: boolean
       freeStreamingServices?: string[]
+      subscriptionServices?: string[]
     }
     contentRatings?: string[]
     imdbRating?: number
@@ -1562,6 +1563,7 @@ class Session {
         paidSubscriptions?: boolean
         freeStreaming?: boolean
         freeStreamingServices?: string[]
+        subscriptionServices?: string[]
       }
       contentRatings?: string[]
       imdbRating?: number
@@ -1632,9 +1634,40 @@ class Session {
       configuredPaidServices.length > 0
     const wantsFreeStreaming = normalizedAvailability.freeStreaming
 
+    // Determine which specific personal media sources are requested
+    const requestedPersonalSources = (
+      filters?.availability?.subscriptionServices || []
+    )
+      .map(s => String(s).trim().toLowerCase())
+      .filter(s => configuredPersonalSources.includes(s))
+
+    const wantsPlexSource =
+      requestedPersonalSources.length === 0 ||
+      requestedPersonalSources.includes('plex')
+    const wantsEmbySource = requestedPersonalSources.includes('emby')
+    const wantsJellyfinSource = requestedPersonalSources.includes('jellyfin')
+
+    const isPersonalMediaOnly =
+      wantsRoomPersonalMedia && !wantsPaidSubscriptions && !wantsFreeStreaming
+
+    // Only trigger Plex-only mode when Plex is actually the selected personal source
     let effectiveShowMyPlexOnly =
       filters?.showPlexOnly ??
-      (wantsRoomPersonalMedia && !wantsPaidSubscriptions && !wantsFreeStreaming)
+      (isPersonalMediaOnly && wantsPlexSource)
+
+    // Emby-only and Jellyfin-only modes
+    const effectiveShowEmbyOnly =
+      isPersonalMediaOnly && wantsEmbySource && !wantsPlexSource
+    const effectiveShowJellyfinOnly =
+      isPersonalMediaOnly &&
+      wantsJellyfinSource &&
+      !wantsPlexSource &&
+      !wantsEmbySource
+
+    // If only Emby or Jellyfin is selected, don't trigger Plex-only mode
+    if (effectiveShowEmbyOnly || effectiveShowJellyfinOnly) {
+      effectiveShowMyPlexOnly = false
+    }
 
     let effectiveStreamingServices = [...requestedServices]
     if (effectiveStreamingServices.length === 0 && wantsPaidSubscriptions) {
@@ -1642,11 +1675,19 @@ class Session {
     }
 
     const shouldBlendPlexInAvailability =
-      wantsRoomPersonalMedia && !effectiveShowMyPlexOnly
+      wantsRoomPersonalMedia &&
+      !effectiveShowMyPlexOnly &&
+      !effectiveShowEmbyOnly &&
+      !effectiveShowJellyfinOnly
 
     const tmdbConfigured = Boolean(getTmdbApiKey())
 
-    if (!tmdbConfigured && !effectiveShowMyPlexOnly) {
+    if (
+      !tmdbConfigured &&
+      !effectiveShowMyPlexOnly &&
+      !effectiveShowEmbyOnly &&
+      !effectiveShowJellyfinOnly
+    ) {
       log.warn(
         'TMDb API key is missing; falling back to Plex library movies for swipe results.'
       )
@@ -1655,7 +1696,13 @@ class Session {
     try {
       // Increase batch size to account for movies we'll skip
       const attemptBatchSize = Math.min(
-        effectiveShowMyPlexOnly ? (await getAllMovies()).length : 40, // Try more movies to get enough valid ones
+        effectiveShowMyPlexOnly
+          ? (await getAllMovies()).length
+          : effectiveShowEmbyOnly
+          ? Math.max(getAllEmbyMovies().length, 40)
+          : effectiveShowJellyfinOnly
+          ? Math.max(getAllJellyfinMovies().length, 40)
+          : 40,
         Number(getMovieBatchSize()) * 2 // Double the normal batch size
       )
 
@@ -1763,6 +1810,41 @@ class Session {
             yearMax: filters?.yearMax,
             genres: filters?.genres,
           })
+
+        const fetchEmbyCandidate = async () => {
+          const embyMovies = getAllEmbyMovies()
+          if (embyMovies.length === 0) {
+            throw new NoMoreMoviesError('Emby cache is empty — check Emby connection')
+          }
+          const entry = embyMovies[Math.floor(Math.random() * embyMovies.length)]
+          return this.formatTMDbMovie({
+            id: entry.tmdbId,
+            title: entry.title,
+            release_date: entry.year ? `${entry.year}-01-01` : null,
+          })
+        }
+
+        const fetchJellyfinCandidate = async () => {
+          const jellyfinMovies = getAllJellyfinMovies()
+          if (jellyfinMovies.length === 0) {
+            throw new NoMoreMoviesError('Jellyfin cache is empty — check Jellyfin connection')
+          }
+          const entry = jellyfinMovies[Math.floor(Math.random() * jellyfinMovies.length)]
+          return this.formatTMDbMovie({
+            id: entry.tmdbId,
+            title: entry.title,
+            release_date: entry.year ? `${entry.year}-01-01` : null,
+          })
+        }
+
+        // Check Emby/Jellyfin-only modes before the TMDb-not-configured fallback
+        if (effectiveShowEmbyOnly) {
+          return await fetchEmbyCandidate()
+        }
+
+        if (effectiveShowJellyfinOnly) {
+          return await fetchJellyfinCandidate()
+        }
 
         if (effectiveShowMyPlexOnly || !tmdbConfigured) {
           return await fetchPlexCandidate()

@@ -181,3 +181,11 @@ export function isMovieInJellyfin(params: {
 export async function refreshJellyfinCache(): Promise<void> {
   await buildJellyfinCache()
 }
+
+export function getAllJellyfinMovies(): { tmdbId: number; title: string; year: number | null }[] {
+  return Array.from(cache.byTmdbId.entries()).map(([tmdbId, entry]) => ({
+    tmdbId,
+    title: entry.title,
+    year: entry.year,
+  }))
+}
