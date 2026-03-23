@@ -17,8 +17,8 @@
     "lint:css": "stylelint '**/*.css'",
     "lint:style": "prettier --ignore-path .gitignore  '**/*.{ts,js,css,json}' --check",
     "format": "prettier --ignore-path .gitignore  '**/*.{ts,js,css,json}' -w",
-    "publish-docker": "docker buildx build --platform linux/amd64,linux/arm64 -t ghcr.io/shekmit/comparr:$npm_package_version -t ghcr.io/shekmit/comparr:latest --push .",
-    "start-docker": "docker run -it --env-file .env -p 8000:8000 ghcr.io/shekmit/comparr:latest",
+    "publish-docker": "docker buildx build --platform linux/amd64,linux/arm64 -t ghcr.io/shekmate/comparr:$npm_package_version -t ghcr.io/shekmate/comparr:latest --push .",
+    "start-docker": "docker run -it --env-file .env -p 8000:8000 ghcr.io/shekmate/comparr:latest",
     "postversion": "git push && git push --tags && npm run publish-docker"
   },
   "keywords": [],

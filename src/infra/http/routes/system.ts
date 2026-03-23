@@ -52,6 +52,12 @@ export const handleSystemRoutes = async (
         roomCode: string
         userName: string
       }
+      if (action !== 'seen' && action !== 'pass') {
+        return new Response(JSON.stringify({ error: 'Invalid action' }), {
+          status: 400,
+          headers: makeHeaders(req, 'application/json'),
+        })
+      }
 
       log.info(
         `Match action: ${userName} in ${roomCode} marked ${guid} as ${action}`

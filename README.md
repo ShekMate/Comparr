@@ -117,7 +117,7 @@ docker run -d \
   -e PUID=1000 \
   -e PGID=1000 \
   -v /path/to/comparr/data:/data \
-  ghcr.io/shekmit/comparr:latest
+  ghcr.io/shekmate/comparr:latest
 ```
 
 ### Unraid
@@ -125,7 +125,7 @@ docker run -d \
 1. Go to the **Docker** tab in Unraid
 2. Click **Add Container**
 3. Configure the following:
-   - **Repository**: `ghcr.io/shekmit/comparr:latest`
+   - **Repository**: `ghcr.io/shekmate/comparr:latest`
    - **Port**: `8000` → `8000`
    - **Path**: `/data` → `/mnt/user/appdata/comparr`
    - **PUID** / **PGID**: set to match your Unraid user (run `id` in terminal)
@@ -133,8 +133,8 @@ docker run -d \
 
 ### Image Tags
 
-- `ghcr.io/shekmit/comparr:latest` → latest stable release
-- `ghcr.io/shekmit/comparr:<version>` → pinned immutable release tag
+- `ghcr.io/shekmate/comparr:latest` → latest stable release
+- `ghcr.io/shekmate/comparr:<version>` → pinned immutable release tag
 
 ---
 

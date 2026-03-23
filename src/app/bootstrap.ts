@@ -47,7 +47,7 @@ export const bootstrapApplication = () => {
     log.error(`Failed to initialize poster cache: ${err}`)
   )
 
-  // DEBUG: Log environment check on startup
+  // Startup configuration check
   log.info(`🔍 Config check:`)
   log.info(`  TMDB_API_KEY: ${getTmdbApiKey() ? '✅ Set' : '❌ Missing'}`)
   log.info(`  PLEX_URL: ${getPlexUrl() ? '✅ Set' : '❌ Missing'}`)

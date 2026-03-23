@@ -1,6 +1,6 @@
 services:
   comparr:
-    image: ghcr.io/shekmit/comparr:latest
+    image: ghcr.io/shekmate/comparr:latest
     container_name: comparr
     restart: unless-stopped
     ports:
