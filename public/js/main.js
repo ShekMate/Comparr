@@ -2292,7 +2292,8 @@ function collectSettingsForm() {
   return settings
 }
 
-async function hydrateSettingsForm() {
+async function hydrateSettingsForm({ _retryCount = 0 } = {}) {
+  const MAX_RETRIES = 1
   try {
     const res = await fetch('/api/settings', {
       headers: { ...getAdminHeaders() },
@@ -2305,8 +2306,8 @@ async function hydrateSettingsForm() {
 
     // If the server says admin auth failed but the frontend believes it has
     // admin access, the cached password is wrong or missing.  Re-prompt once
-    // (non-recursively) via ensureAdminAccess so the user can correct it.
-    if (data?.isAdmin === false && hasAdminSettingsAccess) {
+    // via ensureAdminAccess so the user can correct it.
+    if (data?.isAdmin === false && hasAdminSettingsAccess && _retryCount < MAX_RETRIES) {
       clearCachedAdminPassword()
       hasAdminSettingsAccess = false
       settingsHydratedWithAdminAccess = false
@@ -2317,12 +2318,11 @@ async function hydrateSettingsForm() {
       if (hasAccess && adminPassword) {
         hasAdminSettingsAccess = true
         updateAdminOnlySettingsVisibility()
-        // One non-recursive retry with the freshly entered password.
-        await hydrateSettingsForm()
+        // One retry with incremented counter — won't loop again.
+        return await hydrateSettingsForm({ _retryCount: _retryCount + 1 })
       }
-      // If the user cancelled or left it blank, stay on the page but without
-      // admin access (admin-only fields remain hidden).
-      return
+      // User cancelled or left blank — stay without admin access.
+      return false
     }
 
     document.querySelectorAll('[data-setting-key]').forEach(el => {
@@ -2365,6 +2365,7 @@ async function hydrateSettingsForm() {
     )
     setSettingsDirty(false)
     clearSettingsStatusAfterDelay()
+    return data?.isAdmin === true
   } catch (err) {
     if (err?.message && String(err.message).includes('403')) {
       clearCachedAdminPassword()
@@ -2373,6 +2374,7 @@ async function hydrateSettingsForm() {
       setSettingsStatus('Admin password was rejected. Please try again.')
     }
     console.warn('Failed to hydrate settings form:', err)
+    return false
   }
 }
 
@@ -3388,8 +3390,8 @@ function createFirstRunGuideModal() {
       // Force settings form to re-hydrate so admin settings reflect wizard values
       settingsHydratedWithAdminAccess = false
       if (settingsUiHydrated) {
-        await hydrateSettingsForm()
-        settingsHydratedWithAdminAccess = true
+        const adminSuccess = await hydrateSettingsForm()
+        settingsHydratedWithAdminAccess = Boolean(adminSuccess)
       }
       document.dispatchEvent(new CustomEvent('comparr:source-config-updated'))
       return { type: 'complete' }
@@ -3544,8 +3546,8 @@ async function ensureInitialSourceSetup() {
 async function hydrateSettingsUiIfAuthorized() {
   if (settingsUiHydrated) {
     if (hasAdminSettingsAccess && !settingsHydratedWithAdminAccess) {
-      await hydrateSettingsForm()
-      settingsHydratedWithAdminAccess = true
+      const adminSuccess = await hydrateSettingsForm()
+      settingsHydratedWithAdminAccess = Boolean(adminSuccess)
     }
     updateAdminOnlySettingsVisibility()
     return true
