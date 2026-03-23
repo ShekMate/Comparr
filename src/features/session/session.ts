@@ -17,8 +17,14 @@ import {
   isMovieInPlex,
   waitForPlexCacheReady,
 } from '../../integrations/plex/cache.ts'
-import { isMovieInEmby, getAllEmbyMovies } from '../../integrations/emby/cache.ts'
-import { isMovieInJellyfin, getAllJellyfinMovies } from '../../integrations/jellyfin/cache.ts'
+import {
+  isMovieInEmby,
+  getAllEmbyMovies,
+} from '../../integrations/emby/cache.ts'
+import {
+  isMovieInJellyfin,
+  getAllJellyfinMovies,
+} from '../../integrations/jellyfin/cache.ts'
 import {
   getAccessPassword,
   getDataDir,
@@ -1653,8 +1659,7 @@ class Session {
 
     // Only trigger Plex-only mode when Plex is actually the selected personal source
     let effectiveShowMyPlexOnly =
-      filters?.showPlexOnly ??
-      (isPersonalMediaOnly && wantsPlexSource)
+      filters?.showPlexOnly ?? (isPersonalMediaOnly && wantsPlexSource)
 
     // Emby-only and Jellyfin-only modes
     const effectiveShowEmbyOnly =
@@ -1815,9 +1820,12 @@ class Session {
         const fetchEmbyCandidate = async () => {
           const embyMovies = getAllEmbyMovies()
           if (embyMovies.length === 0) {
-            throw new NoMoreMoviesError('Emby cache is empty — check Emby connection')
+            throw new NoMoreMoviesError(
+              'Emby cache is empty — check Emby connection'
+            )
           }
-          const entry = embyMovies[Math.floor(Math.random() * embyMovies.length)]
+          const entry =
+            embyMovies[Math.floor(Math.random() * embyMovies.length)]
           return this.formatTMDbMovie({
             id: entry.tmdbId,
             title: entry.title,
@@ -1828,9 +1836,12 @@ class Session {
         const fetchJellyfinCandidate = async () => {
           const jellyfinMovies = getAllJellyfinMovies()
           if (jellyfinMovies.length === 0) {
-            throw new NoMoreMoviesError('Jellyfin cache is empty — check Jellyfin connection')
+            throw new NoMoreMoviesError(
+              'Jellyfin cache is empty — check Jellyfin connection'
+            )
           }
-          const entry = jellyfinMovies[Math.floor(Math.random() * jellyfinMovies.length)]
+          const entry =
+            jellyfinMovies[Math.floor(Math.random() * jellyfinMovies.length)]
           return this.formatTMDbMovie({
             id: entry.tmdbId,
             title: entry.title,
@@ -3077,9 +3088,7 @@ export const handleLogin = (
       try {
         data = JSON.parse(msg)
       } catch (err) {
-        log.warn(
-          `Failed to parse login message JSON: ${err?.message || err}`
-        )
+        log.warn(`Failed to parse login message JSON: ${err?.message || err}`)
         const response: WebSocketLoginResponseMessage = {
           type: 'loginResponse',
           payload: {
@@ -3110,7 +3119,8 @@ export const handleLogin = (
 
           // Check access password (accept either WS payload or cookie from upgrade request)
           const accessPassword = getAccessPassword()
-          const candidatePassword = data.payload.accessPassword || cookieAccessPassword
+          const candidatePassword =
+            data.payload.accessPassword || cookieAccessPassword
           if (
             accessPassword &&
             !timingSafeEqual(candidatePassword, accessPassword)
@@ -3775,7 +3785,10 @@ export async function processImdbImportBackground(
 // Admin helpers — read/clear live persistedState
 // -------------------------
 
-export function getAllRooms(): Record<string, { users: Record<string, unknown> }> {
+export function getAllRooms(): Record<
+  string,
+  { users: Record<string, unknown> }
+> {
   const result: Record<string, { users: Record<string, unknown> }> = {}
   for (const [roomCode, room] of Object.entries(persistedState.rooms)) {
     const users: Record<string, unknown> = {}
@@ -3803,7 +3816,10 @@ export function clearRooms(roomCodes: string[]): void {
   )
 }
 
-export function clearUsersFromRoom(roomCode: string, userNames: string[]): void {
+export function clearUsersFromRoom(
+  roomCode: string,
+  userNames: string[]
+): void {
   const room = persistedState.rooms[roomCode]
   if (!room) return
   room.users = room.users.filter(u => !userNames.includes(u.name))

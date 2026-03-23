@@ -27,20 +27,23 @@ export async function handleStreamingRoutes(
     try {
       const tmdbId = parseInt(path.split('/').pop() || '')
       const res = await updateStreamingForTmdbIdDeduped(tmdbId)
-      return new Response(
-        JSON.stringify(res.body),
-        { status: res.status, headers: makeHeaders(req, 'application/json') }
-      )
+      return new Response(JSON.stringify(res.body), {
+        status: res.status,
+        headers: makeHeaders(req, 'application/json'),
+      })
     } catch (err) {
       log.error(`Error refreshing streaming data: ${err}`)
-      return new Response(
-        JSON.stringify({ error: 'Failed to refresh' }),
-        { status: 500, headers: makeHeaders(req, 'application/json') }
-      )
+      return new Response(JSON.stringify({ error: 'Failed to refresh' }), {
+        status: 500,
+        headers: makeHeaders(req, 'application/json'),
+      })
     }
   }
 
-  if (path.startsWith('/api/update-persisted-movie/') && req.method === 'POST') {
+  if (
+    path.startsWith('/api/update-persisted-movie/') &&
+    req.method === 'POST'
+  ) {
     try {
       const tmdbId = parseInt(path.split('/').pop() || '')
       const res = await updateStreamingForTmdbIdDeduped(tmdbId)

@@ -46,7 +46,14 @@ export async function handleRequestServiceRoutes(
       const inLibrary = inRadarr || inPlex || inEmby || inJellyfin
 
       return new Response(
-        JSON.stringify({ inLibrary, inPlex, inEmby, inJellyfin, inRadarr, tmdbId }),
+        JSON.stringify({
+          inLibrary,
+          inPlex,
+          inEmby,
+          inJellyfin,
+          inRadarr,
+          tmdbId,
+        }),
         { status: 200, headers: makeJsonHeaders(req) }
       )
     } catch (err) {

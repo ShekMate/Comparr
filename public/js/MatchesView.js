@@ -80,7 +80,9 @@ export class MatchesView {
               ${escapeHtml(movie.title)}
               ${
                 movie.year
-                  ? `<span class="watch-card-year">(${escapeHtml(movie.year)})</span>`
+                  ? `<span class="watch-card-year">(${escapeHtml(
+                      movie.year
+                    )})</span>`
                   : ''
               }
             </div>
@@ -366,11 +368,13 @@ export class MatchesView {
 
   attachEventListeners() {
     // Watch card expand/collapse
-    document.querySelectorAll('.matches-list .watch-card-collapsed').forEach(el => {
-      el.addEventListener('click', () => {
-        el.closest('.watch-card').classList.toggle('expanded')
+    document
+      .querySelectorAll('.matches-list .watch-card-collapsed')
+      .forEach(el => {
+        el.addEventListener('click', () => {
+          el.closest('.watch-card').classList.toggle('expanded')
+        })
       })
-    })
 
     // Streaming dropdown toggles - handles both subscription and free buttons
     document

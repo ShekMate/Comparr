@@ -1,9 +1,5 @@
 // Test utilities and helpers for Deno tests
-import {
-  assertEquals,
-  assertExists,
-  assertThrows,
-} from 'jsr:@std/assert'
+import { assertEquals, assertExists, assertThrows } from 'jsr:@std/assert'
 
 export { assertEquals, assertExists, assertThrows }
 

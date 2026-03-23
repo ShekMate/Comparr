@@ -1,7 +1,4 @@
-import {
-  assertEquals,
-  assertRejects,
-} from '../../testdata/test-helpers.ts'
+import { assertEquals, assertRejects } from '../../testdata/test-helpers.ts'
 
 function uniqueSettingsModulePath() {
   return `../settings.ts?ts=${Date.now()}-${Math.random()}`
@@ -213,39 +210,44 @@ Deno.test('PORT from env is not overridden by settings.json', async () => {
   }
 })
 
-Deno.test('updating settings does not persist PORT to settings.json', async () => {
-  const dataDir = await Deno.makeTempDir({
-    prefix: 'comparr-settings-port-env-only-save-',
-  })
-  const originalDataDir = Deno.env.get('DATA_DIR')
-  const originalPort = Deno.env.get('PORT')
-
-  Deno.env.set('DATA_DIR', dataDir)
-  Deno.env.set('PORT', '8000')
-
-  try {
-    const settingsModule = await import(uniqueSettingsModulePath())
-
-    await settingsModule.updateSettings({
-      PORT: '8001',
-      ACCESS_PASSWORD: 'persist-me',
+Deno.test(
+  'updating settings does not persist PORT to settings.json',
+  async () => {
+    const dataDir = await Deno.makeTempDir({
+      prefix: 'comparr-settings-port-env-only-save-',
     })
+    const originalDataDir = Deno.env.get('DATA_DIR')
+    const originalPort = Deno.env.get('PORT')
 
-    const disk = JSON.parse(await Deno.readTextFile(`${dataDir}/settings.json`))
-    assertEquals('PORT' in disk, false)
-    assertEquals(disk.ACCESS_PASSWORD, 'persist-me')
-    assertEquals(settingsModule.getSettings().PORT, '8000')
-  } finally {
-    if (originalDataDir === undefined) {
-      Deno.env.delete('DATA_DIR')
-    } else {
-      Deno.env.set('DATA_DIR', originalDataDir)
+    Deno.env.set('DATA_DIR', dataDir)
+    Deno.env.set('PORT', '8000')
+
+    try {
+      const settingsModule = await import(uniqueSettingsModulePath())
+
+      await settingsModule.updateSettings({
+        PORT: '8001',
+        ACCESS_PASSWORD: 'persist-me',
+      })
+
+      const disk = JSON.parse(
+        await Deno.readTextFile(`${dataDir}/settings.json`)
+      )
+      assertEquals('PORT' in disk, false)
+      assertEquals(disk.ACCESS_PASSWORD, 'persist-me')
+      assertEquals(settingsModule.getSettings().PORT, '8000')
+    } finally {
+      if (originalDataDir === undefined) {
+        Deno.env.delete('DATA_DIR')
+      } else {
+        Deno.env.set('DATA_DIR', originalDataDir)
+      }
+      if (originalPort === undefined) {
+        Deno.env.delete('PORT')
+      } else {
+        Deno.env.set('PORT', originalPort)
+      }
+      await Deno.remove(dataDir, { recursive: true }).catch(() => {})
     }
-    if (originalPort === undefined) {
-      Deno.env.delete('PORT')
-    } else {
-      Deno.env.set('PORT', originalPort)
-    }
-    await Deno.remove(dataDir, { recursive: true }).catch(() => {})
   }
-})
+)

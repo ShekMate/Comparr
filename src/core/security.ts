@@ -78,6 +78,7 @@ export const verifyPassword = async (
   const candidateHash = new Uint8Array(bits)
   if (candidateHash.length !== storedHash.length) return false
   let mismatch = 0
-  for (let i = 0; i < candidateHash.length; i++) mismatch |= candidateHash[i] ^ storedHash[i]
+  for (let i = 0; i < candidateHash.length; i++)
+    mismatch |= candidateHash[i] ^ storedHash[i]
   return mismatch === 0
 }
