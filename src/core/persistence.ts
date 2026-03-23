@@ -51,11 +51,11 @@ export async function loadState(): Promise<PersistedState> {
 }
 
 // Debounced write (batch fast changes)
-let pending: Promise<void> | null = null
+let _pending: Promise<void> | null = null
 export function saveStateSoon() {
   if (writeQueued) return
   writeQueued = true
-  pending = (async () => {
+  _pending = (async () => {
     try {
       await ensureDir()
       // small debounce

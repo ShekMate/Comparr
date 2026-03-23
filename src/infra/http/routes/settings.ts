@@ -508,7 +508,7 @@ export async function handleSettingsRoutes(
         status: result.ok ? 200 : 400,
         headers: makeJsonHeaders(req),
       })
-    } catch (err) {
+    } catch (_err) {
       return new Response(
         JSON.stringify({
           ok: false,

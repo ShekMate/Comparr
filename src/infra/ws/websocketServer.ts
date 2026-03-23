@@ -63,16 +63,16 @@ export class WebSocketServer {
     return String((req.conn.remoteAddr as Deno.NetAddr | undefined)?.hostname || 'unknown')
   }
 
-  async connect(req: CompatRequest): Promise<Response> {
+  connect(req: CompatRequest): Promise<Response> {
     const clientIp = this.getClientIp(req)
 
     if (!this.isAllowedOrigin(req)) {
-      return new Response(null, { status: 403 })
+      return Promise.resolve(new Response(null, { status: 403 }))
     }
 
     const openCount = this.ipConnections.get(clientIp) ?? 0
     if (openCount >= MAX_WS_CONNECTIONS_PER_IP) {
-      return new Response(null, { status: 429 })
+      return Promise.resolve(new Response(null, { status: 429 }))
     }
 
     try {
@@ -89,10 +89,10 @@ export class WebSocketServer {
 
       this.clients.add(ws)
       this.options.onConnection(ws, req)
-      return response
+      return Promise.resolve(response)
     } catch (err) {
       this.options.onError(err as Error)
-      return new Response(null, { status: 400 })
+      return Promise.resolve(new Response(null, { status: 400 }))
     }
   }
 

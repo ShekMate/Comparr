@@ -90,7 +90,7 @@ async function respondFile(
   }
 }
 
-const bodyTooLarge = (req: CompatRequest) => {
+const _bodyTooLarge = (req: CompatRequest) => {
   const max = getMaxBodySize()
   const contentLength = Number(req.headers.get('content-length') || '0')
   return Number.isFinite(contentLength) && contentLength > max
@@ -136,7 +136,7 @@ const parseAccessPassword = (req: CompatRequest) => {
   return ''
 }
 
-const isAccessPasswordAuthorized = async (req: CompatRequest) => {
+const isAccessPasswordAuthorized = (req: CompatRequest) => {
   const configuredPassword = getAccessPassword()
   if (!configuredPassword) return true
   return verifyPassword(parseAccessPassword(req), configuredPassword)
@@ -221,8 +221,8 @@ const serveCompat = (options: { port: number; hostname?: string }) => {
           headers: request.headers,
           conn: { remoteAddr: info.remoteAddr },
           rawRequest: request,
-          respond: async init => {
-            if (!responder) return
+          respond: (init): Promise<void> => {
+            if (!responder) return Promise.resolve()
             const resolveResponse = responder
             responder = null
             resolveResponse(
@@ -231,12 +231,14 @@ const serveCompat = (options: { port: number; hostname?: string }) => {
                 headers: init.headers,
               })
             )
+            return Promise.resolve()
           },
-          respondWith: async response => {
-            if (!responder) return
+          respondWith: (response): Promise<void> => {
+            if (!responder) return Promise.resolve()
             const resolveResponse = responder
             responder = null
             resolveResponse(response)
+            return Promise.resolve()
           },
           text: () => request.text(),
           json: <T = unknown>() => request.json() as Promise<T>,
@@ -655,7 +657,7 @@ for await (const req of server) {
     responseStatus = 500
     try {
       await req.respond({ status: 500, body: new TextEncoder().encode('500') })
-    } catch {}
+    } catch { /* secondary respond failure is ignored */ }
   } finally {
     try {
       const reqPath = new URL(req.url, 'http://local').pathname

@@ -62,7 +62,7 @@ export const serveFile = async (
     addSecurityHeaders(headers, req)
 
     return new Response(body, { status: 200, headers })
-  } catch (err) {
+  } catch (_err) {
     // --- DEBUG for missing posters: show the final filesystem path that caused 404
     try {
       const urlPath = normalizeURL(req.url)

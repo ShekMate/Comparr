@@ -269,7 +269,7 @@ export function prefetchPoster(
  */
 export async function serveCachedPoster(
   filename: string,
-  req: CompatRequest
+  _req: CompatRequest
 ): Promise<Response | null> {
   const filepath = `${POSTER_CACHE_DIR}/${filename}`
 

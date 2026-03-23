@@ -210,7 +210,7 @@ export function isInPlexByTitleYear(
   }
 
   // Fallback: check without year (less accurate)
-  for (const [key, entries] of cache.byTitleYear.entries()) {
+  for (const [key, _entries] of cache.byTitleYear.entries()) {
     if (key.startsWith(`${normalizedTitle}|`)) {
       return true
     }

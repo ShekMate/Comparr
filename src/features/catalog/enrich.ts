@@ -323,7 +323,7 @@ export async function enrich({
   const requestedTmdbId = providedTmdbId ?? tmdbIdFromGuid
   let rating_imdb: number | null = null
   let rating_tmdb: number | null = null
-  let rating_comparr: number | null = null
+  const rating_comparr: number | null = null
   let genres: string[] = []
   let streamingServices: { subscription: any[]; free: any[] } = {
     subscription: [],
