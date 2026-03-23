@@ -38,13 +38,13 @@
   <!-- PATHS -->
   <Config Name="AppData"
           Target="/data"
-          Default="/mnt/user/appdata/Comparr-data"
+          Default="/mnt/user/appdata/Comparr-dev/data"
           Mode="rw"
           Description="Persistent data directory (session-state.json, etc.)"
           Type="Path"
           Display="always"
           Required="true"
-          Mask="false">/mnt/user/appdata/Comparr-data</Config>
+          Mask="false">/mnt/user/appdata/Comparr-dev/data</Config>
 
   <!-- CORE REQUIRED VARS -->
   <Config Name="PLEX_URL"
