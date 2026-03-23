@@ -1181,6 +1181,15 @@ function getAdminHeaders() {
 
 function setAdminPasswordForSession(value) {
   adminPassword = String(value || '').trim()
+  syncAdminPasswordFieldFromSession()
+}
+
+function syncAdminPasswordFieldFromSession() {
+  const adminPasswordInput = document.getElementById('setting-admin-password')
+  if (!adminPasswordInput) return
+  // Mirror the in-memory admin session password into the Security tab so users
+  // don't see a blank field after successfully authenticating via prompt.
+  adminPasswordInput.value = adminPassword
 }
 
 async function fetchSettingsAccess() {
@@ -1518,15 +1527,13 @@ async function loadUserHistory() {
   try {
     let { res, data } = await doFetch()
 
-    // If auth failed, prompt for the admin password once and retry.
+    // The Reset tab is only reachable after the admin click-guard has
+    // authenticated the session, so a 403 here means the session password is
+    // missing or stale — not that we need to prompt from scratch.  Show a
+    // clear error rather than wiping the session and re-prompting unexpectedly.
     if (res.status === 403) {
-      clearCachedAdminPassword()
-      const hasAccess = await ensureAdminAccess(true)
-      if (!hasAccess || !adminPassword) {
-        listEl.innerHTML = `<div class="user-history-empty"><i class="fas fa-exclamation-circle"></i> Admin password required to view user history.</div>`
-        return
-      }
-      ;({ res, data } = await doFetch())
+      listEl.innerHTML = `<div class="user-history-empty"><i class="fas fa-exclamation-circle"></i> Admin access required. Please close and re-open Admin Settings.</div>`
+      return
     }
 
     if (!data.success) throw new Error(data.message || 'Failed to load')
@@ -2308,6 +2315,16 @@ async function hydrateSettingsForm({ _retryCount = 0 } = {}) {
     // admin access, the cached password is wrong or missing.  Re-prompt once
     // via ensureAdminAccess so the user can correct it.
     if (data?.isAdmin === false && hasAdminSettingsAccess && _retryCount < MAX_RETRIES) {
+      // Refresh access state — if no admin password is configured the server
+      // will return isAdmin:false for non-local requests even without a header,
+      // and there is nothing the user can enter to fix it.
+      settingsAccessState = await fetchSettingsAccess()
+      if (!settingsAccessState.requiresAdminPassword) {
+        // No admin password configured — non-admin result is expected and
+        // there is nothing to re-prompt for.
+        return false
+      }
+
       clearCachedAdminPassword()
       hasAdminSettingsAccess = false
       settingsHydratedWithAdminAccess = false
@@ -2344,7 +2361,19 @@ async function hydrateSettingsForm({ _retryCount = 0 } = {}) {
           option.selected = selectedSet.has(option.value)
         })
       } else {
-        el.value = value
+        // ADMIN_PASSWORD is intentionally redacted by the server; preserve the
+        // in-memory authenticated value so admin users don't see a blank field
+        // after authenticating, and don't get re-prompted while switching tabs.
+        if (
+          key === 'ADMIN_PASSWORD' &&
+          hasAdminSettingsAccess &&
+          !String(value).trim() &&
+          adminPassword
+        ) {
+          el.value = adminPassword
+        } else {
+          el.value = value
+        }
       }
     })
 
