@@ -357,7 +357,7 @@
   .login-form .room-mode-header {
     width: 100%;
     max-width: 100%;
-    justify-content: space-between;
+    justify-content: flex-start;
     justify-self: stretch;
     gap: 0.75rem;
   }
