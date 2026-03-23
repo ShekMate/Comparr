@@ -25,12 +25,6 @@ import {
   getAccessPassword,
 } from './core/config.ts'
 import { getSettings, updateSettings, resetSettings } from './core/settings.ts'
-import {
-  getAllRooms,
-  clearAllRooms,
-  clearRooms,
-  clearUsersFromRoom,
-} from './core/persistence.ts'
 import { timingSafeEqual } from './core/security.ts'
 import { getLinkTypeForRequest } from './core/i18n.ts'
 import {
@@ -41,6 +35,10 @@ import {
   finalizeImdbImportHistory,
   getImdbImportHistory,
   activeSessions,
+  getAllRooms,
+  clearAllRooms,
+  clearRooms,
+  clearUsersFromRoom,
 } from './features/session/session.ts'
 import { parseImdbCsv } from './features/session/imdb-import.ts'
 import { serveFile } from './infra/http/staticFileServer.ts'

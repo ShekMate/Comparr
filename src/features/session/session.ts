@@ -3687,3 +3687,47 @@ export async function processImdbImportBackground(
     `[IMDb Import] Completed: ${imported} imported, ${skipped} skipped for ${userName} in ${roomCode}`
   )
 }
+
+// -------------------------
+// Admin helpers — read/clear live persistedState
+// -------------------------
+
+export function getAllRooms(): Record<string, { users: Record<string, unknown> }> {
+  const result: Record<string, { users: Record<string, unknown> }> = {}
+  for (const [roomCode, room] of Object.entries(persistedState.rooms)) {
+    const users: Record<string, unknown> = {}
+    for (const user of room.users) {
+      users[user.name] = { responses: user.responses }
+    }
+    result[roomCode] = { users }
+  }
+  return result
+}
+
+export function clearAllRooms(): void {
+  persistedState.rooms = {}
+  saveState(persistedState).catch(err =>
+    log.warn(`Failed to save state after clearAllRooms: ${err}`)
+  )
+}
+
+export function clearRooms(roomCodes: string[]): void {
+  for (const code of roomCodes) {
+    delete persistedState.rooms[code]
+  }
+  saveState(persistedState).catch(err =>
+    log.warn(`Failed to save state after clearRooms: ${err}`)
+  )
+}
+
+export function clearUsersFromRoom(roomCode: string, userNames: string[]): void {
+  const room = persistedState.rooms[roomCode]
+  if (!room) return
+  room.users = room.users.filter(u => !userNames.includes(u.name))
+  if (room.users.length === 0) {
+    delete persistedState.rooms[roomCode]
+  }
+  saveState(persistedState).catch(err =>
+    log.warn(`Failed to save state after clearUsersFromRoom: ${err}`)
+  )
+}
