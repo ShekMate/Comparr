@@ -49,6 +49,7 @@ import { handleRequestMovieRoute } from './infra/http/routes/request-movie.ts'
 import { handleMovieRefreshRoute } from './infra/http/routes/movie-refresh.ts'
 import { handleStreamingRoutes } from './infra/http/routes/streaming.ts'
 import { handleImdbImportRoutes } from './infra/http/routes/imdb-import.ts'
+import { handleSystemRoutes } from './infra/http/routes/system.ts'
 import { WebSocketServer } from './infra/ws/websocketServer.ts'
 import { makeHeaders } from './infra/http/security-headers.ts'
 import { appendAuditLog } from './infra/http/audit.ts'
@@ -358,28 +359,14 @@ for await (const req of server) {
     const url = new URL(req.url, 'http://local')
     const p = url.pathname
 
-    if (p === '/api/health' && req.method === 'GET') {
-      await req.respond({
-        status: 200,
-        headers: makeHeaders(req, 'application/json'),
-        body: JSON.stringify({ ok: true }),
-      })
-      continue
-    }
-
-    if (p === '/api/csrf-token' && req.method === 'GET') {
-      const token = createCsrfToken()
-      const headers = makeHeaders(req, 'application/json')
-      const secureFlag = shouldUseSecureCookies(req) ? '; Secure' : ''
-      headers.set(
-        'set-cookie',
-        `${CSRF_COOKIE_NAME}=${token}; Path=/; SameSite=Strict; HttpOnly${secureFlag}`
-      )
-      await req.respond({
-        status: 200,
-        headers,
-        body: JSON.stringify({ csrfToken: token }),
-      })
+    const systemRouteResponse = await handleSystemRoutes(req, p, {
+      csrfCookieName: CSRF_COOKIE_NAME,
+      createCsrfToken,
+      shouldUseSecureCookies,
+      activeSessions,
+    })
+    if (systemRouteResponse) {
+      await req.respondWith(systemRouteResponse)
       continue
     }
 
@@ -610,53 +597,6 @@ for await (const req of server) {
         }
       } catch {
         await req.respond({ status: 404 })
-      }
-      continue
-    }
-
-    // Handle match actions (seen/pass)
-    if (p === '/api/match-action' && req.method === 'POST') {
-      try {
-        const body = await req.json()
-        const { guid, action, roomCode, userName } = body as {
-          guid: string
-          action: 'seen' | 'pass'
-          roomCode: string
-          userName: string
-        }
-
-        log.info(
-          `Match action: ${userName} in ${roomCode} marked ${guid} as ${action}`
-        )
-
-        // Get the session
-        const session = activeSessions.get(roomCode)
-        if (!session) {
-          await req.respond({
-            status: 404,
-            body: JSON.stringify({ error: 'Room not found' }),
-            headers: makeHeaders(req, 'application/json'),
-          })
-          continue
-        }
-
-        // Remove the match for the acting user
-        const removedCount = session.removeMatch(guid, userName, action)
-
-        log.info(`Removed ${removedCount} match(es) for movie ${guid}`)
-
-        await req.respond({
-          status: 200,
-          body: JSON.stringify({ success: true, removedCount }),
-          headers: makeHeaders(req, 'application/json'),
-        })
-      } catch (err) {
-        log.error(`Failed to process match action: ${err}`)
-        await req.respond({
-          status: 500,
-          body: JSON.stringify({ error: 'Failed to process match action' }),
-          headers: makeHeaders(req, 'application/json'),
-        })
       }
       continue
     }
