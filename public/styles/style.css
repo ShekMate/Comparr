@@ -1,8 +1,8 @@
-@import url('./styles/main.css');
-@import url('./styles/mobile.css') screen and (max-width: 768px);
-@import url('./styles/tablet.css') screen and (min-width: 769px) and
+@import url('./main.css');
+@import url('./mobile.css') screen and (max-width: 768px);
+@import url('./tablet.css') screen and (min-width: 769px) and
   (max-width: 1024px);
-@import url('./styles/desktop.css') screen and (min-width: 769px);
+@import url('./desktop.css') screen and (min-width: 769px);
 
 .u-display-none {
   display: none;
