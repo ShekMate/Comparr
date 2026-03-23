@@ -3,7 +3,7 @@ const { spawnSync } = require('child_process')
 
 function runDenoLint() {
   const args = process.argv.slice(2)
-  const denoArgs = ['lint', '--unstable', 'src', ...args]
+  const denoArgs = ['lint', ...args]
 
   const result = spawnSync('deno', denoArgs, {
     stdio: 'inherit',
