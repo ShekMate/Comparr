@@ -1,0 +1,45 @@
+@import url('./styles/main.css');
+@import url('./styles/mobile.css') screen and (max-width: 768px);
+@import url('./styles/tablet.css') screen and (min-width: 769px) and
+  (max-width: 1024px);
+@import url('./styles/desktop.css') screen and (min-width: 769px);
+
+.u-display-none {
+  display: none;
+}
+
+.u-display-block {
+  display: block;
+}
+
+.u-icon-accent-primary {
+  color: var(--color-primary);
+  margin-right: 0.5rem;
+}
+
+.u-icon-accent-success {
+  color: var(--color-success);
+  margin-right: 0.5rem;
+}
+
+.u-icon-accent-error {
+  color: var(--color-error);
+  margin-right: 0.5rem;
+}
+
+.u-icon-accent-warning {
+  color: var(--color-warning);
+  margin-right: 0.5rem;
+}
+
+.u-mt-1 {
+  margin-top: 1rem;
+}
+
+.u-mt-1-5 {
+  margin-top: 1.5rem;
+}
+
+.u-pl-1-25 {
+  padding-left: 1.25rem;
+}
