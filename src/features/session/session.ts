@@ -3802,6 +3802,16 @@ export function getAllRooms(): Record<
 
 export function clearAllRooms(): void {
   persistedState.rooms = {}
+  // Also wipe live in-memory sessions so cleared data is not restored on
+  // reconnect (active sessions hold user responses independently of the
+  // persisted state and would otherwise shadow the clear).
+  for (const session of activeSessions.values()) {
+    for (const user of session.users.keys()) {
+      user.responses = []
+    }
+    session.likedMovies.clear()
+    session.matches = []
+  }
   saveState(persistedState).catch(err =>
     log.warn(`Failed to save state after clearAllRooms: ${err}`)
   )
@@ -3810,6 +3820,15 @@ export function clearAllRooms(): void {
 export function clearRooms(roomCodes: string[]): void {
   for (const code of roomCodes) {
     delete persistedState.rooms[code]
+    // Mirror the clear into the live session so reconnecting users start fresh.
+    const session = activeSessions.get(code)
+    if (session) {
+      for (const user of session.users.keys()) {
+        user.responses = []
+      }
+      session.likedMovies.clear()
+      session.matches = []
+    }
   }
   saveState(persistedState).catch(err =>
     log.warn(`Failed to save state after clearRooms: ${err}`)
@@ -3821,10 +3840,33 @@ export function clearUsersFromRoom(
   userNames: string[]
 ): void {
   const room = persistedState.rooms[roomCode]
-  if (!room) return
-  room.users = room.users.filter(u => !userNames.includes(u.name))
-  if (room.users.length === 0) {
-    delete persistedState.rooms[roomCode]
+  if (room) {
+    room.users = room.users.filter(u => !userNames.includes(u.name))
+    if (room.users.length === 0) {
+      delete persistedState.rooms[roomCode]
+    }
+  }
+  // Mirror the clear into the live session so reconnecting users start fresh.
+  const session = activeSessions.get(roomCode)
+  if (session) {
+    for (const user of session.users.keys()) {
+      if (userNames.includes(user.name)) {
+        user.responses = []
+      }
+    }
+    // Remove the cleared users from likedMovies.
+    for (const [movie, likers] of [...session.likedMovies.entries()]) {
+      const remaining = likers.filter(u => !userNames.includes(u.name))
+      if (remaining.length > 0) {
+        session.likedMovies.set(movie, remaining)
+      } else {
+        session.likedMovies.delete(movie)
+      }
+    }
+    // Drop matches that no longer have at least 2 users after removal.
+    session.matches = session.matches
+      .map(m => ({ ...m, users: m.users.filter(n => !userNames.includes(n)) }))
+      .filter(m => m.users.length >= 2)
   }
   saveState(persistedState).catch(err =>
     log.warn(`Failed to save state after clearUsersFromRoom: ${err}`)
