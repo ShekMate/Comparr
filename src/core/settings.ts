@@ -98,9 +98,9 @@ const DEFAULTS: Partial<Settings> = {
 const SETTINGS_FILE = `${getDataDir()}/settings.json`
 
 let settingsCache: Settings = SETTINGS_KEYS.reduce((acc, key) => {
-  const envValue = Deno.env.get(key)
-  const fallback = DEFAULTS[key] ?? ''
-  acc[key] = (envValue ?? fallback ?? '').trim()
+  acc[key] = key === 'PORT'
+    ? (Deno.env.get('PORT') ?? DEFAULTS['PORT'] ?? '8000').trim()
+    : (DEFAULTS[key] ?? '').trim()
   return acc
 }, {} as Settings)
 

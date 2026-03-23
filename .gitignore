@@ -14,7 +14,7 @@ build/
 .cache/
 coverage/
 
-# --- Environment & Secrets ---
+# --- Secrets (safety net) ---
 .env
 .env.local
 .env.*.local
