@@ -3,7 +3,7 @@
 // Priority: 1) Local IMDb database, 2) TMDb API
 
 import { getIMDbRating } from './imdb-datasets.ts'
-import { getPlexLibraryName, getEmbyLibraryName, getJellyfinLibraryName, getTmdbApiKey } from '../../core/config.ts'
+import { getPlexLibraryName, getEmbyLibraryName, getJellyfinLibraryName, getTmdbApiKey, getDataDir } from '../../core/config.ts'
 import { tmdbFetch } from '../../api/tmdb.ts'
 import * as log from 'jsr:@std/log'
 
@@ -49,8 +49,7 @@ const ENRICH_CACHE_TTL_MS = Number(
 const ENRICH_CACHE_MAX_ENTRIES = Number(
   Deno.env.get('ENRICH_CACHE_MAX_ENTRIES') ?? '5000'
 )
-const ENRICH_DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
-const ENRICH_CACHE_FILE = `${ENRICH_DATA_DIR}/enrichment-cache.json`
+const ENRICH_CACHE_FILE = `${getDataDir()}/enrichment-cache.json`
 const enrichmentCache = new Map<string, PersistedEnrichmentEntry>()
 let enrichmentCacheLoaded = false
 let persistPromise: Promise<void> | null = null

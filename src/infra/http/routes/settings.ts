@@ -1,7 +1,7 @@
 import type { CompatRequest } from '../compat-request.ts'
 import { SettingsValidationError } from '../../../core/settings.ts'
 import * as log from 'jsr:@std/log'
-import { timingSafeEqual } from '../../../core/security.ts'
+import { verifyPassword } from '../../../core/security.ts'
 import { apiRateLimiter, loginRateLimiter } from '../ip-rate-limiter.ts'
 import { addSecurityHeaders } from '../security-headers.ts'
 import { isValidStateChangingOrigin } from '../network-access.ts'
@@ -213,7 +213,7 @@ const isBootstrappingAdminPassword = (
 const isSetupWizardActive = (settings: Record<string, unknown>) =>
   String(settings.SETUP_WIZARD_COMPLETED ?? '').toLowerCase() !== 'true'
 
-const isAdminAuthorized = (
+const isAdminAuthorized = async (
   req: CompatRequest,
   settings: Record<string, unknown>,
   isLocalRequest: (req: CompatRequest) => boolean
@@ -226,13 +226,13 @@ const isAdminAuthorized = (
   }
 
   const received = parseAdminPassword(req)
-  const match = timingSafeEqual(received, configuredPassword)
+  const match = await verifyPassword(received, configuredPassword)
   if (!match) {
     log.warn(
-      `[admin-auth] Password mismatch: receivedLen=${received.length} configuredLen=${configuredPassword.length} header=${received ? 'present' : 'absent'}`
+      `[admin-auth] Password mismatch: receivedLen=${received.length} header=${received ? 'present' : 'absent'}`
     )
   } else {
-    log.debug(`[admin-auth] Password matched (len=${received.length})`)
+    log.debug(`[admin-auth] Password matched`)
   }
   return match
 }
@@ -354,15 +354,17 @@ export async function handleSettingsRoutes(
 
       const isValid =
         !configuredPassword ||
-        timingSafeEqual(candidatePassword, configuredPassword)
+        await verifyPassword(candidatePassword, configuredPassword)
 
       const headers = makeJsonHeaders(req)
       const secureFlag = shouldUseSecureCookies(req) ? '; Secure' : ''
       if (isValid && configuredPassword) {
+        // Store the user-entered value in the cookie (not the stored hash),
+        // so subsequent requests can be verified via verifyPassword.
         headers.set(
           'set-cookie',
           `${ACCESS_PASSWORD_COOKIE_NAME}=${encodeURIComponent(
-            configuredPassword
+            candidatePassword
           )}; Path=/; SameSite=Strict; HttpOnly${secureFlag}`
         )
       } else if (!isValid) {
@@ -473,7 +475,7 @@ export async function handleSettingsRoutes(
         )
       }
 
-      if (!isAdminAuthorized(req, settings, isLocalRequest)) {
+      if (!await isAdminAuthorized(req, settings, isLocalRequest)) {
         return new Response(
           JSON.stringify({
             ok: false,
@@ -515,7 +517,7 @@ export async function handleSettingsRoutes(
 
   if (pathname === '/api/settings' && req.method === 'GET') {
     const settings = getSettings()
-    const isAdmin = isAdminAuthorized(req, settings, isLocalRequest)
+    const isAdmin = await isAdminAuthorized(req, settings, isLocalRequest)
 
     return new Response(
       JSON.stringify({
@@ -537,7 +539,7 @@ export async function handleSettingsRoutes(
     const currentSettings = getSettings()
     const isAdmin =
       isSetupWizardActive(currentSettings) ||
-      isAdminAuthorized(req, currentSettings, isLocalRequest)
+      await isAdminAuthorized(req, currentSettings, isLocalRequest)
 
     try {
       const body = await req.text()
@@ -643,7 +645,7 @@ export async function handleSettingsRoutes(
     const settings = getSettings()
     if (
       !isSetupWizardActive(settings) &&
-      !isAdminAuthorized(req, settings, isLocalRequest)
+      !await isAdminAuthorized(req, settings, isLocalRequest)
     ) {
       return new Response(
         JSON.stringify({
@@ -673,7 +675,7 @@ export async function handleSettingsRoutes(
     const settings = getSettings()
     if (
       !isSetupWizardActive(settings) &&
-      !isAdminAuthorized(req, settings, isLocalRequest)
+      !await isAdminAuthorized(req, settings, isLocalRequest)
     ) {
       return new Response(
         JSON.stringify({
@@ -704,7 +706,7 @@ export async function handleSettingsRoutes(
     const settings = getSettings()
     if (
       !isSetupWizardActive(settings) &&
-      !isAdminAuthorized(req, settings, isLocalRequest)
+      !await isAdminAuthorized(req, settings, isLocalRequest)
     ) {
       return new Response(
         JSON.stringify({

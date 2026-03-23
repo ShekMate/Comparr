@@ -2,6 +2,7 @@
 // Minimal file-based persistence for per-room user responses
 
 import * as log from 'jsr:@std/log'
+import { getDataDir } from './env.ts'
 
 export type PersistedResponse = {
   guid: string
@@ -18,7 +19,7 @@ export type PersistedState = {
   rooms: Record<string, PersistedRoom>
 }
 
-const DATA_DIR = Deno.env.get('DATA_DIR') ?? './data'
+const DATA_DIR = getDataDir()
 const STATE_FILE = `${DATA_DIR}/session-state.json`
 
 let state: PersistedState = { version: 1, rooms: {} }

@@ -2,9 +2,9 @@ import type { CompatRequest } from '../../infra/http/compat-request.ts'
 // cache/posterCache.ts - Local poster storage and serving
 import * as log from 'jsr:@std/log'
 import { fetchWithTimeout } from '../../infra/http/fetch-with-timeout.ts'
+import { getDataDir } from '../../core/env.ts'
 
-const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
-const POSTER_CACHE_DIR = `${DATA_DIR}/poster-cache`
+const POSTER_CACHE_DIR = `${getDataDir()}/poster-cache`
 const MAX_CACHE_SIZE_MB = 500 // 500MB max cache size
 const CACHE_METADATA_FILE = `${POSTER_CACHE_DIR}/cache-metadata.json`
 
