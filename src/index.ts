@@ -9,7 +9,7 @@ globalThis.addEventListener('unhandledrejection', event => {
 
 import * as log from 'jsr:@std/log'
 import { clearAllMoviesCache, getServerId } from './api/plex.ts'
-import type { CompatRequest, CompatResponseInit } from './infra/http/compat-request.ts'
+import type { CompatRequest } from './infra/http/compat-request.ts'
 import {
   getHost,
   getLinkType,
@@ -53,7 +53,7 @@ import { handleMovieRefreshRoute } from './infra/http/routes/movie-refresh.ts'
 import { handleStreamingRoutes } from './infra/http/routes/streaming.ts'
 import { handleImdbImportRoutes } from './infra/http/routes/imdb-import.ts'
 import { WebSocketServer } from './infra/ws/websocketServer.ts'
-import { makeHeaders, addSecurityHeaders } from './infra/http/security-headers.ts'
+import { makeHeaders } from './infra/http/security-headers.ts'
 import { appendAuditLog } from './infra/http/audit.ts'
 import { fetchWithTimeout } from './infra/http/fetch-with-timeout.ts'
 import {
