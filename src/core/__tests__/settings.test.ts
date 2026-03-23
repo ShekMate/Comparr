@@ -1,7 +1,7 @@
 import {
   assertEquals,
   assertRejects,
-} from '../../__tests__/utils/test-helpers.ts'
+} from '../../testdata/test-helpers.ts'
 
 function uniqueSettingsModulePath() {
   return `../settings.ts?ts=${Date.now()}-${Math.random()}`
