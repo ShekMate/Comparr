@@ -4804,11 +4804,8 @@ footer {
   text-align: left;
   padding: 0.9rem;
   cursor: pointer;
-  transition:
-    border-color 0.2s ease,
-    background-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease,
+    box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .first-run-guide-option.is-selected {
@@ -5314,7 +5311,7 @@ footer {
   align-items: center;
   gap: 0.625rem;
   padding: 0.3rem 0.875rem 0.3rem 0;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .user-history-user:last-child {
@@ -5354,8 +5351,12 @@ footer {
 }
 
 @keyframes reset-overlay-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .reset-modal {
@@ -5372,8 +5373,14 @@ footer {
 }
 
 @keyframes reset-modal-in {
-  from { transform: scale(0.9); opacity: 0; }
-  to   { transform: scale(1);   opacity: 1; }
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .reset-modal__icon {
