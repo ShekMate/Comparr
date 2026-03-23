@@ -1213,6 +1213,13 @@ async function ensureAdminAccess(forcePrompt = false) {
   // still be false from the initial page-load fetch).
   settingsAccessState = await fetchSettingsAccess()
 
+  console.debug('[admin-auth] ensureAdminAccess', {
+    forcePrompt,
+    requiresAdminPassword: settingsAccessState.requiresAdminPassword,
+    hasSessionPassword: !!adminPassword,
+    sessionPasswordLen: adminPassword.length,
+  })
+
   if (!settingsAccessState.canAccess) return false
 
   if (!settingsAccessState.requiresAdminPassword) {
@@ -1225,9 +1232,11 @@ async function ensureAdminAccess(forcePrompt = false) {
 
   const entered = window.prompt('Enter admin password to access settings:')
   if (!entered) {
+    console.debug('[admin-auth] ensureAdminAccess: prompt cancelled or empty')
     return false
   }
 
+  console.debug('[admin-auth] ensureAdminAccess: password entered, len=', entered.trim().length)
   setAdminPasswordForSession(entered)
   return true
 }
@@ -1532,6 +1541,7 @@ async function loadUserHistory() {
     // missing or stale — not that we need to prompt from scratch.  Show a
     // clear error rather than wiping the session and re-prompting unexpectedly.
     if (res.status === 403) {
+      console.warn('[admin-auth] loadUserHistory got 403 — sessionPasswordLen=', adminPassword.length, 'hasAdminSettingsAccess=', hasAdminSettingsAccess)
       listEl.innerHTML = `<div class="user-history-empty"><i class="fas fa-exclamation-circle"></i> Admin access required. Please close and re-open Admin Settings.</div>`
       return
     }
@@ -2310,6 +2320,8 @@ async function hydrateSettingsForm({ _retryCount = 0 } = {}) {
     }
     const data = await res.json()
     const settings = data?.settings || {}
+
+    console.debug('[admin-auth] hydrateSettingsForm: isAdmin=', data?.isAdmin, 'hasAdminSettingsAccess=', hasAdminSettingsAccess, 'retryCount=', _retryCount, 'sessionPasswordLen=', adminPassword.length)
 
     // If the server says admin auth failed but the frontend believes it has
     // admin access, the cached password is wrong or missing.  Re-prompt once

@@ -220,10 +220,21 @@ const isAdminAuthorized = (
 ) => {
   const configuredPassword = String(settings.ADMIN_PASSWORD ?? '').trim()
   if (!configuredPassword) {
-    return isLocalRequest(req)
+    const local = isLocalRequest(req)
+    log.debug(`[admin-auth] No ADMIN_PASSWORD configured — falling back to isLocal=${local}`)
+    return local
   }
 
-  return timingSafeEqual(parseAdminPassword(req), configuredPassword)
+  const received = parseAdminPassword(req)
+  const match = timingSafeEqual(received, configuredPassword)
+  if (!match) {
+    log.warn(
+      `[admin-auth] Password mismatch: receivedLen=${received.length} configuredLen=${configuredPassword.length} header=${received ? 'present' : 'absent'}`
+    )
+  } else {
+    log.debug(`[admin-auth] Password matched (len=${received.length})`)
+  }
+  return match
 }
 
 const getAdminAuthFailureMessage = (
