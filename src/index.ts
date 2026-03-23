@@ -16,10 +16,8 @@ import {
   getEmbyLibraryName,
   getJellyfinLibraryName,
   getPlexLibraryName,
-  getPlexToken,
   getPlexUrl,
   getPort,
-  getTmdbApiKey,
   getMaxBodySize,
   getAccessPassword,
 } from './core/config.ts'
@@ -29,7 +27,6 @@ import { timingSafeEqual, verifyPassword } from './core/security.ts'
 import { getLinkTypeForRequest } from './core/i18n.ts'
 import {
   handleLogin,
-  ensurePlexHydrationReady,
   activeSessions,
   getAllRooms,
   clearAllRooms,
@@ -52,27 +49,22 @@ import { handleRequestMovieRoute } from './infra/http/routes/request-movie.ts'
 import { handleMovieRefreshRoute } from './infra/http/routes/movie-refresh.ts'
 import { handleStreamingRoutes } from './infra/http/routes/streaming.ts'
 import { handleImdbImportRoutes } from './infra/http/routes/imdb-import.ts'
+import { handleSystemRoutes } from './infra/http/routes/system.ts'
 import { WebSocketServer } from './infra/ws/websocketServer.ts'
 import { makeHeaders } from './infra/http/security-headers.ts'
 import { appendAuditLog } from './infra/http/audit.ts'
 import { fetchWithTimeout } from './infra/http/fetch-with-timeout.ts'
-import {
-  initializeRadarrCache,
-  refreshRadarrCache,
-} from './api/radarr.ts'
+import { refreshRadarrCache } from './api/radarr.ts'
 import {
   getCachedPosterPath,
   serveCachedPoster,
 } from './services/cache/poster-cache.ts'
 import {
-  initIMDbDatabase,
   closeIMDbDatabase,
-  startBackgroundUpdateJob,
   stopBackgroundUpdateJob,
 } from './features/catalog/imdb-datasets.ts'
 import { buildPlexCache } from './integrations/plex/cache.ts'
-import { buildEmbyCache } from './integrations/emby/cache.ts'
-import { buildJellyfinCache } from './integrations/jellyfin/cache.ts'
+import { bootstrapApplication } from './app/bootstrap.ts'
 
 // --- Server state
 const CSRF_COOKIE_NAME = 'comparr_csrf'
@@ -89,7 +81,10 @@ async function respondFile(
 ): Promise<Response | null> {
   try {
     const body = await Deno.readFile(filePath)
-    return new Response(body, { status: 200, headers: makeHeaders(req, contentType) })
+    return new Response(body, {
+      status: 200,
+      headers: makeHeaders(req, contentType),
+    })
   } catch (_) {
     return null
   }
@@ -102,7 +97,10 @@ const bodyTooLarge = (req: CompatRequest) => {
 }
 
 const isStateChangingMethod = (method: string) =>
-  method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE'
+  method === 'POST' ||
+  method === 'PUT' ||
+  method === 'PATCH' ||
+  method === 'DELETE'
 
 const EXEMPT_ORIGIN_CHECK_PATHS = new Set([
   '/api/access-password/verify',
@@ -174,7 +172,9 @@ const shouldUseSecureCookies = (req: CompatRequest) => {
     .trim()
     .toLowerCase()
   if (xfProto) return xfProto === 'https'
-  return String(req?.url || '').toLowerCase().startsWith('https://')
+  return String(req?.url || '')
+    .toLowerCase()
+    .startsWith('https://')
 }
 
 const isValidCsrfRequest = (req: CompatRequest) => {
@@ -183,7 +183,6 @@ const isValidCsrfRequest = (req: CompatRequest) => {
   if (!cookieToken || !headerToken) return false
   return timingSafeEqual(cookieToken, headerToken)
 }
-
 
 const serveCompat = (options: { port: number; hostname?: string }) => {
   const queue: CompatRequest[] = []
@@ -207,44 +206,47 @@ const serveCompat = (options: { port: number; hostname?: string }) => {
     }
   }
 
-  Deno.serve({ port: options.port, hostname, signal: abortController.signal }, (request, info) => {
-    if (closed) return new Response('Server shutting down', { status: 503 })
+  Deno.serve(
+    { port: options.port, hostname, signal: abortController.signal },
+    (request, info) => {
+      if (closed) return new Response('Server shutting down', { status: 503 })
 
-    return new Promise<Response>(resolve => {
-      const parsedUrl = new URL(request.url)
-      let responder: ((response: Response) => void) | null = resolve
+      return new Promise<Response>(resolve => {
+        const parsedUrl = new URL(request.url)
+        let responder: ((response: Response) => void) | null = resolve
 
-      const req: CompatRequest = {
-        method: request.method,
-        url: `${parsedUrl.pathname}${parsedUrl.search}`,
-        headers: request.headers,
-        conn: { remoteAddr: info.remoteAddr },
-        rawRequest: request,
-        respond: async init => {
-          if (!responder) return
-          const resolveResponse = responder
-          responder = null
-          resolveResponse(
-            new Response(init.body ?? null, {
-              status: init.status ?? 200,
-              headers: init.headers,
-            })
-          )
-        },
-        respondWith: async response => {
-          if (!responder) return
-          const resolveResponse = responder
-          responder = null
-          resolveResponse(response)
-        },
-        text: () => request.text(),
-        json: <T = unknown>() => request.json() as Promise<T>,
-      }
+        const req: CompatRequest = {
+          method: request.method,
+          url: `${parsedUrl.pathname}${parsedUrl.search}`,
+          headers: request.headers,
+          conn: { remoteAddr: info.remoteAddr },
+          rawRequest: request,
+          respond: async init => {
+            if (!responder) return
+            const resolveResponse = responder
+            responder = null
+            resolveResponse(
+              new Response(init.body ?? null, {
+                status: init.status ?? 200,
+                headers: init.headers,
+              })
+            )
+          },
+          respondWith: async response => {
+            if (!responder) return
+            const resolveResponse = responder
+            responder = null
+            resolveResponse(response)
+          },
+          text: () => request.text(),
+          json: <T = unknown>() => request.json() as Promise<T>,
+        }
 
-      queue.push(req)
-      flush()
-    })
-  })
+        queue.push(req)
+        flush()
+      })
+    }
+  )
 
   return {
     close() {
@@ -272,7 +274,9 @@ const serveCompat = (options: { port: number; hostname?: string }) => {
 const host = getHost()
 const port = Number(getPort())
 
-log.info(`[startup] Deno ${Deno.version.deno} | OS: ${Deno.build.os} ${Deno.build.arch}`)
+log.info(
+  `[startup] Deno ${Deno.version.deno} | OS: ${Deno.build.os} ${Deno.build.arch}`
+)
 log.info(`[startup] Binding server to ${host}:${port}`)
 log.info(`[startup] DATA_DIR=${getDataDir()}`)
 
@@ -323,50 +327,7 @@ if (Deno.build.os !== 'windows') {
 
 log.info(`Listening on http://${host}:${port}`)
 
-// Initialize Radarr cache in background
-initializeRadarrCache().catch(err =>
-  log.error(`Failed to initialize Radarr cache: ${err}`)
-)
-
-// Initialize IMDb ratings database and start background update job
-log.info(`[startup] Initializing IMDb database (requires --allow-ffi)`)
-try {
-  initIMDbDatabase()
-  log.info(`[startup] IMDb database init complete`)
-} catch (err) {
-  log.error(`[startup] IMDb database init FAILED: ${err}`)
-}
-startBackgroundUpdateJob()
-
-// Initialize Plex availability cache
-import { initPlexCache } from './integrations/plex/cache.ts'
-import { initEmbyCache } from './integrations/emby/cache.ts'
-import { initJellyfinCache } from './integrations/jellyfin/cache.ts'
-const plexCacheReady = initPlexCache()
-plexCacheReady.catch(err =>
-  log.error(`Failed to initialize Plex cache: ${err}`)
-)
-initEmbyCache().catch(err =>
-  log.error(`Failed to initialize Emby cache: ${err}`)
-)
-initJellyfinCache().catch(err =>
-  log.error(`Failed to initialize Jellyfin cache: ${err}`)
-)
-ensurePlexHydrationReady().catch(err =>
-  log.error(`Failed to hydrate persisted watch list: ${err?.message || err}`)
-)
-
-// Initialize poster cache
-import { initPosterCache } from './services/cache/poster-cache.ts'
-initPosterCache().catch(err =>
-  log.error(`Failed to initialize poster cache: ${err}`)
-)
-
-// DEBUG: Log environment check on startup
-log.info(`🔍 Config check:`)
-log.info(`  TMDB_API_KEY: ${getTmdbApiKey() ? '✅ Set' : '❌ Missing'}`)
-log.info(`  PLEX_URL: ${getPlexUrl() ? '✅ Set' : '❌ Missing'}`)
-log.info(`  PLEX_TOKEN: ${getPlexToken() ? '✅ Set' : '❌ Missing'}`)
+bootstrapApplication()
 
 for await (const req of server) {
   activeRequests += 1
@@ -398,28 +359,14 @@ for await (const req of server) {
     const url = new URL(req.url, 'http://local')
     const p = url.pathname
 
-    if (p === '/api/health' && req.method === 'GET') {
-      await req.respond({
-        status: 200,
-        headers: makeHeaders(req, 'application/json'),
-        body: JSON.stringify({ ok: true }),
-      })
-      continue
-    }
-
-    if (p === '/api/csrf-token' && req.method === 'GET') {
-      const token = createCsrfToken()
-      const headers = makeHeaders(req, 'application/json')
-      const secureFlag = shouldUseSecureCookies(req) ? '; Secure' : ''
-      headers.set(
-        'set-cookie',
-        `${CSRF_COOKIE_NAME}=${token}; Path=/; SameSite=Strict; HttpOnly${secureFlag}`
-      )
-      await req.respond({
-        status: 200,
-        headers,
-        body: JSON.stringify({ csrfToken: token }),
-      })
+    const systemRouteResponse = await handleSystemRoutes(req, p, {
+      csrfCookieName: CSRF_COOKIE_NAME,
+      createCsrfToken,
+      shouldUseSecureCookies,
+      activeSessions,
+    })
+    if (systemRouteResponse) {
+      await req.respondWith(systemRouteResponse)
       continue
     }
 
@@ -454,7 +401,7 @@ for await (const req of server) {
     if (
       p.startsWith('/api/') &&
       shouldRequireAccessPassword(p) &&
-      !await isAccessPasswordAuthorized(req)
+      !(await isAccessPasswordAuthorized(req))
     ) {
       responseStatus = 401
       auditEvent = 'access_password_denied'
@@ -511,7 +458,11 @@ for await (const req of server) {
     }
 
     // --- API: Request movie via Jellyseerr/Overseerr
-    const requestMovieResponse = await handleRequestMovieRoute(req, p, getMaxBodySize())
+    const requestMovieResponse = await handleRequestMovieRoute(
+      req,
+      p,
+      getMaxBodySize()
+    )
     if (requestMovieResponse) {
       await req.respondWith(requestMovieResponse)
       continue
@@ -531,7 +482,10 @@ for await (const req of server) {
         log.error(`Radarr cache refresh failed: ${err?.message || err}`)
         await req.respond({
           status: 500,
-          body: JSON.stringify({ ok: false, error: 'An internal error occurred.' }),
+          body: JSON.stringify({
+            ok: false,
+            error: 'An internal error occurred.',
+          }),
           headers: makeHeaders(req, 'application/json'),
         })
       }
@@ -643,53 +597,6 @@ for await (const req of server) {
         }
       } catch {
         await req.respond({ status: 404 })
-      }
-      continue
-    }
-
-    // Handle match actions (seen/pass)
-    if (p === '/api/match-action' && req.method === 'POST') {
-      try {
-        const body = await req.json()
-        const { guid, action, roomCode, userName } = body as {
-          guid: string
-          action: 'seen' | 'pass'
-          roomCode: string
-          userName: string
-        }
-
-        log.info(
-          `Match action: ${userName} in ${roomCode} marked ${guid} as ${action}`
-        )
-
-        // Get the session
-        const session = activeSessions.get(roomCode)
-        if (!session) {
-          await req.respond({
-            status: 404,
-            body: JSON.stringify({ error: 'Room not found' }),
-            headers: makeHeaders(req, 'application/json'),
-          })
-          continue
-        }
-
-        // Remove the match for the acting user
-        const removedCount = session.removeMatch(guid, userName, action)
-
-        log.info(`Removed ${removedCount} match(es) for movie ${guid}`)
-
-        await req.respond({
-          status: 200,
-          body: JSON.stringify({ success: true, removedCount }),
-          headers: makeHeaders(req, 'application/json'),
-        })
-      } catch (err) {
-        log.error(`Failed to process match action: ${err}`)
-        await req.respond({
-          status: 500,
-          body: JSON.stringify({ error: 'Failed to process match action' }),
-          headers: makeHeaders(req, 'application/json'),
-        })
       }
       continue
     }
