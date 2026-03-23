@@ -1407,10 +1407,10 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 .login-intro p {
-  margin: 0 0 0.5rem;
-  font-size: 0.9rem;
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
   line-height: 1.4;
-  font-weight: 400;
+  font-weight: 500;
   color: var(--color-text-secondary);
 }
 
