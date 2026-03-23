@@ -168,7 +168,7 @@ const loadAllMovies = async () => {
 
 let allMoviesPromise: Promise<PlexVideo['Metadata']> | null = null
 
-export const getAllMovies = async (): Promise<PlexVideo['Metadata']> => {
+export const getAllMovies = (): Promise<PlexVideo['Metadata']> => {
   if (!allMoviesPromise) {
     allMoviesPromise = loadAllMovies()
   }

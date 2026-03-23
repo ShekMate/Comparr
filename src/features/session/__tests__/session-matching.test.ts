@@ -3,7 +3,6 @@ import {
   assertEquals,
   assertExists,
   MockWebSocket,
-  waitFor,
 } from '../../../testdata/test-helpers.ts'
 
 // Mock movie data for testing
@@ -164,9 +163,9 @@ Deno.test({
     const user2: User = { name: 'Bob', responses: [] }
     const user3: User = { name: 'Charlie', responses: [] }
 
-    const ws1 = simulator.addUser(user1)
-    const ws2 = simulator.addUser(user2)
-    const ws3 = simulator.addUser(user3)
+    const _ws1 = simulator.addUser(user1)
+    const _ws2 = simulator.addUser(user2)
+    const _ws3 = simulator.addUser(user3)
 
     // All three users like Inception
     simulator.handleResponse(user1, mockMovie1, true)
@@ -271,8 +270,8 @@ Deno.test({
     const user1: User = { name: 'Alice', responses: [] }
     const user2: User = { name: 'Bob', responses: [] }
 
-    const ws1 = simulator.addUser(user1)
-    const ws2 = simulator.addUser(user2)
+    const _ws1 = simulator.addUser(user1)
+    const _ws2 = simulator.addUser(user2)
 
     // Both initially like Inception - creates a match
     simulator.handleResponse(user1, mockMovie1, true)

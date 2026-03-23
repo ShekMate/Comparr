@@ -6,7 +6,7 @@ import { updateStreamingForTmdbId } from '../../../features/streaming/streaming-
 
 const streamingUpdateInFlight = new Map<number, Promise<any>>()
 
-const updateStreamingForTmdbIdDeduped = async (tmdbId: number) => {
+const updateStreamingForTmdbIdDeduped = (tmdbId: number) => {
   if (!Number.isFinite(tmdbId) || tmdbId <= 0) {
     return updateStreamingForTmdbId(tmdbId)
   }
