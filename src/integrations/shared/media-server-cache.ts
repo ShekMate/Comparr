@@ -77,7 +77,13 @@ export function createMediaServerCache(
         return
       }
 
-      const data: { Items?: Array<{ Name?: string; ProductionYear?: number; ProviderIds?: { Tmdb?: string; Imdb?: string } }> } = await response.json()
+      const data: {
+        Items?: Array<{
+          Name?: string
+          ProductionYear?: number
+          ProviderIds?: { Tmdb?: string; Imdb?: string }
+        }>
+      } = await response.json()
       const movies = data.Items || []
 
       cache.byTitleYear.clear()
@@ -185,7 +191,11 @@ export function createMediaServerCache(
     return false
   }
 
-  function getAllMovies(): { tmdbId: number; title: string; year: number | null }[] {
+  function getAllMovies(): {
+    tmdbId: number
+    title: string
+    year: number | null
+  }[] {
     return Array.from(cache.byTmdbId.entries()).map(([tmdbId, entry]) => ({
       tmdbId,
       title: entry.title,

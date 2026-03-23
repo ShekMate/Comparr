@@ -3,7 +3,13 @@
 // Priority: 1) Local IMDb database, 2) TMDb API
 
 import { getIMDbRating } from './imdb-datasets.ts'
-import { getPlexLibraryName, getEmbyLibraryName, getJellyfinLibraryName, getTmdbApiKey, getDataDir } from '../../core/config.ts'
+import {
+  getPlexLibraryName,
+  getEmbyLibraryName,
+  getJellyfinLibraryName,
+  getTmdbApiKey,
+  getDataDir,
+} from '../../core/config.ts'
 import { tmdbFetch } from '../../api/tmdb.ts'
 import * as log from 'jsr:@std/log'
 
@@ -503,7 +509,9 @@ export async function enrich({
   try {
     const { isMovieInPlex } = await import('../../integrations/plex/cache.ts')
     const { isMovieInEmby } = await import('../../integrations/emby/cache.ts')
-    const { isMovieInJellyfin } = await import('../../integrations/jellyfin/cache.ts')
+    const { isMovieInJellyfin } = await import(
+      '../../integrations/jellyfin/cache.ts'
+    )
 
     const tmdbId = det?.id || hit?.id
     const imdbFromTmdb = det?.external_ids?.imdb_id
@@ -533,7 +541,9 @@ export async function enrich({
       addLibraryBadge(getJellyfinLibraryName() || 'Jellyfin')
     }
   } catch (err) {
-    log.error(`[enrich] Failed to check personal library status: ${err?.message || err}`)
+    log.error(
+      `[enrich] Failed to check personal library status: ${err?.message || err}`
+    )
   }
 
   const result: EnrichmentPayload = {

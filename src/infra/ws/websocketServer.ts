@@ -14,7 +14,11 @@ export enum WebSocketState {
 const MAX_WS_MESSAGE_BYTES = 65_536
 const MAX_WS_CONNECTIONS_PER_IP = 10
 
-const matchAllowedOrigin = (candidate: string, origin: string, host: string) => {
+const matchAllowedOrigin = (
+  candidate: string,
+  origin: string,
+  host: string
+) => {
   const lowered = candidate.toLowerCase()
   try {
     const parsed = new URL(lowered)
@@ -43,7 +47,9 @@ export class WebSocketServer {
     if (!origin) return false
 
     const allowed = getAllowedOrigins()
-    const host = String(req.headers.get('host') || '').trim().toLowerCase()
+    const host = String(req.headers.get('host') || '')
+      .trim()
+      .toLowerCase()
 
     if (allowed.length > 0) {
       const target = origin.toLowerCase()
@@ -60,7 +66,9 @@ export class WebSocketServer {
   }
 
   private getClientIp(req: CompatRequest) {
-    return String((req.conn.remoteAddr as Deno.NetAddr | undefined)?.hostname || 'unknown')
+    return String(
+      (req.conn.remoteAddr as Deno.NetAddr | undefined)?.hostname || 'unknown'
+    )
   }
 
   connect(req: CompatRequest): Promise<Response> {
@@ -100,7 +108,9 @@ export class WebSocketServer {
     const clients = Array.from(this.clients)
     this.clients.clear()
     this.ipConnections.clear()
-    await Promise.allSettled(clients.map(client => client.close(1001, 'Server shutdown')))
+    await Promise.allSettled(
+      clients.map(client => client.close(1001, 'Server shutdown'))
+    )
   }
 }
 

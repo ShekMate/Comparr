@@ -3,7 +3,12 @@ import * as log from 'jsr:@std/log'
 import type { CompatRequest } from '../compat-request.ts'
 import { makeHeaders } from '../security-headers.ts'
 import { getStateFile, savePersistedState } from '../../../core/state.ts'
-import { getRootPath, getPlexLibraryName, getEmbyLibraryName, getJellyfinLibraryName } from '../../../core/config.ts'
+import {
+  getRootPath,
+  getPlexLibraryName,
+  getEmbyLibraryName,
+  getJellyfinLibraryName,
+} from '../../../core/config.ts'
 
 export async function handleMovieRefreshRoute(
   req: CompatRequest,
@@ -37,14 +42,16 @@ export async function handleMovieRefreshRoute(
         tmdbId = maybe
       } else {
         log.warn(`[refresh ${rid}] invalid idParam`)
-        return new Response(
-          JSON.stringify({ error: 'Invalid ID', rid }),
-          { status: 400, headers: makeHeaders(req, 'application/json') }
-        )
+        return new Response(JSON.stringify({ error: 'Invalid ID', rid }), {
+          status: 400,
+          headers: makeHeaders(req, 'application/json'),
+        })
       }
     }
     log.info(
-      `[refresh ${rid}] parsed -> tmdbId=${tmdbId ?? ''} imdbId=${imdbId ?? ''} guid=${guidParam ?? ''}`
+      `[refresh ${rid}] parsed -> tmdbId=${tmdbId ?? ''} imdbId=${
+        imdbId ?? ''
+      } guid=${guidParam ?? ''}`
     )
 
     // Load persisted state from disk
@@ -115,15 +122,19 @@ export async function handleMovieRefreshRoute(
         log.info(`[refresh ${rid}] fabricated movieData for enrichment`)
       } else {
         log.warn(`[refresh ${rid}] not found in state and no ids to fabricate`)
-        return new Response(
-          JSON.stringify({ error: 'Movie not found', rid }),
-          { status: 404, headers: makeHeaders(req, 'application/json') }
-        )
+        return new Response(JSON.stringify({ error: 'Movie not found', rid }), {
+          status: 404,
+          headers: makeHeaders(req, 'application/json'),
+        })
       }
     }
 
     log.info(
-      `[refresh ${rid}] calling enrich title="${movieData.title || ''}" year=${movieData.year || ''} tmdbId=${movieData.tmdbId || tmdbId || ''} imdbId=${movieData.imdbId || imdbId || ''}`
+      `[refresh ${rid}] calling enrich title="${movieData.title || ''}" year=${
+        movieData.year || ''
+      } tmdbId=${movieData.tmdbId || tmdbId || ''} imdbId=${
+        movieData.imdbId || imdbId || ''
+      }`
     )
     let enriched: any
     try {
@@ -137,7 +148,11 @@ export async function handleMovieRefreshRoute(
     } catch (e) {
       log.error(`[refresh ${rid}] enrich() failed: ${e?.message || e}`)
       return new Response(
-        JSON.stringify({ error: 'enrich failed', detail: e?.message || String(e), rid }),
+        JSON.stringify({
+          error: 'enrich failed',
+          detail: e?.message || String(e),
+          rid,
+        }),
         { status: 500, headers: makeHeaders(req, 'application/json') }
       )
     }
@@ -163,11 +178,15 @@ export async function handleMovieRefreshRoute(
         : ''
 
     const personalLibraryNames = new Set(
-      [getPlexLibraryName(), getEmbyLibraryName(), getJellyfinLibraryName()].filter(Boolean)
+      [
+        getPlexLibraryName(),
+        getEmbyLibraryName(),
+        getJellyfinLibraryName(),
+      ].filter(Boolean)
     )
     const inPlex =
-      enriched.streamingServices?.subscription?.some(
-        (s: any) => personalLibraryNames.has(s.name)
+      enriched.streamingServices?.subscription?.some((s: any) =>
+        personalLibraryNames.has(s.name)
       ) || false
 
     // Persist updates if we have state
@@ -191,8 +210,10 @@ export async function handleMovieRefreshRoute(
         writers: enriched.writers,
         director: enriched.director,
         runtime: enriched.runtime,
-        original_language: enriched.original_language || movieData.original_language || null,
-        originalLanguage: enriched.originalLanguage || movieData.originalLanguage || null,
+        original_language:
+          enriched.original_language || movieData.original_language || null,
+        originalLanguage:
+          enriched.originalLanguage || movieData.originalLanguage || null,
         voteCount: enriched.voteCount,
         imdbId: enriched.imdbId || movieData.imdbId,
         tmdbId: enriched.tmdbId || movieData.tmdbId,
@@ -206,7 +227,9 @@ export async function handleMovieRefreshRoute(
         log.error(`[refresh ${rid}] persist failed: ${e?.message || e}`)
       }
     } else {
-      log.warn(`[refresh ${rid}] no persistedState.movieIndex; skipping persist`)
+      log.warn(
+        `[refresh ${rid}] no persistedState.movieIndex; skipping persist`
+      )
     }
 
     return new Response(
@@ -220,16 +243,24 @@ export async function handleMovieRefreshRoute(
         streamingLink: enriched.streamingLink,
         tmdbId: movieData.tmdbId || tmdbId,
         imdbId: enriched.imdbId || movieData.imdbId || imdbId,
-        original_language: enriched.original_language || movieData.original_language || null,
-        originalLanguage: enriched.originalLanguage || movieData.originalLanguage || null,
+        original_language:
+          enriched.original_language || movieData.original_language || null,
+        originalLanguage:
+          enriched.originalLanguage || movieData.originalLanguage || null,
         rid,
       }),
       { status: 200, headers: makeHeaders(req, 'application/json') }
     )
   } catch (err) {
-    log.error(`[refresh ${rid}] unhandled: ${err?.stack || err?.message || err}`)
+    log.error(
+      `[refresh ${rid}] unhandled: ${err?.stack || err?.message || err}`
+    )
     return new Response(
-      JSON.stringify({ error: 'Failed to refresh movie data', detail: 'An internal error occurred.', rid }),
+      JSON.stringify({
+        error: 'Failed to refresh movie data',
+        detail: 'An internal error occurred.',
+        rid,
+      }),
       { status: 500, headers: makeHeaders(req, 'application/json') }
     )
   }

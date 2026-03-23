@@ -5,7 +5,10 @@ import { makeHeaders } from '../security-headers.ts'
 import { isValidStateChangingOrigin } from '../network-access.ts'
 import { requestMovie } from '../../../api/jellyseerr.ts'
 import { isMovieInRadarr } from '../../../api/radarr.ts'
-import { isMovieInPlex, waitForPlexCacheReady } from '../../../integrations/plex/cache.ts'
+import {
+  isMovieInPlex,
+  waitForPlexCacheReady,
+} from '../../../integrations/plex/cache.ts'
 import { isMovieInEmby } from '../../../integrations/emby/cache.ts'
 import { isMovieInJellyfin } from '../../../integrations/jellyfin/cache.ts'
 
@@ -26,10 +29,10 @@ export async function handleRequestMovieRoute(
 
     const contentLength = Number(req.headers.get('content-length') || '0')
     if (Number.isFinite(contentLength) && contentLength > maxBodySize) {
-      return new Response(
-        JSON.stringify({ error: 'Payload too large' }),
-        { status: 413, headers: makeHeaders(req, 'application/json') }
-      )
+      return new Response(JSON.stringify({ error: 'Payload too large' }), {
+        status: 413,
+        headers: makeHeaders(req, 'application/json'),
+      })
     }
 
     const body = await req.text()
@@ -45,7 +48,11 @@ export async function handleRequestMovieRoute(
     try {
       await waitForPlexCacheReady()
     } catch (err) {
-      log.warn(`Plex cache not ready when handling request-movie: ${err?.message || err}`)
+      log.warn(
+        `Plex cache not ready when handling request-movie: ${
+          err?.message || err
+        }`
+      )
     }
 
     const inRadarr = isMovieInRadarr(tmdbId)
@@ -69,17 +76,19 @@ export async function handleRequestMovieRoute(
     }
 
     const result = await requestMovie(tmdbId)
-    return new Response(
-      JSON.stringify(result),
-      { status: result.success ? 200 : 500, headers: makeHeaders(req, 'application/json') }
-    )
+    return new Response(JSON.stringify(result), {
+      status: result.success ? 200 : 500,
+      headers: makeHeaders(req, 'application/json'),
+    })
   } catch (err) {
     log.error(`Error handling movie request: ${err}`)
     let errorMessage = 'Internal server error'
     if (err.message?.includes('ECONNREFUSED')) {
-      errorMessage = 'Unable to connect to Seerr. Please check if the service is running.'
+      errorMessage =
+        'Unable to connect to Seerr. Please check if the service is running.'
     } else if (err.message?.includes('401') || err.message?.includes('403')) {
-      errorMessage = 'Authentication failed. Please check your API key configuration.'
+      errorMessage =
+        'Authentication failed. Please check your API key configuration.'
     } else if (err.message) {
       errorMessage = err.message
     }

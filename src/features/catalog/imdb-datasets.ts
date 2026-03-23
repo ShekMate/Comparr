@@ -49,7 +49,9 @@ export function getIMDbRating(imdbId: string): number | null {
   }
 
   try {
-    const stmt = db.prepare('SELECT averageRating FROM ratings WHERE tconst = ? LIMIT 1')
+    const stmt = db.prepare(
+      'SELECT averageRating FROM ratings WHERE tconst = ? LIMIT 1'
+    )
     const result = stmt.value<[number]>(imdbId)
     stmt.finalize()
     if (result && result.length > 0) {
@@ -101,7 +103,9 @@ export async function downloadAndBuildIMDbDatabase(): Promise<boolean> {
     const decompressedStream = compressedStream.pipeThrough(
       new DecompressionStream('gzip')
     )
-    const decompressedBuffer = await new Response(decompressedStream).arrayBuffer()
+    const decompressedBuffer = await new Response(
+      decompressedStream
+    ).arrayBuffer()
     const tsvData = new TextDecoder().decode(decompressedBuffer)
     log.info(
       `✅ Decompressed to ${(tsvData.length / 1024 / 1024).toFixed(
@@ -165,11 +169,7 @@ async function buildDatabase(tsvData: string): Promise<void> {
       // Skip invalid data
       if (!tconst || avgRating === '\\N' || numVotes === '\\N') continue
 
-      insertStmt.run(
-        tconst,
-        parseFloat(avgRating),
-        parseInt(numVotes, 10)
-      )
+      insertStmt.run(tconst, parseFloat(avgRating), parseInt(numVotes, 10))
 
       count++
 

@@ -657,7 +657,9 @@ for await (const req of server) {
     responseStatus = 500
     try {
       await req.respond({ status: 500, body: new TextEncoder().encode('500') })
-    } catch { /* secondary respond failure is ignored */ }
+    } catch {
+      /* secondary respond failure is ignored */
+    }
   } finally {
     try {
       const reqPath = new URL(req.url, 'http://local').pathname

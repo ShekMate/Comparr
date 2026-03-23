@@ -1,9 +1,5 @@
 import type { CompatRequest } from './compat-request.ts'
-import {
-  extname,
-  join,
-  normalize,
-} from 'node:path/posix'
+import { extname, join, normalize } from 'node:path/posix'
 import * as log from 'jsr:@std/log'
 import { translateHTML } from '../../core/i18n.ts'
 import { addSecurityHeaders } from './security-headers.ts'

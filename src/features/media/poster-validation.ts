@@ -53,7 +53,9 @@ export async function validateTMDbPoster(posterPath: string): Promise<boolean> {
     addToPosterCache(posterPath, false)
     return false
   } catch (error) {
-    log.debug(`Poster validation failed for ${posterPath}: ${error?.message || error}`)
+    log.debug(
+      `Poster validation failed for ${posterPath}: ${error?.message || error}`
+    )
     addToPosterCache(posterPath, false)
     return false
   }

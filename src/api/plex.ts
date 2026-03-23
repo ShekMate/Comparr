@@ -389,7 +389,9 @@ export const proxyPoster = async (
       }
 
       throw new Error(
-        `${posterReq.url} returned ${posterReq.status}: ${await posterReq.text()}`
+        `${posterReq.url} returned ${
+          posterReq.status
+        }: ${await posterReq.text()}`
       )
     }
 

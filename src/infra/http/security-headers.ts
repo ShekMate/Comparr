@@ -44,7 +44,10 @@ export const addSecurityHeaders = (
   }
 }
 
-export const makeHeaders = (req: CompatRequest, contentType?: string): Headers => {
+export const makeHeaders = (
+  req: CompatRequest,
+  contentType?: string
+): Headers => {
   const headers = new Headers()
   if (contentType) headers.set('content-type', contentType)
   addSecurityHeaders(headers, req)

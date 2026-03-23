@@ -13,15 +13,21 @@ import {
 import { parseImdbCsv } from '../../../features/session/imdb-import.ts'
 
 const getClientIp = (req: CompatRequest): string =>
-  String((req?.conn?.remoteAddr as Deno.NetAddr | undefined)?.hostname || 'unknown')
+  String(
+    (req?.conn?.remoteAddr as Deno.NetAddr | undefined)?.hostname || 'unknown'
+  )
 
 const sanitizeForLog = (value: string, maxLength = 64) =>
   String(value || '')
     .replace(/[\r\n\t]/g, ' ')
     .slice(0, maxLength)
 
-const validateRoomCodeAndUserName = (roomCode: string, userName: string): string => {
-  if (!roomCode || !userName) return 'Missing required query params: roomCode, userName'
+const validateRoomCodeAndUserName = (
+  roomCode: string,
+  userName: string
+): string => {
+  if (!roomCode || !userName)
+    return 'Missing required query params: roomCode, userName'
   if (roomCode.length > 16) return 'roomCode is too long'
   if (userName.length > 64) return 'userName is too long'
   return ''
@@ -45,16 +51,16 @@ export async function handleImdbImportRoutes(
       const userName = url.searchParams.get('userName')?.trim() || ''
       const validationError = validateRoomCodeAndUserName(roomCode, userName)
       if (validationError) {
-        return new Response(
-          JSON.stringify({ error: validationError }),
-          { status: 400, headers: makeHeaders(req, 'application/json') }
-        )
+        return new Response(JSON.stringify({ error: validationError }), {
+          status: 400,
+          headers: makeHeaders(req, 'application/json'),
+        })
       }
       const history = getImdbImportHistory(roomCode, userName)
-      return new Response(
-        JSON.stringify({ history }),
-        { status: 200, headers: makeHeaders(req, 'application/json') }
-      )
+      return new Response(JSON.stringify({ history }), {
+        status: 200,
+        headers: makeHeaders(req, 'application/json'),
+      })
     } catch (err) {
       log.error(`IMDb history fetch failed: ${err?.message || err}`)
       return new Response(
@@ -69,16 +75,18 @@ export async function handleImdbImportRoutes(
       const requestIp = getClientIp(req)
       if (!apiRateLimiter.check(requestIp)) {
         return new Response(
-          JSON.stringify({ error: 'Too many import requests. Please wait and retry.' }),
+          JSON.stringify({
+            error: 'Too many import requests. Please wait and retry.',
+          }),
           { status: 429, headers: makeHeaders(req, 'application/json') }
         )
       }
 
       if (bodyTooLarge(req, maxBodySize)) {
-        return new Response(
-          JSON.stringify({ error: 'Payload too large' }),
-          { status: 413, headers: makeHeaders(req, 'application/json') }
-        )
+        return new Response(JSON.stringify({ error: 'Payload too large' }), {
+          status: 413,
+          headers: makeHeaders(req, 'application/json'),
+        })
       }
 
       const TMDB_KEY = getTmdbApiKey()
@@ -94,13 +102,17 @@ export async function handleImdbImportRoutes(
       const validationError = validateRoomCodeAndUserName(roomCode, userName)
       if (!csvContent || validationError) {
         return new Response(
-          JSON.stringify({ error: validationError || 'Missing required field: csvContent' }),
+          JSON.stringify({
+            error: validationError || 'Missing required field: csvContent',
+          }),
           { status: 400, headers: makeHeaders(req, 'application/json') }
         )
       }
 
       log.info(
-        `IMDb CSV import requested by ${sanitizeForLog(userName)} in room ${sanitizeForLog(roomCode, 16)}`
+        `IMDb CSV import requested by ${sanitizeForLog(
+          userName
+        )} in room ${sanitizeForLog(roomCode, 16)}`
       )
 
       const rows = parseImdbCsv(csvContent)
@@ -114,21 +126,37 @@ export async function handleImdbImportRoutes(
       )
 
       if (rows.length === 0) {
-        finalizeImdbImportHistory(roomCode, userName, importHistoryId, 'successful')
-        return new Response(
-          JSON.stringify({ status: 'completed', total: 0 }),
-          { status: 200, headers: makeHeaders(req, 'application/json') }
+        finalizeImdbImportHistory(
+          roomCode,
+          userName,
+          importHistoryId,
+          'successful'
         )
+        return new Response(JSON.stringify({ status: 'completed', total: 0 }), {
+          status: 200,
+          headers: makeHeaders(req, 'application/json'),
+        })
       }
 
-      const imdbRows = rows.map(r => ({ imdbId: r.imdbId, title: r.title, year: r.year }))
+      const imdbRows = rows.map(r => ({
+        imdbId: r.imdbId,
+        title: r.title,
+        year: r.year,
+      }))
 
-      processImdbImportBackground({ roomCode, userName, imdbRows, importHistoryId }).catch(err => {
+      processImdbImportBackground({
+        roomCode,
+        userName,
+        imdbRows,
+        importHistoryId,
+      }).catch(err => {
         finalizeImdbImportHistory(roomCode, userName, importHistoryId, 'failed')
         log.error(`Background IMDb import failed: ${err?.message || err}`)
       })
 
-      log.info(`IMDb CSV import started in background: ${rows.length} movies to process`)
+      log.info(
+        `IMDb CSV import started in background: ${rows.length} movies to process`
+      )
       return new Response(
         JSON.stringify({ status: 'started', total: rows.length }),
         { status: 202, headers: makeHeaders(req, 'application/json') }
@@ -136,7 +164,10 @@ export async function handleImdbImportRoutes(
     } catch (err) {
       log.error(`IMDb import failed: ${err?.message || err}`)
       return new Response(
-        JSON.stringify({ error: 'IMDb import failed', detail: 'An internal error occurred.' }),
+        JSON.stringify({
+          error: 'IMDb import failed',
+          detail: 'An internal error occurred.',
+        }),
         { status: 500, headers: makeHeaders(req, 'application/json') }
       )
     }
@@ -144,7 +175,10 @@ export async function handleImdbImportRoutes(
 
   if (path === '/api/imdb-import-url' && req.method === 'POST') {
     return new Response(
-      JSON.stringify({ error: 'IMDb URL import is temporarily disabled. Please use CSV import.' }),
+      JSON.stringify({
+        error:
+          'IMDb URL import is temporarily disabled. Please use CSV import.',
+      }),
       { status: 410, headers: makeHeaders(req, 'application/json') }
     )
   }

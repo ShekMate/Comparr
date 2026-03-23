@@ -98,9 +98,10 @@ const DEFAULTS: Partial<Settings> = {
 const SETTINGS_FILE = `${getDataDir()}/settings.json`
 
 let settingsCache: Settings = SETTINGS_KEYS.reduce((acc, key) => {
-  acc[key] = key === 'PORT'
-    ? (Deno.env.get('PORT') ?? DEFAULTS['PORT'] ?? '8000').trim()
-    : (DEFAULTS[key] ?? '').trim()
+  acc[key] =
+    key === 'PORT'
+      ? (Deno.env.get('PORT') ?? DEFAULTS['PORT'] ?? '8000').trim()
+      : (DEFAULTS[key] ?? '').trim()
   return acc
 }, {} as Settings)
 
@@ -182,7 +183,10 @@ export const getSettings = (): Settings => ({ ...settingsCache })
 
 export const getSetting = (key: SettingsKey): string => settingsCache[key] ?? ''
 
-const PASSWORD_KEYS = new Set<SettingsKey>(['ACCESS_PASSWORD', 'ADMIN_PASSWORD'])
+const PASSWORD_KEYS = new Set<SettingsKey>([
+  'ACCESS_PASSWORD',
+  'ADMIN_PASSWORD',
+])
 
 export const updateSettings = async (
   updates: Partial<Settings>

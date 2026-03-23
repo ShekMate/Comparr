@@ -2,11 +2,12 @@
 import { getEmbyApiKey, getEmbyUrl } from '../../core/config.ts'
 import { createMediaServerCache } from '../shared/media-server-cache.ts'
 
-const { buildCache, initCache, isMovieIn, getAllMovies } = createMediaServerCache(
-  'Emby',
-  getEmbyUrl,
-  getEmbyApiKey
-)
+const {
+  buildCache,
+  initCache,
+  isMovieIn,
+  getAllMovies,
+} = createMediaServerCache('Emby', getEmbyUrl, getEmbyApiKey)
 
 export const buildEmbyCache = buildCache
 export const initEmbyCache = initCache
