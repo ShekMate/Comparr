@@ -4248,7 +4248,17 @@ async function login(api) {
       setActiveRoomCode(code)
       syncRoomCodeInputs()
     } catch (err) {
-      setRoomCodeError(err.message)
+      // Server unavailable — generate a code client-side as a fallback
+      const map = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789'
+      let fallbackCode = ''
+      for (let i = 0; i < 4; i++) {
+        const val = crypto.getRandomValues(new Uint32Array(1))[0]
+        fallbackCode += map[val % map.length]
+      }
+      setRoomMode('create', selectedMode)
+      setActiveRoomCode(fallbackCode)
+      syncRoomCodeInputs()
+      try { localStorage.setItem('roomCode', fallbackCode) } catch (_) {}
     }
   })
 
