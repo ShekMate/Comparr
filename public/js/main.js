@@ -1181,6 +1181,16 @@ function getAdminHeaders() {
 
 function setAdminPasswordForSession(value) {
   adminPassword = String(value || '').trim()
+  syncAdminPasswordFieldFromSession()
+}
+
+function syncAdminPasswordFieldFromSession() {
+  const adminPasswordInput = document.getElementById('setting-admin-password')
+  if (!adminPasswordInput) return
+
+  // Mirror the in-memory admin session password into the Security tab so users
+  // don't see a blank field after successfully authenticating via prompt.
+  adminPasswordInput.value = adminPassword
 }
 
 async function fetchSettingsAccess() {
@@ -2344,7 +2354,19 @@ async function hydrateSettingsForm() {
           option.selected = selectedSet.has(option.value)
         })
       } else {
-        el.value = value
+        // ADMIN_PASSWORD is intentionally redacted by the server; preserve the
+        // in-memory authenticated value so admin users don't get stuck in a
+        // re-prompt loop while switching admin sub-tabs (e.g., Reset).
+        if (
+          key === 'ADMIN_PASSWORD' &&
+          hasAdminSettingsAccess &&
+          !String(value).trim() &&
+          adminPassword
+        ) {
+          el.value = adminPassword
+        } else {
+          el.value = value
+        }
       }
     })
 
