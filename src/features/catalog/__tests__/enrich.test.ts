@@ -3,15 +3,15 @@ import {
   assertEquals,
   assertExists,
   mockEnv,
-} from '../../../__tests__/utils/test-helpers.ts'
+} from '../../../testdata/test-helpers.ts'
 import {
   mockOMDbMovie,
   mockOMDbNotFound,
-} from '../../../__tests__/mocks/omdb-mocks.ts'
+} from '../../../testdata/omdb-mocks.ts'
 import {
   mockTMDbMovieDetails,
   mockTMDbSearchResults,
-} from '../../../__tests__/mocks/tmdb-mocks.ts'
+} from '../../../testdata/tmdb-mocks.ts'
 
 // Setup environment variables for tests
 const cleanup = mockEnv({

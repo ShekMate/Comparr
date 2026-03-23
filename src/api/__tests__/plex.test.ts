@@ -6,11 +6,11 @@ import {
   createMockFetch,
   createMockResponse,
   mockEnv,
-} from '../../__tests__/utils/test-helpers.ts'
+} from '../../testdata/test-helpers.ts'
 import {
   mockPlexSections,
   mockPlexMovies,
-} from '../../__tests__/mocks/plex-mocks.ts'
+} from '../../testdata/plex-mocks.ts'
 
 // Mock the global fetch before importing the module
 const originalFetch = globalThis.fetch

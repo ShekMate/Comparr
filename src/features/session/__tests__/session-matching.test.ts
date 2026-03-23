@@ -4,7 +4,7 @@ import {
   assertExists,
   MockWebSocket,
   waitFor,
-} from '../../../__tests__/utils/test-helpers.ts'
+} from '../../../testdata/test-helpers.ts'
 
 // Mock movie data for testing
 const mockMovie1 = {
