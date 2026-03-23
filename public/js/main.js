@@ -4,6 +4,7 @@
 import { ComparrAPI } from './ComparrAPI.js'
 import CardView from './CardView.js?v=4'
 import { MatchesView } from './MatchesView.js'
+import { buildRatingHtml, formatRuntime } from './features/movie-metadata.js'
 
 // Global API reference so functions outside main() can access it
 let api
@@ -14,7 +15,9 @@ let csrfToken = ''
 let csrfTokenPromise = null
 
 const isStateChangingMethod = method =>
-  ['POST', 'PUT', 'PATCH', 'DELETE'].includes(String(method || 'GET').toUpperCase())
+  ['POST', 'PUT', 'PATCH', 'DELETE'].includes(
+    String(method || 'GET').toUpperCase()
+  )
 
 const getCsrfToken = async () => {
   if (csrfToken) return csrfToken
@@ -40,12 +43,20 @@ window.fetch = async (input, init = {}) => {
         : new URL(input.url, window.location.origin)
     const isSameOrigin = requestUrl.origin === window.location.origin
     const isApiPath = requestUrl.pathname.includes('/api/')
-    if (!isSameOrigin || !isApiPath || requestUrl.pathname === '/api/csrf-token') {
+    if (
+      !isSameOrigin ||
+      !isApiPath ||
+      requestUrl.pathname === '/api/csrf-token'
+    ) {
       return nativeFetch(input, init)
     }
 
-    const headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined))
-    const method = String(init.method || (input instanceof Request ? input.method : 'GET'))
+    const headers = new Headers(
+      init.headers || (input instanceof Request ? input.headers : undefined)
+    )
+    const method = String(
+      init.method || (input instanceof Request ? input.method : 'GET')
+    )
     if (isStateChangingMethod(method) && !headers.has('x-csrf-token')) {
       const token = await getCsrfToken()
       if (token) {
@@ -128,103 +139,6 @@ function preloadPosterForMovie(movie) {
   img.decoding = 'async'
   img.src = url
   img.onload = () => preloadedPosterUrls.add(url)
-}
-
-// Helper function to get genre names from IDs
-function getGenreNames(genreIds) {
-  const genreMap = {
-    28: 'Action',
-    12: 'Adventure',
-    16: 'Animation',
-    35: 'Comedy',
-    80: 'Crime',
-    99: 'Documentary',
-    18: 'Drama',
-    10751: 'Family',
-    14: 'Fantasy',
-    36: 'History',
-    27: 'Horror',
-    10402: 'Music',
-    9648: 'Mystery',
-    10749: 'Romance',
-    878: 'Sci-Fi',
-    10770: 'TV Movie',
-    53: 'Thriller',
-    10752: 'War',
-    37: 'Western',
-  }
-  return (genreIds || []).map(id => genreMap[id]).filter(Boolean)
-}
-
-// Helper function to format runtime
-function formatRuntime(minutes) {
-  if (!minutes) return null
-  const hours = Math.floor(minutes / 60)
-  const mins = minutes % 60
-  if (hours > 0) {
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
-  }
-  return `${mins}m`
-}
-
-function parseNumericRating(value) {
-  if (value === null || value === undefined || value === '') return null
-  const parsed = Number.parseFloat(String(value).replace(/[^\d.]/g, ''))
-  return Number.isFinite(parsed) ? parsed : null
-}
-
-function buildRatingHtml(movie, basePath) {
-  const comparr = parseNumericRating(movie?.rating_comparr)
-  const imdb = parseNumericRating(movie?.rating_imdb)
-  const tmdb = parseNumericRating(movie?.rating_tmdb)
-
-  const parts = []
-  if (comparr != null) {
-    parts.push(
-      `<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> <span class="rating-value">${comparr.toFixed(
-        1
-      )}</span>`
-    )
-  }
-  if (imdb != null) {
-    parts.push(
-      `<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> <span class="rating-value">${imdb.toFixed(
-        1
-      )}</span>`
-    )
-  }
-  if (tmdb != null) {
-    parts.push(
-      `<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> <span class="rating-value">${tmdb.toFixed(
-        1
-      )}</span>`
-    )
-  }
-
-  if (parts.length > 0) {
-    return parts.join(' <span class="rating-separator">&bull;</span> ')
-  }
-
-  const raw = String(movie?.rating || '').trim()
-  if (!raw) return ''
-  if (raw.includes('<img')) return raw
-
-  const parsedFromText = {
-    comparr: parseNumericRating(
-      raw.match(/comparr\s*[:\-]?\s*([\d.]+)/i)?.[1] || null
-    ),
-    imdb: parseNumericRating(raw.match(/imdb\s*[:\-]?\s*([\d.]+)/i)?.[1]),
-    tmdb: parseNumericRating(raw.match(/tmdb\s*[:\-]?\s*([\d.]+)/i)?.[1]),
-  }
-
-  return buildRatingHtml(
-    {
-      rating_comparr: parsedFromText.comparr,
-      rating_imdb: parsedFromText.imdb,
-      rating_tmdb: parsedFromText.tmdb,
-    },
-    basePath
-  )
 }
 
 // ===== END OF HELPER FUNCTIONS =====
@@ -1236,7 +1150,10 @@ async function ensureAdminAccess(forcePrompt = false) {
     return false
   }
 
-  console.debug('[admin-auth] ensureAdminAccess: password entered, len=', entered.trim().length)
+  console.debug(
+    '[admin-auth] ensureAdminAccess: password entered, len=',
+    entered.trim().length
+  )
   setAdminPasswordForSession(entered)
   return true
 }
@@ -1436,7 +1353,13 @@ function initializeAdminSettingsTabs() {
 
 // ─── Reset Tab Logic ──────────────────────────────────────────
 
-function openResetModal({ title, body, confirmLabel, confirmClass, onConfirm }) {
+function openResetModal({
+  title,
+  body,
+  confirmLabel,
+  confirmClass,
+  onConfirm,
+}) {
   const overlay = document.getElementById('reset-modal-overlay')
   const titleEl = document.getElementById('reset-modal-title')
   const bodyEl = document.getElementById('reset-modal-body')
@@ -1450,8 +1373,12 @@ function openResetModal({ title, body, confirmLabel, confirmClass, onConfirm }) 
   titleEl.textContent = title
   bodyEl.textContent = body
   confirmBtn.textContent = confirmLabel
-  confirmBtn.className = `reset-modal__confirm${confirmClass ? ' ' + confirmClass : ''}`
-  iconEl.className = `reset-modal__icon${confirmClass?.includes('warn') ? ' reset-modal__icon--warn' : ''}`
+  confirmBtn.className = `reset-modal__confirm${
+    confirmClass ? ' ' + confirmClass : ''
+  }`
+  iconEl.className = `reset-modal__icon${
+    confirmClass?.includes('warn') ? ' reset-modal__icon--warn' : ''
+  }`
   input.value = ''
   confirmBtn.disabled = true
   overlay.hidden = false
@@ -1478,7 +1405,9 @@ function openResetModal({ title, body, confirmLabel, confirmClass, onConfirm }) 
   }
 
   const onCancel = () => cleanup()
-  const onOverlayClick = (e) => { if (e.target === overlay) cleanup() }
+  const onOverlayClick = e => {
+    if (e.target === overlay) cleanup()
+  }
 
   input.addEventListener('input', onInput)
   confirmBtn.addEventListener('click', onConfirmClick)
@@ -1489,7 +1418,8 @@ function openResetModal({ title, body, confirmLabel, confirmClass, onConfirm }) 
 async function handleResetSettings() {
   openResetModal({
     title: 'Reset All Settings?',
-    body: 'This will clear ALL settings and integrations. Your browser will refresh to the Setup Wizard. User names and room codes will be preserved. Type "YES" and click Reset to confirm.',
+    body:
+      'This will clear ALL settings and integrations. Your browser will refresh to the Setup Wizard. User names and room codes will be preserved. Type "YES" and click Reset to confirm.',
     confirmLabel: 'Reset',
     confirmClass: '',
     onConfirm: async () => {
@@ -1522,7 +1452,8 @@ let userHistoryData = []
 async function loadUserHistory() {
   const listEl = document.getElementById('user-history-list')
   if (!listEl) return
-  listEl.innerHTML = '<div class="user-history-empty"><i class="fas fa-circle-notch fa-spin"></i> Loading…</div>'
+  listEl.innerHTML =
+    '<div class="user-history-empty"><i class="fas fa-circle-notch fa-spin"></i> Loading…</div>'
   const base = document.body.dataset.basePath || ''
 
   const doFetch = async () => {
@@ -1541,7 +1472,12 @@ async function loadUserHistory() {
     // missing or stale — not that we need to prompt from scratch.  Show a
     // clear error rather than wiping the session and re-prompting unexpectedly.
     if (res.status === 403) {
-      console.warn('[admin-auth] loadUserHistory got 403 — sessionPasswordLen=', adminPassword.length, 'hasAdminSettingsAccess=', hasAdminSettingsAccess)
+      console.warn(
+        '[admin-auth] loadUserHistory got 403 — sessionPasswordLen=',
+        adminPassword.length,
+        'hasAdminSettingsAccess=',
+        hasAdminSettingsAccess
+      )
       listEl.innerHTML = `<div class="user-history-empty"><i class="fas fa-exclamation-circle"></i> Admin access required. Please close and re-open Admin Settings.</div>`
       return
     }
@@ -1550,13 +1486,16 @@ async function loadUserHistory() {
     userHistoryData = data.rooms || []
     renderUserHistory(userHistoryData, listEl)
   } catch (err) {
-    listEl.innerHTML = `<div class="user-history-empty"><i class="fas fa-exclamation-circle"></i> ${err?.message || 'Failed to load history'}</div>`
+    listEl.innerHTML = `<div class="user-history-empty"><i class="fas fa-exclamation-circle"></i> ${
+      err?.message || 'Failed to load history'
+    }</div>`
   }
 }
 
 function renderUserHistory(rooms, listEl) {
   if (!rooms.length) {
-    listEl.innerHTML = '<div class="user-history-empty"><i class="fas fa-check-circle"></i> No user history found.</div>'
+    listEl.innerHTML =
+      '<div class="user-history-empty"><i class="fas fa-check-circle"></i> No user history found.</div>'
     return
   }
   listEl.innerHTML = ''
@@ -1579,7 +1518,9 @@ function renderUserHistory(rooms, listEl) {
 
     const roomCount = document.createElement('span')
     roomCount.className = 'user-history-room-count'
-    roomCount.textContent = `${room.users.length} user${room.users.length !== 1 ? 's' : ''}`
+    roomCount.textContent = `${room.users.length} user${
+      room.users.length !== 1 ? 's' : ''
+    }`
 
     const toggleIcon = document.createElement('i')
     toggleIcon.className = 'fas fa-chevron-down user-history-room-toggle'
@@ -1611,7 +1552,7 @@ function renderUserHistory(rooms, listEl) {
     })
 
     // Toggle expand/collapse
-    header.addEventListener('click', (e) => {
+    header.addEventListener('click', e => {
       if (e.target === roomCb) return
       roomEl.classList.toggle('is-expanded')
     })
@@ -1625,7 +1566,9 @@ function renderUserHistory(rooms, listEl) {
 
     // User checkbox affects room checkbox state
     usersEl.addEventListener('change', () => {
-      const userCbs = Array.from(usersEl.querySelectorAll('.user-history-user-checkbox'))
+      const userCbs = Array.from(
+        usersEl.querySelectorAll('.user-history-user-checkbox')
+      )
       const allChecked = userCbs.every(cb => cb.checked)
       const anyChecked = userCbs.some(cb => cb.checked)
       roomCb.checked = allChecked
@@ -1642,9 +1585,12 @@ function getSelectedHistory() {
   const listEl = document.getElementById('user-history-list')
   if (!listEl) return null
 
-  const roomCheckboxes = listEl.querySelectorAll('.user-history-room-checkbox:checked')
+  const roomCheckboxes = listEl.querySelectorAll(
+    '.user-history-room-checkbox:checked'
+  )
   // If all rooms fully selected, use clearAll
-  const totalRooms = listEl.querySelectorAll('.user-history-room-checkbox').length
+  const totalRooms = listEl.querySelectorAll('.user-history-room-checkbox')
+    .length
   if (roomCheckboxes.length === totalRooms && totalRooms > 0) {
     // Verify all users are also checked
     const allUserCbs = listEl.querySelectorAll('.user-history-user-checkbox')
@@ -1656,8 +1602,12 @@ function getSelectedHistory() {
   listEl.querySelectorAll('.user-history-room').forEach(roomEl => {
     const roomCode = roomEl.dataset.roomCode
     const roomCb = roomEl.querySelector('.user-history-room-checkbox')
-    const userCbs = Array.from(roomEl.querySelectorAll('.user-history-user-checkbox'))
-    const checkedUsers = userCbs.filter(cb => cb.checked).map(cb => cb.dataset.user)
+    const userCbs = Array.from(
+      roomEl.querySelectorAll('.user-history-user-checkbox')
+    )
+    const checkedUsers = userCbs
+      .filter(cb => cb.checked)
+      .map(cb => cb.dataset.user)
     if (roomCb.checked || checkedUsers.length > 0) {
       const entry = { roomCode }
       if (!roomCb.checked || roomCb.indeterminate) {
@@ -1722,19 +1672,27 @@ function initializeResetTab() {
   }
   if (selectAll && !selectAll.dataset.boundSelect) {
     selectAll.addEventListener('click', () => {
-      document.querySelectorAll('.user-history-room-checkbox, .user-history-user-checkbox').forEach(cb => {
-        cb.checked = true
-        cb.indeterminate = false
-      })
+      document
+        .querySelectorAll(
+          '.user-history-room-checkbox, .user-history-user-checkbox'
+        )
+        .forEach(cb => {
+          cb.checked = true
+          cb.indeterminate = false
+        })
     })
     selectAll.dataset.boundSelect = 'true'
   }
   if (deselectAll && !deselectAll.dataset.boundDeselect) {
     deselectAll.addEventListener('click', () => {
-      document.querySelectorAll('.user-history-room-checkbox, .user-history-user-checkbox').forEach(cb => {
-        cb.checked = false
-        cb.indeterminate = false
-      })
+      document
+        .querySelectorAll(
+          '.user-history-room-checkbox, .user-history-user-checkbox'
+        )
+        .forEach(cb => {
+          cb.checked = false
+          cb.indeterminate = false
+        })
     })
     deselectAll.dataset.boundDeselect = 'true'
   }
@@ -2321,12 +2279,25 @@ async function hydrateSettingsForm({ _retryCount = 0 } = {}) {
     const data = await res.json()
     const settings = data?.settings || {}
 
-    console.debug('[admin-auth] hydrateSettingsForm: isAdmin=', data?.isAdmin, 'hasAdminSettingsAccess=', hasAdminSettingsAccess, 'retryCount=', _retryCount, 'sessionPasswordLen=', adminPassword.length)
+    console.debug(
+      '[admin-auth] hydrateSettingsForm: isAdmin=',
+      data?.isAdmin,
+      'hasAdminSettingsAccess=',
+      hasAdminSettingsAccess,
+      'retryCount=',
+      _retryCount,
+      'sessionPasswordLen=',
+      adminPassword.length
+    )
 
     // If the server says admin auth failed but the frontend believes it has
     // admin access, the cached password is wrong or missing.  Re-prompt once
     // via ensureAdminAccess so the user can correct it.
-    if (data?.isAdmin === false && hasAdminSettingsAccess && _retryCount < MAX_RETRIES) {
+    if (
+      data?.isAdmin === false &&
+      hasAdminSettingsAccess &&
+      _retryCount < MAX_RETRIES
+    ) {
       // Refresh access state — if no admin password is configured the server
       // will return isAdmin:false for non-local requests even without a header,
       // and there is nothing the user can enter to fix it.
@@ -2398,7 +2369,8 @@ async function hydrateSettingsForm({ _retryCount = 0 } = {}) {
       if (settings.EMBY_URL && settings.EMBY_API_KEY) autoSources.push('emby')
       if (settings.JELLYFIN_URL && settings.JELLYFIN_API_KEY)
         autoSources.push('jellyfin')
-      if (autoSources.length > 0) personalMediaSources = JSON.stringify(autoSources)
+      if (autoSources.length > 0)
+        personalMediaSources = JSON.stringify(autoSources)
     }
     hydratePersonalMediaSourcesSetting(personalMediaSources)
     setAdminSelectedRequestServiceType(
@@ -2841,8 +2813,7 @@ function createFirstRunGuideModal() {
         Boolean(existingAccessPassword) || Boolean(window.ACCESS_PASSWORD_SET)
       const adminPasswordAlreadySet = Boolean(window.ADMIN_PASSWORD_SET)
       // If the session already authenticated with admin password, use it
-      const sessionAdminPassword =
-        getAdminHeaders()['x-admin-password'] || ''
+      const sessionAdminPassword = getAdminHeaders()['x-admin-password'] || ''
       const needsAdminAuth = adminPasswordAlreadySet && !sessionAdminPassword
 
       // Access password section: show "configured" badge + Change toggle if
@@ -2921,7 +2892,9 @@ function createFirstRunGuideModal() {
             ?.value?.trim() || ''
         const hasTypedPassword = Boolean(accessPassword || adminPassword)
         const hasPassword =
-          hasTypedPassword || accessPasswordAlreadySet || adminPasswordAlreadySet
+          hasTypedPassword ||
+          accessPasswordAlreadySet ||
+          adminPasswordAlreadySet
         // Block Next if the user is making changes but hasn't provided the
         // current admin password needed to authenticate the save
         const needsCurrentAdminToSave =
@@ -3151,7 +3124,9 @@ function createFirstRunGuideModal() {
     const current = history[history.length - 1] || { type: 'security' }
 
     if (current.type === 'security') {
-      const accessPasswordInput = body.querySelector('#first-run-access-password')
+      const accessPasswordInput = body.querySelector(
+        '#first-run-access-password'
+      )
       const adminPasswordInput = body.querySelector('#first-run-admin-password')
       const currentAdminPasswordInput = body.querySelector(
         '#first-run-current-admin-password'
@@ -4258,7 +4233,9 @@ async function login(api) {
       setRoomMode('create', selectedMode)
       setActiveRoomCode(fallbackCode)
       syncRoomCodeInputs()
-      try { localStorage.setItem('roomCode', fallbackCode) } catch (_) {}
+      try {
+        localStorage.setItem('roomCode', fallbackCode)
+      } catch (_) {}
     }
   })
 
@@ -4526,7 +4503,11 @@ async function appendRatedRow(
             : `https://image.tmdb.org/t/p/w92${provider.logo_path}`
           : null
         return `<span class="provider-pill">
-          ${logoUrl ? `<img src="${logoUrl}" alt="${provider.name}" class="provider-pill-logo">` : ''}
+          ${
+            logoUrl
+              ? `<img src="${logoUrl}" alt="${provider.name}" class="provider-pill-logo">`
+              : ''
+          }
           <span class="provider-pill-name">${provider.name}</span>
         </span>`
       })
@@ -4611,9 +4592,13 @@ async function appendRatedRow(
       <div class="watch-card-collapsed">
         <div class="watch-card-header-compact">
           <div class="watch-card-title-compact">
-            ${movie.title} <span class="watch-card-year">(${movie.year || 'N/A'})</span>
+            ${movie.title} <span class="watch-card-year">(${
+      movie.year || 'N/A'
+    })</span>
           </div>
-          <button class="list-action-btn refresh-movie-btn header-refresh-btn" data-movie-id="${tmdbId || movieId || ''}" title="Refresh ratings and status">
+          <button class="list-action-btn refresh-movie-btn header-refresh-btn" data-movie-id="${
+            tmdbId || movieId || ''
+          }" title="Refresh ratings and status">
             <i class="fas fa-sync-alt"></i>
           </button>
           <div class="expand-icon"><i class="fas fa-chevron-down"></i></div>
@@ -4629,20 +4614,30 @@ async function appendRatedRow(
           })()}" alt="${movie.title}">
         </div>
         <div class="watch-card-content">
-          ${movie.summary ? `<p class="watch-card-summary">${movie.summary}</p>` : ''}
+          ${
+            movie.summary
+              ? `<p class="watch-card-summary">${movie.summary}</p>`
+              : ''
+          }
           ${metadataBadgesHTML}
           ${(() => {
             const ratingHtml = buildRatingHtml(movie, basePath)
-            return ratingHtml ? `<div class="watch-card-ratings">${ratingHtml}</div>` : ''
+            return ratingHtml
+              ? `<div class="watch-card-ratings">${ratingHtml}</div>`
+              : ''
           })()}
           ${whereToWatchPillsHtml}
 
           <!-- Move to other lists buttons -->
           <div class="list-actions">
-            <button class="list-action-btn move-to-seen" data-guid="${movie.guid}" title="Mark as Seen">
+            <button class="list-action-btn move-to-seen" data-guid="${
+              movie.guid
+            }" title="Mark as Seen">
               <i class="fas fa-eye"></i>
             </button>
-            <button class="list-action-btn move-to-pass" data-guid="${movie.guid}" title="Move to Pass">
+            <button class="list-action-btn move-to-pass" data-guid="${
+              movie.guid
+            }" title="Move to Pass">
               <i class="fas fa-thumbs-down"></i>
             </button>
           </div>
@@ -4650,9 +4645,11 @@ async function appendRatedRow(
       </div>
     `
 
-    card.querySelector('.watch-card-collapsed').addEventListener('click', () => {
-      card.classList.toggle('expanded')
-    })
+    card
+      .querySelector('.watch-card-collapsed')
+      .addEventListener('click', () => {
+        card.classList.toggle('expanded')
+      })
 
     likesList?.appendChild(card)
 
@@ -4735,12 +4732,17 @@ async function appendRatedRow(
 
           // Update library status / Add pill
           const existingAddBtn = card.querySelector('.add-to-plex-btn')
-          const inLibrary = data.inLibrary || data.inPlex || data.inEmby || data.inJellyfin
+          const inLibrary =
+            data.inLibrary || data.inPlex || data.inEmby || data.inJellyfin
 
           if (inLibrary && existingAddBtn) {
             // Movie is now in library — remove the add pill
             existingAddBtn.remove()
-          } else if (!inLibrary && !existingAddBtn && requestServiceConfigured) {
+          } else if (
+            !inLibrary &&
+            !existingAddBtn &&
+            requestServiceConfigured
+          ) {
             // Add pill wasn't there before but now we have a tmdbId — inject it
             const finalTmdbId = parseInt(card.dataset.tmdbId)
             if (finalTmdbId) {
@@ -4822,11 +4824,15 @@ async function appendRatedRow(
             .join('')
 
           if (whereToWatchContainer) {
-            const list = whereToWatchContainer.querySelector('.provider-pill-list')
+            const list = whereToWatchContainer.querySelector(
+              '.provider-pill-list'
+            )
             const currentAddBtn = card.querySelector('.add-to-plex-btn')
             if (list) {
               // Re-render provider pills, preserving add pill at front
-              list.innerHTML = (currentAddBtn ? currentAddBtn.outerHTML : '') + refreshedProviderPills
+              list.innerHTML =
+                (currentAddBtn ? currentAddBtn.outerHTML : '') +
+                refreshedProviderPills
               // Re-attach click handler to add pill if present
               const reattachedBtn = list.querySelector('.add-to-plex-btn')
               if (reattachedBtn) {
@@ -4836,7 +4842,11 @@ async function appendRatedRow(
                 )
               }
             }
-            whereToWatchContainer.style.display = refreshedProviders.length || card.querySelector('.add-to-plex-btn') ? '' : 'none'
+            whereToWatchContainer.style.display =
+              refreshedProviders.length ||
+              card.querySelector('.add-to-plex-btn')
+                ? ''
+                : 'none'
           }
 
           // Show success feedback - just change icon
@@ -4982,9 +4992,11 @@ async function appendRatedRow(
     `
 
     // Add event listeners for pass list actions
-    card.querySelector('.watch-card-collapsed').addEventListener('click', () => {
-      card.classList.toggle('expanded')
-    })
+    card
+      .querySelector('.watch-card-collapsed')
+      .addEventListener('click', () => {
+        card.classList.toggle('expanded')
+      })
 
     const moveToWatchBtn = card.querySelector('.move-to-watch')
     const moveToSeenBtn = card.querySelector('.move-to-seen')
@@ -5111,9 +5123,11 @@ async function appendRatedRow(
     `
 
     // Add event listeners for seen list actions
-    card.querySelector('.watch-card-collapsed').addEventListener('click', () => {
-      card.classList.toggle('expanded')
-    })
+    card
+      .querySelector('.watch-card-collapsed')
+      .addEventListener('click', () => {
+        card.classList.toggle('expanded')
+      })
 
     const moveToWatchBtn = card.querySelector('.move-to-watch')
     const moveToPassBtn = card.querySelector('.move-to-pass')
@@ -5561,7 +5575,8 @@ async function refreshWatchListStatus() {
           const requestData = await requestResponse.json()
 
           if (requestData.pending || requestData.processing) {
-            currentAddBtn.innerHTML = '<i class="fas fa-check"></i><span class="provider-pill-name"> Requested</span>'
+            currentAddBtn.innerHTML =
+              '<i class="fas fa-check"></i><span class="provider-pill-name"> Requested</span>'
             currentAddBtn.classList.add('requested')
             currentAddBtn.disabled = true
           }
