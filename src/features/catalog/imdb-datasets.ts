@@ -301,7 +301,7 @@ function existsSync(path: string): boolean {
  */
 async function ensureDataDir(): Promise<void> {
   try {
-    await Deno.mkdir(DATA_DIR, { recursive: true })
+    await Deno.mkdir(getDataDir(), { recursive: true })
   } catch {
     // Ignore if already exists
   }

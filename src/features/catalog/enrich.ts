@@ -199,7 +199,7 @@ function schedulePersistEnrichmentCache() {
     persistRequested = false
     try {
       trimPersistentCacheIfNeeded()
-      await Deno.mkdir(ENRICH_DATA_DIR, { recursive: true })
+      await Deno.mkdir(getDataDir(), { recursive: true })
       const payload = Object.fromEntries(enrichmentCache.entries())
       const tmp = `${ENRICH_CACHE_FILE}.tmp`
       await Deno.writeTextFile(tmp, JSON.stringify(payload))
