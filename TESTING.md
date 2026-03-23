@@ -119,14 +119,14 @@ Coverage reports are generated in the `coverage/` directory.
 
 ### Coverage Goals
 
-| Module | Target Coverage | Current Status |
-|--------|----------------|----------------|
-| `src/features/session/` | 90% | ✅ High |
-| `src/features/catalog/` | 80% | ✅ High |
-| `src/api/` | 70% | ✅ High |
-| `public/js/ComparrAPI.js` | 70% | ✅ High |
-| `public/js/CardView.js` | 60% | ⚠️ Partial |
-| `public/js/main.js` | 50% | ⚠️ Partial |
+| Module | Target | Status | What's Tested |
+|--------|--------|--------|---------------|
+| `src/features/session/` | 90% | ✅ High | 2-user & N-user matching, pass/dislike/seen handling, user changing mind, `getExistingMatches` |
+| `src/features/catalog/` | 80% | ✅ High | OMDb+TMDb merging, fallback logic, rating aggregation (IMDb/RT/TMDb), genre extraction, streaming detection |
+| `src/api/` | 70% | ✅ High | Library fetching, auth errors (401), server errors (500/timeout), filtering, random selection |
+| `public/js/ComparrAPI.js` | 70% | ✅ High | WS connection, login flow, message handling (batch/match/error), like/dislike/seen, reconnection |
+| `public/js/CardView.js` | 60% | ⚠️ Partial | Swipe gestures, card animations, rating submission not yet covered |
+| `public/js/main.js` | 50% | ⚠️ Partial | Movie queue buffering, filter state, watch list operations not yet covered |
 
 ### Viewing Coverage
 
@@ -425,4 +425,4 @@ If tests fail intermittently:
 
 ---
 
-*Last Updated: 2025*
+*Last Updated: 2026*
