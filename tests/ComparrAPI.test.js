@@ -1,6 +1,6 @@
 // Tests for ComparrAPI WebSocket wrapper
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { ComparrAPI } from '../ComparrAPI.js'
+import { ComparrAPI } from '../public/js/ComparrAPI.js'
 
 // Mock location
 global.location = {
