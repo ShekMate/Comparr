@@ -9,7 +9,7 @@ globalThis.addEventListener('unhandledrejection', event => {
 
 import * as log from 'jsr:@std/log'
 import { clearAllMoviesCache, getServerId } from './api/plex.ts'
-import type { CompatRequest, CompatResponseInit } from './infra/http/compat-request.ts'
+import type { CompatRequest } from './infra/http/compat-request.ts'
 import {
   getHost,
   getLinkType,
@@ -19,33 +19,27 @@ import {
   getPlexToken,
   getPlexUrl,
   getPort,
-  getRootPath,
   getTmdbApiKey,
   getMaxBodySize,
   getAccessPassword,
 } from './core/config.ts'
+import { getDataDir } from './core/env.ts'
 import { getSettings, updateSettings, resetSettings } from './core/settings.ts'
-import { timingSafeEqual } from './core/security.ts'
+import { timingSafeEqual, verifyPassword } from './core/security.ts'
 import { getLinkTypeForRequest } from './core/i18n.ts'
 import {
   handleLogin,
   ensurePlexHydrationReady,
-  processImdbImportBackground,
-  recordImdbImportHistoryStart,
-  finalizeImdbImportHistory,
-  getImdbImportHistory,
   activeSessions,
   getAllRooms,
   clearAllRooms,
   clearRooms,
   clearUsersFromRoom,
 } from './features/session/session.ts'
-import { parseImdbCsv } from './features/session/imdb-import.ts'
 import { serveFile } from './infra/http/staticFileServer.ts'
 import {
   isLocalRequest,
   isValidHost,
-  isValidOrigin,
   isValidStateChangingOrigin,
 } from './infra/http/network-access.ts'
 import { handleSettingsRoutes } from './infra/http/routes/settings.ts'
@@ -54,16 +48,18 @@ import { handleConfigDebugRoute } from './infra/http/routes/config.ts'
 import { handleMatchesRoute } from './infra/http/routes/matches.ts'
 import { handleRequestServiceRoutes } from './infra/http/routes/request-service.ts'
 import { handleRoomRoutes } from './infra/http/routes/rooms.ts'
+import { handleRequestMovieRoute } from './infra/http/routes/request-movie.ts'
+import { handleMovieRefreshRoute } from './infra/http/routes/movie-refresh.ts'
+import { handleStreamingRoutes } from './infra/http/routes/streaming.ts'
+import { handleImdbImportRoutes } from './infra/http/routes/imdb-import.ts'
 import { WebSocketServer } from './infra/ws/websocketServer.ts'
-import { addSecurityHeaders } from './infra/http/security-headers.ts'
+import { makeHeaders } from './infra/http/security-headers.ts'
+import { appendAuditLog } from './infra/http/audit.ts'
 import { fetchWithTimeout } from './infra/http/fetch-with-timeout.ts'
-import { apiRateLimiter } from './infra/http/ip-rate-limiter.ts'
 import {
   initializeRadarrCache,
-  isMovieInRadarr,
   refreshRadarrCache,
 } from './api/radarr.ts'
-import { requestMovie } from './api/jellyseerr.ts'
 import {
   getCachedPosterPath,
   serveCachedPoster,
@@ -77,204 +73,13 @@ import {
 import { buildPlexCache } from './integrations/plex/cache.ts'
 import { buildEmbyCache } from './integrations/emby/cache.ts'
 import { buildJellyfinCache } from './integrations/jellyfin/cache.ts'
-import { tmdbFetch } from './api/tmdb.ts'
 
-// Helper: fetch & persist TMDb providers for a TMDb ID, returning the same shape your UI expects
-async function updateStreamingForTmdbId(tmdbId: number) {
-  const TMDB_KEY = getTmdbApiKey()
-  if (!TMDB_KEY || !tmdbId || Number.isNaN(tmdbId)) {
-    return {
-      ok: false,
-      status: 400,
-      body: { error: 'Missing TMDb API key or invalid ID' },
-    }
-  }
-
-  // Fetch fresh data from TMDb
-  const providerData = await tmdbFetch(
-    `/movie/${tmdbId}/watch/providers`,
-    TMDB_KEY
-  ).then(r => r.json())
-
-  const providers = providerData?.results?.US
-
-  // Import normalization function on demand
-  const { normalizeProviderName } = await import(
-    './infra/constants/streamingProvidersMapping.ts'
-  )
-
-  // Build result in your expected shape
-  const subscriptionMap = new Map<string, any>()
-  const freeMap = new Map<string, any>()
-
-  if (providers?.flatrate) {
-    for (const p of providers.flatrate) {
-      log.info(`🔍 DEBUG: Raw provider name from TMDb: "${p.provider_name}"`)
-      const normalizedName = normalizeProviderName(p.provider_name)
-      log.info(`🔍 DEBUG: Normalized to: "${normalizedName}"`)
-      if (!subscriptionMap.has(normalizedName)) {
-        subscriptionMap.set(normalizedName, {
-          id: p.provider_id,
-          name: normalizedName,
-          logo_path: p.logo_path || null,
-          type: 'subscription',
-        })
-      }
-    }
-  }
-
-  const freeCandidates = [...(providers?.free || []), ...(providers?.ads || [])]
-  for (const p of freeCandidates) {
-    const normalizedName = normalizeProviderName(p.provider_name)
-    if (!freeMap.has(normalizedName)) {
-      freeMap.set(normalizedName, {
-        id: p.provider_id,
-        name: normalizedName,
-        logo_path: p.logo_path || null,
-        type: 'free',
-      })
-    }
-  }
-
-  const allProviderMap = new Map<string, any>()
-  const providerGroups = [
-    ['subscription', providers?.flatrate || []],
-    ['free', providers?.free || []],
-    ['free', providers?.ads || []],
-    ['rent', providers?.rent || []],
-    ['buy', providers?.buy || []],
-  ] as const
-
-  for (const [type, group] of providerGroups) {
-    for (const p of group) {
-      const normalizedName = normalizeProviderName(p.provider_name)
-      if (!allProviderMap.has(normalizedName)) {
-        allProviderMap.set(normalizedName, {
-          id: p.provider_id,
-          name: normalizedName,
-          logo_path: p.logo_path || null,
-          type,
-        })
-      }
-    }
-  }
-
-  const result = {
-    streamingServices: {
-      subscription: Array.from(subscriptionMap.values()),
-      free: Array.from(freeMap.values()),
-    },
-    watchProviders: Array.from(allProviderMap.values()),
-    streamingLink: providers?.link || null,
-  }
-
-  // Persist to /data/session-state.json if present
-  try {
-    const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
-    const STATE_FILE = `${DATA_DIR}/session-state.json`
-    const stateText = await Deno.readTextFile(STATE_FILE)
-    const persistedState = JSON.parse(stateText)
-
-    let updatedCount = 0
-    if (persistedState?.movieIndex) {
-      for (const [guid, movie] of Object.entries(persistedState.movieIndex)) {
-        const movieTmdbId =
-          (movie as any).guid?.match(/tmdb:\/\/(\d+)/)?.[1] ||
-          (movie as any).streamingLink?.match(
-            /themoviedb\.org\/movie\/(\d+)/
-          )?.[1]
-
-        if (movieTmdbId === String(tmdbId)) {
-          persistedState.movieIndex[guid] = {
-            ...(movie as any),
-            streamingServices: result.streamingServices,
-            watchProviders: result.watchProviders,
-            streamingLink: result.streamingLink,
-          }
-          updatedCount++
-        }
-      }
-    }
-
-    if (updatedCount > 0) {
-      const tmp = `${STATE_FILE}.tmp.${Date.now()}`
-      await Deno.writeTextFile(tmp, JSON.stringify(persistedState, null, 2))
-      await Deno.rename(tmp, STATE_FILE)
-      log.info(
-        `✅ Updated ${updatedCount} persisted movie(s) with consolidated providers for TMDb ID ${tmdbId}`
-      )
-    }
-  } catch (persistErr) {
-    // Non-fatal: still return fresh data
-    log.error(`Failed to update persisted state: ${persistErr}`)
-  }
-
-  return { ok: true, status: 200, body: result }
-}
-
-// --- Persisted state helpers (robust to missing files)
-const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
-const STATE_FILE = `${DATA_DIR}/session-state.json`
-const AUDIT_LOG_FILE = `${DATA_DIR}/audit.log`
+// --- Server state
 const CSRF_COOKIE_NAME = 'comparr_csrf'
 const ACCESS_PASSWORD_COOKIE_NAME = 'comparr_access'
 let activeRequests = 0
 let isShuttingDown = false
 let shuttingDownPromise: Promise<void> | null = null
-
-async function loadPersistedState(): Promise<any> {
-  try {
-    const text = await Deno.readTextFile(STATE_FILE)
-    return JSON.parse(text)
-  } catch (err) {
-    // If file doesn't exist or is invalid, start with empty structure
-    if (err?.name === 'NotFound' || err?.code === 'ENOENT') {
-      return { movieIndex: {} }
-    }
-    // If JSON is corrupt, also reset
-    return { movieIndex: {} }
-  }
-}
-
-async function savePersistedState(state: any) {
-  await Deno.mkdir(DATA_DIR, { recursive: true }).catch(() => {})
-  const tmp = `${STATE_FILE}.tmp.${Date.now()}`
-  try {
-    await Deno.writeTextFile(tmp, JSON.stringify(state, null, 2))
-    await Deno.rename(tmp, STATE_FILE)
-  } catch (err) {
-    await Deno.remove(tmp).catch(() => {})
-    throw err
-  }
-}
-
-async function appendAuditLog(
-  event: string,
-  req: CompatRequest,
-  details: Record<string, unknown> = {}
-) {
-  await Deno.mkdir(DATA_DIR, { recursive: true }).catch(() => {})
-  const ip = String(
-    (req?.conn?.remoteAddr as Deno.NetAddr | undefined)?.hostname || 'unknown'
-  )
-  const entry = {
-    ts: new Date().toISOString(),
-    event,
-    ip,
-    method: String(req?.method || ''),
-    path: (() => {
-      try {
-        return new URL(req?.url || '', 'http://local').pathname
-      } catch {
-        return ''
-      }
-    })(),
-    ...details,
-  }
-  await Deno.writeTextFile(AUDIT_LOG_FILE, `${JSON.stringify(entry)}\n`, {
-    append: true,
-  }).catch(() => {})
-}
 
 /** tiny helper to send a file from disk */
 async function respondFile(
@@ -284,18 +89,10 @@ async function respondFile(
 ): Promise<Response | null> {
   try {
     const body = await Deno.readFile(filePath)
-    const headers = makeHeaders(req, contentType)
-    return new Response(body, { status: 200, headers })
+    return new Response(body, { status: 200, headers: makeHeaders(req, contentType) })
   } catch (_) {
     return null
   }
-}
-
-const makeHeaders = (req: CompatRequest, contentType?: string) => {
-  const headers = new Headers()
-  if (contentType) headers.set('content-type', contentType)
-  addSecurityHeaders(headers, req)
-  return headers
 }
 
 const bodyTooLarge = (req: CompatRequest) => {
@@ -305,10 +102,7 @@ const bodyTooLarge = (req: CompatRequest) => {
 }
 
 const isStateChangingMethod = (method: string) =>
-  method === 'POST' ||
-  method === 'PUT' ||
-  method === 'PATCH' ||
-  method === 'DELETE'
+  method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE'
 
 const EXEMPT_ORIGIN_CHECK_PATHS = new Set([
   '/api/access-password/verify',
@@ -323,26 +117,6 @@ const EXEMPT_GLOBAL_ACCESS_PASSWORD_PATHS = new Set([
   '/api/health',
 ])
 const EXEMPT_CSRF_PATHS = new Set(['/api/csrf-token'])
-
-const streamingUpdateInFlight = new Map<number, Promise<any>>()
-
-const sanitizeForLog = (value: string, maxLength = 64) =>
-  String(value || '')
-    .replace(/[\r\n\t]/g, ' ')
-    .slice(0, maxLength)
-
-const validateRoomCodeAndUserName = (roomCode: string, userName: string) => {
-  if (!roomCode || !userName) {
-    return 'Missing required query params: roomCode, userName'
-  }
-  if (roomCode.length > 16) {
-    return 'roomCode is too long'
-  }
-  if (userName.length > 64) {
-    return 'userName is too long'
-  }
-  return ''
-}
 
 const parseAccessPassword = (req: CompatRequest) => {
   const header = req.headers?.get?.('x-access-password')
@@ -364,10 +138,10 @@ const parseAccessPassword = (req: CompatRequest) => {
   return ''
 }
 
-const isAccessPasswordAuthorized = (req: CompatRequest) => {
+const isAccessPasswordAuthorized = async (req: CompatRequest) => {
   const configuredPassword = getAccessPassword()
   if (!configuredPassword) return true
-  return timingSafeEqual(parseAccessPassword(req), configuredPassword)
+  return verifyPassword(parseAccessPassword(req), configuredPassword)
 }
 
 const shouldRequireAccessPassword = (path: string) => {
@@ -400,9 +174,7 @@ const shouldUseSecureCookies = (req: CompatRequest) => {
     .trim()
     .toLowerCase()
   if (xfProto) return xfProto === 'https'
-  return String(req?.url || '')
-    .toLowerCase()
-    .startsWith('https://')
+  return String(req?.url || '').toLowerCase().startsWith('https://')
 }
 
 const isValidCsrfRequest = (req: CompatRequest) => {
@@ -410,19 +182,6 @@ const isValidCsrfRequest = (req: CompatRequest) => {
   const headerToken = String(req?.headers?.get?.('x-csrf-token') || '').trim()
   if (!cookieToken || !headerToken) return false
   return timingSafeEqual(cookieToken, headerToken)
-}
-
-const updateStreamingForTmdbIdDeduped = async (tmdbId: number) => {
-  if (!Number.isFinite(tmdbId) || tmdbId <= 0) {
-    return updateStreamingForTmdbId(tmdbId)
-  }
-  const existing = streamingUpdateInFlight.get(tmdbId)
-  if (existing) return existing
-  const task = updateStreamingForTmdbId(tmdbId).finally(() =>
-    streamingUpdateInFlight.delete(tmdbId)
-  )
-  streamingUpdateInFlight.set(tmdbId, task)
-  return task
 }
 
 
@@ -515,7 +274,7 @@ const port = Number(getPort())
 
 log.info(`[startup] Deno ${Deno.version.deno} | OS: ${Deno.build.os} ${Deno.build.arch}`)
 log.info(`[startup] Binding server to ${host}:${port}`)
-log.info(`[startup] DATA_DIR=${Deno.env.get('DATA_DIR') ?? '/data'}`)
+log.info(`[startup] DATA_DIR=${getDataDir()}`)
 
 let server: ReturnType<typeof serveCompat>
 try {
@@ -580,16 +339,9 @@ try {
 startBackgroundUpdateJob()
 
 // Initialize Plex availability cache
-import {
-  initPlexCache,
-  isMovieInPlex,
-  waitForPlexCacheReady,
-} from './integrations/plex/cache.ts'
-import { initEmbyCache, isMovieInEmby } from './integrations/emby/cache.ts'
-import {
-  initJellyfinCache,
-  isMovieInJellyfin,
-} from './integrations/jellyfin/cache.ts'
+import { initPlexCache } from './integrations/plex/cache.ts'
+import { initEmbyCache } from './integrations/emby/cache.ts'
+import { initJellyfinCache } from './integrations/jellyfin/cache.ts'
 const plexCacheReady = initPlexCache()
 plexCacheReady.catch(err =>
   log.error(`Failed to initialize Plex cache: ${err}`)
@@ -702,7 +454,7 @@ for await (const req of server) {
     if (
       p.startsWith('/api/') &&
       shouldRequireAccessPassword(p) &&
-      !isAccessPasswordAuthorized(req)
+      !await isAccessPasswordAuthorized(req)
     ) {
       responseStatus = 401
       auditEvent = 'access_password_denied'
@@ -759,101 +511,9 @@ for await (const req of server) {
     }
 
     // --- API: Request movie via Jellyseerr/Overseerr
-    if (p === '/api/request-movie' && req.method === 'POST') {
-      try {
-        if (!isValidStateChangingOrigin(req)) {
-          await req.respond({
-            status: 403,
-            body: JSON.stringify({ error: 'Invalid request origin.' }),
-            headers: makeHeaders(req, 'application/json'),
-          })
-          continue
-        }
-        if (bodyTooLarge(req)) {
-          await req.respond({
-            status: 413,
-            body: JSON.stringify({ error: 'Payload too large' }),
-            headers: makeHeaders(req, 'application/json'),
-          })
-          continue
-        }
-        const body = await req.text()
-        const { tmdbId } = JSON.parse(body)
-
-        if (!tmdbId || typeof tmdbId !== 'number') {
-          await req.respond({
-            status: 400,
-            body: JSON.stringify({
-              success: false,
-              message: 'Invalid TMDb ID',
-            }),
-            headers: makeHeaders(req, 'application/json'),
-          })
-          continue
-        }
-
-        try {
-          await waitForPlexCacheReady()
-        } catch (err) {
-          log.warn(
-            `Plex cache not ready when handling request-movie: ${
-              err?.message || err
-            }`
-          )
-        }
-
-        const inRadarr = isMovieInRadarr(tmdbId)
-        const inPlex = isMovieInPlex({ tmdbId })
-        const inEmby = isMovieInEmby({ tmdbId })
-        const inJellyfin = isMovieInJellyfin({ tmdbId })
-        if (inRadarr || inPlex || inEmby || inJellyfin) {
-          await req.respond({
-            status: 200,
-            body: JSON.stringify({
-              success: false,
-              message: inRadarr
-                ? 'This title is already in your Radarr library.'
-                : inPlex
-                ? 'This title is already available in your Plex library.'
-                : inEmby
-                ? 'This title is already available in your Emby library.'
-                : 'This title is already available in your Jellyfin library.',
-            }),
-            headers: makeHeaders(req, 'application/json'),
-          })
-          continue
-        }
-
-        const result = await requestMovie(tmdbId)
-        await req.respond({
-          status: result.success ? 200 : 500,
-          body: JSON.stringify(result),
-          headers: makeHeaders(req, 'application/json'),
-        })
-      } catch (err) {
-        log.error(`Error handling movie request: ${err}`)
-
-        // Provide more specific error message
-        let errorMessage = 'Internal server error'
-        if (err.message?.includes('ECONNREFUSED')) {
-          errorMessage =
-            'Unable to connect to Seerr. Please check if the service is running.'
-        } else if (
-          err.message?.includes('401') ||
-          err.message?.includes('403')
-        ) {
-          errorMessage =
-            'Authentication failed. Please check your API key configuration.'
-        } else if (err.message) {
-          errorMessage = err.message
-        }
-
-        await req.respond({
-          status: 500,
-          body: JSON.stringify({ success: false, message: errorMessage }),
-          headers: makeHeaders(req, 'application/json'),
-        })
-      }
+    const requestMovieResponse = await handleRequestMovieRoute(req, p, getMaxBodySize())
+    if (requestMovieResponse) {
+      await req.respondWith(requestMovieResponse)
       continue
     }
 
@@ -871,508 +531,31 @@ for await (const req of server) {
         log.error(`Radarr cache refresh failed: ${err?.message || err}`)
         await req.respond({
           status: 500,
-          body: JSON.stringify({
-            ok: false,
-            error: 'An internal error occurred.',
-          }),
+          body: JSON.stringify({ ok: false, error: 'An internal error occurred.' }),
           headers: makeHeaders(req, 'application/json'),
         })
       }
       continue
     }
 
-    // --- API: Refresh JustWatch streaming data for a movie
-    if (p.startsWith('/api/refresh-streaming/')) {
-      try {
-        const tmdbId = parseInt(p.split('/').pop() || '')
-        const res = await updateStreamingForTmdbIdDeduped(tmdbId)
-        await req.respond({
-          status: res.status,
-          body: JSON.stringify(res.body),
-          headers: makeHeaders(req, 'application/json'),
-        })
-      } catch (err) {
-        log.error(`Error refreshing streaming data: ${err}`)
-        await req.respond({
-          status: 500,
-          body: JSON.stringify({ error: 'Failed to refresh' }),
-          headers: makeHeaders(req, 'application/json'),
-        })
-      }
-      continue
-    }
-    // --- API: Update persisted movie (used by main.js refreshWatchListStatus)
-    if (p.startsWith('/api/update-persisted-movie/') && req.method === 'POST') {
-      try {
-        const tmdbId = parseInt(p.split('/').pop() || '')
-        const res = await updateStreamingForTmdbIdDeduped(tmdbId)
-        await req.respond({
-          status: res.status,
-          body: JSON.stringify({
-            updated: res.ok,
-            tmdbId,
-            ...res.body, // includes streamingServices + streamingLink for the card dropdowns
-          }),
-          headers: makeHeaders(req, 'application/json'),
-        })
-      } catch (err) {
-        log.error(`Error updating persisted movie: ${err}`)
-        await req.respond({
-          status: 500,
-          body: JSON.stringify({ error: 'Failed to update persisted movie' }),
-          headers: makeHeaders(req, 'application/json'),
-        })
-      }
+    // --- API: Streaming data and persisted movie updates
+    const streamingResponse = await handleStreamingRoutes(req, p)
+    if (streamingResponse) {
+      await req.respondWith(streamingResponse)
       continue
     }
 
-    // --- API: Refresh movie data (ratings + Plex status)
-    if (p.startsWith('/api/refresh-movie/')) {
-      // correlation id per call
-      const rid = crypto.randomUUID()
-      try {
-        const rawParam = decodeURIComponent(p.split('/').pop() || '')
-        const idParam = rawParam.trim()
-        log.info(`[refresh ${rid}] start idParam="${idParam}"`)
-
-        // Parse the identifier
-        let tmdbId: number | null = null
-        let imdbId: string | null = null
-        let guidParam: string | null = null
-
-        if (/^tmdb:\/\/(\d+)$/.test(idParam)) {
-          tmdbId = parseInt(idParam.match(/^tmdb:\/\/(\d+)$/)![1])
-        } else if (/^imdb:\/\/(tt\d+)$/.test(idParam)) {
-          imdbId = idParam.match(/^imdb:\/\/(tt\d+)$/)![1]
-          guidParam = idParam
-        } else if (idParam.startsWith('tt')) {
-          imdbId = idParam
-        } else if (/^plex:\/\//.test(idParam)) {
-          guidParam = idParam
-        } else {
-          const maybe = parseInt(idParam, 10)
-          if (!Number.isNaN(maybe)) {
-            tmdbId = maybe
-          } else {
-            log.warn(`[refresh ${rid}] invalid idParam`)
-            await req.respond({
-              status: 400,
-              body: JSON.stringify({ error: 'Invalid ID', rid }),
-              headers: makeHeaders(req, 'application/json'),
-            })
-            continue
-          }
-        }
-        log.info(
-          `[refresh ${rid}] parsed -> tmdbId=${tmdbId ?? ''} imdbId=${
-            imdbId ?? ''
-          } guid=${guidParam ?? ''}`
-        )
-
-        // Load persisted state from disk
-        const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
-        const STATE_FILE = `${DATA_DIR}/session-state.json`
-        let persistedState: any = null
-        try {
-          const stateText = await Deno.readTextFile(STATE_FILE)
-          persistedState = JSON.parse(stateText)
-          log.debug(`[refresh ${rid}] state loaded ok`)
-        } catch (e) {
-          log.error(`[refresh ${rid}] read state failed: ${e?.message || e}`)
-        }
-
-        const { enrich } = await import('./features/catalog/enrich.ts')
-
-        // Find the movie by tmdbId, imdbId, or guid
-        let movieGuid: string | null = null
-        let movieData: any = null
-
-        const searchMatches = (mv: any): boolean => {
-          const mvTmdbId =
-            mv?.tmdbId ||
-            mv?.tmdb_id ||
-            mv?.guid?.match?.(/tmdb:\/\/(\d+)/)?.[1] ||
-            mv?.streamingLink?.match?.(/themoviedb\.org\/movie\/(\d+)/)?.[1] ||
-            null
-          if (tmdbId && String(mvTmdbId) === String(tmdbId)) return true
-
-          const mvImdb =
-            mv?.imdbId ||
-            mv?.guid?.match?.(/imdb:\/\/(tt\d+)/)?.[1] ||
-            (Array.isArray(mv?.Guid)
-              ? mv.Guid.find((g: any) => /^imdb:\/\//.test(g?.id))?.id?.match(
-                  /imdb:\/\/(tt\d+)/
-                )?.[1] || null
-              : null)
-          if (imdbId && mvImdb && String(mvImdb) === String(imdbId)) return true
-
-          if (guidParam) {
-            if (mv?.guid === guidParam) return true
-            if (
-              Array.isArray(mv?.Guid) &&
-              mv.Guid.some((g: any) => g?.id === guidParam)
-            )
-              return true
-          }
-          return false
-        }
-
-        if (persistedState?.movieIndex) {
-          for (const [guid, mv] of Object.entries(persistedState.movieIndex)) {
-            if (searchMatches(mv)) {
-              movieGuid = guid
-              movieData = mv
-              break
-            }
-          }
-        }
-
-        if (!movieData) {
-          if (tmdbId || imdbId) {
-            movieGuid = tmdbId ? `tmdb://${tmdbId}` : `imdb://${imdbId}`
-            movieData = {
-              guid: movieGuid,
-              tmdbId: tmdbId ?? undefined,
-              imdbId: imdbId ?? undefined,
-            }
-            log.info(`[refresh ${rid}] fabricated movieData for enrichment`)
-          } else {
-            log.warn(
-              `[refresh ${rid}] not found in state and no ids to fabricate`
-            )
-            await req.respond({
-              status: 404,
-              body: JSON.stringify({ error: 'Movie not found', rid }),
-              headers: makeHeaders(req, 'application/json'),
-            })
-            continue
-          }
-        }
-
-        log.info(
-          `[refresh ${rid}] calling enrich title="${
-            movieData.title || ''
-          }" year=${movieData.year || ''} tmdbId=${
-            movieData.tmdbId || tmdbId || ''
-          } imdbId=${movieData.imdbId || imdbId || ''}`
-        )
-        let enriched: any
-        try {
-          enriched = await enrich({
-            title: movieData.title,
-            year: movieData.year,
-            plexGuid: movieData.guid,
-            imdbId: movieData.imdbId || imdbId,
-            tmdbId: movieData.tmdbId || tmdbId,
-          })
-        } catch (e) {
-          log.error(`[refresh ${rid}] enrich() failed: ${e?.message || e}`)
-          await req.respond({
-            status: 500,
-            body: JSON.stringify({
-              error: 'enrich failed',
-              detail: e?.message || String(e),
-              rid,
-            }),
-            headers: makeHeaders(req, 'application/json'),
-          })
-          continue
-        }
-
-        // Format rating string with logos (matching session.ts format)
-        const basePath = getRootPath() || ''
-        const ratingParts: string[] = []
-        if (enriched.rating_comparr)
-          ratingParts.push(
-            `<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> ${enriched.rating_comparr}`
-          )
-        if (enriched.rating_imdb)
-          ratingParts.push(
-            `<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> ${enriched.rating_imdb}`
-          )
-        if (enriched.rating_tmdb)
-          ratingParts.push(
-            `<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> ${enriched.rating_tmdb}`
-          )
-        const rating =
-          ratingParts.length > 0
-            ? ratingParts.join(' <span class="rating-separator">&bull;</span> ')
-            : ''
-
-        // Check if movie is in any personal library (from streamingServices, computed during enrich)
-        const personalLibraryNames = new Set(
-          [getPlexLibraryName(), getEmbyLibraryName(), getJellyfinLibraryName()].filter(Boolean)
-        )
-        const inPlex =
-          enriched.streamingServices?.subscription?.some(
-            (s: any) => personalLibraryNames.has(s.name)
-          ) || false
-
-        // Persist updates if we have state
-        if (persistedState?.movieIndex) {
-          if (!(movieGuid in persistedState.movieIndex)) {
-            persistedState.movieIndex[movieGuid] = movieData
-          }
-          persistedState.movieIndex[movieGuid] = {
-            ...persistedState.movieIndex[movieGuid],
-            ...movieData,
-            rating_imdb: enriched.rating_imdb,
-            rating_tmdb: enriched.rating_tmdb,
-            rating_comparr: enriched.rating_comparr,
-            rating,
-            streamingServices: enriched.streamingServices,
-            streamingLink: enriched.streamingLink,
-            genres: enriched.genres,
-            contentRating: enriched.contentRating,
-            cast: enriched.cast,
-            castMembers: enriched.castMembers,
-            writers: enriched.writers,
-            director: enriched.director,
-            runtime: enriched.runtime,
-            original_language:
-              enriched.original_language || movieData.original_language || null,
-            originalLanguage:
-              enriched.originalLanguage || movieData.originalLanguage || null,
-            voteCount: enriched.voteCount,
-            imdbId: enriched.imdbId || movieData.imdbId,
-            tmdbId: enriched.tmdbId || movieData.tmdbId,
-            guid: enriched.guid || movieData.guid,
-          }
-
-          try {
-            const tmp = `${STATE_FILE}.tmp.${Date.now()}`
-            await Deno.writeTextFile(
-              tmp,
-              JSON.stringify(persistedState, null, 2)
-            )
-            await Deno.rename(tmp, STATE_FILE)
-            log.debug(`[refresh ${rid}] state persisted`)
-          } catch (e) {
-            log.error(`[refresh ${rid}] persist failed: ${e?.message || e}`)
-          }
-        } else {
-          log.warn(
-            `[refresh ${rid}] no persistedState.movieIndex; skipping persist`
-          )
-        }
-
-        await req.respond({
-          status: 200,
-          body: JSON.stringify({
-            rating_imdb: enriched.rating_imdb,
-            rating_tmdb: enriched.rating_tmdb,
-            rating_comparr: enriched.rating_comparr,
-            rating,
-            inPlex,
-            streamingServices: enriched.streamingServices,
-            streamingLink: enriched.streamingLink,
-            tmdbId: movieData.tmdbId || tmdbId,
-            imdbId: enriched.imdbId || movieData.imdbId || imdbId,
-            original_language:
-              enriched.original_language || movieData.original_language || null,
-            originalLanguage:
-              enriched.originalLanguage || movieData.originalLanguage || null,
-            rid,
-          }),
-          headers: makeHeaders(req, 'application/json'),
-        })
-        log.info(`[refresh ${rid}] OK`)
-      } catch (err) {
-        log.error(
-          `[refresh ${rid}] unhandled: ${err?.stack || err?.message || err}`
-        )
-        await req.respond({
-          status: 500,
-          body: JSON.stringify({
-            error: 'Failed to refresh movie data',
-            detail: 'An internal error occurred.',
-            rid,
-          }),
-          headers: makeHeaders(req, 'application/json'),
-        })
-      }
+    // --- API: Refresh movie data (ratings + library status)
+    const movieRefreshResponse = await handleMovieRefreshRoute(req, p)
+    if (movieRefreshResponse) {
+      await req.respondWith(movieRefreshResponse)
       continue
     }
 
-    // --- API: Get IMDb import history
-    if (p === '/api/imdb-import-history' && req.method === 'GET') {
-      try {
-        const roomCode = url.searchParams.get('roomCode')?.trim() || ''
-        const userName = url.searchParams.get('userName')?.trim() || ''
-
-        const validationError = validateRoomCodeAndUserName(roomCode, userName)
-        if (validationError) {
-          await req.respond({
-            status: 400,
-            body: JSON.stringify({
-              error: validationError,
-            }),
-            headers: makeHeaders(req, 'application/json'),
-          })
-          continue
-        }
-
-        const history = getImdbImportHistory(roomCode, userName)
-        await req.respond({
-          status: 200,
-          body: JSON.stringify({ history }),
-          headers: makeHeaders(req, 'application/json'),
-        })
-      } catch (err) {
-        log.error(`IMDb history fetch failed: ${err?.message || err}`)
-        await req.respond({
-          status: 500,
-          body: JSON.stringify({
-            error: 'Failed to fetch IMDb import history',
-          }),
-          headers: makeHeaders(req, 'application/json'),
-        })
-      }
-      continue
-    }
-
-    // --- API: Import IMDb watched movies as "seen" (background processing)
-    if (p === '/api/imdb-import' && req.method === 'POST') {
-      try {
-        const requestIp = String(
-          (req?.conn?.remoteAddr as Deno.NetAddr | undefined)?.hostname ||
-            'unknown'
-        )
-        if (!apiRateLimiter.check(requestIp)) {
-          await req.respond({
-            status: 429,
-            body: JSON.stringify({
-              error: 'Too many import requests. Please wait and retry.',
-            }),
-            headers: makeHeaders(req, 'application/json'),
-          })
-          continue
-        }
-
-        if (bodyTooLarge(req)) {
-          await req.respond({
-            status: 413,
-            body: JSON.stringify({ error: 'Payload too large' }),
-            headers: makeHeaders(req, 'application/json'),
-          })
-          continue
-        }
-        const TMDB_KEY = getTmdbApiKey()
-        if (!TMDB_KEY) {
-          await req.respond({
-            status: 400,
-            body: JSON.stringify({
-              error: 'TMDb API key is required for IMDb import',
-            }),
-            headers: makeHeaders(req, 'application/json'),
-          })
-          continue
-        }
-
-        const body = await req.text()
-        const { csvContent, roomCode, userName, fileName } = JSON.parse(body)
-
-        const validationError = validateRoomCodeAndUserName(roomCode, userName)
-        if (!csvContent || validationError) {
-          await req.respond({
-            status: 400,
-            body: JSON.stringify({
-              error: validationError || 'Missing required field: csvContent',
-            }),
-            headers: makeHeaders(req, 'application/json'),
-          })
-          continue
-        }
-
-        log.info(
-          `IMDb CSV import requested by ${sanitizeForLog(
-            userName
-          )} in room ${sanitizeForLog(roomCode, 16)}`
-        )
-
-        // Parse the CSV
-        const rows = parseImdbCsv(csvContent)
-        log.info(`IMDb CSV parsed: ${rows.length} movie entries found`)
-
-        const importHistoryId = recordImdbImportHistoryStart(
-          roomCode,
-          userName,
-          typeof fileName === 'string' ? fileName : 'IMDb CSV',
-          rows.length
-        )
-
-        if (rows.length === 0) {
-          finalizeImdbImportHistory(
-            roomCode,
-            userName,
-            importHistoryId,
-            'successful'
-          )
-          await req.respond({
-            status: 200,
-            body: JSON.stringify({ status: 'completed', total: 0 }),
-            headers: makeHeaders(req, 'application/json'),
-          })
-          continue
-        }
-
-        // Convert to the format expected by background processor
-        const imdbRows = rows.map(r => ({
-          imdbId: r.imdbId,
-          title: r.title,
-          year: r.year,
-        }))
-
-        // Start background processing (non-blocking)
-        processImdbImportBackground({
-          roomCode,
-          userName,
-          imdbRows,
-          importHistoryId,
-        }).catch(err => {
-          finalizeImdbImportHistory(
-            roomCode,
-            userName,
-            importHistoryId,
-            'failed'
-          )
-          log.error(`Background IMDb import failed: ${err?.message || err}`)
-        })
-
-        // Return immediately - movies will arrive via WebSocket
-        await req.respond({
-          status: 202,
-          body: JSON.stringify({ status: 'started', total: rows.length }),
-          headers: makeHeaders(req, 'application/json'),
-        })
-
-        log.info(
-          `IMDb CSV import started in background: ${rows.length} movies to process`
-        )
-      } catch (err) {
-        log.error(`IMDb import failed: ${err?.message || err}`)
-        await req.respond({
-          status: 500,
-          body: JSON.stringify({
-            error: 'IMDb import failed',
-            detail: 'An internal error occurred.',
-          }),
-          headers: makeHeaders(req, 'application/json'),
-        })
-      }
-      continue
-    }
-
-    // --- API: Import from a public IMDb list URL (disabled for now)
-    if (p === '/api/imdb-import-url' && req.method === 'POST') {
-      await req.respond({
-        status: 410,
-        body: JSON.stringify({
-          error:
-            'IMDb URL import is temporarily disabled. Please use CSV import.',
-        }),
-        headers: makeHeaders(req, 'application/json'),
-      })
+    // --- API: IMDb import routes
+    const imdbResponse = await handleImdbImportRoutes(req, p, getMaxBodySize())
+    if (imdbResponse) {
+      await req.respondWith(imdbResponse)
       continue
     }
 
@@ -1546,11 +729,6 @@ for await (const req of server) {
       }
       continue
     }
-    //if (p.startsWith('/assets/')) {
-    // await respondFile(req, 'public' + p)
-    //continue
-    //}
-
     // Serve cached posters from DATA_DIR/poster-cache
     if (p.startsWith('/cached-poster/')) {
       const filename = p.slice('/cached-poster/'.length)
@@ -1564,20 +742,6 @@ for await (const req of server) {
     }
 
     // --- Fallback: generic static server rooted at /public
-    // This will handle anything else that actually exists under public/
-    // (and 404 if it truly doesn't exist).
-    // Serve cached posters from DATA_DIR/poster-cache
-    if (p.startsWith('/cached-poster/')) {
-      const filename = p.slice('/cached-poster/'.length)
-      const served = await serveCachedPoster(filename, req)
-      if (served) {
-        await req.respondWith(served)
-      } else {
-        await req.respond({ status: 404, body: 'Not Found' })
-      }
-      continue // handled
-    }
-
     await req.respondWith(await serveFile(req, '/public'))
   } catch (err) {
     log.error(`Error handling request: ${err?.message ?? err}`)

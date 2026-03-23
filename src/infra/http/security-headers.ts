@@ -1,3 +1,5 @@
+import type { CompatRequest } from './compat-request.ts'
+
 type RequestLike = {
   headers?: Headers
   url?: string
@@ -40,4 +42,11 @@ export const addSecurityHeaders = (
       'max-age=31536000; includeSubDomains'
     )
   }
+}
+
+export const makeHeaders = (req: CompatRequest, contentType?: string): Headers => {
+  const headers = new Headers()
+  if (contentType) headers.set('content-type', contentType)
+  addSecurityHeaders(headers, req)
+  return headers
 }

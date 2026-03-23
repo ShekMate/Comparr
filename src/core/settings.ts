@@ -2,6 +2,8 @@ import {
   SettingsValidationError,
   validateAndNormalizeStreamingSettings,
 } from './streamingProfileSettings.ts'
+import { getDataDir } from './env.ts'
+import { hashPassword, isHashedPassword } from './security.ts'
 
 export type SettingsKey =
   | 'PLEX_URL'
@@ -93,8 +95,7 @@ const DEFAULTS: Partial<Settings> = {
   SETUP_WIZARD_COMPLETED: 'false',
 }
 
-const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
-const SETTINGS_FILE = `${DATA_DIR}/settings.json`
+const SETTINGS_FILE = `${getDataDir()}/settings.json`
 
 let settingsCache: Settings = SETTINGS_KEYS.reduce((acc, key) => {
   const envValue = Deno.env.get(key)
@@ -155,7 +156,7 @@ const loadSettingsFile = async (): Promise<Partial<Settings>> => {
 }
 
 const persistSettings = async () => {
-  await Deno.mkdir(DATA_DIR, { recursive: true }).catch(() => {})
+  await Deno.mkdir(getDataDir(), { recursive: true }).catch(() => {})
   const tmp = `${SETTINGS_FILE}.tmp.${Date.now()}`
   const persistedSettings = SETTINGS_KEYS.reduce((acc, key) => {
     if (ENV_ONLY_KEYS.has(key)) return acc
@@ -181,6 +182,8 @@ export const getSettings = (): Settings => ({ ...settingsCache })
 
 export const getSetting = (key: SettingsKey): string => settingsCache[key] ?? ''
 
+const PASSWORD_KEYS = new Set<SettingsKey>(['ACCESS_PASSWORD', 'ADMIN_PASSWORD'])
+
 export const updateSettings = async (
   updates: Partial<Settings>
 ): Promise<Settings> => {
@@ -191,7 +194,12 @@ export const updateSettings = async (
       continue
     }
     if (Object.prototype.hasOwnProperty.call(updates, key)) {
-      settingsCache[key] = normalizeValue(updates[key])
+      const value = normalizeValue(updates[key])
+      if (PASSWORD_KEYS.has(key) && value && !isHashedPassword(value)) {
+        settingsCache[key] = await hashPassword(value)
+      } else {
+        settingsCache[key] = value
+      }
       touchedKeys.add(key)
     }
   }

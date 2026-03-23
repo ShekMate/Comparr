@@ -5,9 +5,9 @@
 import { Database } from 'jsr:@db/sqlite'
 import * as log from 'jsr:@std/log'
 import { fetchWithTimeout } from '../../infra/http/fetch-with-timeout.ts'
+import { getDataDir } from '../../core/env.ts'
 
-const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
-const IMDB_DB_PATH = `${DATA_DIR}/imdb-ratings.db`
+const IMDB_DB_PATH = `${getDataDir()}/imdb-ratings.db`
 const IMDB_DUMP_URL = 'https://datasets.imdbws.com/title.ratings.tsv.gz'
 const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000 // 24 hours
 

@@ -1,6 +1,7 @@
 import * as log from 'jsr:@std/log'
 import { ConsoleHandler } from 'jsr:@std/log'
 import { getSetting } from './settings.ts'
+export { getDataDir } from './env.ts'
 
 const getSettingTrimmed = (name: Parameters<typeof getSetting>[0]) => {
   const value = getSetting(name)

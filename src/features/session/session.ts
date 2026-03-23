@@ -21,6 +21,7 @@ import { isMovieInEmby, getAllEmbyMovies } from '../../integrations/emby/cache.t
 import { isMovieInJellyfin, getAllJellyfinMovies } from '../../integrations/jellyfin/cache.ts'
 import {
   getAccessPassword,
+  getDataDir,
   getEmbyLibraryName,
   getJellyfinLibraryName,
   getMovieBatchSize,
@@ -563,7 +564,7 @@ interface PersistedState {
   movieIndex: Record<string, MediaItem> // guid -> MediaItem (for rebuilding matches)
 }
 
-const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
+const DATA_DIR = getDataDir()
 const STATE_FILE = `${DATA_DIR}/session-state.json`
 const BACKUP_FILE = `${DATA_DIR}/session-state.backup.json`
 
