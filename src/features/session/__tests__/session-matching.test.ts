@@ -3,8 +3,7 @@ import {
   assertEquals,
   assertExists,
   MockWebSocket,
-  waitFor,
-} from '../../../__tests__/utils/test-helpers.ts'
+} from '../../../testdata/test-helpers.ts'
 
 // Mock movie data for testing
 const mockMovie1 = {
@@ -164,9 +163,9 @@ Deno.test({
     const user2: User = { name: 'Bob', responses: [] }
     const user3: User = { name: 'Charlie', responses: [] }
 
-    const ws1 = simulator.addUser(user1)
-    const ws2 = simulator.addUser(user2)
-    const ws3 = simulator.addUser(user3)
+    const _ws1 = simulator.addUser(user1)
+    const _ws2 = simulator.addUser(user2)
+    const _ws3 = simulator.addUser(user3)
 
     // All three users like Inception
     simulator.handleResponse(user1, mockMovie1, true)
@@ -177,9 +176,9 @@ Deno.test({
     // Should still be 1 match but with 3 users
     const likedUsers = simulator.likedMovies.get(mockMovie1)
     assertExists(likedUsers)
-    assertEquals(likedUsers.length, 3)
+    assertEquals(likedUsers!.length, 3)
     assertEquals(
-      likedUsers.map(u => u.name),
+      likedUsers!.map(u => u.name),
       ['Alice', 'Bob', 'Charlie']
     )
   },
@@ -234,7 +233,7 @@ Deno.test({
     assertEquals(simulator.matches.length, 0)
     const likedUsers = simulator.likedMovies.get(mockMovie1)
     assertExists(likedUsers)
-    assertEquals(likedUsers.length, 1) // Only Alice
+    assertEquals(likedUsers!.length, 1) // Only Alice
   },
 })
 
@@ -259,7 +258,7 @@ Deno.test({
     assertEquals(simulator.matches.length, 0)
     const likedUsers = simulator.likedMovies.get(mockMovie1)
     assertExists(likedUsers)
-    assertEquals(likedUsers.length, 1) // Only Alice
+    assertEquals(likedUsers!.length, 1) // Only Alice
   },
 })
 
@@ -271,8 +270,8 @@ Deno.test({
     const user1: User = { name: 'Alice', responses: [] }
     const user2: User = { name: 'Bob', responses: [] }
 
-    const ws1 = simulator.addUser(user1)
-    const ws2 = simulator.addUser(user2)
+    const _ws1 = simulator.addUser(user1)
+    const _ws2 = simulator.addUser(user2)
 
     // Both initially like Inception - creates a match
     simulator.handleResponse(user1, mockMovie1, true)
@@ -285,8 +284,8 @@ Deno.test({
     // Match still exists in history, but likedMovies should only have Alice
     const likedUsers = simulator.likedMovies.get(mockMovie1)
     assertExists(likedUsers)
-    assertEquals(likedUsers.length, 1)
-    assertEquals(likedUsers[0].name, 'Alice')
+    assertEquals(likedUsers!.length, 1)
+    assertEquals(likedUsers![0].name, 'Alice')
   },
 })
 
@@ -350,7 +349,7 @@ Deno.test({
     // Should still only have 2 unique users
     const likedUsers = simulator.likedMovies.get(mockMovie1)
     assertExists(likedUsers)
-    assertEquals(likedUsers.length, 2)
+    assertEquals(likedUsers!.length, 2)
   },
 })
 
@@ -411,6 +410,6 @@ Deno.test({
     // Verify The Matrix has no match
     const matrixUsers = simulator.likedMovies.get(mockMovie3)
     assertExists(matrixUsers)
-    assertEquals(matrixUsers.length, 1) // Only Bob
+    assertEquals(matrixUsers!.length, 1) // Only Bob
   },
 })

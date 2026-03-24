@@ -1,8 +1,7 @@
+import type { CompatRequest } from '../compat-request.ts'
 import {
-  getJellyseerrApiKey,
-  getJellyseerrUrl,
-  getOverseerrApiKey,
-  getOverseerrUrl,
+  getSeerrApiKey,
+  getSeerrUrl,
   getPlexToken,
   getPlexUrl,
   getRadarrApiKey,
@@ -10,26 +9,30 @@ import {
   getTmdbApiKey,
 } from '../../../core/config.ts'
 
-export async function handleConfigDebugRoute(req: any, path: string) {
+export function handleConfigDebugRoute(
+  _req: CompatRequest,
+  path: string
+): Promise<Response | null> {
   if (path !== '/api/debug/config') {
-    return false
+    return Promise.resolve(null)
   }
 
-  await req.respond({
-    status: 200,
-    body: JSON.stringify(
+  return Promise.resolve(
+    new Response(
+      JSON.stringify(
+        {
+          tmdb_configured: !!getTmdbApiKey(),
+          plex_configured: !!(getPlexUrl() && getPlexToken()),
+          radarr_configured: !!(getRadarrUrl() && getRadarrApiKey()),
+          seerr_configured: !!(getSeerrUrl() && getSeerrApiKey()),
+        },
+        null,
+        2
+      ),
       {
-        tmdb_configured: !!getTmdbApiKey(),
-        plex_configured: !!(getPlexUrl() && getPlexToken()),
-        radarr_configured: !!(getRadarrUrl() && getRadarrApiKey()),
-        jellyseerr_configured: !!(getJellyseerrUrl() && getJellyseerrApiKey()),
-        overseerr_configured: !!(getOverseerrUrl() && getOverseerrApiKey()),
-      },
-      null,
-      2
-    ),
-    headers: new Headers({ 'content-type': 'application/json' }),
-  })
-
-  return true
+        status: 200,
+        headers: new Headers({ 'content-type': 'application/json' }),
+      }
+    )
+  )
 }

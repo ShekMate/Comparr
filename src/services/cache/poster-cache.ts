@@ -1,8 +1,10 @@
+import type { CompatRequest } from '../../infra/http/compat-request.ts'
 // cache/posterCache.ts - Local poster storage and serving
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import * as log from 'jsr:@std/log'
+import { fetchWithTimeout } from '../../infra/http/fetch-with-timeout.ts'
+import { getDataDir } from '../../core/env.ts'
 
-const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
-const POSTER_CACHE_DIR = `${DATA_DIR}/poster-cache`
+const POSTER_CACHE_DIR = `${getDataDir()}/poster-cache`
 const MAX_CACHE_SIZE_MB = 500 // 500MB max cache size
 const CACHE_METADATA_FILE = `${POSTER_CACHE_DIR}/cache-metadata.json`
 
@@ -64,7 +66,16 @@ async function saveMetadata(): Promise<void> {
  * Generate cache key from poster path
  */
 function getCacheKey(posterPath: string, source: 'plex' | 'tmdb'): string {
-  return `${source}-${posterPath.replace(/[^a-zA-Z0-9]/g, '_')}`
+  const bytes = new TextEncoder().encode(posterPath)
+  let binary = ''
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte)
+  }
+  const encoded = btoa(binary)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '')
+  return `${source}-${encoded}`
 }
 
 /**
@@ -146,7 +157,7 @@ export async function cachePoster(
 
   try {
     // Download poster
-    const response = await fetch(url)
+    const response = await fetchWithTimeout(url)
     if (!response.ok) {
       log.error(`Failed to download poster from ${url}: ${response.status}`)
       return null
@@ -258,24 +269,22 @@ export function prefetchPoster(
  */
 export async function serveCachedPoster(
   filename: string,
-  req: any
-): Promise<boolean> {
+  _req: CompatRequest
+): Promise<Response | null> {
   const filepath = `${POSTER_CACHE_DIR}/${filename}`
 
   try {
     const imageData = await Deno.readFile(filepath)
-    await req.respond({
+    return new Response(imageData, {
       status: 200,
-      body: imageData,
       headers: new Headers({
         'content-type': 'image/jpeg',
         'cache-control': 'public, max-age=31536000, immutable', // Cache for 1 year
       }),
     })
-    return true
   } catch (err) {
     log.error(`Failed to serve cached poster ${filename}: ${err}`)
-    return false
+    return null
   }
 }
 

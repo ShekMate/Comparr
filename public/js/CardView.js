@@ -419,6 +419,8 @@ export default class CardView {
       originalLanguage,
       original_language,
       language,
+      watchProviders,
+      streamingServices,
     } = this.movieData
 
     console.log('DEBUG renderCrewInfo:', {
@@ -443,6 +445,11 @@ export default class CardView {
           : ''
       }`
       lines.push(`<div class="crew-title">${titleWithYear}</div>`)
+    }
+
+    // IMDb/TMDb ratings line (above content metadata line)
+    if (rating) {
+      lines.push(`<div class="card-ratings">${rating}</div>`)
     }
 
     // Content Rating + Genres combined line
@@ -505,17 +512,12 @@ export default class CardView {
       )
     }
 
-    // Director
-    if (rating) {
-      lines.push(`<div class="card-ratings">${rating}</div>`)
-    }
+    const crewPeopleParts = []
 
-    // Director
+    // Director + Writers on one line with separators and icons only
     if (director && director !== 'undefined') {
-      lines.push(
-        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-video"></i> <strong class="crew-label">Director:</strong> ${escapeHtml(
-          director
-        )}</div>`
+      crewPeopleParts.push(
+        `<i class="fas fa-video"></i> ${escapeHtml(director)}`
       )
     }
 
@@ -524,10 +526,18 @@ export default class CardView {
       const maxWriters = window.innerWidth <= 600 ? 2 : 3
       const displayWriters = writers.slice(0, maxWriters)
       const hasMore = writers.length > maxWriters
-      lines.push(
-        `<div class="crew-line" onclick="this.classList.toggle('expanded')"><i class="fas fa-pen"></i> <strong class="crew-label">Writer:</strong> ${displayWriters
+      crewPeopleParts.push(
+        `<i class="fas fa-pen"></i> ${displayWriters
           .map(escapeHtml)
-          .join(', ')}${hasMore ? ' & more' : ''}</div>`
+          .join(', ')}${hasMore ? ' & more' : ''}`
+      )
+    }
+
+    if (crewPeopleParts.length > 0) {
+      lines.push(
+        `<div class="crew-line" onclick="this.classList.toggle('expanded')">${crewPeopleParts.join(
+          ' <span style="opacity: 0.5; margin: 0 0.25rem;">|</span> '
+        )}</div>`
       )
     }
 
@@ -537,6 +547,73 @@ export default class CardView {
           summary
         )}</p>`
       )
+    }
+
+    const providerCandidates = Array.isArray(watchProviders)
+      ? watchProviders
+      : []
+    const fallbackProviders = [
+      ...(streamingServices && Array.isArray(streamingServices.subscription)
+        ? streamingServices.subscription
+        : []),
+      ...(streamingServices && Array.isArray(streamingServices.free)
+        ? streamingServices.free
+        : []),
+    ]
+    const allProviders = providerCandidates.length
+      ? providerCandidates
+      : fallbackProviders
+
+    if (allProviders.length > 0) {
+      const uniqueProviders = []
+      const seenProviders = new Set()
+      allProviders.forEach(provider => {
+        const fallbackName = String(provider?.name || '').trim()
+        const isPersonalLibraryProvider =
+          provider?.logo_path === '/assets/logos/allvids.svg' ||
+          (provider?.id === 0 && provider?.type === 'subscription')
+
+        const resolvedName = isPersonalLibraryProvider
+          ? String(window.PLEX_LIBRARY_NAME || fallbackName).trim()
+          : fallbackName
+
+        if (!resolvedName) return
+        const key = resolvedName.toLowerCase()
+        if (seenProviders.has(key)) return
+        seenProviders.add(key)
+        uniqueProviders.push({
+          ...provider,
+          name: resolvedName,
+        })
+      })
+
+      if (uniqueProviders.length > 0) {
+        const providerPills = uniqueProviders
+          .map(provider => {
+            const logoPath = provider?.logo_path
+            const logoUrl = logoPath
+              ? logoPath.startsWith('/assets/')
+                ? `${this.basePath || ''}${logoPath}`
+                : `https://image.tmdb.org/t/p/w92${logoPath}`
+              : ''
+
+            return `<span class="where-to-watch-pill">${
+              logoUrl
+                ? `<img src="${logoUrl}" alt="${escapeHtml(
+                    provider.name
+                  )}" class="where-to-watch-pill-logo" loading="lazy" decoding="async" />`
+                : ''
+            }<span class="where-to-watch-pill-name">${escapeHtml(
+              provider.name
+            )}</span></span>`
+          })
+          .join('')
+
+        lines.push(`<section class="where-to-watch-section">
+          <h4 class="where-to-watch-heading">Where to Watch</h4>
+          <div class="where-to-watch-pill-list" onclick="event.stopPropagation()">${providerPills}</div>
+        </section>`)
+      }
     }
 
     // Cast cards section (TMDb style horizontal scroll)

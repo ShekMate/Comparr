@@ -1,6 +1,6 @@
 // Tests for ComparrAPI WebSocket wrapper
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { ComparrAPI } from '../ComparrAPI.js'
+import { ComparrAPI } from '../public/js/ComparrAPI.js'
 
 // Mock location
 global.location = {
@@ -347,6 +347,33 @@ describe('ComparrAPI', () => {
 
       const movie = api.getMovie('nonexistent')
       expect(movie).toBeUndefined()
+    })
+  })
+
+  describe('getAccessPasswordStatus', () => {
+    it('should return requiresPassword when status request succeeds', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ requiresPassword: true }),
+      })
+
+      await expect(api.getAccessPasswordStatus()).resolves.toEqual({
+        requiresPassword: true,
+      })
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/comparr/api/access-password/status'
+      )
+    })
+
+    it('should reject when status request fails', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        json: async () => ({ message: 'Status lookup failed.' }),
+      })
+
+      await expect(api.getAccessPasswordStatus()).rejects.toThrow(
+        'Status lookup failed.'
+      )
     })
   })
 

@@ -1,5 +1,7 @@
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import * as log from 'jsr:@std/log'
+import { ConsoleHandler } from 'jsr:@std/log'
 import { getSetting } from './settings.ts'
+export { getDataDir } from './env.ts'
 
 const getSettingTrimmed = (name: Parameters<typeof getSetting>[0]) => {
   const value = getSetting(name)
@@ -54,6 +56,8 @@ const parseJsonArraySetting = (value: string): string[] => {
 export const getPlexUrl = () => normalizePlexUrl(getSettingTrimmed('PLEX_URL'))
 export const getPlexToken = () => getSettingTrimmed('PLEX_TOKEN')
 export const getPort = () => getSettingTrimmed('PORT') ?? '8000'
+export const getHost = () =>
+  (Deno.env.get('HOST') ?? '0.0.0.0').trim() || '0.0.0.0'
 export const LOG_LEVEL = getSettingTrimmed('LOG_LEVEL') ?? 'INFO'
 export const getMovieBatchSize = () =>
   getSettingTrimmed('MOVIE_BATCH_SIZE') ?? '20'
@@ -78,12 +82,8 @@ export const getRadarrUrl = () => normalizeUrl(getSettingTrimmed('RADARR_URL'))
 export const getRadarrApiKey = () => getSettingTrimmed('RADARR_API_KEY')
 export const getAccessPassword = () =>
   getSettingTrimmed('ACCESS_PASSWORD') ?? ''
-export const getJellyseerrUrl = () =>
-  normalizeUrl(getSettingTrimmed('JELLYSEERR_URL'))
-export const getJellyseerrApiKey = () => getSettingTrimmed('JELLYSEERR_API_KEY')
-export const getOverseerrUrl = () =>
-  normalizeUrl(getSettingTrimmed('OVERSEERR_URL'))
-export const getOverseerrApiKey = () => getSettingTrimmed('OVERSEERR_API_KEY')
+export const getSeerrUrl = () => normalizeUrl(getSettingTrimmed('SEERR_URL'))
+export const getSeerrApiKey = () => getSettingTrimmed('SEERR_API_KEY')
 export const getTmdbApiKey = () => getSettingTrimmed('TMDB_API_KEY')
 export const getStreamingProfileMode = () =>
   getSettingTrimmed('STREAMING_PROFILE_MODE') ?? 'anywhere'
@@ -103,9 +103,13 @@ export const getAllowedOrigins = () =>
     .map(value => value.trim().toLowerCase())
     .filter(Boolean)
 export const getVersion = async () => {
-  const pkgText = await Deno.readTextFile(Deno.cwd() + '/package.json')
-  const pkg: { version: string } = JSON.parse(pkgText)
-  return pkg.version
+  try {
+    const pkgText = await Deno.readTextFile(Deno.cwd() + '/package.json')
+    const pkg: { version: string } = JSON.parse(pkgText)
+    return pkg.version
+  } catch {
+    return 'unknown'
+  }
 }
 
 function getLogLevel(): keyof typeof log.LogLevels {
@@ -122,7 +126,7 @@ function getLogLevel(): keyof typeof log.LogLevels {
 
 await log.setup({
   handlers: {
-    console: new log.handlers.ConsoleHandler(getLogLevel()),
+    console: new ConsoleHandler(getLogLevel()),
   },
 
   loggers: {

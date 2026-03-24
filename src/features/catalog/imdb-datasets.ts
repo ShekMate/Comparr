@@ -2,23 +2,24 @@
 // Downloads and manages IMDb dataset dumps for ratings data
 // https://datasets.imdbws.com/
 
-import { gunzip } from 'https://deno.land/x/denoflate@1.2.1/mod.ts'
-import { DB } from 'https://deno.land/x/sqlite@v3.8/mod.ts'
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import { Database } from 'jsr:@db/sqlite'
+import * as log from 'jsr:@std/log'
+import { fetchWithTimeout } from '../../infra/http/fetch-with-timeout.ts'
+import { getDataDir } from '../../core/env.ts'
 
-const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
-const IMDB_DB_PATH = `${DATA_DIR}/imdb-ratings.db`
+const IMDB_DB_PATH = `${getDataDir()}/imdb-ratings.db`
 const IMDB_DUMP_URL = 'https://datasets.imdbws.com/title.ratings.tsv.gz'
 const UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000 // 24 hours
 
-let db: DB | null = null
+let db: Database | null = null
 let isDownloading = false
 let lastUpdateCheck = 0
+let backgroundJobId: number | null = null
 
 /**
  * Initialize the IMDb database connection
  */
-export function initIMDbDatabase(): DB | null {
+export function initIMDbDatabase(): Database | null {
   if (db) return db
 
   try {
@@ -29,7 +30,7 @@ export function initIMDbDatabase(): DB | null {
       return null
     }
 
-    db = new DB(IMDB_DB_PATH, { mode: 'read' })
+    db = new Database(IMDB_DB_PATH, { readonly: true })
     log.info(`✅ IMDb ratings database loaded from ${IMDB_DB_PATH}`)
     return db
   } catch (error) {
@@ -48,13 +49,13 @@ export function getIMDbRating(imdbId: string): number | null {
   }
 
   try {
-    const result = db.query(
-      'SELECT averageRating FROM ratings WHERE tconst = ? LIMIT 1',
-      [imdbId]
+    const stmt = db.prepare(
+      'SELECT averageRating FROM ratings WHERE tconst = ? LIMIT 1'
     )
-
-    if (result.length > 0 && result[0].length > 0) {
-      const rating = result[0][0]
+    const result = stmt.value<[number]>(imdbId)
+    stmt.finalize()
+    if (result && result.length > 0) {
+      const rating = result[0]
       return typeof rating === 'number' ? rating : null
     }
 
@@ -83,7 +84,7 @@ export async function downloadAndBuildIMDbDatabase(): Promise<boolean> {
     await ensureDataDir()
 
     // Download the gzipped TSV file
-    const response = await fetch(IMDB_DUMP_URL)
+    const response = await fetchWithTimeout(IMDB_DUMP_URL)
     if (!response.ok) {
       throw new Error(
         `Failed to download IMDb data: ${response.status} ${response.statusText}`
@@ -97,9 +98,15 @@ export async function downloadAndBuildIMDbDatabase(): Promise<boolean> {
       )} MB, decompressing...`
     )
 
-    // Decompress
-    const decompressed = gunzip(compressedData)
-    const tsvData = new TextDecoder().decode(decompressed)
+    // Decompress using native web streams API.
+    const compressedStream = new Blob([compressedData]).stream()
+    const decompressedStream = compressedStream.pipeThrough(
+      new DecompressionStream('gzip')
+    )
+    const decompressedBuffer = await new Response(
+      decompressedStream
+    ).arrayBuffer()
+    const tsvData = new TextDecoder().decode(decompressedBuffer)
     log.info(
       `✅ Decompressed to ${(tsvData.length / 1024 / 1024).toFixed(
         2
@@ -130,11 +137,11 @@ async function buildDatabase(tsvData: string): Promise<void> {
   const tempDbPath = `${IMDB_DB_PATH}.tmp`
 
   // Create new database
-  const buildDb = new DB(tempDbPath)
+  const buildDb = new Database(tempDbPath)
 
   try {
     // Create table
-    buildDb.execute(`
+    buildDb.exec(`
       CREATE TABLE IF NOT EXISTS ratings (
         tconst TEXT PRIMARY KEY,
         averageRating REAL,
@@ -144,13 +151,11 @@ async function buildDatabase(tsvData: string): Promise<void> {
 
     // Parse TSV and insert data
     const lines = tsvData.split('\n')
-    const header = lines[0] // Skip header: tconst averageRating numVotes
-
     log.info(`Processing ${lines.length - 1} ratings...`)
 
-    buildDb.execute('BEGIN TRANSACTION')
+    buildDb.exec('BEGIN TRANSACTION')
 
-    const insertStmt = buildDb.prepareQuery(
+    const insertStmt = buildDb.prepare(
       'INSERT OR REPLACE INTO ratings (tconst, averageRating, numVotes) VALUES (?, ?, ?)'
     )
 
@@ -164,11 +169,7 @@ async function buildDatabase(tsvData: string): Promise<void> {
       // Skip invalid data
       if (!tconst || avgRating === '\\N' || numVotes === '\\N') continue
 
-      insertStmt.execute([
-        tconst,
-        parseFloat(avgRating),
-        parseInt(numVotes, 10),
-      ])
+      insertStmt.run(tconst, parseFloat(avgRating), parseInt(numVotes, 10))
 
       count++
 
@@ -179,11 +180,11 @@ async function buildDatabase(tsvData: string): Promise<void> {
     }
 
     insertStmt.finalize()
-    buildDb.execute('COMMIT')
+    buildDb.exec('COMMIT')
 
     // Create index for fast lookups
     log.info('Creating index...')
-    buildDb.execute('CREATE INDEX IF NOT EXISTS idx_tconst ON ratings(tconst)')
+    buildDb.exec('CREATE INDEX IF NOT EXISTS idx_tconst ON ratings(tconst)')
 
     log.info(`✅ Inserted ${count.toLocaleString()} ratings into database`)
   } finally {
@@ -249,19 +250,27 @@ export async function checkAndUpdateDatabase(): Promise<void> {
  * Start background update job
  */
 export function startBackgroundUpdateJob(): void {
+  if (backgroundJobId !== null) return
   // Initial check on startup
   checkAndUpdateDatabase().catch(err =>
     log.error(`Initial database check failed: ${err}`)
   )
 
   // Check daily
-  setInterval(() => {
+  backgroundJobId = setInterval(() => {
     checkAndUpdateDatabase().catch(err =>
       log.error(`Scheduled database check failed: ${err}`)
     )
   }, UPDATE_INTERVAL_MS)
 
   log.info('📅 IMDb background update job started (checks daily)')
+}
+
+export function stopBackgroundUpdateJob(): void {
+  if (backgroundJobId === null) return
+  clearInterval(backgroundJobId)
+  backgroundJobId = null
+  log.info('🛑 IMDb background update job stopped')
 }
 
 /**
@@ -292,7 +301,7 @@ function existsSync(path: string): boolean {
  */
 async function ensureDataDir(): Promise<void> {
   try {
-    await Deno.mkdir(DATA_DIR, { recursive: true })
+    await Deno.mkdir(getDataDir(), { recursive: true })
   } catch {
     // Ignore if already exists
   }

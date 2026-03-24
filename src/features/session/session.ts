@@ -1,6 +1,6 @@
 // deno-lint-ignore-file
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
-import { assert } from 'https://deno.land/std@0.79.0/_util/assert.ts'
+import * as log from 'jsr:@std/log'
+import { assert } from '../../core/assert.ts'
 import {
   getAllMovies,
   getRandomMovie,
@@ -18,7 +18,18 @@ import {
   waitForPlexCacheReady,
 } from '../../integrations/plex/cache.ts'
 import {
+  isMovieInEmby,
+  getAllEmbyMovies,
+} from '../../integrations/emby/cache.ts'
+import {
+  isMovieInJellyfin,
+  getAllJellyfinMovies,
+} from '../../integrations/jellyfin/cache.ts'
+import {
   getAccessPassword,
+  getDataDir,
+  getEmbyLibraryName,
+  getJellyfinLibraryName,
   getMovieBatchSize,
   getPaidStreamingServices,
   getPersonalMediaSources,
@@ -26,6 +37,7 @@ import {
   getRootPath,
   getTmdbApiKey,
 } from '../../core/config.ts'
+import { tmdbFetch } from '../../api/tmdb.ts'
 import {
   validateTMDbPoster,
   getBestPosterPath,
@@ -159,6 +171,7 @@ interface MediaItem {
   key: string
   type: 'movie' | 'artist' | 'photo' | 'show'
   streamingServices?: { subscription: any[]; free: any[] }
+  watchProviders?: any[]
   streamingLink?: string | null
   tmdbId?: number | null
 }
@@ -498,6 +511,8 @@ interface WebSocketNextBatchMessage {
       roomPersonalMedia?: boolean
       paidSubscriptions?: boolean
       freeStreaming?: boolean
+      freeStreamingServices?: string[]
+      subscriptionServices?: string[]
     }
     contentRatings?: string[]
     imdbRating?: number
@@ -555,7 +570,7 @@ interface PersistedState {
   movieIndex: Record<string, MediaItem> // guid -> MediaItem (for rebuilding matches)
 }
 
-const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
+const DATA_DIR = getDataDir()
 const STATE_FILE = `${DATA_DIR}/session-state.json`
 const BACKUP_FILE = `${DATA_DIR}/session-state.backup.json`
 
@@ -579,7 +594,13 @@ async function loadState(): Promise<PersistedState> {
   await ensureDataDir()
   try {
     const raw = await Deno.readTextFile(STATE_FILE)
-    const parsed: any = JSON.parse(raw)
+    let parsed: any
+    try {
+      parsed = JSON.parse(raw)
+    } catch (err) {
+      log.warn(`Failed to parse persisted session state JSON: ${err}`)
+      throw new Error('invalid session state json')
+    }
     if (!parsed || typeof parsed !== 'object') throw new Error('bad state')
 
     // Accept both shapes:
@@ -809,7 +830,7 @@ export function recordImdbImportHistoryStart(
   movieCount: number
 ): string {
   const user = getRoomUser(roomCode, userName)
-  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  const id = crypto.randomUUID()
   user.importHistory!.unshift({
     id,
     fileName: fileName.trim() || 'IMDb CSV',
@@ -1118,7 +1139,7 @@ class Session {
       // Persist the response change
       upsertRoomUser(this.roomCode, actingUser)
       saveState(persistedState).catch(err =>
-        log.warning(`Failed to save state on match removal: ${err}`)
+        log.warn(`Failed to save state on match removal: ${err}`)
       )
     }
 
@@ -1338,7 +1359,7 @@ class Session {
     // persist presence (even if ws is null now)
     upsertRoomUser(this.roomCode, user)
     saveState(persistedState).catch(err =>
-      log.warning(`Failed to save state on add(): ${err}`)
+      log.warn(`Failed to save state on add(): ${err}`)
     )
   }
 
@@ -1354,8 +1375,30 @@ class Session {
   }
 
   handleMessage = async (user: User, msg: string) => {
+    let decodedMessage: WebSocketMessage
     try {
-      const decodedMessage: WebSocketMessage = JSON.parse(msg)
+      decodedMessage = JSON.parse(msg)
+    } catch (err) {
+      log.warn(
+        `Received invalid WebSocket JSON from ${user.name}: ${
+          err?.message || err
+        }`
+      )
+      try {
+        this.users.get(user)?.send(
+          JSON.stringify({
+            type: 'error',
+            payload: { message: 'Invalid message format' },
+          })
+        )
+      } catch {
+        // no-op
+      }
+      this.users.get(user)?.close(1003, 'Invalid message format')
+      return
+    }
+
+    try {
       log.debug(
         `Received WebSocket message from ${user.name}: type=${decodedMessage.type}`
       )
@@ -1504,7 +1547,7 @@ class Session {
           // Persist: user responses + (optionally) liked state can be derived, so we just save users + movieIndex
           upsertRoomUser(this.roomCode, user)
           await saveState(persistedState).catch(err =>
-            log.warning(`Failed to save state on response: ${err}`)
+            log.warn(`Failed to save state on response: ${err}`)
           )
           break
         }
@@ -1526,6 +1569,8 @@ class Session {
         roomPersonalMedia?: boolean
         paidSubscriptions?: boolean
         freeStreaming?: boolean
+        freeStreamingServices?: string[]
+        subscriptionServices?: string[]
       }
       contentRatings?: string[]
       imdbRating?: number
@@ -1559,6 +1604,13 @@ class Session {
       roomPersonalMedia: Boolean(requestedAvailability?.roomPersonalMedia),
       paidSubscriptions: Boolean(requestedAvailability?.paidSubscriptions),
       freeStreaming: Boolean(requestedAvailability?.freeStreaming),
+      freeStreamingServices: Array.isArray(
+        requestedAvailability?.freeStreamingServices
+      )
+        ? requestedAvailability.freeStreamingServices
+            .map(service => String(service).trim())
+            .filter(Boolean)
+        : [],
     }
 
     if (
@@ -1574,6 +1626,11 @@ class Session {
       normalizedAvailability.roomPersonalMedia = false
       normalizedAvailability.paidSubscriptions = false
       normalizedAvailability.freeStreaming = false
+      normalizedAvailability.freeStreamingServices = []
+    }
+
+    if (!normalizedAvailability.freeStreaming) {
+      normalizedAvailability.freeStreamingServices = []
     }
 
     const wantsRoomPersonalMedia =
@@ -1584,9 +1641,39 @@ class Session {
       configuredPaidServices.length > 0
     const wantsFreeStreaming = normalizedAvailability.freeStreaming
 
+    // Determine which specific personal media sources are requested
+    const requestedPersonalSources = (
+      filters?.availability?.subscriptionServices || []
+    )
+      .map(s => String(s).trim().toLowerCase())
+      .filter(s => configuredPersonalSources.includes(s))
+
+    const wantsPlexSource =
+      requestedPersonalSources.length === 0 ||
+      requestedPersonalSources.includes('plex')
+    const wantsEmbySource = requestedPersonalSources.includes('emby')
+    const wantsJellyfinSource = requestedPersonalSources.includes('jellyfin')
+
+    const isPersonalMediaOnly =
+      wantsRoomPersonalMedia && !wantsPaidSubscriptions && !wantsFreeStreaming
+
+    // Only trigger Plex-only mode when Plex is actually the selected personal source
     let effectiveShowMyPlexOnly =
-      filters?.showPlexOnly ??
-      (wantsRoomPersonalMedia && !wantsPaidSubscriptions && !wantsFreeStreaming)
+      filters?.showPlexOnly ?? (isPersonalMediaOnly && wantsPlexSource)
+
+    // Emby-only and Jellyfin-only modes
+    const effectiveShowEmbyOnly =
+      isPersonalMediaOnly && wantsEmbySource && !wantsPlexSource
+    const effectiveShowJellyfinOnly =
+      isPersonalMediaOnly &&
+      wantsJellyfinSource &&
+      !wantsPlexSource &&
+      !wantsEmbySource
+
+    // If only Emby or Jellyfin is selected, don't trigger Plex-only mode
+    if (effectiveShowEmbyOnly || effectiveShowJellyfinOnly) {
+      effectiveShowMyPlexOnly = false
+    }
 
     let effectiveStreamingServices = [...requestedServices]
     if (effectiveStreamingServices.length === 0 && wantsPaidSubscriptions) {
@@ -1594,12 +1681,20 @@ class Session {
     }
 
     const shouldBlendPlexInAvailability =
-      wantsRoomPersonalMedia && !effectiveShowMyPlexOnly
+      wantsRoomPersonalMedia &&
+      !effectiveShowMyPlexOnly &&
+      !effectiveShowEmbyOnly &&
+      !effectiveShowJellyfinOnly
 
     const tmdbConfigured = Boolean(getTmdbApiKey())
 
-    if (!tmdbConfigured && !effectiveShowMyPlexOnly) {
-      log.warning(
+    if (
+      !tmdbConfigured &&
+      !effectiveShowMyPlexOnly &&
+      !effectiveShowEmbyOnly &&
+      !effectiveShowJellyfinOnly
+    ) {
+      log.warn(
         'TMDb API key is missing; falling back to Plex library movies for swipe results.'
       )
     }
@@ -1607,7 +1702,13 @@ class Session {
     try {
       // Increase batch size to account for movies we'll skip
       const attemptBatchSize = Math.min(
-        effectiveShowMyPlexOnly ? (await getAllMovies()).length : 40, // Try more movies to get enough valid ones
+        effectiveShowMyPlexOnly
+          ? (await getAllMovies()).length
+          : effectiveShowEmbyOnly
+          ? Math.max(getAllEmbyMovies().length, 40)
+          : effectiveShowJellyfinOnly
+          ? Math.max(getAllJellyfinMovies().length, 40)
+          : 40,
         Number(getMovieBatchSize()) * 2 // Double the normal batch size
       )
 
@@ -1677,10 +1778,9 @@ class Session {
           log.info(`🎭 Getting all movies for ${person.name}`)
 
           try {
-            const response = await fetch(
-              `https://api.themoviedb.org/3/person/${
-                person.id
-              }/movie_credits?api_key=${getTmdbApiKey()}`
+            const response = await tmdbFetch(
+              `/person/${person.id}/movie_credits`,
+              getTmdbApiKey()
             )
 
             if (response.ok) {
@@ -1716,6 +1816,47 @@ class Session {
             yearMax: filters?.yearMax,
             genres: filters?.genres,
           })
+
+        const fetchEmbyCandidate = async () => {
+          const embyMovies = getAllEmbyMovies()
+          if (embyMovies.length === 0) {
+            throw new NoMoreMoviesError(
+              'Emby cache is empty — check Emby connection'
+            )
+          }
+          const entry =
+            embyMovies[Math.floor(Math.random() * embyMovies.length)]
+          return this.formatTMDbMovie({
+            id: entry.tmdbId,
+            title: entry.title,
+            release_date: entry.year ? `${entry.year}-01-01` : null,
+          })
+        }
+
+        const fetchJellyfinCandidate = async () => {
+          const jellyfinMovies = getAllJellyfinMovies()
+          if (jellyfinMovies.length === 0) {
+            throw new NoMoreMoviesError(
+              'Jellyfin cache is empty — check Jellyfin connection'
+            )
+          }
+          const entry =
+            jellyfinMovies[Math.floor(Math.random() * jellyfinMovies.length)]
+          return this.formatTMDbMovie({
+            id: entry.tmdbId,
+            title: entry.title,
+            release_date: entry.year ? `${entry.year}-01-01` : null,
+          })
+        }
+
+        // Check Emby/Jellyfin-only modes before the TMDb-not-configured fallback
+        if (effectiveShowEmbyOnly) {
+          return await fetchEmbyCandidate()
+        }
+
+        if (effectiveShowJellyfinOnly) {
+          return await fetchJellyfinCandidate()
+        }
 
         if (effectiveShowMyPlexOnly || !tmdbConfigured) {
           return await fetchPlexCandidate()
@@ -1761,7 +1902,7 @@ class Session {
             streamingServices: effectiveStreamingServices,
           })
         } catch (err) {
-          log.warning(
+          log.warn(
             `TMDb candidate fetch failed at attempt ${attemptNumber}; trying room library fallback: ${err}`
           )
           return await fetchPlexCandidate()
@@ -1806,7 +1947,7 @@ class Session {
           break
         }
         if (elapsedMs >= effectiveHardTimeoutMs) {
-          log.warning(
+          log.warn(
             `⏱️ Hard timeout reached after ${elapsedMs}ms; ending batch generation with ${validMovies.length} movie(s).`
           )
           break
@@ -1826,7 +1967,7 @@ class Session {
 
           log.error(`Error fetching movie attempt ${attemptNumber}:`, err)
           if (hasPersonFilters && personMovies.length > 0) {
-            log.warning('Person movie fetch failed, falling back to discovery')
+            log.warn('Person movie fetch failed, falling back to discovery')
             hasPersonFilters = false
           }
           queueNextCandidate()
@@ -1930,14 +2071,14 @@ class Session {
                     )
                   }
                 } catch (retryErr) {
-                  log.warning(
+                  log.warn(
                     `Forced enrichment retry failed for ${plexMovie.title}: ${retryErr}`
                   )
                 }
               }
             }
           } catch (e) {
-            log.warning(`Enrichment failed for ${plexMovie.title}: ${e}`)
+            log.warn(`Enrichment failed for ${plexMovie.title}: ${e}`)
           }
 
           const candidateTmdbId = extra?.tmdbId ?? tmdbIdFromGuid
@@ -2124,6 +2265,50 @@ class Session {
             continue
           }
 
+          if (
+            wantsFreeStreaming &&
+            normalizedAvailability.freeStreamingServices.length > 0
+          ) {
+            const freeServiceSet = new Set(
+              streamingServices.free
+                .map(service =>
+                  String(service?.name || '')
+                    .trim()
+                    .toLowerCase()
+                )
+                .filter(Boolean)
+            )
+            const hasRequestedFreeService = normalizedAvailability.freeStreamingServices.some(
+              service => {
+                const normalized = service.toLowerCase()
+                if (normalized === 'pluto-tv') {
+                  return (
+                    freeServiceSet.has('pluto tv') ||
+                    freeServiceSet.has('pluto-tv')
+                  )
+                }
+                if (normalized === 'roku-channel') {
+                  return (
+                    freeServiceSet.has('roku channel') ||
+                    freeServiceSet.has('the roku channel') ||
+                    freeServiceSet.has('roku-channel')
+                  )
+                }
+                return (
+                  freeServiceSet.has(normalized) ||
+                  freeServiceSet.has(normalized.replace(/-/g, ' '))
+                )
+              }
+            )
+
+            if (!hasRequestedFreeService) {
+              log.debug(
+                `⛔️ Skipping ${plexMovie.title} - missing selected free streaming services`
+              )
+              continue
+            }
+          }
+
           if (plexMovie.guid?.startsWith('plex://')) {
             log.debug(
               `✅ Movie ${plexMovie.title} is from Plex library (plex:// guid) - adding AllVids badge`
@@ -2220,7 +2405,7 @@ class Session {
           log.error(`Error details:`, err.message)
 
           if (hasPersonFilters && personMovies.length > 0) {
-            log.warning(
+            log.warn(
               'Person movie failed, falling back to discovery for remaining movies'
             )
             hasPersonFilters = false
@@ -2239,7 +2424,7 @@ class Session {
       // Add to global movie index
       addMoviesToIndex(validMovies)
       await saveState(persistedState).catch(err =>
-        log.warning(`Failed to save state after batch: ${err}`)
+        log.warn(`Failed to save state after batch: ${err}`)
       )
 
       // Send only unseen movies to each user
@@ -2436,7 +2621,7 @@ class Session {
 
       if (tmdbMappingsPersisted) {
         await saveState(persistedState).catch(err =>
-          log.warning(`Failed to save state after backfilling TMDb IDs: ${err}`)
+          log.warn(`Failed to save state after backfilling TMDb IDs: ${err}`)
         )
       }
     } catch (err) {
@@ -2519,10 +2704,9 @@ class Session {
     if (!person) throw new Error('No person found')
 
     const page = Math.floor(index / 20) + 1 // Get different pages based on index
-    const response = await fetch(
-      `https://api.themoviedb.org/3/person/${
-        person.id
-      }/movie_credits?api_key=${getTmdbApiKey()}`
+    const response = await tmdbFetch(
+      `/person/${person.id}/movie_credits`,
+      getTmdbApiKey()
     )
 
     if (!response.ok) throw new Error('Failed to get person movies')
@@ -2553,8 +2737,10 @@ class Session {
       // Get IMDb ID from TMDb for more reliable enrichment
       let imdbId = null
       try {
-        const detailsResponse = await fetch(
-          `https://api.themoviedb.org/3/movie/${tmdbId}?api_key=${getTmdbApiKey()}&append_to_response=external_ids`
+        const detailsResponse = await tmdbFetch(
+          `/movie/${tmdbId}`,
+          getTmdbApiKey(),
+          { append_to_response: 'external_ids' }
         )
         if (detailsResponse.ok) {
           const details = await detailsResponse.json()
@@ -2725,7 +2911,7 @@ class Session {
 // -------------------------
 // Session registry
 // -------------------------
-const activeSessions: Map<string, Session> = new Map()
+export const activeSessions: Map<string, Session> = new Map()
 
 const ROOM_CODE_MAP = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789'
 const ROOM_CODE_LENGTH = 4
@@ -2791,21 +2977,29 @@ async function hydratePersistedMoviesWithPlexAvailability(): Promise<number> {
     const imdbId = extractImdbIdFromMovie(movie as MediaItem)
     const year = parseYear((movie as MediaItem).year as any)
 
-    const inPlex = isMovieInPlex({
+    const movieParams = {
       tmdbId: tmdbId ?? undefined,
       imdbId: imdbId ?? undefined,
       title: (movie as MediaItem).title,
       year: year ?? undefined,
-    })
+    }
 
-    if (inPlex) {
+    const libraryName = isMovieInPlex(movieParams)
+      ? getPlexLibraryName() || 'Plex'
+      : isMovieInEmby(movieParams)
+      ? getEmbyLibraryName() || 'Emby'
+      : isMovieInJellyfin(movieParams)
+      ? getJellyfinLibraryName() || 'Jellyfin'
+      : null
+
+    if (libraryName) {
       const alreadyTagged = normalized.subscription.some(
-        service => service?.name === getPlexLibraryName()
+        service => service?.name === libraryName
       )
       if (!alreadyTagged) {
         normalized.subscription.unshift({
           id: 0,
-          name: getPlexLibraryName(),
+          name: libraryName,
           logo_path: '/assets/logos/allvids.svg',
           type: 'subscription',
         })
@@ -2835,7 +3029,7 @@ async function hydratePersistedMoviesWithPlexAvailability(): Promise<number> {
 
   if (updatedGuids.length > 0) {
     await saveState(persistedState).catch(err =>
-      log.warning(`Failed to persist Plex availability backfill: ${err}`)
+      log.warn(`Failed to persist Plex availability backfill: ${err}`)
     )
   }
 
@@ -2885,13 +3079,29 @@ export const getSession = (roomCode: string, ws: WebSocket): Session => {
 // -------------------------
 export const handleLogin = (
   ws: WebSocket,
-  clientIp = 'unknown'
+  clientIp = 'unknown',
+  cookieAccessPassword = ''
 ): Promise<User> => {
   return new Promise(resolve => {
     const handler = async (msg: string) => {
+      let data: WebSocketMessage
       try {
-        const data: WebSocketMessage = JSON.parse(msg)
+        data = JSON.parse(msg)
+      } catch (err) {
+        log.warn(`Failed to parse login message JSON: ${err?.message || err}`)
+        const response: WebSocketLoginResponseMessage = {
+          type: 'loginResponse',
+          payload: {
+            success: false,
+            message: 'Invalid message format.',
+          },
+        }
+        ws.send(JSON.stringify(response))
+        ws.close(1003, 'Invalid login message format')
+        return
+      }
 
+      try {
         if (data.type === 'login') {
           log.info(`Got a login attempt from ${data.payload.name}`)
 
@@ -2907,13 +3117,15 @@ export const handleLogin = (
             return
           }
 
-          // Check access password
+          // Check access password (accept either WS payload or cookie from upgrade request)
           const accessPassword = getAccessPassword()
+          const candidatePassword =
+            data.payload.accessPassword || cookieAccessPassword
           if (
             accessPassword &&
-            !timingSafeEqual(data.payload.accessPassword, accessPassword)
+            !timingSafeEqual(candidatePassword, accessPassword)
           ) {
-            log.warning(`Invalid access password from ${data.payload.name}`)
+            log.warn(`Invalid access password from ${data.payload.name}`)
             const response: WebSocketLoginResponseMessage = {
               type: 'loginResponse',
               payload: {
@@ -2985,7 +3197,7 @@ export const handleLogin = (
           }
 
           ensurePlexHydrationReady().catch(err => {
-            log.warning(
+            log.warn(
               `Continuing login for ${
                 data.payload.name
               } while Plex hydration finishes in background: ${
@@ -3098,7 +3310,7 @@ export const handleLogin = (
           // Persist (make sure this user is in the room set)
           upsertRoomUser(session.roomCode, user)
           saveState(persistedState).catch(err =>
-            log.warning(`Failed to save state on login: ${err}`)
+            log.warn(`Failed to save state on login: ${err}`)
           )
           if (responsesMutated) {
             log.debug(
@@ -3162,6 +3374,7 @@ export interface ImportedMovie {
   runtime?: number
   contentRating?: string
   streamingServices?: { subscription: any[]; free: any[] }
+  watchProviders?: any[]
   streamingLink?: string | null
 }
 
@@ -3242,6 +3455,7 @@ export async function bulkImportSeen(
         subscription: [],
         free: [],
       },
+      watchProviders: movie.watchProviders ?? [],
       streamingLink: movie.streamingLink ?? null,
     }
 
@@ -3258,7 +3472,7 @@ export async function bulkImportSeen(
 
   // Save state
   await saveState(persistedState).catch(err =>
-    log.warning(`Failed to save state after IMDb import: ${err}`)
+    log.warn(`Failed to save state after IMDb import: ${err}`)
   )
 
   log.info(
@@ -3306,7 +3520,7 @@ function sendToUser(roomCode: string, userName: string, message: any): boolean {
     ws.send(JSON.stringify(message))
     return true
   } catch (err) {
-    log.warning(`Failed to send WS message to ${userName}: ${err}`)
+    log.warn(`Failed to send WS message to ${userName}: ${err}`)
     return false
   }
 }
@@ -3369,9 +3583,9 @@ export async function processImdbImportBackground(
 
     try {
       // 1. Look up movie by IMDb ID via TMDb find endpoint
-      const findResp = await fetch(
-        `https://api.themoviedb.org/3/find/${row.imdbId}?api_key=${TMDB_KEY}&external_source=imdb_id`
-      )
+      const findResp = await tmdbFetch(`/find/${row.imdbId}`, TMDB_KEY, {
+        external_source: 'imdb_id',
+      })
 
       if (!findResp.ok) {
         log.debug(
@@ -3460,6 +3674,7 @@ export async function processImdbImportBackground(
           subscription: [],
           free: [],
         },
+        watchProviders: enriched?.watchProviders ?? [],
         streamingLink: enriched?.streamingLink ?? null,
       }
 
@@ -3502,6 +3717,7 @@ export async function processImdbImportBackground(
         runtime: movie.runtime ?? undefined,
         contentRating: movie.contentRating ?? undefined,
         streamingServices: movie.streamingServices,
+        watchProviders: movie.watchProviders ?? [],
         streamingLink: movie.streamingLink,
       }
       if (row.imdbId) {
@@ -3523,11 +3739,11 @@ export async function processImdbImportBackground(
       // Save state periodically (every 25 movies)
       if (imported % 25 === 0) {
         await saveState(persistedState).catch(err =>
-          log.warning(`Failed to save state during import: ${err}`)
+          log.warn(`Failed to save state during import: ${err}`)
         )
       }
     } catch (err) {
-      log.warning(
+      log.warn(
         `[IMDb Import] Failed to process ${row.imdbId}: ${err?.message || err}`
       )
       skipped++
@@ -3544,13 +3760,13 @@ export async function processImdbImportBackground(
 
   // Final save
   await saveState(persistedState).catch(err =>
-    log.warning(`Failed to save state after import: ${err}`)
+    log.warn(`Failed to save state after import: ${err}`)
   )
 
   if (importHistoryId) {
     finalizeImdbImportHistory(roomCode, userName, importHistoryId, 'successful')
     await saveState(persistedState).catch(err =>
-      log.warning(`Failed to save import history state: ${err}`)
+      log.warn(`Failed to save import history state: ${err}`)
     )
   }
 
@@ -3562,5 +3778,97 @@ export async function processImdbImportBackground(
 
   log.info(
     `[IMDb Import] Completed: ${imported} imported, ${skipped} skipped for ${userName} in ${roomCode}`
+  )
+}
+
+// -------------------------
+// Admin helpers — read/clear live persistedState
+// -------------------------
+
+export function getAllRooms(): Record<
+  string,
+  { users: Record<string, unknown> }
+> {
+  const result: Record<string, { users: Record<string, unknown> }> = {}
+  for (const [roomCode, room] of Object.entries(persistedState.rooms)) {
+    const users: Record<string, unknown> = {}
+    for (const user of room.users) {
+      users[user.name] = { responses: user.responses }
+    }
+    result[roomCode] = { users }
+  }
+  return result
+}
+
+export function clearAllRooms(): void {
+  persistedState.rooms = {}
+  // Also wipe live in-memory sessions so cleared data is not restored on
+  // reconnect (active sessions hold user responses independently of the
+  // persisted state and would otherwise shadow the clear).
+  for (const session of activeSessions.values()) {
+    for (const user of session.users.keys()) {
+      user.responses = []
+    }
+    session.likedMovies.clear()
+    session.matches = []
+  }
+  saveState(persistedState).catch(err =>
+    log.warn(`Failed to save state after clearAllRooms: ${err}`)
+  )
+}
+
+export function clearRooms(roomCodes: string[]): void {
+  for (const code of roomCodes) {
+    delete persistedState.rooms[code]
+    // Mirror the clear into the live session so reconnecting users start fresh.
+    const session = activeSessions.get(code)
+    if (session) {
+      for (const user of session.users.keys()) {
+        user.responses = []
+      }
+      session.likedMovies.clear()
+      session.matches = []
+    }
+  }
+  saveState(persistedState).catch(err =>
+    log.warn(`Failed to save state after clearRooms: ${err}`)
+  )
+}
+
+export function clearUsersFromRoom(
+  roomCode: string,
+  userNames: string[]
+): void {
+  const room = persistedState.rooms[roomCode]
+  if (room) {
+    room.users = room.users.filter(u => !userNames.includes(u.name))
+    if (room.users.length === 0) {
+      delete persistedState.rooms[roomCode]
+    }
+  }
+  // Mirror the clear into the live session so reconnecting users start fresh.
+  const session = activeSessions.get(roomCode)
+  if (session) {
+    for (const user of session.users.keys()) {
+      if (userNames.includes(user.name)) {
+        user.responses = []
+      }
+    }
+    // Remove the cleared users from likedMovies.
+    for (const [movie, likers] of [...session.likedMovies.entries()]) {
+      const remaining = likers.filter(u => !userNames.includes(u.name))
+      if (remaining.length > 0) {
+        session.likedMovies.set(movie, remaining)
+      } else {
+        session.likedMovies.delete(movie)
+      }
+    }
+    // Drop matches that no longer have at least 2 users after removal.
+    session.matches = session.matches
+      .map(m => ({ ...m, users: m.users.filter(n => !userNames.includes(n)) }))
+      .filter(m => m.users.length >= 2)
+  }
+  saveState(persistedState).catch(err =>
+    log.warn(`Failed to save state after clearUsersFromRoom: ${err}`)
   )
 }

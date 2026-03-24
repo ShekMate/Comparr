@@ -1,5 +1,6 @@
 import { getRadarrApiKey, getRadarrUrl } from '../core/config.ts'
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import * as log from 'jsr:@std/log'
+import { fetchWithTimeout } from '../infra/http/fetch-with-timeout.ts'
 
 interface RadarrMovie {
   id: number
@@ -19,13 +20,13 @@ async function fetchRadarrMovies(): Promise<RadarrMovie[]> {
   const radarrUrl = getRadarrUrl()
   const radarrApiKey = getRadarrApiKey()
   if (!radarrUrl || !radarrApiKey) {
-    log.warning('Radarr URL or API key not configured')
+    log.warn('Radarr URL or API key not configured')
     return []
   }
 
   try {
     log.info('Fetching movie library from Radarr...')
-    const response = await fetch(`${radarrUrl}/api/v3/movie`, {
+    const response = await fetchWithTimeout(`${radarrUrl}/api/v3/movie`, {
       headers: {
         'X-Api-Key': radarrApiKey,
       },
@@ -65,7 +66,7 @@ export async function refreshRadarrCache(): Promise<void> {
   log.info(`✅ Radarr cache updated with ${movieCache.size} movies`)
 
   if (skippedCount > 0) {
-    log.warning(
+    log.warn(
       `⚠️ Radarr cache size limit reached. ${skippedCount} movies skipped. Consider increasing MAX_RADARR_CACHE_SIZE.`
     )
   }
@@ -90,8 +91,8 @@ export function isMovieInRadarr(tmdbId: number): boolean {
   // Check if cache needs refresh (fallback safety)
   const now = Date.now()
   if (now - lastCacheUpdate > CACHE_DURATION) {
-    log.warning('Radarr cache is stale, triggering refresh')
-    updateCache().catch(err => log.error(`Cache refresh failed: ${err}`))
+    log.warn('Radarr cache is stale, triggering refresh')
+    refreshRadarrCache().catch(err => log.error(`Cache refresh failed: ${err}`))
     return false // Return false for stale cache
   }
 

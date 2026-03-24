@@ -1,25 +1,30 @@
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import type { CompatRequest } from '../compat-request.ts'
+import * as log from 'jsr:@std/log'
 import { addSecurityHeaders } from '../security-headers.ts'
 import {
   getMediaStatus,
   isRequestServiceConfigured,
 } from '../../../api/jellyseerr.ts'
 import { isMovieInRadarr } from '../../../api/radarr.ts'
+import { isMovieInPlex } from '../../../integrations/plex/cache.ts'
+import { isMovieInEmby } from '../../../integrations/emby/cache.ts'
+import { isMovieInJellyfin } from '../../../integrations/jellyfin/cache.ts'
 
-const makeJsonHeaders = () => {
+const makeJsonHeaders = (req?: CompatRequest) => {
   const headers = new Headers({ 'content-type': 'application/json' })
-  addSecurityHeaders(headers)
+  addSecurityHeaders(headers, req)
   return headers
 }
 
-export async function handleRequestServiceRoutes(req: any, path: string) {
+export async function handleRequestServiceRoutes(
+  req: CompatRequest,
+  path: string
+): Promise<Response | null> {
   if (path === '/api/request-service-status') {
-    await req.respond({
-      status: 200,
-      body: JSON.stringify({ configured: isRequestServiceConfigured() }),
-      headers: makeJsonHeaders(),
-    })
-    return true
+    return new Response(
+      JSON.stringify({ configured: isRequestServiceConfigured() }),
+      { status: 200, headers: makeJsonHeaders(req) }
+    )
   }
 
   if (path.startsWith('/api/check-movie-status')) {
@@ -28,30 +33,36 @@ export async function handleRequestServiceRoutes(req: any, path: string) {
       const tmdbId = parseInt(url.searchParams.get('tmdbId') || '')
 
       if (!tmdbId || Number.isNaN(tmdbId)) {
-        await req.respond({
-          status: 400,
-          body: JSON.stringify({ error: 'Invalid or missing TMDb ID' }),
-          headers: makeJsonHeaders(),
-        })
-        return true
+        return new Response(
+          JSON.stringify({ error: 'Invalid or missing TMDb ID' }),
+          { status: 400, headers: makeJsonHeaders(req) }
+        )
       }
 
-      const inPlex = isMovieInRadarr(tmdbId)
-      await req.respond({
-        status: 200,
-        body: JSON.stringify({ inPlex, tmdbId }),
-        headers: makeJsonHeaders(),
-      })
+      const inRadarr = isMovieInRadarr(tmdbId)
+      const inPlex = isMovieInPlex({ tmdbId })
+      const inEmby = isMovieInEmby({ tmdbId })
+      const inJellyfin = isMovieInJellyfin({ tmdbId })
+      const inLibrary = inRadarr || inPlex || inEmby || inJellyfin
+
+      return new Response(
+        JSON.stringify({
+          inLibrary,
+          inPlex,
+          inEmby,
+          inJellyfin,
+          inRadarr,
+          tmdbId,
+        }),
+        { status: 200, headers: makeJsonHeaders(req) }
+      )
     } catch (err) {
       log.error(`Error checking movie status: ${err}`)
-      await req.respond({
+      return new Response(JSON.stringify({ error: 'Failed to check status' }), {
         status: 500,
-        body: JSON.stringify({ error: 'Failed to check status' }),
-        headers: makeJsonHeaders(),
+        headers: makeJsonHeaders(req),
       })
     }
-
-    return true
   }
 
   if (path.startsWith('/api/check-request-status')) {
@@ -60,36 +71,36 @@ export async function handleRequestServiceRoutes(req: any, path: string) {
       const tmdbId = parseInt(url.searchParams.get('tmdbId') || '')
 
       if (!tmdbId || Number.isNaN(tmdbId)) {
-        await req.respond({
-          status: 400,
-          body: JSON.stringify({ error: 'Invalid or missing TMDb ID' }),
-          headers: makeJsonHeaders(),
-        })
-        return true
+        return new Response(
+          JSON.stringify({ error: 'Invalid or missing TMDb ID' }),
+          { status: 400, headers: makeJsonHeaders(req) }
+        )
       }
 
       const status = await getMediaStatus(tmdbId)
-      await req.respond({
-        status: 200,
-        body: JSON.stringify({
+      return new Response(
+        JSON.stringify({
           available: status?.available || false,
           pending: status?.pending || false,
           processing: status?.processing || false,
           tmdbId,
         }),
-        headers: makeJsonHeaders(),
-      })
+        {
+          status: 200,
+          headers: makeJsonHeaders(req),
+        }
+      )
     } catch (err) {
       log.error(`Error checking request status: ${err}`)
-      await req.respond({
-        status: 500,
-        body: JSON.stringify({ error: 'Failed to check request status' }),
-        headers: makeJsonHeaders(),
-      })
+      return new Response(
+        JSON.stringify({ error: 'Failed to check request status' }),
+        {
+          status: 500,
+          headers: makeJsonHeaders(req),
+        }
+      )
     }
-
-    return true
   }
 
-  return false
+  return null
 }

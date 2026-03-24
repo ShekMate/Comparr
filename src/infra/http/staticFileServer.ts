@@ -1,10 +1,6 @@
-import { ServerRequest } from 'https://deno.land/std@0.79.0/http/server.ts'
-import {
-  extname,
-  join,
-  normalize,
-} from 'https://deno.land/std@0.79.0/path/posix.ts'
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import type { CompatRequest } from './compat-request.ts'
+import { extname, join, normalize } from 'node:path/posix'
+import * as log from 'jsr:@std/log'
 import { translateHTML } from '../../core/i18n.ts'
 import { addSecurityHeaders } from './security-headers.ts'
 
@@ -24,13 +20,23 @@ function normalizeURL(url: string): string {
     : normalizedUrl
 }
 
-export const serveFile = async (req: ServerRequest, basePath = 'public') => {
+export const serveFile = async (
+  req: CompatRequest,
+  basePath = 'public'
+): Promise<Response> => {
   const publicRoot = join(Deno.cwd(), basePath.replace(/^\/+/, ''))
   const urlPath = normalizeURL(req.url).replace(/^\/+/, '') // strip leading '/'
   // Use index.html for root path (handles both '/' and '/?query=params')
   const reqPathRaw = urlPath === '' ? 'index.html' : urlPath
 
   const normalizedPath = join(publicRoot, reqPathRaw)
+  const rootPrefix = publicRoot.endsWith('/') ? publicRoot : `${publicRoot}/`
+
+  if (normalizedPath !== publicRoot && !normalizedPath.startsWith(rootPrefix)) {
+    const headers = new Headers({ 'content-type': 'text/plain' })
+    addSecurityHeaders(headers, req)
+    return new Response('Forbidden', { status: 403, headers })
+  }
 
   log.debug(`serveFile(${normalizedPath})`)
 
@@ -49,18 +55,15 @@ export const serveFile = async (req: ServerRequest, basePath = 'public') => {
     const headers = new Headers({
       'content-type': getContentType(normalizedPath),
     })
-    addSecurityHeaders(headers)
+    addSecurityHeaders(headers, req)
 
-    return await req.respond({
-      body,
-      headers,
-    })
-  } catch (err) {
+    return new Response(body, { status: 200, headers })
+  } catch (_err) {
     // --- DEBUG for missing posters: show the final filesystem path that caused 404
     try {
       const urlPath = normalizeURL(req.url)
       if (urlPath.startsWith('/tmdb-poster/')) {
-        log.warning(
+        log.warn(
           `[POSTER DEBUG] 404 while serving poster -> URL: ${urlPath} | FS: ${normalizedPath}`
         )
       }
@@ -69,8 +72,8 @@ export const serveFile = async (req: ServerRequest, basePath = 'public') => {
     }
 
     const headers = new Headers({ 'content-type': 'text/plain' })
-    addSecurityHeaders(headers)
-    return await req.respond({ status: 404, body: 'Not Found', headers })
+    addSecurityHeaders(headers, req)
+    return new Response('Not Found', { status: 404, headers })
   }
 }
 
@@ -80,7 +83,12 @@ const getContentType = (path: string): string => {
     '.json': 'application/json',
     '.css': 'text/css',
     '.svg': 'image/svg+xml',
+    '.ico': 'image/x-icon',
     '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.webp': 'image/webp',
+    '.gif': 'image/gif',
     '.js': 'application/javascript',
   }
 

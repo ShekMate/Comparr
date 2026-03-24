@@ -63,7 +63,11 @@ const getForwardedIp = (req: {
   return ''
 }
 
-const matchAllowedOrigin = (candidate: string, origin: string, host: string) => {
+const matchAllowedOrigin = (
+  candidate: string,
+  origin: string,
+  host: string
+) => {
   const lowered = candidate.toLowerCase()
   try {
     const parsed = new URL(lowered)
@@ -89,7 +93,9 @@ export const isValidHost = (req: {
     .toLowerCase()
   if (!host) return false
 
-  return allowedOrigins.some(candidate => matchAllowedOrigin(candidate, '', host))
+  return allowedOrigins.some(candidate =>
+    matchAllowedOrigin(candidate, '', host)
+  )
 }
 
 export const isValidOrigin = (req: {
@@ -117,6 +123,14 @@ export const isValidOrigin = (req: {
   } catch {
     return false
   }
+}
+
+export const isValidStateChangingOrigin = (req: {
+  headers?: { get?: (name: string) => string | null }
+}) => {
+  const origin = String(req?.headers?.get?.('origin') || '').trim()
+  if (!origin) return false
+  return isValidOrigin(req)
 }
 
 export const isLocalRequest = (req: {

@@ -1,4 +1,4 @@
-import { assertEquals } from 'https://deno.land/std@0.191.0/testing/asserts.ts'
+import { assertEquals } from 'jsr:@std/assert'
 import { isLocalRequest, isPrivateNetwork } from './network-access.ts'
 
 Deno.test('isPrivateNetwork supports common private network ranges', () => {
@@ -12,39 +12,45 @@ Deno.test('isPrivateNetwork supports common private network ranges', () => {
   assertEquals(isPrivateNetwork('8.8.8.8'), false)
 })
 
-Deno.test('isLocalRequest ignores forwarded headers unless TRUST_PROXY=true', () => {
-  Deno.env.set('TRUST_PROXY', 'false')
+Deno.test(
+  'isLocalRequest ignores forwarded headers unless TRUST_PROXY=true',
+  () => {
+    Deno.env.set('TRUST_PROXY', 'false')
 
-  const req = {
-    headers: {
-      get: (name: string) =>
-        name.toLowerCase() === 'x-forwarded-for'
-          ? '192.168.0.9, 203.0.113.10'
-          : null,
-    },
-    conn: {
-      remoteAddr: { hostname: '203.0.113.15' },
-    },
+    const req = {
+      headers: {
+        get: (name: string) =>
+          name.toLowerCase() === 'x-forwarded-for'
+            ? '192.168.0.9, 203.0.113.10'
+            : null,
+      },
+      conn: {
+        remoteAddr: { hostname: '203.0.113.15' },
+      },
+    }
+
+    assertEquals(isLocalRequest(req as any), false)
   }
+)
 
-  assertEquals(isLocalRequest(req as any), false)
-})
+Deno.test(
+  'isLocalRequest trusts forwarded headers only when TRUST_PROXY=true',
+  () => {
+    Deno.env.set('TRUST_PROXY', 'true')
 
-Deno.test('isLocalRequest trusts forwarded headers only when TRUST_PROXY=true', () => {
-  Deno.env.set('TRUST_PROXY', 'true')
+    const req = {
+      headers: {
+        get: (name: string) =>
+          name.toLowerCase() === 'x-real-ip' ? '10.0.0.20' : null,
+      },
+      conn: {
+        remoteAddr: { hostname: '203.0.113.15' },
+      },
+    }
 
-  const req = {
-    headers: {
-      get: (name: string) =>
-        name.toLowerCase() === 'x-real-ip' ? '10.0.0.20' : null,
-    },
-    conn: {
-      remoteAddr: { hostname: '203.0.113.15' },
-    },
+    assertEquals(isLocalRequest(req as any), true)
   }
-
-  assertEquals(isLocalRequest(req as any), true)
-})
+)
 
 Deno.test(
   'isLocalRequest falls back to socket remote address when no forwarded headers',

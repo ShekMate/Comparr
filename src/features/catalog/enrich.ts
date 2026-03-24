@@ -3,7 +3,15 @@
 // Priority: 1) Local IMDb database, 2) TMDb API
 
 import { getIMDbRating } from './imdb-datasets.ts'
-import { getPlexLibraryName, getTmdbApiKey } from '../../core/config.ts'
+import {
+  getPlexLibraryName,
+  getEmbyLibraryName,
+  getJellyfinLibraryName,
+  getTmdbApiKey,
+  getDataDir,
+} from '../../core/config.ts'
+import { tmdbFetch } from '../../api/tmdb.ts'
+import * as log from 'jsr:@std/log'
 
 const getTmdbKey = () => getTmdbApiKey()
 const tmdbCache = new Map<string, any>()
@@ -17,6 +25,7 @@ type EnrichmentPayload = {
   rating_comparr: number | null
   genres: string[]
   streamingServices: { subscription: any[]; free: any[] }
+  watchProviders: any[]
   contentRating: string | null
   tmdbPosterPath: string | null
   cast: string[]
@@ -46,8 +55,7 @@ const ENRICH_CACHE_TTL_MS = Number(
 const ENRICH_CACHE_MAX_ENTRIES = Number(
   Deno.env.get('ENRICH_CACHE_MAX_ENTRIES') ?? '5000'
 )
-const ENRICH_DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
-const ENRICH_CACHE_FILE = `${ENRICH_DATA_DIR}/enrichment-cache.json`
+const ENRICH_CACHE_FILE = `${getDataDir()}/enrichment-cache.json`
 const enrichmentCache = new Map<string, PersistedEnrichmentEntry>()
 let enrichmentCacheLoaded = false
 let persistPromise: Promise<void> | null = null
@@ -111,6 +119,9 @@ function sanitizeEnrichmentPayload(value: any): EnrichmentPayload {
         ? value.streamingServices.free
         : [],
     },
+    watchProviders: Array.isArray(value?.watchProviders)
+      ? value.watchProviders
+      : [],
     contentRating: value?.contentRating ?? null,
     tmdbPosterPath: value?.tmdbPosterPath ?? null,
     cast: Array.isArray(value?.cast) ? value.cast : [],
@@ -160,7 +171,7 @@ async function loadPersistentEnrichmentCache() {
         value: sanitizeEnrichmentPayload(entry.value),
       })
     }
-    console.log(
+    log.info(
       `[enrich] loaded ${enrichmentCache.size} persisted enrichment cache entries`
     )
   } catch {
@@ -188,13 +199,13 @@ function schedulePersistEnrichmentCache() {
     persistRequested = false
     try {
       trimPersistentCacheIfNeeded()
-      await Deno.mkdir(ENRICH_DATA_DIR, { recursive: true })
+      await Deno.mkdir(getDataDir(), { recursive: true })
       const payload = Object.fromEntries(enrichmentCache.entries())
       const tmp = `${ENRICH_CACHE_FILE}.tmp`
       await Deno.writeTextFile(tmp, JSON.stringify(payload))
       await Deno.rename(tmp, ENRICH_CACHE_FILE)
     } catch (err) {
-      console.error(
+      log.error(
         `[enrich] failed to persist enrichment cache: ${err?.message || err}`
       )
     }
@@ -234,28 +245,6 @@ function storeEnrichmentForKeys(
   schedulePersistEnrichmentCache()
 }
 
-async function j(url: string, label = 'fetch') {
-  const t0 = Date.now()
-  const safe = url.replace(/(api_key|apikey|token|key)=([^&]+)/gi, '$1=***')
-  let text = ''
-  try {
-    const res = await fetch(url)
-    text = await res.text()
-    console.log(
-      `[enrich] ${label} ${safe} -> ${res.status} in ${
-        Date.now() - t0
-      }ms sample=${text.slice(0, 240)}…`
-    )
-    if (!res.ok) {
-      throw new Error(`${label} HTTP ${res.status}`)
-    }
-    return JSON.parse(text)
-  } catch (e) {
-    console.error(`[enrich] ${label} FAILED ${safe}: ${e?.message || e}`)
-    return null
-  }
-}
-
 function extractUsContentRating(releaseDates: any): string | null {
   const us = releaseDates?.results?.find((r: any) => r?.iso_3166_1 === 'US')
   if (!us?.release_dates) return null
@@ -282,16 +271,16 @@ async function tmdbSearchMovie(title: string, year?: number | null) {
   }
 
   const q = new URLSearchParams({
-    api_key: TMDB,
     query: title,
     include_adult: 'false',
   })
   if (year) q.set('year', String(year))
 
-  const data = await j(
-    `https://api.themoviedb.org/3/search/movie?${q.toString()}`,
-    'tmdb.search'
-  )
+  const data = await tmdbFetch(
+    '/search/movie',
+    TMDB,
+    Object.fromEntries(q.entries())
+  ).then(r => r.json())
   const result = data?.results?.[0] ?? null
   if (result) tmdbSearchCache.set(cacheKey, result)
   return result
@@ -306,10 +295,9 @@ async function tmdbMovieDetails(id: number) {
     return tmdbCache.get(cacheKey)
   }
 
-  const result = await j(
-    `https://api.themoviedb.org/3/movie/${id}?api_key=${TMDB}&append_to_response=external_ids,watch/providers,credits,release_dates`,
-    'tmdb.details'
-  )
+  const result = await tmdbFetch(`/movie/${id}`, TMDB, {
+    append_to_response: 'external_ids,watch/providers,credits,release_dates',
+  }).then(r => r.json())
   if (result) tmdbCache.set(cacheKey, result)
   return result
 }
@@ -341,12 +329,13 @@ export async function enrich({
   const requestedTmdbId = providedTmdbId ?? tmdbIdFromGuid
   let rating_imdb: number | null = null
   let rating_tmdb: number | null = null
-  let rating_comparr: number | null = null
+  const rating_comparr: number | null = null
   let genres: string[] = []
   let streamingServices: { subscription: any[]; free: any[] } = {
     subscription: [],
     free: [],
   }
+  let watchProviders: any[] = []
   let contentRating: string | null = null
   let cast: string[] = []
   let castMembers: Array<{
@@ -458,6 +447,31 @@ export async function enrich({
         subscription: Array.from(subscriptionMap.values()),
         free: Array.from(freeMap.values()),
       }
+
+      const allProviderMap = new Map()
+      const providerGroups = [
+        ['subscription', providers.flatrate || []],
+        ['free', providers.free || []],
+        ['free', providers.ads || []],
+        ['rent', providers.rent || []],
+        ['buy', providers.buy || []],
+      ] as const
+
+      providerGroups.forEach(([type, group]) => {
+        group.forEach((p: any) => {
+          const normalizedName = normalizeProviderName(p.provider_name)
+          if (!allProviderMap.has(normalizedName)) {
+            allProviderMap.set(normalizedName, {
+              id: p.provider_id,
+              name: normalizedName,
+              logo_path: p.logo_path || null,
+              type,
+            })
+          }
+        })
+      })
+
+      watchProviders = Array.from(allProviderMap.values())
     }
 
     if (det?.credits) {
@@ -494,31 +508,42 @@ export async function enrich({
 
   try {
     const { isMovieInPlex } = await import('../../integrations/plex/cache.ts')
+    const { isMovieInEmby } = await import('../../integrations/emby/cache.ts')
+    const { isMovieInJellyfin } = await import(
+      '../../integrations/jellyfin/cache.ts'
+    )
 
     const tmdbId = det?.id || hit?.id
     const imdbFromTmdb = det?.external_ids?.imdb_id
-
-    const inPlex = isMovieInPlex({
+    const params = {
       tmdbId,
       imdbId: imdbFromTmdb || imdbId || undefined,
       title,
       year,
-    })
+    }
 
-    const plexLibraryName = getPlexLibraryName() || 'Plex'
-    if (
-      inPlex &&
-      !streamingServices.subscription.some(s => s.name === plexLibraryName)
-    ) {
-      streamingServices.subscription.unshift({
-        id: 0,
-        name: plexLibraryName,
-        logo_path: '/assets/logos/allvids.svg',
-        type: 'subscription',
-      })
+    const addLibraryBadge = (libraryName: string) => {
+      if (!streamingServices.subscription.some(s => s.name === libraryName)) {
+        streamingServices.subscription.unshift({
+          id: 0,
+          name: libraryName,
+          logo_path: '/assets/logos/allvids.svg',
+          type: 'subscription',
+        })
+      }
+    }
+
+    if (isMovieInPlex(params)) {
+      addLibraryBadge(getPlexLibraryName() || 'Plex')
+    } else if (isMovieInEmby(params)) {
+      addLibraryBadge(getEmbyLibraryName() || 'Emby')
+    } else if (isMovieInJellyfin(params)) {
+      addLibraryBadge(getJellyfinLibraryName() || 'Jellyfin')
     }
   } catch (err) {
-    console.log(`[enrich] Failed to check Plex status: ${err?.message || err}`)
+    log.error(
+      `[enrich] Failed to check personal library status: ${err?.message || err}`
+    )
   }
 
   const result: EnrichmentPayload = {
@@ -529,6 +554,7 @@ export async function enrich({
     rating_comparr,
     genres,
     streamingServices,
+    watchProviders,
     contentRating,
     tmdbPosterPath: hit?.poster_path || null,
     cast,

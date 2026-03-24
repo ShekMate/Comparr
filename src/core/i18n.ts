@@ -1,4 +1,4 @@
-import { Accepts } from 'https://deno.land/x/accepts@2.1.0/mod.ts'
+import * as log from 'jsr:@std/log'
 import {
   getLinkType,
   getPlexLibraryName,
@@ -21,12 +21,15 @@ export const getTranslationPaths = async () => {
 const populateTranslations = async () => {
   const translationPaths = await getTranslationPaths()
   for (const translationPath of translationPaths) {
-    const translation = await Deno.readTextFile(translationPath).then(text =>
-      JSON.parse(text)
-    )
-    if (typeof translation.LANG === 'string') {
-      translations.set(translation.LANG, translation)
-    }
+    const translation = await Deno.readTextFile(translationPath).then(text => {
+      try {
+        return JSON.parse(text)
+      } catch {
+        return null
+      }
+    })
+    if (!translation || typeof translation.LANG !== 'string') continue
+    translations.set(translation.LANG, translation)
   }
 }
 
@@ -36,6 +39,44 @@ const interpolate = (text: string, context: Record<string, string>) => {
     interpolatedText = interpolatedText.replace(match, context[name])
   }
   return interpolatedText
+}
+
+const getAcceptedLanguage = (
+  headers: Headers,
+  availableLanguages: string[]
+): string => {
+  const header = String(headers.get('accept-language') || '').trim()
+  if (!header) return 'en'
+
+  const ranked = header
+    .split(',')
+    .map(part => {
+      const [rawTag, ...params] = part.trim().split(';')
+      const qParam = params.find(param => param.trim().startsWith('q='))
+      const q = qParam ? Number(qParam.trim().slice(2)) : 1
+      return {
+        tag: rawTag.toLowerCase(),
+        q: Number.isFinite(q) ? q : 1,
+      }
+    })
+    .sort((a, b) => b.q - a.q)
+
+  const available = new Set(availableLanguages.map(lang => lang.toLowerCase()))
+
+  for (const candidate of ranked) {
+    if (available.has(candidate.tag)) {
+      return availableLanguages.find(
+        lang => lang.toLowerCase() === candidate.tag
+      )!
+    }
+
+    const base = candidate.tag.split('-')[0]
+    if (base && available.has(base)) {
+      return availableLanguages.find(lang => lang.toLowerCase() === base)!
+    }
+  }
+
+  return 'en'
 }
 
 export const getLinkTypeForRequest = (headers: Headers): 'app' | 'http' => {
@@ -57,18 +98,11 @@ export const translateHTML = async (
     try {
       await populateTranslations()
     } catch (err) {
-      console.error('Encountered an error reading translation files', err)
+      log.error(`Encountered an error reading translation files: ${err}`)
     }
   }
 
-  const accept = new Accepts(headers)
-  const acceptedLanguage = accept.languages([...translations.keys()])
-
-  const language = !acceptedLanguage
-    ? 'en'
-    : Array.isArray(acceptedLanguage)
-    ? acceptedLanguage[0]
-    : acceptedLanguage
+  const language = getAcceptedLanguage(headers, [...translations.keys()])
 
   const translationContext: Record<string, string> = translations.has(language)
     ? translations.get(language)!

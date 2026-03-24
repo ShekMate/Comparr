@@ -1,6 +1,9 @@
 // persistence.ts (Deno)
 // Minimal file-based persistence for per-room user responses
 
+import * as log from 'jsr:@std/log'
+import { getDataDir } from './env.ts'
+
 export type PersistedResponse = {
   guid: string
   key?: string | null
@@ -16,7 +19,7 @@ export type PersistedState = {
   rooms: Record<string, PersistedRoom>
 }
 
-const DATA_DIR = Deno.env.get('DATA_DIR') ?? './data'
+const DATA_DIR = getDataDir()
 const STATE_FILE = `${DATA_DIR}/session-state.json`
 
 let state: PersistedState = { version: 1, rooms: {} }
@@ -48,11 +51,11 @@ export async function loadState(): Promise<PersistedState> {
 }
 
 // Debounced write (batch fast changes)
-let pending: Promise<void> | null = null
+let _pending: Promise<void> | null = null
 export function saveStateSoon() {
   if (writeQueued) return
   writeQueued = true
-  pending = (async () => {
+  _pending = (async () => {
     try {
       await ensureDir()
       // small debounce
@@ -61,7 +64,7 @@ export function saveStateSoon() {
       await Deno.writeTextFile(tmpFile, JSON.stringify(state, null, 2))
       await Deno.rename(tmpFile, STATE_FILE) // atomic-ish on same fs
     } catch (e) {
-      console.error('Failed to persist session state:', e)
+      log.error(`Failed to persist session state: ${e}`)
     } finally {
       writeQueued = false
     }
@@ -101,4 +104,35 @@ export function getAllUsers(
   roomCode: string
 ): Record<string, { responses: PersistedResponse[] }> {
   return getRoom(roomCode).users
+}
+
+export function getAllRooms(): Record<string, PersistedRoom> {
+  return { ...state.rooms }
+}
+
+export function clearAllRooms(): void {
+  state.rooms = {}
+  saveStateSoon()
+}
+
+export function clearRooms(roomCodes: string[]): void {
+  for (const code of roomCodes) {
+    delete state.rooms[code]
+  }
+  saveStateSoon()
+}
+
+export function clearUsersFromRoom(
+  roomCode: string,
+  userNames: string[]
+): void {
+  if (!state.rooms[roomCode]) return
+  for (const name of userNames) {
+    delete state.rooms[roomCode].users[name]
+  }
+  // Remove the room entirely if no users remain
+  if (Object.keys(state.rooms[roomCode].users).length === 0) {
+    delete state.rooms[roomCode]
+  }
+  saveStateSoon()
 }

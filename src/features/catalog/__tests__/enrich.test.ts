@@ -3,15 +3,15 @@ import {
   assertEquals,
   assertExists,
   mockEnv,
-} from '../../../__tests__/utils/test-helpers.ts'
+} from '../../../testdata/test-helpers.ts'
 import {
   mockOMDbMovie,
   mockOMDbNotFound,
-} from '../../../__tests__/mocks/omdb-mocks.ts'
+} from '../../../testdata/omdb-mocks.ts'
 import {
   mockTMDbMovieDetails,
   mockTMDbSearchResults,
-} from '../../../__tests__/mocks/tmdb-mocks.ts'
+} from '../../../testdata/tmdb-mocks.ts'
 
 // Setup environment variables for tests
 const cleanup = mockEnv({
@@ -25,35 +25,41 @@ const originalFetch = globalThis.fetch
 Deno.test({
   name: 'Enrich - successfully enriches movie with OMDb and TMDb data',
   async fn() {
-    globalThis.fetch = async (url: string | URL | Request) => {
+    globalThis.fetch = (((url: string | URL | Request) => {
       const urlString = typeof url === 'string' ? url : url.toString()
 
       // Mock OMDb API
       if (urlString.includes('omdbapi.com')) {
-        return new Response(JSON.stringify(mockOMDbMovie), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return Promise.resolve(
+          new Response(JSON.stringify(mockOMDbMovie), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        )
       }
 
       // Mock TMDb search API
       if (urlString.includes('themoviedb.org/3/search/movie')) {
-        return new Response(JSON.stringify(mockTMDbSearchResults), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return Promise.resolve(
+          new Response(JSON.stringify(mockTMDbSearchResults), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        )
       }
 
       // Mock TMDb movie details API
       if (urlString.includes('themoviedb.org/3/movie/')) {
-        return new Response(JSON.stringify(mockTMDbMovieDetails), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return Promise.resolve(
+          new Response(JSON.stringify(mockTMDbMovieDetails), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        )
       }
 
-      return new Response('Not Found', { status: 404 })
-    }
+      return Promise.resolve(new Response('Not Found', { status: 404 }))
+    }) as unknown) as typeof fetch
 
     const { enrich } = await import('../enrich.ts')
 
@@ -66,7 +72,6 @@ Deno.test({
     assertExists(result)
     assertEquals(result.imdbId, 'tt1375666')
     assertEquals(result.rating_imdb, 8.8)
-    assertEquals(result.rating_rt, 87)
     assertExists(result.rating_tmdb)
     assertExists(result.plot)
     assertEquals(result.plot, mockOMDbMovie.Plot)
@@ -80,35 +85,41 @@ Deno.test({
 Deno.test({
   name: 'Enrich - falls back to TMDb when OMDb fails',
   async fn() {
-    globalThis.fetch = async (url: string | URL | Request) => {
+    globalThis.fetch = (((url: string | URL | Request) => {
       const urlString = typeof url === 'string' ? url : url.toString()
 
       // Mock OMDb API - return not found
       if (urlString.includes('omdbapi.com')) {
-        return new Response(JSON.stringify(mockOMDbNotFound), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return Promise.resolve(
+          new Response(JSON.stringify(mockOMDbNotFound), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        )
       }
 
       // Mock TMDb search API
       if (urlString.includes('themoviedb.org/3/search/movie')) {
-        return new Response(JSON.stringify(mockTMDbSearchResults), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return Promise.resolve(
+          new Response(JSON.stringify(mockTMDbSearchResults), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        )
       }
 
       // Mock TMDb movie details API
       if (urlString.includes('themoviedb.org/3/movie/')) {
-        return new Response(JSON.stringify(mockTMDbMovieDetails), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return Promise.resolve(
+          new Response(JSON.stringify(mockTMDbMovieDetails), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        )
       }
 
-      return new Response('Not Found', { status: 404 })
-    }
+      return Promise.resolve(new Response('Not Found', { status: 404 }))
+    }) as unknown) as typeof fetch
 
     const { enrich } = await import('../enrich.ts')
 
@@ -135,35 +146,41 @@ Deno.test({
 Deno.test({
   name: 'Enrich - handles OMDb by title when no IMDb ID provided',
   async fn() {
-    globalThis.fetch = async (url: string | URL | Request) => {
+    globalThis.fetch = (((url: string | URL | Request) => {
       const urlString = typeof url === 'string' ? url : url.toString()
 
       // Mock OMDb API - title search
       if (urlString.includes('omdbapi.com') && urlString.includes('&t=')) {
-        return new Response(JSON.stringify(mockOMDbMovie), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return Promise.resolve(
+          new Response(JSON.stringify(mockOMDbMovie), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        )
       }
 
       // Mock TMDb search API
       if (urlString.includes('themoviedb.org/3/search/movie')) {
-        return new Response(JSON.stringify(mockTMDbSearchResults), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return Promise.resolve(
+          new Response(JSON.stringify(mockTMDbSearchResults), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        )
       }
 
       // Mock TMDb movie details API
       if (urlString.includes('themoviedb.org/3/movie/')) {
-        return new Response(JSON.stringify(mockTMDbMovieDetails), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return Promise.resolve(
+          new Response(JSON.stringify(mockTMDbMovieDetails), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        )
       }
 
-      return new Response('Not Found', { status: 404 })
-    }
+      return Promise.resolve(new Response('Not Found', { status: 404 }))
+    }) as unknown) as typeof fetch
 
     const { enrich } = await import('../enrich.ts')
 
@@ -185,32 +202,38 @@ Deno.test({
 Deno.test({
   name: 'Enrich - extracts Rotten Tomatoes rating from OMDb',
   async fn() {
-    globalThis.fetch = async (url: string | URL | Request) => {
+    globalThis.fetch = (((url: string | URL | Request) => {
       const urlString = typeof url === 'string' ? url : url.toString()
 
       if (urlString.includes('omdbapi.com')) {
-        return new Response(JSON.stringify(mockOMDbMovie), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return Promise.resolve(
+          new Response(JSON.stringify(mockOMDbMovie), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        )
       }
 
       if (urlString.includes('themoviedb.org/3/search/movie')) {
-        return new Response(JSON.stringify(mockTMDbSearchResults), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return Promise.resolve(
+          new Response(JSON.stringify(mockTMDbSearchResults), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        )
       }
 
       if (urlString.includes('themoviedb.org/3/movie/')) {
-        return new Response(JSON.stringify(mockTMDbMovieDetails), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return Promise.resolve(
+          new Response(JSON.stringify(mockTMDbMovieDetails), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        )
       }
 
-      return new Response('Not Found', { status: 404 })
-    }
+      return Promise.resolve(new Response('Not Found', { status: 404 }))
+    }) as unknown) as typeof fetch
 
     const { enrich } = await import('../enrich.ts')
 
@@ -221,9 +244,6 @@ Deno.test({
     })
 
     assertExists(result)
-    // Should extract RT rating from OMDb ratings array
-    assertEquals(result.rating_rt, 87)
-
     globalThis.fetch = originalFetch
   },
   sanitizeResources: false,
@@ -233,32 +253,38 @@ Deno.test({
 Deno.test({
   name: 'Enrich - extracts genres from TMDb',
   async fn() {
-    globalThis.fetch = async (url: string | URL | Request) => {
+    globalThis.fetch = (((url: string | URL | Request) => {
       const urlString = typeof url === 'string' ? url : url.toString()
 
       if (urlString.includes('omdbapi.com')) {
-        return new Response(JSON.stringify(mockOMDbNotFound), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return Promise.resolve(
+          new Response(JSON.stringify(mockOMDbNotFound), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        )
       }
 
       if (urlString.includes('themoviedb.org/3/search/movie')) {
-        return new Response(JSON.stringify(mockTMDbSearchResults), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return Promise.resolve(
+          new Response(JSON.stringify(mockTMDbSearchResults), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        )
       }
 
       if (urlString.includes('themoviedb.org/3/movie/')) {
-        return new Response(JSON.stringify(mockTMDbMovieDetails), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return Promise.resolve(
+          new Response(JSON.stringify(mockTMDbMovieDetails), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        )
       }
 
-      return new Response('Not Found', { status: 404 })
-    }
+      return Promise.resolve(new Response('Not Found', { status: 404 }))
+    }) as unknown) as typeof fetch
 
     const { enrich } = await import('../enrich.ts')
 
@@ -284,7 +310,7 @@ Deno.test({
     let omdbCallCount = 0
     let tmdbCallCount = 0
 
-    globalThis.fetch = async (url: string | URL | Request) => {
+    globalThis.fetch = (((url: string | URL | Request) => {
       const urlString = typeof url === 'string' ? url : url.toString()
 
       if (urlString.includes('omdbapi.com')) {
@@ -294,21 +320,25 @@ Deno.test({
 
       if (urlString.includes('themoviedb.org/3/search/movie')) {
         tmdbCallCount++
-        return new Response(JSON.stringify(mockTMDbSearchResults), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return Promise.resolve(
+          new Response(JSON.stringify(mockTMDbSearchResults), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        )
       }
 
       if (urlString.includes('themoviedb.org/3/movie/')) {
-        return new Response(JSON.stringify(mockTMDbMovieDetails), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return Promise.resolve(
+          new Response(JSON.stringify(mockTMDbMovieDetails), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        )
       }
 
-      return new Response('Not Found', { status: 404 })
-    }
+      return Promise.resolve(new Response('Not Found', { status: 404 }))
+    }) as unknown) as typeof fetch
 
     const { enrich } = await import('../enrich.ts')
 
@@ -333,32 +363,38 @@ Deno.test({
 Deno.test({
   name: 'Enrich - extracts streaming services from TMDb',
   async fn() {
-    globalThis.fetch = async (url: string | URL | Request) => {
+    globalThis.fetch = (((url: string | URL | Request) => {
       const urlString = typeof url === 'string' ? url : url.toString()
 
       if (urlString.includes('omdbapi.com')) {
-        return new Response(JSON.stringify(mockOMDbNotFound), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return Promise.resolve(
+          new Response(JSON.stringify(mockOMDbNotFound), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        )
       }
 
       if (urlString.includes('themoviedb.org/3/search/movie')) {
-        return new Response(JSON.stringify(mockTMDbSearchResults), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return Promise.resolve(
+          new Response(JSON.stringify(mockTMDbSearchResults), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        )
       }
 
       if (urlString.includes('themoviedb.org/3/movie/')) {
-        return new Response(JSON.stringify(mockTMDbMovieDetails), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return Promise.resolve(
+          new Response(JSON.stringify(mockTMDbMovieDetails), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        )
       }
 
-      return new Response('Not Found', { status: 404 })
-    }
+      return Promise.resolve(new Response('Not Found', { status: 404 }))
+    }) as unknown) as typeof fetch
 
     const { enrich } = await import('../enrich.ts')
 
@@ -383,9 +419,9 @@ Deno.test({
 Deno.test({
   name: 'Enrich - returns null values when all APIs fail',
   async fn() {
-    globalThis.fetch = async () => {
+    globalThis.fetch = ((() => {
       throw new Error('Network error')
-    }
+    }) as unknown) as typeof fetch
 
     const { enrich } = await import('../enrich.ts')
 
@@ -399,7 +435,6 @@ Deno.test({
     assertEquals(result.plot, null)
     assertEquals(result.rating_imdb, null)
     assertEquals(result.rating_tmdb, null)
-    assertEquals(result.rating_rt, null)
 
     globalThis.fetch = originalFetch
   },

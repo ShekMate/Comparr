@@ -1,6 +1,7 @@
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import * as log from 'jsr:@std/log'
 
 import { getTmdbApiKey } from '../../core/config.ts'
+import { tmdbFetch } from '../../api/tmdb.ts'
 
 const getTmdbKey = () => getTmdbApiKey()
 const DEFAULT_DISCOVER_REGION = 'US'
@@ -37,9 +38,9 @@ interface TMDbDiscoverResult {
   total_results: number
 }
 
-async function j(url: string) {
-  const r = await fetch(url)
-  if (!r.ok) throw new Error(`HTTP ${r.status} for ${url}`)
+async function j(path: string, token: string, params: URLSearchParams) {
+  const r = await tmdbFetch(path, token, Object.fromEntries(params.entries()))
+  if (!r.ok) throw new Error(`HTTP ${r.status} for ${path}`)
   return r.json()
 }
 
@@ -62,7 +63,6 @@ export async function discoverMovies(
   if (!TMDB) return { results: [] }
 
   const params = new URLSearchParams({
-    api_key: TMDB,
     sort_by: filters.sortBy || 'popularity.desc',
     include_adult: 'false',
     page: String(filters.page || 1),
@@ -116,14 +116,14 @@ export async function discoverMovies(
     params.set('certification', filters.contentRatings.join('|'))
   }
 
-  const url = `https://api.themoviedb.org/3/discover/movie?${params}`
+  const url = `/discover/movie?${params}`
 
   log.debug('🔍 TMDb API Call:', {
     url,
     params: Object.fromEntries(params.entries()),
   })
 
-  const data = await j(url)
+  const data = await j('/discover/movie', TMDB, params)
 
   log.info(
     `📊 TMDb Results: ${data.total_results} total, ${
@@ -131,7 +131,7 @@ export async function discoverMovies(
     } on page`
   )
   if (data.results?.length === 0) {
-    log.warning('⚠️ TMDb returned no results for current filters')
+    log.warn('⚠️ TMDb returned no results for current filters')
   }
 
   return data

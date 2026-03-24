@@ -1,5 +1,5 @@
 // cache/plexCache.ts - Fast Plex availability checking
-import * as log from 'https://deno.land/std@0.79.0/log/mod.ts'
+import * as log from 'jsr:@std/log'
 import { getAllMovies } from '../../api/plex.ts'
 
 interface PlexMovieEntry {
@@ -89,9 +89,10 @@ export async function buildPlexCache(): Promise<void> {
     let imdbIdCount = 0
 
     for (const movie of movies) {
+      const numericYear = Number(movie.year)
       const entry: PlexMovieEntry = {
         title: movie.title,
-        year: movie.year || null,
+        year: Number.isFinite(numericYear) ? numericYear : null,
         guid: movie.guid,
         tmdbId: extractTmdbId(movie.guid),
         imdbId: extractImdbId(movie.guid),
@@ -209,7 +210,7 @@ export function isInPlexByTitleYear(
   }
 
   // Fallback: check without year (less accurate)
-  for (const [key, entries] of cache.byTitleYear.entries()) {
+  for (const [key, _entries] of cache.byTitleYear.entries()) {
     if (key.startsWith(`${normalizedTitle}|`)) {
       return true
     }

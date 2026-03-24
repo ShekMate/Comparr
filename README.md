@@ -80,95 +80,44 @@ _Swipe through your Plex library with beautiful movie posters and comprehensive 
 
 ## Quick Start
 
-Get Comparr running in seconds:
-
 ```bash
-docker run -d \
-  --name comparr \
-  -p 8000:8000 \
-  -e PLEX_URL=http://YOUR_PLEX_SERVER:32400 \
-  -e PLEX_TOKEN=YOUR_PLEX_TOKEN \
-  -v /path/to/data:/data \
-  comparr:latest
+docker compose up -d
 ```
 
-Then open http://localhost:8000 in your browser!
+Then open http://localhost:8000 and the setup wizard will walk you through connecting your Plex server.
 
 ---
 
 ## Installation
 
-### Docker Run
+### Docker Compose (recommended)
 
-The simplest way to run Comparr:
+Download the `docker-compose.yml` from this repo, then:
+
+```bash
+docker compose up -d
+```
+
+That's it. Open http://localhost:8000 and follow the setup wizard.
+
+By default data is stored in a `./data` folder next to the compose file. To use a different location, edit the volume in `docker-compose.yml`:
+
+```yaml
+volumes:
+  - /path/to/your/data:/data
+```
+
+### Docker Run
 
 ```bash
 docker run -d \
   --name comparr \
   --restart unless-stopped \
   -p 8000:8000 \
-  -e PLEX_URL=http://192.168.1.100:32400 \
-  -e PLEX_TOKEN=your_plex_token_here \
   -e PUID=1000 \
   -e PGID=1000 \
   -v /path/to/comparr/data:/data \
-  comparr:latest
-```
-
-### Docker Compose
-
-Create a `docker-compose.yml` file:
-
-```yaml
-version: '3.8'
-
-services:
-  comparr:
-    image: comparr:latest
-    container_name: comparr
-    restart: unless-stopped
-    ports:
-      - '8000:8000'
-    environment:
-      # Required
-      - PLEX_URL=http://192.168.1.100:32400
-      - PLEX_TOKEN=your_plex_token_here
-
-      # Optional - User/Group
-      - PUID=1000
-      - PGID=1000
-
-      # Optional - Customization
-      - PLEX_LIBRARY_NAME=Movies
-      - PORT=8000
-      - ACCESS_PASSWORD=
-
-      # Optional - External APIs (for enhanced metadata)
-      - TMDB_API_KEY=
-      - OMDB_API_KEY=
-
-      # Optional - Media Request Services
-      - RADARR_URL=
-      - RADARR_API_KEY=
-      - JELLYSEERR_URL=
-      - JELLYSEERR_API_KEY=
-      - OVERSEERR_URL=
-      - OVERSEERR_API_KEY=
-
-      # Optional - Advanced
-      - LOG_LEVEL=INFO
-      - MOVIE_BATCH_SIZE=20
-      - LIBRARY_FILTER=
-      - COLLECTION_FILTER=
-
-    volumes:
-      - /path/to/comparr/data:/data
-```
-
-Then run:
-
-```bash
-docker-compose up -d
+  ghcr.io/shekmate/comparr:latest
 ```
 
 ### Unraid
@@ -176,81 +125,44 @@ docker-compose up -d
 1. Go to the **Docker** tab in Unraid
 2. Click **Add Container**
 3. Configure the following:
-   - **Repository**: `comparr:latest`
+   - **Repository**: `ghcr.io/shekmate/comparr:latest`
    - **Port**: `8000` → `8000`
    - **Path**: `/data` → `/mnt/user/appdata/comparr`
-   - Add environment variables from the [Configuration](#configuration) section
+   - **PUID** / **PGID**: set to match your Unraid user (run `id` in terminal)
+4. Start the container and open the web UI to complete setup
+
+### Image Tags
+
+- `ghcr.io/shekmate/comparr:latest` → latest stable release
+- `ghcr.io/shekmate/comparr:<version>` → pinned immutable release tag
 
 ---
 
 ## Configuration
 
-Comparr persists application settings in `/data/settings.json` after you save them in the **Settings** page in the web UI.
+All application settings (Plex connection, API keys, passwords, etc.) are configured through the **web UI** and persisted in `/data/settings.json` on your mounted volume. No environment variables needed for app settings.
 
-- You can use environment variables for first boot (for example, to set `PLEX_URL` and `PLEX_TOKEN`).
-- After saving values in the web UI, those settings will persist from `/data` and no longer need to be kept in your container's environment list.
-- Container/runtime variables (`PUID`, `PGID`, `DATA_DIR`) are still Docker-level settings and should remain in the container configuration.
+The setup wizard runs automatically on first boot.
 
-### Required Variables
+### Container Variables
 
-| Variable     | Description                    | Example                                                 |
-| ------------ | ------------------------------ | ------------------------------------------------------- |
-| `PLEX_URL`   | Your Plex server URL           | `http://192.168.1.100:32400`                            |
-| `PLEX_TOKEN` | Your Plex authentication token | See [Getting Your Plex Token](#getting-your-plex-token) |
+These are the only environment variables Comparr uses — they control how the container runs, not the app itself:
 
-### Optional Variables
+| Variable   | Description                        | Default |
+| ---------- | ---------------------------------- | ------- |
+| `PUID`     | User ID to run the container as    | `1000`  |
+| `PGID`     | Group ID to run the container as   | `1000`  |
+| `PORT`     | Port the server listens on         | `8000`  |
+| `DATA_DIR` | Path inside the container for data | `/data` |
 
-#### User & Permissions
+### Advanced / Reverse Proxy Variables
 
-| Variable | Description                      | Default |
-| -------- | -------------------------------- | ------- |
-| `PUID`   | User ID to run the container as  | `1000`  |
-| `PGID`   | Group ID to run the container as | `1000`  |
-
-#### Application Settings
-
-| Variable                 | Description                                              | Default           |
-| ------------------------ | -------------------------------------------------------- | ----------------- |
-| `PORT`                   | Internal web server port                                 | `8000`            |
-| `PLEX_LIBRARY_NAME`      | Display name for your Plex library                       | `My Plex Library` |
-| `ACCESS_PASSWORD`        | Password to access the app (leave empty for no password) | _(none)_          |
-| `ADMIN_PASSWORD`         | Password required for admin settings                     | _(none)_          |
-| `LOG_LEVEL`              | Logging verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR`   | `INFO`            |
-| `MOVIE_BATCH_SIZE`       | Number of movies to load at once                         | `20`              |
-| `ROOT_PATH`              | Base path if running behind a reverse proxy              | _(none)_          |
-| `STREAMING_PROFILE_MODE` | Availability filtering mode (`anywhere`, etc.)           | `anywhere`        |
-| `LINK_TYPE`              | Movie link behavior (`app` or `plex.tv`)                | `app`             |
-
-#### Library Filtering
-
-| Variable            | Description                                        | Default  |
-| ------------------- | -------------------------------------------------- | -------- |
-| `LIBRARY_FILTER`    | Comma-separated list of library names to include   | _(all)_  |
-| `COLLECTION_FILTER` | Comma-separated list of collection names to filter | _(none)_ |
-
-#### External API Integrations
-
-| Variable       | Description                             | Required | Get API Key                                             |
-| -------------- | --------------------------------------- | -------- | ------------------------------------------------------- |
-| `TMDB_API_KEY` | The Movie Database API key for metadata | No       | [Get TMDb Key](https://www.themoviedb.org/settings/api) |
-| `OMDB_API_KEY` | OMDb API key for additional ratings     | No       | [Get OMDb Key](http://www.omdbapi.com/apikey.aspx)      |
-
-#### Media Request Services
-
-| Variable             | Description                                           |
-| -------------------- | ----------------------------------------------------- |
-| `RADARR_URL`         | Radarr server URL (e.g., `http://192.168.1.100:7878`) |
-| `RADARR_API_KEY`     | Radarr API key                                        |
-| `JELLYSEERR_URL`     | Jellyseerr server URL                                 |
-| `JELLYSEERR_API_KEY` | Jellyseerr API key                                    |
-| `OVERSEERR_URL`      | Overseerr server URL                                  |
-| `OVERSEERR_API_KEY`  | Overseerr API key                                     |
-
-#### Advanced Options
-
-| Variable    | Description               | Default |
-| ----------- | ------------------------- | ------- |
-| `LINK_TYPE` | Link type for media items | `app`   |
+| Variable          | Description                                            | Default   |
+| ----------------- | ------------------------------------------------------ | --------- |
+| `TRUST_PROXY`     | Set `true` if behind a trusted reverse proxy           | `false`   |
+| `ALLOWED_ORIGINS` | Comma-separated allowed origins for Host/Origin checks | _(all)_   |
+| `MAX_BODY_SIZE`   | Max HTTP request body in bytes                         | `1048576` |
+| `FRAME_ANCESTORS` | CSP `frame-ancestors` value                            | `'none'`  |
 
 ### Getting Your Plex Token
 
@@ -341,26 +253,11 @@ Both are optional but highly recommended for the best experience.
 
 ### Radarr
 
-Integrate with Radarr to request movies not in your library:
-
-```bash
--e RADARR_URL=http://your-radarr:7878
--e RADARR_API_KEY=your_api_key
-```
+Integrate with Radarr to request movies not in your library. Add your Radarr URL and API key in the **Settings → Integrations** page of the web UI.
 
 ### Jellyseerr / Overseerr
 
-Alternative media request managers:
-
-```bash
-# Jellyseerr
--e JELLYSEERR_URL=http://your-jellyseerr:5055
--e JELLYSEERR_API_KEY=your_api_key
-
-# OR Overseerr
--e OVERSEERR_URL=http://your-overseerr:5055
--e OVERSEERR_API_KEY=your_api_key
-```
+Alternative media request managers. Add your Jellyseerr or Overseerr URL and API key in **Settings → Integrations**.
 
 ---
 
@@ -388,12 +285,7 @@ docker build -t comparr:latest .
 
 ### Environment Setup
 
-Create a `.env` file based on `.env.example`:
-
-```bash
-cp .env.example .env
-# Edit .env with your configuration
-```
+No `.env` file is needed. Start the server and configure everything through the web UI at http://localhost:8000.
 
 ---
 
@@ -441,9 +333,8 @@ npm run format
 **Solutions:**
 
 - Check logs: `docker logs comparr`
-- Verify `PLEX_URL` is accessible from the container
-- Ensure `PLEX_TOKEN` is valid
 - Check file permissions on `/data` mount
+- Verify `PUID`/`PGID` are set correctly
 
 ### Can't Connect to Plex
 
@@ -452,7 +343,7 @@ npm run format
 **Solutions:**
 
 - Verify Plex server is running
-- Check if `PLEX_URL` uses `http://` (not `https://` unless configured)
+- In Settings, check that the Plex URL uses `http://` (not `https://` unless configured)
 - Ensure Plex server allows connections from the Docker network
 - Try using the server's IP address instead of hostname
 
@@ -463,9 +354,9 @@ npm run format
 **Solutions:**
 
 - Verify your Plex library contains movies
-- Check `LIBRARY_FILTER` isn't excluding your library
+- Check the Library Filter setting in the web UI isn't excluding your library
 - Review logs for API errors: `docker logs comparr`
-- Ensure TMDb/OMDb API keys are valid (if configured)
+- Ensure TMDb/OMDb API keys are valid if configured in Settings
 
 ### Permission Errors on `/data`
 
@@ -473,7 +364,7 @@ npm run format
 
 **Solutions:**
 
-- Set `PUID` and `PGID` to match your host user: `id` command
+- Set `PUID` and `PGID` in your compose file to match your host user (`id` command)
 - Ensure the host `/data` mount point has correct permissions
 - Try: `chown -R 1000:1000 /path/to/comparr/data`
 
@@ -483,7 +374,7 @@ npm run format
 
 **Solutions:**
 
-- Reduce `MOVIE_BATCH_SIZE` to a lower value (e.g., `10`)
+- Reduce the Movie Batch Size setting in the web UI (e.g., `10`)
 - Check if you have large libraries (thousands of movies)
 - Monitor logs for errors that might cause memory leaks
 

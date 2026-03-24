@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "allowJs": true,
     "lib": ["deno.window"],
     "strict": true
   },
@@ -36,6 +35,5 @@
     "test": "deno test --allow-all --coverage=coverage/",
     "test:watch": "deno test --allow-all --watch",
     "coverage": "deno coverage coverage/ --lcov --output=coverage/lcov.info"
-  },
-  "importMap": "./import_map.json"
+  }
 }

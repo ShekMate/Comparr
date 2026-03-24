@@ -2,6 +2,8 @@ import {
   SettingsValidationError,
   validateAndNormalizeStreamingSettings,
 } from './streamingProfileSettings.ts'
+import { getDataDir } from './env.ts'
+import { hashPassword, isHashedPassword } from './security.ts'
 
 export type SettingsKey =
   | 'PLEX_URL'
@@ -19,10 +21,8 @@ export type SettingsKey =
   | 'TMDB_API_KEY'
   | 'RADARR_URL'
   | 'RADARR_API_KEY'
-  | 'JELLYSEERR_URL'
-  | 'JELLYSEERR_API_KEY'
-  | 'OVERSEERR_URL'
-  | 'OVERSEERR_API_KEY'
+  | 'SEERR_URL'
+  | 'SEERR_API_KEY'
   | 'LOG_LEVEL'
   | 'MOVIE_BATCH_SIZE'
   | 'LIBRARY_FILTER'
@@ -34,6 +34,7 @@ export type SettingsKey =
   | 'STREAMING_PROFILE_MODE'
   | 'PAID_STREAMING_SERVICES'
   | 'PERSONAL_MEDIA_SOURCES'
+  | 'SETUP_WIZARD_COMPLETED'
 
 export type Settings = Record<SettingsKey, string>
 
@@ -55,10 +56,8 @@ const SETTINGS_KEYS: SettingsKey[] = [
   'TMDB_API_KEY',
   'RADARR_URL',
   'RADARR_API_KEY',
-  'JELLYSEERR_URL',
-  'JELLYSEERR_API_KEY',
-  'OVERSEERR_URL',
-  'OVERSEERR_API_KEY',
+  'SEERR_URL',
+  'SEERR_API_KEY',
   'LOG_LEVEL',
   'MOVIE_BATCH_SIZE',
   'LIBRARY_FILTER',
@@ -70,7 +69,10 @@ const SETTINGS_KEYS: SettingsKey[] = [
   'STREAMING_PROFILE_MODE',
   'PAID_STREAMING_SERVICES',
   'PERSONAL_MEDIA_SOURCES',
+  'SETUP_WIZARD_COMPLETED',
 ]
+
+const ENV_ONLY_KEYS = new Set<SettingsKey>(['PORT'])
 
 const DEFAULTS: Partial<Settings> = {
   PORT: '8000',
@@ -90,15 +92,16 @@ const DEFAULTS: Partial<Settings> = {
   STREAMING_PROFILE_MODE: 'anywhere',
   PAID_STREAMING_SERVICES: '[]',
   PERSONAL_MEDIA_SOURCES: '[]',
+  SETUP_WIZARD_COMPLETED: 'false',
 }
 
-const DATA_DIR = Deno.env.get('DATA_DIR') || '/data'
-const SETTINGS_FILE = `${DATA_DIR}/settings.json`
+const SETTINGS_FILE = `${getDataDir()}/settings.json`
 
 let settingsCache: Settings = SETTINGS_KEYS.reduce((acc, key) => {
-  const envValue = Deno.env.get(key)
-  const fallback = DEFAULTS[key] ?? ''
-  acc[key] = (envValue ?? fallback ?? '').trim()
+  acc[key] =
+    key === 'PORT'
+      ? (Deno.env.get('PORT') ?? DEFAULTS['PORT'] ?? '8000').trim()
+      : (DEFAULTS[key] ?? '').trim()
   return acc
 }, {} as Settings)
 
@@ -135,6 +138,9 @@ const loadSettingsFile = async (): Promise<Partial<Settings>> => {
     }
     const sanitized: Partial<Settings> = {}
     for (const key of SETTINGS_KEYS) {
+      if (ENV_ONLY_KEYS.has(key)) {
+        continue
+      }
       if (key in parsed) {
         sanitized[key] = normalizeValue(
           (parsed as Record<string, unknown>)[key]
@@ -151,9 +157,14 @@ const loadSettingsFile = async (): Promise<Partial<Settings>> => {
 }
 
 const persistSettings = async () => {
-  await Deno.mkdir(DATA_DIR, { recursive: true }).catch(() => {})
+  await Deno.mkdir(getDataDir(), { recursive: true }).catch(() => {})
   const tmp = `${SETTINGS_FILE}.tmp.${Date.now()}`
-  await Deno.writeTextFile(tmp, JSON.stringify(settingsCache, null, 2))
+  const persistedSettings = SETTINGS_KEYS.reduce((acc, key) => {
+    if (ENV_ONLY_KEYS.has(key)) return acc
+    acc[key] = settingsCache[key]
+    return acc
+  }, {} as Partial<Settings>)
+  await Deno.writeTextFile(tmp, JSON.stringify(persistedSettings, null, 2))
   await Deno.rename(tmp, SETTINGS_FILE)
 }
 
@@ -172,14 +183,27 @@ export const getSettings = (): Settings => ({ ...settingsCache })
 
 export const getSetting = (key: SettingsKey): string => settingsCache[key] ?? ''
 
+const PASSWORD_KEYS = new Set<SettingsKey>([
+  'ACCESS_PASSWORD',
+  'ADMIN_PASSWORD',
+])
+
 export const updateSettings = async (
   updates: Partial<Settings>
 ): Promise<Settings> => {
   const touchedKeys = new Set<SettingsKey>()
 
   for (const key of SETTINGS_KEYS) {
+    if (ENV_ONLY_KEYS.has(key)) {
+      continue
+    }
     if (Object.prototype.hasOwnProperty.call(updates, key)) {
-      settingsCache[key] = normalizeValue(updates[key])
+      const value = normalizeValue(updates[key])
+      if (PASSWORD_KEYS.has(key) && value && !isHashedPassword(value)) {
+        settingsCache[key] = await hashPassword(value)
+      } else {
+        settingsCache[key] = value
+      }
       touchedKeys.add(key)
     }
   }
@@ -192,3 +216,13 @@ export const updateSettings = async (
 }
 
 export const getSettingsKeys = (): SettingsKey[] => [...SETTINGS_KEYS]
+
+export const resetSettings = async (): Promise<Settings> => {
+  for (const key of SETTINGS_KEYS) {
+    if (ENV_ONLY_KEYS.has(key)) continue
+    settingsCache[key] = normalizeValue(DEFAULTS[key] ?? '')
+  }
+  syncEnv(settingsCache)
+  await persistSettings()
+  return getSettings()
+}

@@ -10,7 +10,7 @@
     <title>Comparr</title>
 
     <!-- Load CSS from site root (/public is web root) -->
-    <link rel="stylesheet" href="${ROOT_PATH}/style.css?v=20260301a" />
+    <link rel="stylesheet" href="${ROOT_PATH}/styles/style.css?v=20260301a" />
     <!-- Font Awesome Icons -->
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
@@ -24,11 +24,9 @@
   </head>
 
   <body
-    style="
-      --i18n-no-matches: '${MATCHES_SECTION_NO_MATCHES}';
-      --i18n-loading: '${RATE_SECTION_LOADING}';
-      --i18n-exhausted-cards: '${RATE_SECTION_EXHAUSTED_CARDS}';
-    "
+    data-i18n-no-matches="${MATCHES_SECTION_NO_MATCHES}"
+    data-i18n-loading="${RATE_SECTION_LOADING}"
+    data-i18n-exhausted-cards="${RATE_SECTION_EXHAUSTED_CARDS}"
     data-i18n-list-conjunction="${LIST_CONJUNCTION}"
     data-i18n-match-likers-template="${MATCHES_SECTION_CARD_LIKERS}"
     data-i18n-room-exists-message="${LOGIN_ROOM_EXISTS_ERROR}"
@@ -48,9 +46,8 @@
 
         <!-- Password verification screen -->
         <form
-          class="password-form js-password-form"
+          class="password-form js-password-form u-display-block"
           name="passwordVerification"
-          style="display: block"
         >
           <img
             class="password-troll-art"
@@ -78,9 +75,10 @@
         </form>
 
         <!-- Mode picker (hidden until password is verified) -->
-        <form class="mode-form js-mode-form" name="mode" style="display: none">
+        <form class="mode-form js-mode-form u-display-none" name="mode">
           <div class="login-intro">
             <h1>Choose your experience</h1>
+            <p>How do you want to discover movies today?</p>
           </div>
           <div class="mode-card-grid">
             <button
@@ -89,6 +87,7 @@
               name="appMode"
               value="personal"
             >
+              <span class="mode-card-icon"><i class="fas fa-film" aria-hidden="true"></i></span>
               <span class="mode-card-title">Personal Discovery</span>
               <span class="mode-card-copy"
                 >Discover movies from your libraries, streaming services, free
@@ -103,6 +102,7 @@
               name="appMode"
               value="group"
             >
+              <span class="mode-card-icon"><i class="fas fa-user-friends" aria-hidden="true"></i></span>
               <span class="mode-card-title">Group Match</span>
               <span class="mode-card-copy"
                 >Join a room with friends and rate movies independently. When
@@ -116,12 +116,10 @@
 
         <!-- Login form (hidden initially) -->
         <form
-          class="login-form js-login-form"
+          class="login-form js-login-form u-display-none"
           name="login"
-          style="display: none"
         >
           <div class="login-intro">
-            <h1>${LOGIN_WELCOME_TITLE}</h1>
             <p>${LOGIN_WELCOME_SUBTITLE}</p>
           </div>
 
@@ -476,8 +474,8 @@
         <div class="filters-container">
           <h3>
             <i
-              class="fas fa-filter"
-              style="color: var(--color-primary); margin-right: 0.5rem"
+              class="fas fa-filter u-icon-accent-primary"
+
             ></i>
             Movie Filters
           </h3>
@@ -498,9 +496,9 @@
                   Popularity <span class="dropdown-arrow">&#9660;</span>
                 </button>
                 <div
-                  class="dropdown-list"
+                  class="dropdown-list u-display-none"
                   id="sort-dropdown-list"
-                  style="display: none"
+
                 >
                   <label class="sort-option">
                     <input
@@ -627,9 +625,9 @@
                 Select Ratings <span class="dropdown-arrow">&#9660;</span>
               </button>
               <div
-                class="dropdown-list"
+                class="dropdown-list u-display-none"
                 id="rating-dropdown-list"
-                style="display: none"
+
               >
                 <label class="rating-checkbox">
                   <input type="checkbox" value="G" /> G
@@ -669,8 +667,8 @@
               </button>
               <div
                 id="genre-dropdown-list"
-                class="dropdown-list"
-                style="display: none"
+                class="dropdown-list u-display-none"
+
               >
                 <label class="genre-checkbox">
                   <input type="checkbox" value="28" /> Action
@@ -748,9 +746,9 @@
                 Select Languages <span class="dropdown-arrow">&#9660;</span>
               </button>
               <div
-                class="dropdown-list"
+                class="dropdown-list u-display-none"
                 id="language-dropdown-list"
-                style="display: none"
+
               >
                 <label class="language-checkbox">
                   <input type="checkbox" value="en" /> English
@@ -816,9 +814,9 @@
                 Select Countries <span class="dropdown-arrow">&#9660;</span>
               </button>
               <div
-                class="dropdown-list"
+                class="dropdown-list u-display-none"
                 id="country-dropdown-list"
-                style="display: none"
+
               >
                 <label class="country-checkbox">
                   <input type="checkbox" value="US" /> United States
@@ -1019,8 +1017,8 @@
           <div class="watch-list-header">
             <h3>
               <i
-                class="fas fa-thumbs-up"
-                style="color: var(--color-success); margin-right: 0.5rem"
+                class="fas fa-thumbs-up u-icon-accent-success"
+
               ></i>
               Watch List
             </h3>
@@ -1337,7 +1335,7 @@
             </label>
 
             <!-- Rating Slider -->
-            <div style="margin-top: 1rem">
+            <div class="u-mt-1">
               <span class="subfilter-label">Rating:</span>
               <div class="rating-slider-container">
                 <input
@@ -1356,7 +1354,7 @@
             </div>
 
             <!-- Vote Count Slider -->
-            <div style="margin-top: 1.5rem">
+            <div class="u-mt-1-5">
               <span class="subfilter-label">Votes:</span>
               <div class="rating-slider-container">
                 <input
@@ -1466,9 +1464,9 @@
                   Popularity <span class="dropdown-arrow">&#9660;</span>
                 </button>
                 <div
-                  class="dropdown-list"
+                  class="dropdown-list u-display-none"
                   id="swipe-sort-dropdown-list"
-                  style="display: none"
+
                 >
                   <label class="sort-option">
                     <input
@@ -1553,7 +1551,7 @@
               </label>
               <div
                 id="swipe-subscriptions-options"
-                style="padding-left: 1.25rem"
+                class="u-pl-1-25"
               >
                 <label class="rating-checkbox" data-subscription-group="paid">
                   <input
@@ -1662,6 +1660,48 @@
                   aria-label="Only include free streaming titles"
                 ></i>
               </label>
+              <div id="swipe-free-options" class="u-pl-1-25">
+                <label class="rating-checkbox" data-subscription-group="free">
+                  <input
+                    type="checkbox"
+                    id="swipe-availability-free-tubi"
+                    value="tubi"
+                  />
+                  Tubi
+                </label>
+                <label class="rating-checkbox" data-subscription-group="free">
+                  <input
+                    type="checkbox"
+                    id="swipe-availability-free-pluto-tv"
+                    value="pluto-tv"
+                  />
+                  Pluto TV
+                </label>
+                <label class="rating-checkbox" data-subscription-group="free">
+                  <input
+                    type="checkbox"
+                    id="swipe-availability-free-freevee"
+                    value="freevee"
+                  />
+                  Freevee
+                </label>
+                <label class="rating-checkbox" data-subscription-group="free">
+                  <input
+                    type="checkbox"
+                    id="swipe-availability-free-roku-channel"
+                    value="roku-channel"
+                  />
+                  Roku Channel
+                </label>
+                <label class="rating-checkbox" data-subscription-group="free">
+                  <input
+                    type="checkbox"
+                    id="swipe-availability-free-crackle"
+                    value="crackle"
+                  />
+                  Crackle
+                </label>
+              </div>
             </div>
           </div>
 
@@ -2018,8 +2058,8 @@
           <div class="watch-list-header">
             <h3>
               <i
-                class="fas fa-thumbs-down"
-                style="color: var(--color-error); margin-right: 0.5rem"
+                class="fas fa-thumbs-down u-icon-accent-error"
+
               ></i>
               Pass List
             </h3>
@@ -2075,8 +2115,8 @@
           <div class="watch-list-header">
             <h3>
               <i
-                class="fas fa-eye"
-                style="color: var(--color-warning); margin-right: 0.5rem"
+                class="fas fa-eye u-icon-accent-warning"
+
               ></i>
               Seen List
             </h3>
@@ -2178,6 +2218,13 @@
                 data-admin-tab-target="settings-security"
               >
                 Security
+              </button>
+              <button
+                type="button"
+                class="settings-admin-tab settings-admin-tab--danger"
+                data-admin-tab-target="settings-reset"
+              >
+                Reset
               </button>
             </div>
           </div>
@@ -2762,7 +2809,7 @@
             <div class="settings-field">
               <label>IMDb CSV Import</label>
               <p>Upload an IMDb CSV export to import movies into Seen.</p>
-              <div class="imdb-import-panel" style="display: block">
+              <div class="imdb-import-panel u-display-block">
                 <div class="imdb-import-panel-inner">
                   <div class="imdb-import-csv-section">
                     <button
@@ -2776,14 +2823,14 @@
                       type="file"
                       id="imdb-csv-input"
                       accept=".csv"
-                      style="display: none"
+                      class="u-display-none"
                     />
                   </div>
                 </div>
                 <div
                   id="imdb-import-progress"
-                  class="imdb-import-progress"
-                  style="display: none"
+                  class="imdb-import-progress u-display-none"
+
                 >
                   <div class="imdb-import-progress-text">
                     <span id="imdb-import-status">Importing...</span>
@@ -2867,53 +2914,28 @@
               </button>
             </div>
             <div class="settings-field">
-              <label for="setting-jellyseerr-url">Jellyseerr URL</label>
+              <label for="setting-seerr-url">Seerr URL</label>
               <input
-                id="setting-jellyseerr-url"
+                id="setting-seerr-url"
                 type="text"
-                data-setting-key="JELLYSEERR_URL"
+                data-setting-key="SEERR_URL"
                 placeholder="http://192.168.1.100:5055"
               />
             </div>
             <div class="settings-field">
-              <label for="setting-jellyseerr-api-key">Jellyseerr API Key</label>
+              <label for="setting-seerr-api-key">Seerr API Key</label>
               <input
-                id="setting-jellyseerr-api-key"
+                id="setting-seerr-api-key"
                 type="password"
-                data-setting-key="JELLYSEERR_API_KEY"
+                data-setting-key="SEERR_API_KEY"
                 placeholder="••••••••"
               />
               <button
                 type="button"
                 class="settings-test-btn"
-                data-test-target="jellyseerr"
+                data-test-target="seerr"
               >
-                Test Jellyseerr connection
-              </button>
-            </div>
-            <div class="settings-field">
-              <label for="setting-overseerr-url">Overseerr URL</label>
-              <input
-                id="setting-overseerr-url"
-                type="text"
-                data-setting-key="OVERSEERR_URL"
-                placeholder="http://192.168.1.100:5055"
-              />
-            </div>
-            <div class="settings-field">
-              <label for="setting-overseerr-api-key">Overseerr API Key</label>
-              <input
-                id="setting-overseerr-api-key"
-                type="password"
-                data-setting-key="OVERSEERR_API_KEY"
-                placeholder="••••••••"
-              />
-              <button
-                type="button"
-                class="settings-test-btn"
-                data-test-target="overseerr"
-              >
-                Test Overseerr connection
+                Test Seerr connection
               </button>
             </div>
           </div>
@@ -2941,9 +2963,105 @@
                 id="setting-admin-password"
                 type="password"
                 data-setting-key="ADMIN_PASSWORD"
-                placeholder="(leave blank to keep current)"
+                placeholder="(optional)"
               />
-              <p>Required to edit protected settings tabs from any client.</p>
+              <p>
+                Password protect the admin settings so your users cannot edit
+                them.
+              </p>
+            </div>
+          </div>
+
+          <div
+            class="settings-section"
+            id="settings-reset"
+            data-admin-section="true"
+            data-admin-tab-panel="true"
+            hidden
+          >
+            <h4>Reset</h4>
+
+            <!-- Reset Settings Card -->
+            <div class="reset-card reset-card--danger">
+              <div class="reset-card__header">
+                <div class="reset-card__icon">
+                  <i class="fas fa-undo-alt"></i>
+                </div>
+                <div class="reset-card__info">
+                  <h5 class="reset-card__title">Reset Settings</h5>
+                  <p class="reset-card__desc">
+                    Clears all configuration and integrations. Your browser will
+                    refresh to the Setup Wizard. User names and room codes are
+                    preserved.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                class="reset-action-btn reset-action-btn--danger"
+                id="reset-settings-btn"
+              >
+                <i class="fas fa-undo-alt"></i>
+                Reset Settings
+              </button>
+            </div>
+
+            <!-- Clear User History Card -->
+            <div class="reset-card">
+              <div class="reset-card__header">
+                <div class="reset-card__icon reset-card__icon--warn">
+                  <i class="fas fa-users-slash"></i>
+                </div>
+                <div class="reset-card__info">
+                  <h5 class="reset-card__title">Clear User History</h5>
+                  <p class="reset-card__desc">
+                    Remove swipe history for specific rooms and users, or wipe
+                    everything at once.
+                  </p>
+                </div>
+              </div>
+
+              <div class="user-history-controls">
+                <div class="user-history-toolbar">
+                  <button
+                    type="button"
+                    class="user-history-select-btn"
+                    id="user-history-select-all"
+                  >
+                    Select All
+                  </button>
+                  <button
+                    type="button"
+                    class="user-history-select-btn"
+                    id="user-history-deselect-all"
+                  >
+                    Deselect All
+                  </button>
+                  <button
+                    type="button"
+                    class="user-history-refresh-btn"
+                    id="user-history-refresh"
+                    title="Refresh list"
+                  >
+                    <i class="fas fa-sync-alt"></i>
+                  </button>
+                </div>
+                <div class="user-history-list" id="user-history-list">
+                  <div class="user-history-empty">
+                    <i class="fas fa-circle-notch fa-spin"></i>
+                    Loading…
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="reset-action-btn reset-action-btn--warn"
+                id="clear-user-history-btn"
+              >
+                <i class="fas fa-trash-alt"></i>
+                Clear Selected
+              </button>
             </div>
           </div>
 
@@ -2983,8 +3101,32 @@
       </p>
     </footer>
 
+    <!-- Reset confirmation modal -->
+    <div class="reset-modal-overlay" id="reset-modal-overlay" hidden>
+      <div class="reset-modal" role="dialog" aria-modal="true" aria-labelledby="reset-modal-title">
+        <div class="reset-modal__icon" id="reset-modal-icon">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <h3 class="reset-modal__title" id="reset-modal-title"></h3>
+        <p class="reset-modal__body" id="reset-modal-body"></p>
+        <div class="reset-modal__confirm-row">
+          <input
+            type="text"
+            class="reset-modal__input"
+            id="reset-modal-input"
+            placeholder='Type "YES" to confirm'
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+        <div class="reset-modal__actions">
+          <button type="button" class="reset-modal__cancel" id="reset-modal-cancel">Cancel</button>
+          <button type="button" class="reset-modal__confirm" id="reset-modal-confirm" disabled></button>
+        </div>
+      </div>
+    </div>
+
     <!-- Load JS from site root -->
     <script src="/js/main.js?v=20260301a" type="module" defer></script>
-    <script src="/js/room-code-fallback.js" defer></script>
   </body>
 </html>

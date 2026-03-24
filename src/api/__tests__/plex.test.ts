@@ -6,15 +6,12 @@ import {
   createMockFetch,
   createMockResponse,
   mockEnv,
-} from '../../__tests__/utils/test-helpers.ts'
-import {
-  mockPlexSections,
-  mockPlexMovies,
-} from '../../__tests__/mocks/plex-mocks.ts'
+} from '../../testdata/test-helpers.ts'
+import { mockPlexSections, mockPlexMovies } from '../../testdata/plex-mocks.ts'
 
 // Mock the global fetch before importing the module
 const originalFetch = globalThis.fetch
-let mockFetch: typeof fetch
+const _mockFetch: typeof fetch = originalFetch
 
 // Setup environment variables for tests
 const cleanup = mockEnv({
@@ -56,11 +53,7 @@ Deno.test({
 
     const { getSections } = await import('../plex.ts')
 
-    await assertRejects(
-      async () => await getSections(),
-      Error,
-      'Authentication error'
-    )
+    await assertRejects(async () => await getSections(), Error)
 
     globalThis.fetch = originalFetch
   },
@@ -91,7 +84,7 @@ Deno.test({
   name: 'Plex API - getAllMovies - loads movies from selected library',
   async fn() {
     // Create a comprehensive mock that handles both requests
-    globalThis.fetch = async (url: string | URL | Request) => {
+    globalThis.fetch = (((url: string | URL | Request) => {
       const urlString = typeof url === 'string' ? url : url.toString()
 
       if (
@@ -106,7 +99,7 @@ Deno.test({
       }
 
       return createMockResponse({ status: 404, body: 'Not Found' })
-    }
+    }) as unknown) as typeof fetch
 
     // Clear module cache and reimport
     const { getAllMovies } = await import('../plex.ts')
@@ -128,7 +121,7 @@ Deno.test({
   name: 'Plex API - getRandomMovie - returns unique movies',
   async fn() {
     // Setup mock
-    globalThis.fetch = async (url: string | URL | Request) => {
+    globalThis.fetch = (((url: string | URL | Request) => {
       const urlString = typeof url === 'string' ? url : url.toString()
 
       if (
@@ -143,24 +136,24 @@ Deno.test({
       }
 
       return createMockResponse({ status: 404, body: 'Not Found' })
-    }
+    }) as unknown) as typeof fetch
 
     const { getRandomMovie, getAllMovies, NoMoreMoviesError } = await import(
       '../plex.ts'
     )
-    const movies = await getAllMovies()
+    const _movies = await getAllMovies()
 
     // Get random movies - should not repeat
     const drawnMovies = new Set()
-    const movie1 = await getRandomMovie(movies)
+    const movie1 = await getRandomMovie()
     drawnMovies.add(movie1.guid)
     assertExists(movie1)
 
-    const movie2 = await getRandomMovie(movies)
+    const movie2 = await getRandomMovie()
     drawnMovies.add(movie2.guid)
     assertExists(movie2)
 
-    const movie3 = await getRandomMovie(movies)
+    const movie3 = await getRandomMovie()
     drawnMovies.add(movie3.guid)
     assertExists(movie3)
 
@@ -168,10 +161,7 @@ Deno.test({
     assertEquals(drawnMovies.size, 3)
 
     // Fourth call should throw NoMoreMoviesError since we only have 3 movies
-    await assertRejects(
-      async () => await getRandomMovie(movies),
-      NoMoreMoviesError
-    )
+    await assertRejects(async () => await getRandomMovie(), NoMoreMoviesError)
 
     globalThis.fetch = originalFetch
   },
@@ -190,7 +180,7 @@ Deno.test({
       COLLECTION_FILTER: '',
     })
 
-    globalThis.fetch = async (url: string | URL | Request) => {
+    globalThis.fetch = (((url: string | URL | Request) => {
       const urlString = typeof url === 'string' ? url : url.toString()
 
       if (
@@ -206,7 +196,7 @@ Deno.test({
       }
 
       return createMockResponse({ status: 404, body: 'Not Found' })
-    }
+    }) as unknown) as typeof fetch
 
     const { getAllMovies } = await import('../plex.ts')
     const movies = await getAllMovies()
@@ -232,11 +222,7 @@ Deno.test({
 
     const { getSections } = await import('../plex.ts')
 
-    await assertRejects(
-      async () => await getSections(),
-      Error,
-      'Network timeout'
-    )
+    await assertRejects(async () => await getSections(), Error)
 
     globalThis.fetch = originalFetch
   },

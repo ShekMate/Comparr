@@ -4,9 +4,99 @@
 import { ComparrAPI } from './ComparrAPI.js'
 import CardView from './CardView.js?v=4'
 import { MatchesView } from './MatchesView.js'
+import { buildRatingHtml, formatRuntime } from './features/movie-metadata.js'
 
 // Global API reference so functions outside main() can access it
 let api
+
+// Attach access password to same-origin API calls so protected endpoints can authorize.
+const nativeFetch = window.fetch.bind(window)
+let csrfToken = ''
+let csrfTokenPromise = null
+
+const isStateChangingMethod = method =>
+  ['POST', 'PUT', 'PATCH', 'DELETE'].includes(
+    String(method || 'GET').toUpperCase()
+  )
+
+const getCsrfToken = async () => {
+  if (csrfToken) return csrfToken
+  if (csrfTokenPromise) return csrfTokenPromise
+  csrfTokenPromise = nativeFetch('/api/csrf-token', { method: 'GET' })
+    .then(async res => {
+      if (!res.ok) throw new Error('Failed to initialize CSRF token')
+      const payload = await res.json().catch(() => ({}))
+      csrfToken = String(payload?.csrfToken || '')
+      return csrfToken
+    })
+    .finally(() => {
+      csrfTokenPromise = null
+    })
+  return csrfTokenPromise
+}
+
+window.fetch = async (input, init = {}) => {
+  try {
+    const requestUrl =
+      typeof input === 'string' || input instanceof URL
+        ? new URL(String(input), window.location.origin)
+        : new URL(input.url, window.location.origin)
+    const isSameOrigin = requestUrl.origin === window.location.origin
+    const isApiPath = requestUrl.pathname.includes('/api/')
+    if (
+      !isSameOrigin ||
+      !isApiPath ||
+      requestUrl.pathname === '/api/csrf-token'
+    ) {
+      return nativeFetch(input, init)
+    }
+
+    const headers = new Headers(
+      init.headers || (input instanceof Request ? input.headers : undefined)
+    )
+    const method = String(
+      init.method || (input instanceof Request ? input.method : 'GET')
+    )
+    if (isStateChangingMethod(method) && !headers.has('x-csrf-token')) {
+      const token = await getCsrfToken()
+      if (token) {
+        headers.set('x-csrf-token', token)
+      }
+    }
+
+    return nativeFetch(input, {
+      ...init,
+      headers,
+    })
+  } catch {
+    return nativeFetch(input, init)
+  }
+}
+
+const applyI18nCssVariables = () => {
+  const root = document.documentElement
+  const body = document.body
+  if (!root || !body?.dataset) return
+
+  const i18nCssVars = {
+    '--i18n-no-matches': body.dataset.i18nNoMatches || '',
+    '--i18n-loading': body.dataset.i18nLoading || '',
+    '--i18n-exhausted-cards': body.dataset.i18nExhaustedCards || '',
+  }
+
+  for (const [name, value] of Object.entries(i18nCssVars)) {
+    if (!value) continue
+    root.style.setProperty(name, `'${String(value).replace(/'/g, "\\'")}'`)
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', applyI18nCssVariables, {
+    once: true,
+  })
+} else {
+  applyI18nCssVariables()
+}
 
 // ===== ADD THESE HELPER FUNCTIONS HERE =====
 
@@ -49,103 +139,6 @@ function preloadPosterForMovie(movie) {
   img.decoding = 'async'
   img.src = url
   img.onload = () => preloadedPosterUrls.add(url)
-}
-
-// Helper function to get genre names from IDs
-function getGenreNames(genreIds) {
-  const genreMap = {
-    28: 'Action',
-    12: 'Adventure',
-    16: 'Animation',
-    35: 'Comedy',
-    80: 'Crime',
-    99: 'Documentary',
-    18: 'Drama',
-    10751: 'Family',
-    14: 'Fantasy',
-    36: 'History',
-    27: 'Horror',
-    10402: 'Music',
-    9648: 'Mystery',
-    10749: 'Romance',
-    878: 'Sci-Fi',
-    10770: 'TV Movie',
-    53: 'Thriller',
-    10752: 'War',
-    37: 'Western',
-  }
-  return (genreIds || []).map(id => genreMap[id]).filter(Boolean)
-}
-
-// Helper function to format runtime
-function formatRuntime(minutes) {
-  if (!minutes) return null
-  const hours = Math.floor(minutes / 60)
-  const mins = minutes % 60
-  if (hours > 0) {
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
-  }
-  return `${mins}m`
-}
-
-function parseNumericRating(value) {
-  if (value === null || value === undefined || value === '') return null
-  const parsed = Number.parseFloat(String(value).replace(/[^\d.]/g, ''))
-  return Number.isFinite(parsed) ? parsed : null
-}
-
-function buildRatingHtml(movie, basePath) {
-  const comparr = parseNumericRating(movie?.rating_comparr)
-  const imdb = parseNumericRating(movie?.rating_imdb)
-  const tmdb = parseNumericRating(movie?.rating_tmdb)
-
-  const parts = []
-  if (comparr != null) {
-    parts.push(
-      `<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> <span class="rating-value">${comparr.toFixed(
-        1
-      )}</span>`
-    )
-  }
-  if (imdb != null) {
-    parts.push(
-      `<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> <span class="rating-value">${imdb.toFixed(
-        1
-      )}</span>`
-    )
-  }
-  if (tmdb != null) {
-    parts.push(
-      `<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> <span class="rating-value">${tmdb.toFixed(
-        1
-      )}</span>`
-    )
-  }
-
-  if (parts.length > 0) {
-    return parts.join(' <span class="rating-separator">&bull;</span> ')
-  }
-
-  const raw = String(movie?.rating || '').trim()
-  if (!raw) return ''
-  if (raw.includes('<img')) return raw
-
-  const parsedFromText = {
-    comparr: parseNumericRating(
-      raw.match(/comparr\s*[:\-]?\s*([\d.]+)/i)?.[1] || null
-    ),
-    imdb: parseNumericRating(raw.match(/imdb\s*[:\-]?\s*([\d.]+)/i)?.[1]),
-    tmdb: parseNumericRating(raw.match(/tmdb\s*[:\-]?\s*([\d.]+)/i)?.[1]),
-  }
-
-  return buildRatingHtml(
-    {
-      rating_comparr: parsedFromText.comparr,
-      rating_imdb: parsedFromText.imdb,
-      rating_tmdb: parsedFromText.tmdb,
-    },
-    basePath
-  )
 }
 
 // ===== END OF HELPER FUNCTIONS =====
@@ -978,8 +971,7 @@ function clearSettingsStatusAfterDelay(delayMs = 0) {
 }
 
 function clearCachedAdminPassword() {
-  adminPassword = ''
-  sessionStorage.removeItem('comparrAdminPassword')
+  setAdminPasswordForSession('')
 }
 
 function parseApiErrorMessage(data, fallback = 'Request failed.') {
@@ -1086,9 +1078,8 @@ function saveDisplaySettingsForm() {
   applyDisplayPreferencesToNavigation(nextPreferences)
 }
 
-// Keep admin password in sessionStorage only (tab-scoped, cleared on close).
-// Do not persist in localStorage. HTTPS is required in production.
-let adminPassword = sessionStorage.getItem('comparrAdminPassword') || ''
+// Keep admin password in-memory only and never persist it in storage.
+let adminPassword = ''
 let settingsAccessState = {
   canAccess: false,
   requiresAdminPassword: false,
@@ -1100,6 +1091,19 @@ let displayPreferences = loadDisplayPreferences()
 
 function getAdminHeaders() {
   return adminPassword ? { 'x-admin-password': adminPassword } : {}
+}
+
+function setAdminPasswordForSession(value) {
+  adminPassword = String(value || '').trim()
+  syncAdminPasswordFieldFromSession()
+}
+
+function syncAdminPasswordFieldFromSession() {
+  const adminPasswordInput = document.getElementById('setting-admin-password')
+  if (!adminPasswordInput) return
+  // Mirror the in-memory admin session password into the Security tab so users
+  // don't see a blank field after successfully authenticating via prompt.
+  adminPasswordInput.value = adminPassword
 }
 
 async function fetchSettingsAccess() {
@@ -1118,6 +1122,18 @@ async function fetchSettingsAccess() {
 }
 
 async function ensureAdminAccess(forcePrompt = false) {
+  // Always refresh access state so we never act on stale data (e.g. after
+  // the setup wizard sets a new admin password, requiresAdminPassword could
+  // still be false from the initial page-load fetch).
+  settingsAccessState = await fetchSettingsAccess()
+
+  console.debug('[admin-auth] ensureAdminAccess', {
+    forcePrompt,
+    requiresAdminPassword: settingsAccessState.requiresAdminPassword,
+    hasSessionPassword: !!adminPassword,
+    sessionPasswordLen: adminPassword.length,
+  })
+
   if (!settingsAccessState.canAccess) return false
 
   if (!settingsAccessState.requiresAdminPassword) {
@@ -1130,11 +1146,15 @@ async function ensureAdminAccess(forcePrompt = false) {
 
   const entered = window.prompt('Enter admin password to access settings:')
   if (!entered) {
+    console.debug('[admin-auth] ensureAdminAccess: prompt cancelled or empty')
     return false
   }
 
-  adminPassword = String(entered).trim()
-  sessionStorage.setItem('comparrAdminPassword', adminPassword)
+  console.debug(
+    '[admin-auth] ensureAdminAccess: password entered, len=',
+    entered.trim().length
+  )
+  setAdminPasswordForSession(entered)
   return true
 }
 
@@ -1145,6 +1165,12 @@ async function loadClientConfig() {
     const data = await res.json()
     if (data?.plexLibraryName) {
       window.PLEX_LIBRARY_NAME = data.plexLibraryName
+    }
+    if (data?.embyLibraryName) {
+      window.EMBY_LIBRARY_NAME = data.embyLibraryName
+    }
+    if (data?.jellyfinLibraryName) {
+      window.JELLYFIN_LIBRARY_NAME = data.jellyfinLibraryName
     }
     if (data?.paidStreamingServices !== undefined) {
       window.PAID_STREAMING_SERVICES = data.paidStreamingServices
@@ -1161,11 +1187,31 @@ async function loadClientConfig() {
     if (data?.jellyfinConfigured !== undefined) {
       window.JELLYFIN_CONFIGURED = Boolean(data.jellyfinConfigured)
     }
+    if (data?.tmdbConfigured !== undefined) {
+      window.TMDB_CONFIGURED = Boolean(data.tmdbConfigured)
+    }
+    if (data?.setupWizardCompleted !== undefined) {
+      window.SETUP_WIZARD_COMPLETED = Boolean(data.setupWizardCompleted)
+    }
+    if (data?.accessPasswordSet !== undefined) {
+      window.ACCESS_PASSWORD_SET = Boolean(data.accessPasswordSet)
+    }
+    if (data?.adminPasswordSet !== undefined) {
+      window.ADMIN_PASSWORD_SET = Boolean(data.adminPasswordSet)
+    }
     updateHostManagedSubscriptionServiceOptions()
   } catch (err) {
     console.warn('Client config fetch failed:', err)
   }
 }
+
+const FREE_STREAMING_SERVICE_OPTIONS = [
+  'tubi',
+  'pluto-tv',
+  'freevee',
+  'roku-channel',
+  'crackle',
+]
 
 function getDefaultAvailabilityState() {
   return {
@@ -1174,6 +1220,7 @@ function getDefaultAvailabilityState() {
     paidSubscriptions: false,
     freeStreaming: false,
     subscriptionServices: [],
+    freeStreamingServices: [],
   }
 }
 
@@ -1194,9 +1241,15 @@ function normalizeAvailabilityState(value, options = {}) {
           .map(service => String(service).trim())
           .filter(Boolean)
       : [],
+    freeStreamingServices: Array.isArray(value.freeStreamingServices)
+      ? value.freeStreamingServices
+          .map(service => String(service).trim())
+          .filter(Boolean)
+      : [],
   }
 
   state.subscriptionServices = Array.from(new Set(state.subscriptionServices))
+  state.freeStreamingServices = Array.from(new Set(state.freeStreamingServices))
 
   if (
     enforceSelection &&
@@ -1213,6 +1266,11 @@ function normalizeAvailabilityState(value, options = {}) {
     state.paidSubscriptions = false
     state.freeStreaming = false
     state.subscriptionServices = []
+    state.freeStreamingServices = []
+  }
+
+  if (!state.freeStreaming) {
+    state.freeStreamingServices = []
   }
 
   return state
@@ -1283,11 +1341,368 @@ function initializeAdminSettingsTabs() {
       clearSettingsStatusAfterDelay()
       activeAdminSettingsTab = target
       applyAdminSettingsTabVisibility()
+      if (target === 'settings-reset') {
+        initializeResetTab()
+        loadUserHistory()
+      }
     })
   })
 
   tabsContainer.dataset.boundAdminTabs = 'true'
 }
+
+// ─── Reset Tab Logic ──────────────────────────────────────────
+
+function openResetModal({
+  title,
+  body,
+  confirmLabel,
+  confirmClass,
+  onConfirm,
+}) {
+  const overlay = document.getElementById('reset-modal-overlay')
+  const titleEl = document.getElementById('reset-modal-title')
+  const bodyEl = document.getElementById('reset-modal-body')
+  const input = document.getElementById('reset-modal-input')
+  const confirmBtn = document.getElementById('reset-modal-confirm')
+  const cancelBtn = document.getElementById('reset-modal-cancel')
+  const iconEl = document.getElementById('reset-modal-icon')
+
+  if (!overlay) return
+
+  titleEl.textContent = title
+  bodyEl.textContent = body
+  confirmBtn.textContent = confirmLabel
+  confirmBtn.className = `reset-modal__confirm${
+    confirmClass ? ' ' + confirmClass : ''
+  }`
+  iconEl.className = `reset-modal__icon${
+    confirmClass?.includes('warn') ? ' reset-modal__icon--warn' : ''
+  }`
+  input.value = ''
+  confirmBtn.disabled = true
+  overlay.hidden = false
+  setTimeout(() => input.focus(), 80)
+
+  const onInput = () => {
+    const valid = input.value.trim().toUpperCase() === 'YES'
+    confirmBtn.disabled = !valid
+    input.classList.toggle('is-valid', valid)
+  }
+
+  const cleanup = () => {
+    input.removeEventListener('input', onInput)
+    confirmBtn.removeEventListener('click', onConfirmClick)
+    cancelBtn.removeEventListener('click', onCancel)
+    overlay.removeEventListener('click', onOverlayClick)
+    overlay.hidden = true
+  }
+
+  const onConfirmClick = async () => {
+    if (input.value.trim().toUpperCase() !== 'YES') return
+    cleanup()
+    await onConfirm()
+  }
+
+  const onCancel = () => cleanup()
+  const onOverlayClick = e => {
+    if (e.target === overlay) cleanup()
+  }
+
+  input.addEventListener('input', onInput)
+  confirmBtn.addEventListener('click', onConfirmClick)
+  cancelBtn.addEventListener('click', onCancel)
+  overlay.addEventListener('click', onOverlayClick)
+}
+
+async function handleResetSettings() {
+  openResetModal({
+    title: 'Reset All Settings?',
+    body:
+      'This will clear ALL settings and integrations. Your browser will refresh to the Setup Wizard. User names and room codes will be preserved. Type "YES" and click Reset to confirm.',
+    confirmLabel: 'Reset',
+    confirmClass: '',
+    onConfirm: async () => {
+      const base = document.body.dataset.basePath || ''
+      try {
+        const res = await fetch(`${base}/api/admin/reset-settings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...getAdminHeaders() },
+        })
+        if (!res.ok) throw new Error('Request failed')
+        // Clear all localStorage that relates to settings/state
+        const keysToRemove = []
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i)
+          if (k) keysToRemove.push(k)
+        }
+        keysToRemove.forEach(k => localStorage.removeItem(k))
+        sessionStorage.clear()
+        window.location.reload()
+      } catch (err) {
+        setSettingsStatus(`Failed to reset: ${err?.message || err}`)
+        pulseSettingsStatus('error')
+      }
+    },
+  })
+}
+
+let userHistoryData = []
+
+async function loadUserHistory() {
+  const listEl = document.getElementById('user-history-list')
+  if (!listEl) return
+  listEl.innerHTML =
+    '<div class="user-history-empty"><i class="fas fa-circle-notch fa-spin"></i> Loading…</div>'
+  const base = document.body.dataset.basePath || ''
+
+  const doFetch = async () => {
+    const res = await fetch(`${base}/api/admin/user-history`, {
+      headers: { ...getAdminHeaders() },
+    })
+    const data = await res.json()
+    return { res, data }
+  }
+
+  try {
+    let { res, data } = await doFetch()
+
+    // The Reset tab is only reachable after the admin click-guard has
+    // authenticated the session, so a 403 here means the session password is
+    // missing or stale — not that we need to prompt from scratch.  Show a
+    // clear error rather than wiping the session and re-prompting unexpectedly.
+    if (res.status === 403) {
+      console.warn(
+        '[admin-auth] loadUserHistory got 403 — sessionPasswordLen=',
+        adminPassword.length,
+        'hasAdminSettingsAccess=',
+        hasAdminSettingsAccess
+      )
+      listEl.innerHTML = `<div class="user-history-empty"><i class="fas fa-exclamation-circle"></i> Admin access required. Please close and re-open Admin Settings.</div>`
+      return
+    }
+
+    if (!data.success) throw new Error(data.message || 'Failed to load')
+    userHistoryData = data.rooms || []
+    renderUserHistory(userHistoryData, listEl)
+  } catch (err) {
+    listEl.innerHTML = `<div class="user-history-empty"><i class="fas fa-exclamation-circle"></i> ${
+      err?.message || 'Failed to load history'
+    }</div>`
+  }
+}
+
+function renderUserHistory(rooms, listEl) {
+  if (!rooms.length) {
+    listEl.innerHTML =
+      '<div class="user-history-empty"><i class="fas fa-check-circle"></i> No user history found.</div>'
+    return
+  }
+  listEl.innerHTML = ''
+  rooms.forEach(room => {
+    const roomEl = document.createElement('div')
+    roomEl.className = 'user-history-room'
+    roomEl.dataset.roomCode = room.roomCode
+
+    const header = document.createElement('div')
+    header.className = 'user-history-room-header'
+
+    const roomCb = document.createElement('input')
+    roomCb.type = 'checkbox'
+    roomCb.className = 'user-history-room-checkbox'
+    roomCb.dataset.room = room.roomCode
+
+    const roomLabel = document.createElement('span')
+    roomLabel.className = 'user-history-room-label'
+    roomLabel.textContent = room.roomCode
+
+    const roomCount = document.createElement('span')
+    roomCount.className = 'user-history-room-count'
+    roomCount.textContent = `${room.users.length} user${
+      room.users.length !== 1 ? 's' : ''
+    }`
+
+    const toggleIcon = document.createElement('i')
+    toggleIcon.className = 'fas fa-chevron-down user-history-room-toggle'
+
+    header.appendChild(roomCb)
+    header.appendChild(roomLabel)
+    header.appendChild(roomCount)
+    header.appendChild(toggleIcon)
+
+    const usersEl = document.createElement('div')
+    usersEl.className = 'user-history-users'
+    room.users.forEach(userName => {
+      const userEl = document.createElement('div')
+      userEl.className = 'user-history-user'
+
+      const userCb = document.createElement('input')
+      userCb.type = 'checkbox'
+      userCb.className = 'user-history-user-checkbox'
+      userCb.dataset.room = room.roomCode
+      userCb.dataset.user = userName
+
+      const userNameEl = document.createElement('span')
+      userNameEl.className = 'user-history-user-name'
+      userNameEl.textContent = userName
+
+      userEl.appendChild(userCb)
+      userEl.appendChild(userNameEl)
+      usersEl.appendChild(userEl)
+    })
+
+    // Toggle expand/collapse
+    header.addEventListener('click', e => {
+      if (e.target === roomCb) return
+      roomEl.classList.toggle('is-expanded')
+    })
+
+    // Room checkbox cascades to users
+    roomCb.addEventListener('change', () => {
+      usersEl.querySelectorAll('.user-history-user-checkbox').forEach(cb => {
+        cb.checked = roomCb.checked
+      })
+    })
+
+    // User checkbox affects room checkbox state
+    usersEl.addEventListener('change', () => {
+      const userCbs = Array.from(
+        usersEl.querySelectorAll('.user-history-user-checkbox')
+      )
+      const allChecked = userCbs.every(cb => cb.checked)
+      const anyChecked = userCbs.some(cb => cb.checked)
+      roomCb.checked = allChecked
+      roomCb.indeterminate = !allChecked && anyChecked
+    })
+
+    roomEl.appendChild(header)
+    roomEl.appendChild(usersEl)
+    listEl.appendChild(roomEl)
+  })
+}
+
+function getSelectedHistory() {
+  const listEl = document.getElementById('user-history-list')
+  if (!listEl) return null
+
+  const roomCheckboxes = listEl.querySelectorAll(
+    '.user-history-room-checkbox:checked'
+  )
+  // If all rooms fully selected, use clearAll
+  const totalRooms = listEl.querySelectorAll('.user-history-room-checkbox')
+    .length
+  if (roomCheckboxes.length === totalRooms && totalRooms > 0) {
+    // Verify all users are also checked
+    const allUserCbs = listEl.querySelectorAll('.user-history-user-checkbox')
+    const allUserChecked = Array.from(allUserCbs).every(cb => cb.checked)
+    if (allUserChecked || allUserCbs.length === 0) return { clearAll: true }
+  }
+
+  const rooms = []
+  listEl.querySelectorAll('.user-history-room').forEach(roomEl => {
+    const roomCode = roomEl.dataset.roomCode
+    const roomCb = roomEl.querySelector('.user-history-room-checkbox')
+    const userCbs = Array.from(
+      roomEl.querySelectorAll('.user-history-user-checkbox')
+    )
+    const checkedUsers = userCbs
+      .filter(cb => cb.checked)
+      .map(cb => cb.dataset.user)
+    if (roomCb.checked || checkedUsers.length > 0) {
+      const entry = { roomCode }
+      if (!roomCb.checked || roomCb.indeterminate) {
+        entry.users = checkedUsers
+      }
+      rooms.push(entry)
+    }
+  })
+  return rooms.length ? { rooms } : null
+}
+
+async function handleClearUserHistory() {
+  const selection = getSelectedHistory()
+  if (!selection) {
+    setSettingsStatus('Select at least one room or user to clear.')
+    pulseSettingsStatus('error')
+    return
+  }
+
+  const isAll = selection.clearAll
+  openResetModal({
+    title: 'Clear User History?',
+    body: isAll
+      ? 'This will permanently delete all user history across all rooms. This cannot be undone.'
+      : 'This will permanently delete the selected user history. This cannot be undone.',
+    confirmLabel: 'Clear',
+    confirmClass: 'reset-modal__confirm--warn',
+    onConfirm: async () => {
+      const base = document.body.dataset.basePath || ''
+      try {
+        const res = await fetch(`${base}/api/admin/clear-user-history`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...getAdminHeaders() },
+          body: JSON.stringify(selection),
+        })
+        if (!res.ok) throw new Error('Request failed')
+        setSettingsStatus('User history cleared successfully.')
+        pulseSettingsStatus('success')
+        await loadUserHistory()
+      } catch (err) {
+        setSettingsStatus(`Failed to clear: ${err?.message || err}`)
+        pulseSettingsStatus('error')
+      }
+    },
+  })
+}
+
+function initializeResetTab() {
+  const resetBtn = document.getElementById('reset-settings-btn')
+  const clearBtn = document.getElementById('clear-user-history-btn')
+  const selectAll = document.getElementById('user-history-select-all')
+  const deselectAll = document.getElementById('user-history-deselect-all')
+  const refresh = document.getElementById('user-history-refresh')
+
+  if (resetBtn && !resetBtn.dataset.boundReset) {
+    resetBtn.addEventListener('click', handleResetSettings)
+    resetBtn.dataset.boundReset = 'true'
+  }
+  if (clearBtn && !clearBtn.dataset.boundClear) {
+    clearBtn.addEventListener('click', handleClearUserHistory)
+    clearBtn.dataset.boundClear = 'true'
+  }
+  if (selectAll && !selectAll.dataset.boundSelect) {
+    selectAll.addEventListener('click', () => {
+      document
+        .querySelectorAll(
+          '.user-history-room-checkbox, .user-history-user-checkbox'
+        )
+        .forEach(cb => {
+          cb.checked = true
+          cb.indeterminate = false
+        })
+    })
+    selectAll.dataset.boundSelect = 'true'
+  }
+  if (deselectAll && !deselectAll.dataset.boundDeselect) {
+    deselectAll.addEventListener('click', () => {
+      document
+        .querySelectorAll(
+          '.user-history-room-checkbox, .user-history-user-checkbox'
+        )
+        .forEach(cb => {
+          cb.checked = false
+          cb.indeterminate = false
+        })
+    })
+    deselectAll.dataset.boundDeselect = 'true'
+  }
+  if (refresh && !refresh.dataset.boundRefresh) {
+    refresh.addEventListener('click', loadUserHistory)
+    refresh.dataset.boundRefresh = 'true'
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 
 function updateAdminOnlySettingsVisibility() {
   const canSeeAdmin = hasAdminSettingsAccess
@@ -1383,9 +1798,11 @@ function updatePersonalMediaSourceConfigVisibility(selectedSources = []) {
   )
 
   document.querySelectorAll('[data-personal-media-config]').forEach(section => {
-    // Keep all personal media config sections visible so admins can preconfigure
-    // integrations before enabling them as active personal media sources.
-    section.toggleAttribute('hidden', false)
+    const source = String(
+      section.dataset.personalMediaConfig || ''
+    ).toLowerCase()
+    const shouldShow = source ? selected.has(source) : false
+    section.toggleAttribute('hidden', !shouldShow)
   })
 
   document
@@ -1688,13 +2105,9 @@ function initializeIntegrationTestButtons() {
       key: 'setting-jellyfin-api-key',
     },
     radarr: { url: 'setting-radarr-url', key: 'setting-radarr-api-key' },
-    jellyseerr: {
-      url: 'setting-jellyseerr-url',
-      key: 'setting-jellyseerr-api-key',
-    },
-    overseerr: {
-      url: 'setting-overseerr-url',
-      key: 'setting-overseerr-api-key',
+    seerr: {
+      url: 'setting-seerr-url',
+      key: 'setting-seerr-api-key',
     },
     tmdb: { key: 'setting-tmdb-key' },
   }
@@ -1704,8 +2117,7 @@ function initializeIntegrationTestButtons() {
     emby: 'Emby',
     jellyfin: 'Jellyfin',
     radarr: 'Radarr',
-    jellyseerr: 'Jellyseerr',
-    overseerr: 'Overseerr',
+    seerr: 'Seerr',
     tmdb: 'TMDB',
   }
 
@@ -1795,6 +2207,35 @@ function initializeIntegrationTestButtons() {
   })
 }
 
+function getAdminSelectedRequestServiceType() {
+  const selected = document.querySelector(
+    'input[name="admin-request-service-type"]:checked'
+  )
+  return selected?.value || 'seerr'
+}
+
+function setAdminSelectedRequestServiceType(type) {
+  const normalizedType = type === 'seerr' ? 'seerr' : 'seerr'
+  const radio = document.querySelector(
+    `input[name="admin-request-service-type"][value="${normalizedType}"]`
+  )
+  if (radio) radio.checked = true
+}
+
+function inferRequestServiceTypeFromSettingsValues() {
+  const hasSeerr = Boolean(
+    document.getElementById('setting-seerr-url')?.value?.trim() &&
+      document.getElementById('setting-seerr-api-key')?.value?.trim()
+  )
+
+  if (hasSeerr) return 'seerr'
+  return 'seerr'
+}
+
+function normalizeRequestServiceSettingsForSelection(settings) {
+  // Only Seerr is supported — nothing to normalize
+}
+
 function collectSettingsForm() {
   const settings = {}
   document.querySelectorAll('[data-setting-key]').forEach(el => {
@@ -1826,7 +2267,8 @@ function collectSettingsForm() {
   return settings
 }
 
-async function hydrateSettingsForm() {
+async function hydrateSettingsForm({ _retryCount = 0 } = {}) {
+  const MAX_RETRIES = 1
   try {
     const res = await fetch('/api/settings', {
       headers: { ...getAdminHeaders() },
@@ -1836,6 +2278,53 @@ async function hydrateSettingsForm() {
     }
     const data = await res.json()
     const settings = data?.settings || {}
+
+    console.debug(
+      '[admin-auth] hydrateSettingsForm: isAdmin=',
+      data?.isAdmin,
+      'hasAdminSettingsAccess=',
+      hasAdminSettingsAccess,
+      'retryCount=',
+      _retryCount,
+      'sessionPasswordLen=',
+      adminPassword.length
+    )
+
+    // If the server says admin auth failed but the frontend believes it has
+    // admin access, the cached password is wrong or missing.  Re-prompt once
+    // via ensureAdminAccess so the user can correct it.
+    if (
+      data?.isAdmin === false &&
+      hasAdminSettingsAccess &&
+      _retryCount < MAX_RETRIES
+    ) {
+      // Refresh access state — if no admin password is configured the server
+      // will return isAdmin:false for non-local requests even without a header,
+      // and there is nothing the user can enter to fix it.
+      settingsAccessState = await fetchSettingsAccess()
+      if (!settingsAccessState.requiresAdminPassword) {
+        // No admin password configured — non-admin result is expected and
+        // there is nothing to re-prompt for.
+        return false
+      }
+
+      clearCachedAdminPassword()
+      hasAdminSettingsAccess = false
+      settingsHydratedWithAdminAccess = false
+      updateAdminOnlySettingsVisibility()
+
+      // Re-prompt with forcePrompt=true so the stale-state bypass is skipped.
+      const hasAccess = await ensureAdminAccess(true)
+      if (hasAccess && adminPassword) {
+        hasAdminSettingsAccess = true
+        updateAdminOnlySettingsVisibility()
+        // One retry with incremented counter — won't loop again.
+        return await hydrateSettingsForm({ _retryCount: _retryCount + 1 })
+      }
+      // User cancelled or left blank — stay without admin access.
+      return false
+    }
+
     document.querySelectorAll('[data-setting-key]').forEach(el => {
       const key = el.dataset.settingKey
       if (!key) return
@@ -1855,14 +2344,41 @@ async function hydrateSettingsForm() {
           option.selected = selectedSet.has(option.value)
         })
       } else {
-        el.value = value
+        // ADMIN_PASSWORD is intentionally redacted by the server; preserve the
+        // in-memory authenticated value so admin users don't see a blank field
+        // after authenticating, and don't get re-prompted while switching tabs.
+        if (
+          key === 'ADMIN_PASSWORD' &&
+          hasAdminSettingsAccess &&
+          !String(value).trim() &&
+          adminPassword
+        ) {
+          el.value = adminPassword
+        } else {
+          el.value = value
+        }
       }
     })
 
     hydratePaidStreamingServicesSetting(settings.PAID_STREAMING_SERVICES)
-    hydratePersonalMediaSourcesSetting(settings.PERSONAL_MEDIA_SOURCES)
+
+    let personalMediaSources = settings.PERSONAL_MEDIA_SOURCES
+    if (!personalMediaSources || personalMediaSources === '[]') {
+      const autoSources = []
+      if (settings.PLEX_URL && settings.PLEX_TOKEN) autoSources.push('plex')
+      if (settings.EMBY_URL && settings.EMBY_API_KEY) autoSources.push('emby')
+      if (settings.JELLYFIN_URL && settings.JELLYFIN_API_KEY)
+        autoSources.push('jellyfin')
+      if (autoSources.length > 0)
+        personalMediaSources = JSON.stringify(autoSources)
+    }
+    hydratePersonalMediaSourcesSetting(personalMediaSources)
+    setAdminSelectedRequestServiceType(
+      inferRequestServiceTypeFromSettingsValues()
+    )
     setSettingsDirty(false)
     clearSettingsStatusAfterDelay()
+    return data?.isAdmin === true
   } catch (err) {
     if (err?.message && String(err.message).includes('403')) {
       clearCachedAdminPassword()
@@ -1871,6 +2387,7 @@ async function hydrateSettingsForm() {
       setSettingsStatus('Admin password was rejected. Please try again.')
     }
     console.warn('Failed to hydrate settings form:', err)
+    return false
   }
 }
 
@@ -1885,6 +2402,7 @@ async function saveSettingsForm() {
     }
 
     const settings = collectSettingsForm()
+    normalizeRequestServiceSettingsForSelection(settings)
     const res = await fetch('/api/settings', {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...getAdminHeaders() },
@@ -1924,7 +2442,14 @@ async function saveSettingsForm() {
     if (data?.settings?.PERSONAL_MEDIA_SOURCES !== undefined) {
       window.PERSONAL_MEDIA_SOURCES = data.settings.PERSONAL_MEDIA_SOURCES
     }
+    // If the admin password was changed, update the session so subsequent
+    // requests use the new password instead of the now-stale old one.
+    const savedAdminPassword = String(settings.ADMIN_PASSWORD || '').trim()
+    if (savedAdminPassword) {
+      setAdminPasswordForSession(savedAdminPassword)
+    }
     await loadClientConfig()
+    document.dispatchEvent(new CustomEvent('comparr:source-config-updated'))
     updateHostManagedSubscriptionServiceOptions()
     updateSwipeAvailabilityUI()
     setSettingsStatus(
@@ -1944,12 +2469,1103 @@ async function saveSettingsForm() {
 let settingsUiHydrated = false
 let settingsHydratedWithAdminAccess = false
 
+function hasConfiguredPersonalMediaSource() {
+  return Boolean(
+    window.PLEX_CONFIGURED ||
+      window.EMBY_CONFIGURED ||
+      window.JELLYFIN_CONFIGURED
+  )
+}
+
+function hasConfiguredMovieSource() {
+  return hasConfiguredPersonalMediaSource() || Boolean(window.TMDB_CONFIGURED)
+}
+
+function createFirstRunGuideModal() {
+  const existing = document.getElementById('first-run-guide-modal')
+  if (existing) return existing
+
+  const modal = document.createElement('section')
+  modal.id = 'first-run-guide-modal'
+  modal.className = 'first-run-guide-modal'
+  modal.innerHTML = `
+    <div class="first-run-guide-card" role="dialog" aria-modal="true" aria-labelledby="first-run-guide-title">
+      <h2 id="first-run-guide-title">Hi, there 👋</h2>
+      <p class="first-run-guide-copy" id="first-run-guide-copy">What movies do you want to swipe through?</p>
+      <div class="first-run-guide-body" id="first-run-guide-body"></div>
+      <p id="first-run-guide-requirements" class="first-run-guide-requirements"></p>
+      <p id="first-run-guide-status" class="first-run-guide-status"></p>
+      <div class="first-run-guide-actions">
+        <button type="button" class="submit-button first-run-guide-secondary" id="first-run-back" hidden>Back</button>
+        <button type="button" class="submit-button first-run-guide-secondary" id="first-run-skip" hidden>Skip</button>
+        <button type="button" class="submit-button" id="first-run-save" hidden>Save</button>
+        <button type="button" class="submit-button" id="first-run-next">Next</button>
+      </div>
+    </div>
+  `
+
+  document.body.appendChild(modal)
+
+  const body = modal.querySelector('#first-run-guide-body')
+  const title = modal.querySelector('#first-run-guide-title')
+  const copy = modal.querySelector('#first-run-guide-copy')
+  const requirements = modal.querySelector('#first-run-guide-requirements')
+  const status = modal.querySelector('#first-run-guide-status')
+  const backButton = modal.querySelector('#first-run-back')
+  const skipButton = modal.querySelector('#first-run-skip')
+  const saveButton = modal.querySelector('#first-run-save')
+  const nextButton = modal.querySelector('#first-run-next')
+
+  const tmdbRegistrationUrl = 'https://www.themoviedb.org/settings/api'
+  const requirementCopyByFlow = {
+    'personal-only':
+      '*Requires at least one valid Plex, Emby, or Jellyfin connection. Optional: provide a TMDb API Key for additional movie metadata and an enhanced user experience.',
+    'tmdb-only': `*Requires a TMDb API Key. Get your free API Key <a href="${tmdbRegistrationUrl}" target="_blank" rel="noopener noreferrer">here</a>.`,
+    combined: `*Requires at least one valid Plex, Emby, or Jellyfin connection and a TMDb API Key. Get your free API Key <a href="${tmdbRegistrationUrl}" target="_blank" rel="noopener noreferrer">here</a>.`,
+  }
+  const tmdbOnlyRegistrationCopy = `Get your free API Key <a href="${tmdbRegistrationUrl}" target="_blank" rel="noopener noreferrer">here</a>.`
+
+  const flowOptionsMarkup = `
+    <div class="first-run-guide-options">
+      <button type="button" class="first-run-guide-option" data-flow="personal-only">
+        <strong>My Plex, Emby, and/or Jellyfin Libraries Only.*</strong>
+      </button>
+      <button type="button" class="first-run-guide-option" data-flow="tmdb-only">
+        <strong>My Paid / Free Streaming Subscriptions Only.*</strong>
+      </button>
+      <button type="button" class="first-run-guide-option" data-flow="combined">
+        <strong>My Plex, Emby, and/or Jellyfin Libraries + My Paid / Free Streaming Subscriptions.*</strong>
+      </button>
+    </div>
+  `
+
+  const selectedState = {
+    flow: '',
+    security: {
+      accessPassword: '',
+      adminPassword: '',
+    },
+    sources: [],
+    subscriptions: [],
+    validatedTargets: {},
+    requestServices: {
+      requestServiceType: 'seerr',
+      radarrUrl: '',
+      radarrApiKey: '',
+      seerrUrl: '',
+      seerrApiKey: '',
+    },
+    defaultsLastSavedSnapshot: '',
+  }
+  const history = []
+
+  const requestFieldIds = {
+    requestServiceType: 'first-run-request-service-type',
+    radarrUrl: 'first-run-radarr-url',
+    radarrApiKey: 'first-run-radarr-api-key',
+    seerrUrl: 'first-run-seerr-url',
+    seerrApiKey: 'first-run-seerr-api-key',
+  }
+
+  const setWizardStatus = (message = '', tone = 'info') => {
+    if (!status) return
+    status.textContent = message
+    status.dataset.tone = message ? tone : ''
+  }
+
+  const renderRequirementCopy = flow => {
+    if (!requirements) return
+    if (!flow || !requirementCopyByFlow[flow]) {
+      requirements.innerHTML = ''
+      requirements.hidden = true
+      return
+    }
+    requirements.innerHTML =
+      requirementCopyByFlow[flow] || requirementCopyByFlow['personal-only']
+    requirements.hidden = false
+  }
+
+  const syncInputValue = (inputId, value) => {
+    const input = document.getElementById(inputId)
+    if (input) {
+      input.value = value
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+    }
+  }
+
+  const saveSettingsSubset = async (updates, options = {}) => {
+    const adminPasswordHeader =
+      typeof options?.adminPasswordHeader === 'string'
+        ? options.adminPasswordHeader.trim()
+        : ''
+    const headers = {
+      'content-type': 'application/json',
+      ...getAdminHeaders(),
+    }
+
+    if (!headers['x-admin-password'] && adminPasswordHeader) {
+      headers['x-admin-password'] = adminPasswordHeader
+    }
+
+    const res = await fetch('/api/settings', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ settings: updates }),
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      throw new Error(parseApiErrorMessage(data, 'Failed to save settings.'))
+    }
+  }
+
+  const runConnectionTest = async (target, url, token) => {
+    const res = await fetch('/api/settings-test', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...getAdminHeaders() },
+      body: JSON.stringify({ target, url, token }),
+    })
+    const data = await res.json().catch(() => ({ ok: false }))
+    if (!res.ok || !data?.ok) {
+      throw new Error(data?.message || `Failed to connect to ${target}.`)
+    }
+  }
+
+  const serviceMeta = {
+    plex: {
+      label: 'Plex',
+      requiredLabel: 'Plex URL and Plex token are required.',
+      settings: { url: 'PLEX_URL', token: 'PLEX_TOKEN' },
+      inputIds: { url: 'setting-plex-url', token: 'setting-plex-token' },
+    },
+    emby: {
+      label: 'Emby',
+      requiredLabel: 'Emby URL and Emby API key are required.',
+      settings: { url: 'EMBY_URL', token: 'EMBY_API_KEY' },
+      inputIds: { url: 'setting-emby-url', token: 'setting-emby-api-key' },
+    },
+    jellyfin: {
+      label: 'Jellyfin',
+      requiredLabel: 'Jellyfin URL and Jellyfin API key are required.',
+      settings: { url: 'JELLYFIN_URL', token: 'JELLYFIN_API_KEY' },
+      inputIds: {
+        url: 'setting-jellyfin-url',
+        token: 'setting-jellyfin-api-key',
+      },
+    },
+  }
+
+  const setSelectedFlow = flow => {
+    selectedState.flow = flow
+    body
+      ?.querySelectorAll('.first-run-guide-option')
+      .forEach(btn =>
+        btn.classList.toggle('is-selected', btn.dataset.flow === flow)
+      )
+    renderRequirementCopy(flow)
+    setWizardStatus('')
+  }
+
+  const updateActionButtons = screen => {
+    backButton.hidden = history.length <= 1 || screen.type === 'setup-complete'
+    skipButton.hidden = !['security', 'requests'].includes(screen.type)
+    saveButton.hidden = screen.type !== 'defaults'
+    nextButton.disabled = false
+    skipButton.disabled = false
+    if (screen.type === 'setup-complete') {
+      nextButton.textContent = 'Start Swiping'
+    } else if (screen.type === 'defaults') {
+      nextButton.textContent = 'Finish'
+    } else {
+      nextButton.textContent = 'Next'
+    }
+  }
+
+  const withButtonLoading = async (button, label, action) => {
+    if (!button) return action()
+    if (button.dataset.loading === 'true') return null
+    const originalHtml = button.innerHTML
+    const wasDisabled = button.disabled
+    button.dataset.loading = 'true'
+    button.disabled = true
+    button.classList.add('is-loading')
+    button.innerHTML = `<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> ${label}`
+
+    try {
+      return await action()
+    } finally {
+      button.dataset.loading = 'false'
+      button.classList.remove('is-loading')
+      button.innerHTML = originalHtml
+      button.disabled = wasDisabled
+    }
+  }
+
+  const persistRequestInputs = () => {
+    Object.entries(requestFieldIds).forEach(([key, id]) => {
+      if (key === 'requestServiceType') {
+        selectedState.requestServices[key] = 'seerr'
+        return
+      }
+      selectedState.requestServices[key] =
+        body.querySelector(`#${id}`)?.value?.trim() || ''
+    })
+  }
+
+  const hasAnyRequestInput = () =>
+    Object.entries(selectedState.requestServices).some(
+      ([key, value]) => key !== 'requestServiceType' && Boolean(value)
+    )
+
+  const getCurrentDefaultsSnapshot = () =>
+    JSON.stringify(normalizeFilterStateForDefaults(window.filterState))
+
+  const hasUnsavedDefaultsChanges = () => {
+    if (swipeFilterMode !== 'defaults' || !window.filterState) return false
+    return (
+      getCurrentDefaultsSnapshot() !== selectedState.defaultsLastSavedSnapshot
+    )
+  }
+
+  const promptDefaultsUnsavedChanges = () =>
+    new Promise(resolve => {
+      const overlay = document.createElement('div')
+      overlay.className = 'first-run-guide-confirm-overlay'
+      overlay.innerHTML = `
+        <div class="first-run-guide-confirm-card" role="dialog" aria-modal="true">
+          <p>Defaults selections were not saved.</p>
+          <div class="first-run-guide-actions">
+            <button type="button" class="submit-button first-run-guide-secondary" data-action="cancel">Cancel</button>
+            <button type="button" class="submit-button" data-action="continue">Continue Anyways</button>
+          </div>
+        </div>
+      `
+      overlay
+        .querySelector('[data-action="cancel"]')
+        ?.addEventListener('click', () => {
+          overlay.remove()
+          resolve(false)
+        })
+      overlay
+        .querySelector('[data-action="continue"]')
+        ?.addEventListener('click', () => {
+          overlay.remove()
+          resolve(true)
+        })
+      modal.appendChild(overlay)
+    })
+
+  const enterDefaultsInWizard = () => {
+    body.innerHTML = '<div id="first-run-defaults-inline-editor"></div>'
+    const container = body.querySelector('#first-run-defaults-inline-editor')
+    if (!swipeFilterModal || !container) return
+
+    swipeFilterMode = 'defaults'
+    liveSwipeFilterStateRef = window.filterState
+    const baseState =
+      loadSavedSwipeFilterDefaults() ||
+      normalizeFilterStateForDefaults(liveSwipeFilterStateRef)
+    window.filterState = cloneFilterStateValue(baseState)
+
+    container.appendChild(swipeFilterModal)
+    swipeFilterModal.classList.add('active', 'inline-defaults-mode')
+    swipeFilterOverlay?.classList.remove('active')
+    updateSwipeFilterModalModeUI()
+    syncSwipeFilterModalWithState()
+
+    selectedState.defaultsLastSavedSnapshot = getCurrentDefaultsSnapshot()
+  }
+
+  const leaveDefaultsEditor = () => {
+    if (swipeFilterMode !== 'defaults') return
+    if (liveSwipeFilterStateRef) {
+      window.filterState = liveSwipeFilterStateRef
+      liveSwipeFilterStateRef = null
+    }
+    swipeFilterMode = 'live'
+    updateSwipeFilterModalModeUI()
+    exitDefaultsInlineEditor()
+  }
+
+  const saveDefaultsFromWizard = () => {
+    if (swipeFilterMode !== 'defaults' || !window.filterState) return
+    const normalized = normalizeFilterStateForDefaults(window.filterState)
+    if (!normalized) return
+    localStorage.setItem(SWIPE_DEFAULTS_STORAGE_KEY, JSON.stringify(normalized))
+    selectedState.defaultsLastSavedSnapshot = JSON.stringify(normalized)
+    setWizardStatus('✅ Default filters saved.', 'success')
+  }
+
+  const renderScreen = screen => {
+    if (!body || !copy || !title) return
+    setWizardStatus('')
+    updateActionButtons(screen)
+
+    if (screen.type === 'security') {
+      renderRequirementCopy('')
+      title.textContent = 'Security Settings'
+      copy.textContent = ''
+
+      const existingAccessPassword =
+        selectedState.security.accessPassword ||
+        document.getElementById('setting-access-password')?.value ||
+        ''
+      const accessPasswordAlreadySet =
+        Boolean(existingAccessPassword) || Boolean(window.ACCESS_PASSWORD_SET)
+      const adminPasswordAlreadySet = Boolean(window.ADMIN_PASSWORD_SET)
+      // If the session already authenticated with admin password, use it
+      const sessionAdminPassword = getAdminHeaders()['x-admin-password'] || ''
+      const needsAdminAuth = adminPasswordAlreadySet && !sessionAdminPassword
+
+      // Access password section: show "configured" badge + Change toggle if
+      // already set, otherwise show the input directly
+      const accessSection = accessPasswordAlreadySet
+        ? `<div class="first-run-password-configured" id="first-run-access-configured">
+            <span class="first-run-password-status-badge"><i class="fas fa-check-circle" aria-hidden="true"></i> Configured</span>
+            <button type="button" class="first-run-change-password-btn" id="first-run-access-change-btn">Change →</button>
+          </div>
+          <div id="first-run-access-input-wrap" hidden>
+            <input id="first-run-access-password" class="first-run-guide-input" type="password" placeholder="New access password" autocomplete="new-password" />
+          </div>`
+        : `<input id="first-run-access-password" class="first-run-guide-input" type="password" placeholder="(optional)" autocomplete="new-password" />`
+
+      // Admin password section: same pattern
+      const adminSection = adminPasswordAlreadySet
+        ? `<div class="first-run-password-configured" id="first-run-admin-configured">
+            <span class="first-run-password-status-badge"><i class="fas fa-check-circle" aria-hidden="true"></i> Configured</span>
+            <button type="button" class="first-run-change-password-btn" id="first-run-admin-change-btn">Change →</button>
+          </div>
+          <div id="first-run-admin-input-wrap" hidden>
+            <input id="first-run-admin-password" class="first-run-guide-input" type="password" placeholder="New admin password" autocomplete="new-password" />
+          </div>`
+        : `<input id="first-run-admin-password" class="first-run-guide-input" type="password" placeholder="(optional)" autocomplete="new-password" />`
+
+      // Current admin password field: shown when admin password is set and we
+      // don't already have it in the session. User must enter it to save changes.
+      const adminAuthSection = needsAdminAuth
+        ? `<div class="first-run-admin-auth-section">
+            <label class="first-run-guide-field-label first-run-guide-security-label">Current Admin Password</label>
+            <p class="first-run-guide-instruction">Required to save any changes on this screen.</p>
+            <input id="first-run-current-admin-password" class="first-run-guide-input" type="password" placeholder="Enter current admin password" autocomplete="current-password" />
+          </div>`
+        : ''
+
+      body.innerHTML = `
+        <label class="first-run-guide-field-label first-run-guide-security-label">Access Password</label>
+        <p class="first-run-guide-instruction">Require a password for anyone to access your Comparr instance.</p>
+        ${accessSection}
+        <label class="first-run-guide-field-label first-run-guide-security-label first-run-guide-admin-password-label">Admin Settings Password</label>
+        <p class="first-run-guide-instruction">Set a password for admin settings so your users cannot edit them.</p>
+        ${adminSection}
+        ${adminAuthSection}
+      `
+
+      // Expand access password input on Change click
+      body
+        .querySelector('#first-run-access-change-btn')
+        ?.addEventListener('click', () => {
+          body.querySelector('#first-run-access-configured').hidden = true
+          body.querySelector('#first-run-access-input-wrap').hidden = false
+          body.querySelector('#first-run-access-password')?.focus()
+          initializePasswordVisibilityToggles()
+          updateSecurityActionState()
+        })
+
+      // Expand admin password input on Change click
+      body
+        .querySelector('#first-run-admin-change-btn')
+        ?.addEventListener('click', () => {
+          body.querySelector('#first-run-admin-configured').hidden = true
+          body.querySelector('#first-run-admin-input-wrap').hidden = false
+          body.querySelector('#first-run-admin-password')?.focus()
+          initializePasswordVisibilityToggles()
+          updateSecurityActionState()
+        })
+
+      const updateSecurityActionState = () => {
+        const accessPassword =
+          body.querySelector('#first-run-access-password')?.value?.trim() || ''
+        const adminPassword =
+          body.querySelector('#first-run-admin-password')?.value?.trim() || ''
+        const currentAdminPassword =
+          body
+            .querySelector('#first-run-current-admin-password')
+            ?.value?.trim() || ''
+        const hasTypedPassword = Boolean(accessPassword || adminPassword)
+        const hasPassword =
+          hasTypedPassword ||
+          accessPasswordAlreadySet ||
+          adminPasswordAlreadySet
+        // Block Next if the user is making changes but hasn't provided the
+        // current admin password needed to authenticate the save
+        const needsCurrentAdminToSave =
+          needsAdminAuth && hasTypedPassword && !currentAdminPassword
+        nextButton.disabled = !hasPassword || needsCurrentAdminToSave
+        skipButton.disabled = hasTypedPassword
+      }
+
+      body
+        .querySelector('#first-run-access-password')
+        ?.addEventListener('input', updateSecurityActionState)
+      body
+        .querySelector('#first-run-admin-password')
+        ?.addEventListener('input', updateSecurityActionState)
+      body
+        .querySelector('#first-run-current-admin-password')
+        ?.addEventListener('input', updateSecurityActionState)
+
+      initializePasswordVisibilityToggles()
+      updateSecurityActionState()
+      return
+    }
+
+    if (screen.type === 'flow') {
+      title.textContent = 'Hi, there 👋'
+      copy.textContent = 'What movies do you want to swipe through?'
+      body.innerHTML = flowOptionsMarkup
+      body.querySelectorAll('.first-run-guide-option').forEach(option => {
+        option.addEventListener('click', () =>
+          setSelectedFlow(option.dataset.flow || '')
+        )
+      })
+      if (selectedState.flow) {
+        setSelectedFlow(selectedState.flow)
+      } else {
+        renderRequirementCopy('')
+      }
+      return
+    }
+
+    if (screen.type === 'sources') {
+      renderRequirementCopy('')
+      title.textContent = 'Personal Media Sources'
+      copy.textContent = 'Choose your personal media sources.'
+      body.innerHTML = `
+        <div class="first-run-guide-checkboxes">
+          <label><input type="checkbox" value="plex" ${
+            selectedState.sources.includes('plex') ? 'checked' : ''
+          }/> Plex</label>
+          <label><input type="checkbox" value="emby" ${
+            selectedState.sources.includes('emby') ? 'checked' : ''
+          }/> Emby</label>
+          <label><input type="checkbox" value="jellyfin" ${
+            selectedState.sources.includes('jellyfin') ? 'checked' : ''
+          }/> Jellyfin</label>
+        </div>
+      `
+      return
+    }
+
+    if (screen.type === 'service') {
+      renderRequirementCopy('')
+      const meta = serviceMeta[screen.target]
+      if (!meta) return
+      title.textContent = meta.label
+      copy.textContent = ''
+      body.innerHTML = `
+        <label class="first-run-guide-field-label">${meta.label} URL</label>
+        <input id="first-run-${
+          screen.target
+        }-url" class="first-run-guide-input" type="url" placeholder="http://localhost" value="${
+        document.getElementById(meta.inputIds.url)?.value || ''
+      }" />
+        <label class="first-run-guide-field-label">${meta.label} ${
+        screen.target === 'plex' ? 'Token' : 'API Key'
+      }</label>
+        <input id="first-run-${
+          screen.target
+        }-token" class="first-run-guide-input" type="text" value="${
+        document.getElementById(meta.inputIds.token)?.value || ''
+      }" />
+        <button type="button" class="submit-button first-run-guide-test-button" id="first-run-test-${
+          screen.target
+        }">Test Connection</button>
+      `
+      body
+        .querySelector(`#first-run-test-${screen.target}`)
+        ?.addEventListener('click', async event => {
+          const testButton = event.currentTarget
+          await withButtonLoading(testButton, 'Testing...', async () => {
+            const url =
+              body.querySelector(`#first-run-${screen.target}-url`)?.value || ''
+            const token =
+              body.querySelector(`#first-run-${screen.target}-token`)?.value ||
+              ''
+            if (!isValidUrl(url) || !token.trim()) {
+              setWizardStatus(meta.requiredLabel, 'error')
+              return
+            }
+            try {
+              setWizardStatus(`Testing ${meta.label} connection...`)
+              await runConnectionTest(screen.target, url, token)
+              selectedState.validatedTargets[screen.target] = true
+              setWizardStatus(
+                `✅ ${meta.label} connection successful.`,
+                'success'
+              )
+            } catch (err) {
+              selectedState.validatedTargets[screen.target] = false
+              setWizardStatus(
+                err?.message || `Failed to connect to ${meta.label}.`,
+                'error'
+              )
+            }
+          })
+        })
+      return
+    }
+
+    if (screen.type === 'tmdb') {
+      renderRequirementCopy('')
+      title.textContent = 'TMDb API Key'
+      const isTmdbRequired = selectedState.flow !== 'personal-only'
+      copy.innerHTML = isTmdbRequired
+        ? tmdbOnlyRegistrationCopy
+        : `Optional: ${tmdbOnlyRegistrationCopy}`
+      body.innerHTML = `
+        <label class="first-run-guide-field-label">TMDb API Key</label>
+        <input id="first-run-tmdb-key" class="first-run-guide-input" type="text" value="${
+          document.getElementById('setting-tmdb-key')?.value || ''
+        }" />
+        <button type="button" class="submit-button first-run-guide-test-button" id="first-run-test-tmdb">Test Connection</button>
+      `
+      body
+        .querySelector('#first-run-test-tmdb')
+        ?.addEventListener('click', async event => {
+          const testButton = event.currentTarget
+          await withButtonLoading(testButton, 'Testing...', async () => {
+            const token = body.querySelector('#first-run-tmdb-key')?.value || ''
+            if (!token.trim()) {
+              setWizardStatus('TMDb API key is required.', 'error')
+              return
+            }
+            try {
+              setWizardStatus('Testing TMDb connection...')
+              await runConnectionTest('tmdb', '', token)
+              selectedState.validatedTargets.tmdb = true
+              setWizardStatus('✅ TMDb connection successful.', 'success')
+            } catch (err) {
+              selectedState.validatedTargets.tmdb = false
+              setWizardStatus(
+                err?.message || 'Failed to connect to TMDb.',
+                'error'
+              )
+            }
+          })
+        })
+      return
+    }
+
+    if (screen.type === 'subscriptions') {
+      renderRequirementCopy('')
+      title.textContent = 'Subscription Services'
+      copy.textContent = 'Choose the streaming subscriptions you have.'
+      const subscriptionOptions = Array.from(
+        document.querySelectorAll(
+          '#setting-paid-streaming-services-list .settings-checkbox-option input[type="checkbox"][value]'
+        )
+      )
+      const selectedSet = new Set(selectedState.subscriptions)
+      body.innerHTML = `
+        <div class="first-run-guide-checkboxes">
+          ${subscriptionOptions
+            .map(input => {
+              const value = String(input.value || '').trim()
+              if (!value) return ''
+              const option = input.closest('.settings-checkbox-option')
+              if (option?.dataset?.hostManagedPersonalService) return ''
+              const labelText = option?.textContent?.trim() || value
+              return `<label><input type="checkbox" value="${value}" data-first-run-paid-streaming-service="true" ${
+                selectedSet.has(value) ? 'checked' : ''
+              }/> ${labelText}</label>`
+            })
+            .join('')}
+        </div>
+      `
+      return
+    }
+
+    if (screen.type === 'requests') {
+      renderRequirementCopy('')
+      title.textContent = 'Movie Requests (optional)'
+      copy.textContent =
+        'Integrate Radarr and Seerr to enable movie requests for titles not in your media sources.'
+      body.innerHTML = `
+        <label class="first-run-guide-field-label">Radarr URL</label>
+        <input id="${requestFieldIds.radarrUrl}" class="first-run-guide-input" type="url" placeholder="http://localhost" value="${selectedState.requestServices.radarrUrl}" />
+        <label class="first-run-guide-field-label">Radarr API Key</label>
+        <input id="${requestFieldIds.radarrApiKey}" class="first-run-guide-input" type="text" value="${selectedState.requestServices.radarrApiKey}" />
+        <label class="first-run-guide-field-label">Seerr URL</label>
+        <input id="${requestFieldIds.seerrUrl}" class="first-run-guide-input" type="url" placeholder="http://localhost" value="${selectedState.requestServices.seerrUrl}" />
+        <label class="first-run-guide-field-label">Seerr API Key</label>
+        <input id="${requestFieldIds.seerrApiKey}" class="first-run-guide-input" type="text" value="${selectedState.requestServices.seerrApiKey}" />
+      `
+      return
+    }
+
+    if (screen.type === 'defaults') {
+      renderRequirementCopy('')
+      title.textContent = 'Default Filters (optional)'
+      copy.textContent =
+        'Set default filters for the movies shown in your swipe screen.'
+      enterDefaultsInWizard()
+      return
+    }
+
+    if (screen.type === 'setup-complete') {
+      renderRequirementCopy('')
+      title.textContent = 'Setup Complete'
+      copy.textContent =
+        "You're all set. Visit the settings tab in your navigation menu to further customize and edit your current settings."
+      body.innerHTML = ''
+    }
+  }
+
+  const getNextScreen = async () => {
+    const current = history[history.length - 1] || { type: 'security' }
+
+    if (current.type === 'security') {
+      const accessPasswordInput = body.querySelector(
+        '#first-run-access-password'
+      )
+      const adminPasswordInput = body.querySelector('#first-run-admin-password')
+      const currentAdminPasswordInput = body.querySelector(
+        '#first-run-current-admin-password'
+      )
+
+      // A field is "changed" only when it was explicitly revealed via the
+      // Change toggle (or was never configured, so always visible) AND has a value
+      const accessChangeActive =
+        body.querySelector('#first-run-access-input-wrap')?.hidden === false ||
+        !window.ACCESS_PASSWORD_SET
+      const adminChangeActive =
+        body.querySelector('#first-run-admin-input-wrap')?.hidden === false ||
+        !window.ADMIN_PASSWORD_SET
+
+      const newAccessPassword =
+        accessChangeActive && accessPasswordInput?.value
+          ? accessPasswordInput.value
+          : null
+      const newAdminPassword =
+        adminChangeActive && adminPasswordInput?.value
+          ? adminPasswordInput.value
+          : null
+
+      // Auth header: when admin password exists use the current-admin field (or
+      // the session value); when it doesn't exist yet use the new password itself
+      // (bootstrap — the new password authenticates its own creation)
+      const currentAdminPassword =
+        currentAdminPasswordInput?.value ||
+        getAdminHeaders()['x-admin-password'] ||
+        ''
+      const authHeader = window.ADMIN_PASSWORD_SET
+        ? currentAdminPassword
+        : newAdminPassword || ''
+
+      // Build the save payload — only include keys that actually changed
+      const settingsToSave = {}
+      if (newAccessPassword !== null) {
+        settingsToSave.ACCESS_PASSWORD = newAccessPassword
+        syncInputValue('setting-access-password', newAccessPassword)
+        selectedState.security.accessPassword = newAccessPassword
+      } else if (!window.ACCESS_PASSWORD_SET) {
+        // Field shown but left blank — save empty (user opted for no password)
+        settingsToSave.ACCESS_PASSWORD = ''
+        syncInputValue('setting-access-password', '')
+        selectedState.security.accessPassword = ''
+      }
+      if (newAdminPassword !== null) {
+        settingsToSave.ADMIN_PASSWORD = newAdminPassword
+        syncInputValue('setting-admin-password', newAdminPassword)
+        selectedState.security.adminPassword = newAdminPassword
+      } else if (!window.ADMIN_PASSWORD_SET) {
+        settingsToSave.ADMIN_PASSWORD = ''
+        syncInputValue('setting-admin-password', '')
+        selectedState.security.adminPassword = ''
+      }
+
+      // Nothing actually changed — just advance
+      if (Object.keys(settingsToSave).length === 0) {
+        return { type: 'flow' }
+      }
+
+      try {
+        await saveSettingsSubset(settingsToSave, {
+          adminPasswordHeader: authHeader,
+        })
+        // Keep session updated with whichever admin password is now active
+        if (newAdminPassword) {
+          setAdminPasswordForSession(newAdminPassword)
+        } else if (currentAdminPassword) {
+          setAdminPasswordForSession(currentAdminPassword)
+        }
+      } catch (err) {
+        setWizardStatus(
+          err?.message || 'Failed to save security settings.',
+          'error'
+        )
+        return null
+      }
+
+      return { type: 'flow' }
+    }
+
+    if (current.type === 'flow') {
+      if (!selectedState.flow) {
+        setWizardStatus('Please select one option to continue.', 'error')
+        return null
+      }
+      return selectedState.flow === 'tmdb-only'
+        ? { type: 'tmdb' }
+        : { type: 'sources' }
+    }
+
+    if (current.type === 'sources') {
+      const checked = Array.from(
+        body.querySelectorAll('input[type="checkbox"]:checked')
+      ).map(el => el.value)
+      if (!checked.length) {
+        setWizardStatus('Select at least one source to continue.', 'error')
+        return null
+      }
+      selectedState.sources = checked
+      try {
+        await saveSettingsSubset({
+          PERSONAL_MEDIA_SOURCES: JSON.stringify(checked),
+        })
+      } catch (err) {
+        setWizardStatus(err?.message || 'Failed to save sources.', 'error')
+        return null
+      }
+      return { type: 'service', target: checked[0], index: 0 }
+    }
+
+    if (current.type === 'service') {
+      const meta = serviceMeta[current.target]
+      const url =
+        body.querySelector(`#first-run-${current.target}-url`)?.value || ''
+      const token =
+        body.querySelector(`#first-run-${current.target}-token`)?.value || ''
+      if (!isValidUrl(url) || !token.trim()) {
+        setWizardStatus(meta.requiredLabel, 'error')
+        return null
+      }
+      if (!selectedState.validatedTargets[current.target]) {
+        setWizardStatus(
+          `Please test ${meta.label} connection before continuing.`,
+          'error'
+        )
+        return null
+      }
+      syncInputValue(meta.inputIds.url, url)
+      syncInputValue(meta.inputIds.token, token)
+      try {
+        await saveSettingsSubset({
+          [meta.settings.url]: url,
+          [meta.settings.token]: token,
+        })
+      } catch (err) {
+        setWizardStatus(err?.message || 'Failed to save settings.', 'error')
+        return null
+      }
+      const nextIndex = current.index + 1
+      if (nextIndex < selectedState.sources.length) {
+        return {
+          type: 'service',
+          target: selectedState.sources[nextIndex],
+          index: nextIndex,
+        }
+      }
+      return selectedState.flow === 'combined'
+        ? { type: 'tmdb' }
+        : { type: 'setup-complete' }
+    }
+
+    if (current.type === 'tmdb') {
+      const tmdbKey = body.querySelector('#first-run-tmdb-key')?.value || ''
+      if (!tmdbKey.trim()) {
+        setWizardStatus('TMDb API key is required.', 'error')
+        return null
+      }
+      if (!selectedState.validatedTargets.tmdb) {
+        setWizardStatus(
+          'Please test TMDb connection before finishing.',
+          'error'
+        )
+        return null
+      }
+      syncInputValue('setting-tmdb-key', tmdbKey)
+      try {
+        await saveSettingsSubset({ TMDB_API_KEY: tmdbKey })
+      } catch (err) {
+        setWizardStatus(
+          err?.message || 'Failed to save TMDb settings.',
+          'error'
+        )
+        return null
+      }
+      if (
+        selectedState.flow === 'tmdb-only' ||
+        selectedState.flow === 'combined'
+      ) {
+        return { type: 'subscriptions' }
+      }
+      return { type: 'setup-complete' }
+    }
+
+    if (current.type === 'subscriptions') {
+      const selectedSubscriptions = Array.from(
+        body.querySelectorAll(
+          'input[data-first-run-paid-streaming-service="true"]:checked'
+        )
+      )
+        .map(input => String(input.value || '').trim())
+        .filter(Boolean)
+
+      selectedState.subscriptions = selectedSubscriptions
+      const serializedSubscriptions = JSON.stringify(selectedSubscriptions)
+      window.PAID_STREAMING_SERVICES = serializedSubscriptions
+      hydratePaidStreamingServicesSetting(serializedSubscriptions)
+      try {
+        await saveSettingsSubset({
+          PAID_STREAMING_SERVICES: serializedSubscriptions,
+        })
+      } catch (err) {
+        setWizardStatus(
+          err?.message || 'Failed to save subscription settings.',
+          'error'
+        )
+        return null
+      }
+      return { type: 'requests' }
+    }
+
+    if (current.type === 'requests') {
+      persistRequestInputs()
+      if (!hasAnyRequestInput()) {
+        setWizardStatus(
+          'Leave fields blank and click Skip, or add details to continue.',
+          'error'
+        )
+        return null
+      }
+
+      const s = selectedState.requestServices
+      if (!isValidUrl(s.radarrUrl) || !s.radarrApiKey) {
+        setWizardStatus('Radarr URL and API Key are required.', 'error')
+        return null
+      }
+      if (!s.seerrUrl && !s.seerrApiKey) {
+        setWizardStatus('Add Seerr details, or click Skip.', 'error')
+        return null
+      }
+      if (!isValidUrl(s.seerrUrl) || !s.seerrApiKey) {
+        setWizardStatus('Seerr URL and API Key are both required.', 'error')
+        return null
+      }
+
+      try {
+        await saveSettingsSubset({
+          RADARR_URL: s.radarrUrl,
+          RADARR_API_KEY: s.radarrApiKey,
+          SEERR_URL: s.seerrUrl,
+          SEERR_API_KEY: s.seerrApiKey,
+        })
+      } catch (err) {
+        setWizardStatus(
+          err?.message || 'Failed to save request settings.',
+          'error'
+        )
+        return null
+      }
+
+      return { type: 'defaults' }
+    }
+
+    if (current.type === 'defaults') {
+      if (hasUnsavedDefaultsChanges()) {
+        const shouldContinue = await promptDefaultsUnsavedChanges()
+        if (!shouldContinue) return null
+      }
+      leaveDefaultsEditor()
+      return { type: 'setup-complete' }
+    }
+
+    if (current.type === 'setup-complete') {
+      try {
+        await saveSettingsSubset({
+          SETUP_WIZARD_COMPLETED: 'true',
+        })
+      } catch (err) {
+        setWizardStatus(
+          err?.message || 'Failed to finish setup. Please try again.',
+          'error'
+        )
+        return null
+      }
+      await loadClientConfig()
+      // Force settings form to re-hydrate so admin settings reflect wizard values
+      settingsHydratedWithAdminAccess = false
+      if (settingsUiHydrated) {
+        const adminSuccess = await hydrateSettingsForm()
+        settingsHydratedWithAdminAccess = Boolean(adminSuccess)
+      }
+      document.dispatchEvent(new CustomEvent('comparr:source-config-updated'))
+      return { type: 'complete' }
+    }
+
+    return null
+  }
+
+  const startWizard = () => {
+    const configuredSources = parseArraySetting(
+      document.getElementById('setting-personal-media-sources')?.value ||
+        window.PERSONAL_MEDIA_SOURCES
+    )
+    const fallbackSources = []
+    if (window.PLEX_CONFIGURED) fallbackSources.push('plex')
+    if (window.EMBY_CONFIGURED) fallbackSources.push('emby')
+    if (window.JELLYFIN_CONFIGURED) fallbackSources.push('jellyfin')
+    selectedState.sources = configuredSources.length
+      ? configuredSources
+      : fallbackSources
+
+    if (selectedState.sources.length && window.TMDB_CONFIGURED) {
+      selectedState.flow = 'combined'
+    } else if (window.TMDB_CONFIGURED) {
+      selectedState.flow = 'tmdb-only'
+    } else {
+      selectedState.flow = 'personal-only'
+    }
+
+    selectedState.validatedTargets = {
+      plex: Boolean(window.PLEX_CONFIGURED),
+      emby: Boolean(window.EMBY_CONFIGURED),
+      jellyfin: Boolean(window.JELLYFIN_CONFIGURED),
+      tmdb: Boolean(window.TMDB_CONFIGURED),
+    }
+
+    selectedState.subscriptions = parseArraySetting(
+      document.getElementById('setting-paid-streaming-services')?.value ||
+        window.PAID_STREAMING_SERVICES
+    )
+    selectedState.requestServices.radarrUrl =
+      document.getElementById('setting-radarr-url')?.value?.trim() || ''
+    selectedState.requestServices.radarrApiKey =
+      document.getElementById('setting-radarr-api-key')?.value?.trim() || ''
+    selectedState.requestServices.jellyseerrUrl =
+      document.getElementById('setting-jellyseerr-url')?.value?.trim() || ''
+    selectedState.requestServices.jellyseerrApiKey =
+      document.getElementById('setting-jellyseerr-api-key')?.value?.trim() || ''
+    selectedState.requestServices.overseerrUrl =
+      document.getElementById('setting-overseerr-url')?.value?.trim() || ''
+    selectedState.requestServices.overseerrApiKey =
+      document.getElementById('setting-overseerr-api-key')?.value?.trim() || ''
+    selectedState.requestServices.seerrUrl =
+      document.getElementById('setting-seerr-url')?.value?.trim() || ''
+    selectedState.requestServices.seerrApiKey =
+      document.getElementById('setting-seerr-api-key')?.value?.trim() || ''
+    selectedState.requestServices.requestServiceType =
+      selectedState.requestServices.seerrUrl &&
+      selectedState.requestServices.seerrApiKey
+        ? 'seerr'
+        : selectedState.requestServices.overseerrUrl &&
+          selectedState.requestServices.overseerrApiKey &&
+          !selectedState.requestServices.jellyseerrUrl &&
+          !selectedState.requestServices.jellyseerrApiKey
+        ? 'overseerr'
+        : 'jellyseerr'
+    selectedState.security.accessPassword =
+      document.getElementById('setting-access-password')?.value || ''
+    selectedState.security.adminPassword = ''
+
+    // Skip security screen entirely when both passwords are already configured.
+    // The user can change them via the Settings tab.
+    const initial =
+      window.ACCESS_PASSWORD_SET && window.ADMIN_PASSWORD_SET
+        ? { type: 'flow' }
+        : { type: 'security' }
+    history.splice(0, history.length, initial)
+    renderScreen(initial)
+  }
+
+  nextButton?.addEventListener('click', async () => {
+    await withButtonLoading(nextButton, 'Loading...', async () => {
+      const next = await getNextScreen()
+      if (!next || next.type === 'complete') return
+      history.push(next)
+      renderScreen(next)
+    })
+  })
+
+  backButton?.addEventListener('click', () => {
+    if (history.length <= 1) return
+    const current = history[history.length - 1]
+    if (current?.type === 'defaults') {
+      leaveDefaultsEditor()
+    }
+    history.pop()
+    renderScreen(history[history.length - 1])
+  })
+
+  skipButton?.addEventListener('click', async () => {
+    await withButtonLoading(skipButton, 'Loading...', async () => {
+      const current = history[history.length - 1]
+      if (current?.type === 'security') {
+        // Skip means advance without making any changes — no save needed
+        history.push({ type: 'flow' })
+        renderScreen({ type: 'flow' })
+        return
+      }
+
+      if (current?.type !== 'requests') return
+      persistRequestInputs()
+      history.push({ type: 'defaults' })
+      renderScreen({ type: 'defaults' })
+    })
+  })
+
+  saveButton?.addEventListener('click', () => {
+    if ((history[history.length - 1] || {}).type !== 'defaults') return
+    saveDefaultsFromWizard()
+  })
+
+  renderRequirementCopy('')
+  startWizard()
+
+  return modal
+}
+
+async function ensureInitialSourceSetup() {
+  if (hasConfiguredMovieSource() && window.SETUP_WIZARD_COMPLETED) return
+
+  const modal = createFirstRunGuideModal()
+  modal?.classList.add('is-visible')
+
+  await new Promise(resolve => {
+    const handleRecheck = async () => {
+      await loadClientConfig()
+      if (!hasConfiguredMovieSource() || !window.SETUP_WIZARD_COMPLETED) {
+        return
+      }
+      modal?.classList.remove('is-visible')
+      document.removeEventListener(
+        'comparr:source-config-updated',
+        handleRecheck
+      )
+      resolve()
+    }
+
+    document.addEventListener('comparr:source-config-updated', handleRecheck)
+  })
+}
+
 async function hydrateSettingsUiIfAuthorized() {
   if (settingsUiHydrated) {
     if (hasAdminSettingsAccess && !settingsHydratedWithAdminAccess) {
-      await hydrateSettingsForm()
-      settingsHydratedWithAdminAccess = true
+      const adminSuccess = await hydrateSettingsForm()
+      settingsHydratedWithAdminAccess = Boolean(adminSuccess)
     }
+    updateAdminOnlySettingsVisibility()
     return true
   }
 
@@ -1962,7 +3578,7 @@ async function hydrateSettingsUiIfAuthorized() {
 
   document
     .querySelectorAll(
-      '[data-setting-key], [data-paid-streaming-service], [data-personal-media-source]'
+      '[data-setting-key], [data-paid-streaming-service], [data-personal-media-source], input[name="admin-request-service-type"]'
     )
     .forEach(el => {
       if (el.dataset.boundSettingsDirty === 'true') return
@@ -2011,13 +3627,8 @@ function bindSettingsAccessGuards() {
     trigger.addEventListener(
       'click',
       async e => {
-        if (!settingsAccessState.requiresAdminPassword) {
-          hasAdminSettingsAccess = true
-          updateAdminOnlySettingsVisibility()
-          await hydrateSettingsUiIfAuthorized()
-          return
-        }
-
+        // ensureAdminAccess() always refreshes settingsAccessState first, so
+        // stale state from page-load can never bypass the password prompt.
         const hasAccess = await ensureAdminAccess()
         if (!hasAccess) {
           e.preventDefault()
@@ -2032,6 +3643,7 @@ function bindSettingsAccessGuards() {
         }
 
         hasAdminSettingsAccess = true
+        updateAdminOnlySettingsVisibility()
         await hydrateSettingsUiIfAuthorized()
       },
       true
@@ -2429,6 +4041,8 @@ async function login(api) {
 
   const setRoomMode = (mode, selectedMode = 'group') => {
     roomMode = mode === 'create' ? 'create' : 'join'
+    const isJoinMode = roomMode === 'join'
+    const isCreateMode = roomMode === 'create'
 
     roomModeTabs.forEach(tab => {
       const active = tab.dataset.roomMode === roomMode
@@ -2450,6 +4064,16 @@ async function login(api) {
 
     if (loginSubmitButton) {
       loginSubmitButton.hidden = roomMode === 'join'
+    }
+
+    if (roomCodeInput) {
+      roomCodeInput.required = isJoinMode
+      roomCodeInput.disabled = !isJoinMode
+    }
+
+    if (generatedRoomCodeInput) {
+      generatedRoomCodeInput.required = isCreateMode
+      generatedRoomCodeInput.disabled = !isCreateMode
     }
 
     setRoomCodeError('')
@@ -2480,7 +4104,6 @@ async function login(api) {
     setPasswordError('')
     setLoginError('')
     verifiedPassword = accessPassword
-    sessionStorage.setItem('comparrAccessPassword', accessPassword)
     passwordForm.style.display = 'none'
     modeForm.style.display = 'grid'
 
@@ -2512,19 +4135,18 @@ async function login(api) {
   let skipPasswordPrompt = false
   const shouldReturnToModeSelection =
     sessionStorage.getItem('comparrReturnToModeSelection') === '1'
-  const storedAccessPassword = sessionStorage.getItem('comparrAccessPassword')
 
   if (shouldReturnToModeSelection) {
     sessionStorage.removeItem('comparrReturnToModeSelection')
+  }
 
-    if (storedAccessPassword) {
-      try {
-        await api.verifyAccessPassword(storedAccessPassword)
-        handleVerifiedPassword(storedAccessPassword)
-        skipPasswordPrompt = true
-      } catch {
-        sessionStorage.removeItem('comparrAccessPassword')
-      }
+  if (!skipPasswordPrompt) {
+    try {
+      await api.verifyAccessPassword('')
+      handleVerifiedPassword('')
+      skipPasswordPrompt = true
+    } catch {
+      // Access password is configured; show prompt.
     }
   }
 
@@ -2534,7 +4156,7 @@ async function login(api) {
       const handlePasswordSubmit = async e => {
         e.preventDefault()
         const fd = new FormData(passwordForm)
-        const accessPassword = fd.get('accessPassword')
+        const accessPassword = String(fd.get('accessPassword') || '')
         if (!accessPassword) return
 
         setPasswordError('')
@@ -2601,7 +4223,19 @@ async function login(api) {
       setActiveRoomCode(code)
       syncRoomCodeInputs()
     } catch (err) {
-      setRoomCodeError(err.message)
+      // Server unavailable — generate a code client-side as a fallback
+      const map = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789'
+      let fallbackCode = ''
+      for (let i = 0; i < 4; i++) {
+        const val = crypto.getRandomValues(new Uint32Array(1))[0]
+        fallbackCode += map[val % map.length]
+      }
+      setRoomMode('create', selectedMode)
+      setActiveRoomCode(fallbackCode)
+      syncRoomCodeInputs()
+      try {
+        localStorage.setItem('roomCode', fallbackCode)
+      } catch (_) {}
     }
   })
 
@@ -2834,11 +4468,14 @@ async function appendRatedRow(
     }
 
     const streamingServices = getStreamingServices(movie)
+    const watchProviders = getWatchProviders(movie)
     const allServices = [
       ...(streamingServices.subscription || []),
       ...(streamingServices.free || []),
     ]
-    const isInPlex = allServices.some(s => s.name === window.PLEX_LIBRARY_NAME)
+    const isInPersonalLibrary = allServices.some(s =>
+      isPersonalLibraryService(s.name)
+    )
 
     // Check if request service is configured
     const requestServiceConfigured = await checkRequestServiceStatus()
@@ -2850,81 +4487,47 @@ async function appendRatedRow(
     console.log('🧩 DEBUG streamingLink:', streamingLink)
     console.log('🧩 DEBUG movie:', movie.title, movie.guid)
 
-    // Helper to render service list items - NOW WITH CLICKABLE LINKS
-    const renderServiceItems = services => {
-      if (!services || services.length === 0)
-        return '<div class="service-item">None available</div>'
+    const addPillHtml =
+      !isInPersonalLibrary && tmdbId && requestServiceConfigured
+        ? `<button class="provider-pill provider-pill-add add-to-plex-btn" data-movie-id="${movieId}">
+            <i class="fas fa-plus"></i>
+            <span class="provider-pill-name">Request</span>
+          </button>`
+        : ''
 
-      // If we have a streamingLink, wrap the entire list in a link container
-      if (streamingLink) {
-        return `
-          <a href="${streamingLink}" target="_blank" rel="noopener noreferrer" class="service-link-wrapper">
-            ${services
-              .map(s => {
-                const logoUrl = s.logo_path
-                  ? s.logo_path.startsWith('/assets/')
-                    ? `${basePath}${s.logo_path}`
-                    : `https://image.tmdb.org/t/p/original${s.logo_path}`
-                  : null
-
-                return `<div class="service-item">
-                ${
-                  logoUrl
-                    ? `<img src="${logoUrl}" alt="${s.name}" class="service-logo-small">`
-                    : ''
-                }
-                <span>${s.name}</span>
-              </div>`
-              })
-              .join('')}
-            <div class="service-footer">
-              <i class="fas fa-external-link-alt"></i> View on JustWatch
-            </div>
-          </a>
-        `
-      }
-
-      // Fallback if no link available
-      return services
-        .map(s => {
-          const logoUrl = s.logo_path
-            ? s.logo_path.startsWith('/assets/')
-              ? `${basePath}${s.logo_path}`
-              : `https://image.tmdb.org/t/p/original${s.logo_path}`
-            : null
-
-          return `<div class="service-item">
+    const providerPillsHtml = watchProviders
+      .map(provider => {
+        const logoUrl = provider.logo_path
+          ? provider.logo_path.startsWith('/assets/')
+            ? `${basePath}${provider.logo_path}`
+            : `https://image.tmdb.org/t/p/w92${provider.logo_path}`
+          : null
+        return `<span class="provider-pill">
           ${
             logoUrl
-              ? `<img src="${logoUrl}" alt="${s.name}" class="service-logo-small">`
+              ? `<img src="${logoUrl}" alt="${provider.name}" class="provider-pill-logo">`
               : ''
           }
-          <span>${s.name}</span>
-        </div>`
-        })
-        .join('')
-    }
+          <span class="provider-pill-name">${provider.name}</span>
+        </span>`
+      })
+      .join('')
 
-    const hasSubscription =
-      streamingServices.subscription &&
-      streamingServices.subscription.filter(
-        s => s.name !== window.PLEX_LIBRARY_NAME
-      ).length > 0
-    const hasFree = streamingServices.free && streamingServices.free.length > 0
+    const whereToWatchPillsHtml =
+      addPillHtml || watchProviders.length
+        ? `<div class="where-to-watch">
+            <div class="where-to-watch-title">Where to Watch</div>
+            <div class="provider-pill-list">
+              ${addPillHtml}${providerPillsHtml}
+            </div>
+          </div>`
+        : ''
 
     // DEBUG: Log button rendering conditions
     console.log('🧩 Button rendering debug for', movie.title)
-    console.log('  isInPlex:', isInPlex)
+    console.log('  isInPersonalLibrary:', isInPersonalLibrary)
     console.log('  movieId:', movieId)
     console.log('  requestServiceConfigured:', requestServiceConfigured)
-    console.log(
-      '  Will show:',
-      isInPlex
-        ? 'AllVids badge'
-        : movieId && requestServiceConfigured
-        ? 'Add to Plex button'
-        : 'Nothing'
-    )
 
     // Get metadata for badges - use the same field names as CardView
     const genres = movie.genres || [] // Array of genre names like ["Comedy", "Horror"]
@@ -2986,17 +4589,22 @@ async function appendRatedRow(
 
     card.innerHTML = `
       <!-- Collapsed header (always visible) -->
-      <div class="watch-card-collapsed" onclick="this.closest('.watch-card').classList.toggle('expanded')">
+      <div class="watch-card-collapsed">
         <div class="watch-card-header-compact">
           <div class="watch-card-title-compact">
             ${movie.title} <span class="watch-card-year">(${
       movie.year || 'N/A'
     })</span>
           </div>
+          <button class="list-action-btn refresh-movie-btn header-refresh-btn" data-movie-id="${
+            tmdbId || movieId || ''
+          }" title="Refresh ratings and status">
+            <i class="fas fa-sync-alt"></i>
+          </button>
           <div class="expand-icon"><i class="fas fa-chevron-down"></i></div>
         </div>
       </div>
-         
+
       <!-- Expandable details (hidden by default) -->
       <div class="watch-card-details">
         <div class="watch-card-poster">
@@ -3018,84 +4626,30 @@ async function appendRatedRow(
               ? `<div class="watch-card-ratings">${ratingHtml}</div>`
               : ''
           })()}
-    
-        <div class="watch-card-actions">
-          <div class="service-dropdown">
-            <button class="service-dropdown-btn ${
-              !hasSubscription ? 'disabled' : ''
-            }" type="button" ${!hasSubscription ? 'disabled' : ''}>
-              SUBSCRIPTION
+          ${whereToWatchPillsHtml}
+
+          <!-- Move to other lists buttons -->
+          <div class="list-actions">
+            <button class="list-action-btn move-to-seen" data-guid="${
+              movie.guid
+            }" title="Mark as Seen">
+              <i class="fas fa-eye"></i>
             </button>
-            ${
-              hasSubscription
-                ? `
-              <div class="service-dropdown-menu">
-                ${renderServiceItems(
-                  streamingServices.subscription.filter(
-                    s => s.name !== window.PLEX_LIBRARY_NAME
-                  )
-                )}
-              </div>
-            `
-                : ''
-            }
+            <button class="list-action-btn move-to-pass" data-guid="${
+              movie.guid
+            }" title="Move to Pass">
+              <i class="fas fa-thumbs-down"></i>
+            </button>
           </div>
-          
-          <div class="service-dropdown">
-            <button class="service-dropdown-btn ${
-              !hasFree ? 'disabled' : ''
-            }" type="button" ${!hasFree ? 'disabled' : ''}>
-              FREE
-            </button>
-            ${
-              hasFree
-                ? `
-              <div class="service-dropdown-menu">
-                ${renderServiceItems(streamingServices.free)}
-              </div>
-            `
-                : ''
-            }
-          </div>
-          
-          ${
-            isInPlex
-              ? `
-            <div class="plex-status">
-              <i class="fas fa-check-circle"></i> ${window.PLEX_LIBRARY_NAME}
-            </div>
-          `
-              : tmdbId && requestServiceConfigured
-              ? `
-            <button class="add-to-plex-btn" data-movie-id="${movieId}">
-              <i class="fas fa-plus"></i> ADD TO PLEX
-            </button>
-          `
-              : ``
-          }
-        </div>
-        
-        <!-- Move to other lists buttons -->
-        <div class="list-actions">
-          <button class="list-action-btn move-to-seen" data-guid="${
-            movie.guid
-          }" title="Mark as Seen">
-            <i class="fas fa-eye"></i>
-          </button>
-          <button class="list-action-btn move-to-pass" data-guid="${
-            movie.guid
-          }" title="Move to Pass">
-            <i class="fas fa-thumbs-down"></i>
-          </button>
-          <button class="list-action-btn refresh-movie-btn" data-movie-id="${
-            tmdbId || movieId || ''
-          }" title="Refresh ratings and status">
-            <i class="fas fa-sync-alt"></i>
-          </button>
         </div>
       </div>
-    </div>
-  `
+    `
+
+    card
+      .querySelector('.watch-card-collapsed')
+      .addEventListener('click', () => {
+        card.classList.toggle('expanded')
+      })
 
     likesList?.appendChild(card)
 
@@ -3109,71 +4663,19 @@ async function appendRatedRow(
       applyCurrentWatchListSort()
     }
 
-    // Add dropdown toggle handlers (only for enabled buttons)
-    const dropdownBtns = card.querySelectorAll(
-      '.service-dropdown-btn:not(.disabled)'
-    )
-    dropdownBtns.forEach(btn => {
-      btn.addEventListener('click', e => {
-        const dropdown = btn.nextElementSibling
-        if (!dropdown) return
-
-        const isOpen = dropdown.classList.contains('show')
-
-        // Close all other dropdowns
-        document
-          .querySelectorAll('.service-dropdown-menu.show')
-          .forEach(menu => {
-            if (menu !== dropdown) {
-              menu.classList.remove('show')
-              menu.previousElementSibling.classList.remove('open')
-            }
-          })
-
-        // Toggle this dropdown
-        dropdown.classList.toggle('show')
-        btn.classList.toggle('open')
-
-        // Stop propagation so outside click handler doesn't immediately close it
-        e.stopPropagation()
-      })
-    })
-
-    // CRITICAL FIX: Allow links inside dropdown to work
-    const dropdowns = card.querySelectorAll('.service-dropdown-menu')
-    dropdowns.forEach(dropdown => {
-      dropdown.addEventListener('click', e => {
-        // If clicking on a link, let it navigate naturally
-        // Just stop propagation so outside click handler doesn't close dropdown
-        if (!e.target.closest('a')) {
-          e.stopPropagation()
-        }
-      })
-    })
-
-    // Close dropdowns when clicking outside
-    const closeHandler = e => {
-      if (!card.contains(e.target)) {
-        card.querySelectorAll('.service-dropdown-menu.show').forEach(menu => {
-          menu.classList.remove('show')
-          menu.previousElementSibling.classList.remove('open')
-        })
-      }
-    }
-    document.addEventListener('click', closeHandler)
-
-    // Add click handler for Add to Plex button
-    if (!isInPlex && tmdbId && requestServiceConfigured) {
+    // Add click handler for Request pill
+    if (!isInPersonalLibrary && tmdbId && requestServiceConfigured) {
       const addBtn = card.querySelector('.add-to-plex-btn')
       addBtn?.addEventListener('click', () =>
         handleMovieRequest(parseInt(tmdbId), movie.title, addBtn)
       )
     }
 
-    // Add click handler for Refresh button - always works now, uses guid fallback
+    // Add click handler for Refresh button (now in header)
     const refreshBtn = card.querySelector('.refresh-movie-btn')
     if (refreshBtn) {
-      refreshBtn.addEventListener('click', async () => {
+      refreshBtn.addEventListener('click', async e => {
+        e.stopPropagation() // Prevent card expand/collapse toggle
         const icon = refreshBtn.querySelector('i')
 
         // Show loading state
@@ -3228,48 +4730,46 @@ async function appendRatedRow(
             ratingEl.innerHTML = ratingHtml
           }
 
-          // Update Plex status / Add to Plex button
-          const actionsContainer = card.querySelector('.watch-card-actions')
-          const existingBtn = actionsContainer.querySelector('.add-to-plex-btn')
-          const existingStatus = actionsContainer.querySelector('.plex-status')
+          // Update library status / Add pill
+          const existingAddBtn = card.querySelector('.add-to-plex-btn')
+          const inLibrary =
+            data.inLibrary || data.inPlex || data.inEmby || data.inJellyfin
 
-          if (data.inPlex) {
-            // Replace button with Plex status badge
-            if (existingBtn) {
-              existingBtn.outerHTML = `
-                <div class="plex-status">
-                  <i class="fas fa-check-circle"></i> ${window.PLEX_LIBRARY_NAME}
-                </div>
-              `
-            }
+          if (inLibrary && existingAddBtn) {
+            // Movie is now in library — remove the add pill
+            existingAddBtn.remove()
           } else if (
-            !existingBtn &&
-            !existingStatus &&
+            !inLibrary &&
+            !existingAddBtn &&
             requestServiceConfigured
           ) {
-            // Add the button if it wasn't there before (use potentially updated tmdbId from card dataset)
-            const refreshBtnElement = actionsContainer.querySelector(
-              '.refresh-movie-btn'
-            )
-            if (refreshBtnElement) {
-              const finalTmdbId = parseInt(card.dataset.tmdbId)
-              if (finalTmdbId) {
-                refreshBtnElement.insertAdjacentHTML(
-                  'beforebegin',
-                  `
-                  <button class="add-to-plex-btn" data-movie-id="${finalTmdbId}">
-                    <i class="fas fa-plus"></i> ADD TO PLEX
-                  </button>
-                `
-                )
-                // Add handler to the new button
-                const newAddBtn = actionsContainer.querySelector(
-                  '.add-to-plex-btn'
-                )
-                newAddBtn?.addEventListener('click', () =>
-                  handleMovieRequest(finalTmdbId, movie.title, newAddBtn)
-                )
+            // Add pill wasn't there before but now we have a tmdbId — inject it
+            const finalTmdbId = parseInt(card.dataset.tmdbId)
+            if (finalTmdbId) {
+              const pillList = card.querySelector('.provider-pill-list')
+              const newPillHtml = `<button class="provider-pill provider-pill-add add-to-plex-btn" data-movie-id="${finalTmdbId}">
+                <i class="fas fa-plus"></i>
+                <span class="provider-pill-name">Add to ${getPersonalLibraryName()}</span>
+              </button>`
+              if (pillList) {
+                pillList.insertAdjacentHTML('afterbegin', newPillHtml)
+              } else {
+                // Create where-to-watch section if it doesn't exist
+                const content = card.querySelector('.watch-card-content')
+                if (content) {
+                  content.insertAdjacentHTML(
+                    'beforeend',
+                    `<div class="where-to-watch">
+                      <div class="where-to-watch-title">Where to Watch</div>
+                      <div class="provider-pill-list">${newPillHtml}</div>
+                    </div>`
+                  )
+                }
               }
+              const newAddBtn = card.querySelector('.add-to-plex-btn')
+              newAddBtn?.addEventListener('click', () =>
+                handleMovieRequest(finalTmdbId, movie.title, newAddBtn)
+              )
             }
           }
 
@@ -3302,6 +4802,51 @@ async function appendRatedRow(
                 data.streamingLink
               )
             }
+          }
+
+          // Update Where to Watch provider pills (preserve add pill)
+          const whereToWatchContainer = card.querySelector('.where-to-watch')
+          const refreshedProviders = getWatchProviders(data)
+          const refreshedProviderPills = refreshedProviders
+            .map(provider => {
+              const bp = document.body.dataset.basePath || ''
+              const logoUrl = provider.logo_path
+                ? provider.logo_path.startsWith('/assets/')
+                  ? `${bp}${provider.logo_path}`
+                  : `https://image.tmdb.org/t/p/w92${provider.logo_path}`
+                : null
+              return `<span class="provider-pill">${
+                logoUrl
+                  ? `<img src="${logoUrl}" alt="${provider.name}" class="provider-pill-logo">`
+                  : ''
+              }<span class="provider-pill-name">${provider.name}</span></span>`
+            })
+            .join('')
+
+          if (whereToWatchContainer) {
+            const list = whereToWatchContainer.querySelector(
+              '.provider-pill-list'
+            )
+            const currentAddBtn = card.querySelector('.add-to-plex-btn')
+            if (list) {
+              // Re-render provider pills, preserving add pill at front
+              list.innerHTML =
+                (currentAddBtn ? currentAddBtn.outerHTML : '') +
+                refreshedProviderPills
+              // Re-attach click handler to add pill if present
+              const reattachedBtn = list.querySelector('.add-to-plex-btn')
+              if (reattachedBtn) {
+                const finalTmdbId = parseInt(card.dataset.tmdbId)
+                reattachedBtn.addEventListener('click', () =>
+                  handleMovieRequest(finalTmdbId, movie.title, reattachedBtn)
+                )
+              }
+            }
+            whereToWatchContainer.style.display =
+              refreshedProviders.length ||
+              card.querySelector('.add-to-plex-btn')
+                ? ''
+                : 'none'
           }
 
           // Show success feedback - just change icon
@@ -3396,7 +4941,7 @@ async function appendRatedRow(
 
     card.innerHTML = `
       <!-- Collapsed header (always visible) -->
-      <div class="watch-card-collapsed" onclick="this.closest('.watch-card').classList.toggle('expanded')">
+      <div class="watch-card-collapsed">
         <div class="watch-card-header-compact">
           <div class="watch-card-title-compact">
             ${movie.title} <span class="watch-card-year">(${
@@ -3447,6 +4992,12 @@ async function appendRatedRow(
     `
 
     // Add event listeners for pass list actions
+    card
+      .querySelector('.watch-card-collapsed')
+      .addEventListener('click', () => {
+        card.classList.toggle('expanded')
+      })
+
     const moveToWatchBtn = card.querySelector('.move-to-watch')
     const moveToSeenBtn = card.querySelector('.move-to-seen')
 
@@ -3521,7 +5072,7 @@ async function appendRatedRow(
 
     card.innerHTML = `
       <!-- Collapsed header (always visible) -->
-      <div class="watch-card-collapsed" onclick="this.closest('.watch-card').classList.toggle('expanded')">
+      <div class="watch-card-collapsed">
         <div class="watch-card-header-compact">
           <div class="watch-card-title-compact">
             ${movie.title} <span class="watch-card-year">(${
@@ -3572,6 +5123,12 @@ async function appendRatedRow(
     `
 
     // Add event listeners for seen list actions
+    card
+      .querySelector('.watch-card-collapsed')
+      .addEventListener('click', () => {
+        card.classList.toggle('expanded')
+      })
+
     const moveToWatchBtn = card.querySelector('.move-to-watch')
     const moveToPassBtn = card.querySelector('.move-to-pass')
 
@@ -3761,6 +5318,42 @@ async function moveMovieBetweenLists(guid, fromList, toList) {
   }
 }
 
+function getWatchProviders(movie) {
+  const normalizeProviders = providers => {
+    const unique = new Map()
+    ;(providers || []).forEach(provider => {
+      const fallbackName = String(provider?.name || '').trim()
+      const isPersonalLibraryProvider =
+        provider?.logo_path === '/assets/logos/allvids.svg' ||
+        (provider?.id === 0 && provider?.type === 'subscription')
+
+      const resolvedName = isPersonalLibraryProvider
+        ? String(fallbackName || window.PLEX_LIBRARY_NAME).trim()
+        : fallbackName
+
+      if (!resolvedName) return
+      const dedupeKey = resolvedName.toLowerCase()
+      if (!unique.has(dedupeKey)) {
+        unique.set(dedupeKey, {
+          ...provider,
+          name: resolvedName,
+        })
+      }
+    })
+    return Array.from(unique.values())
+  }
+
+  if (Array.isArray(movie.watchProviders) && movie.watchProviders.length > 0) {
+    return normalizeProviders(movie.watchProviders)
+  }
+
+  const streamingServices = getStreamingServices(movie)
+  return normalizeProviders([
+    ...(streamingServices.subscription || []),
+    ...(streamingServices.free || []),
+  ])
+}
+
 function getStreamingServices(movie) {
   if (movie.streamingServices) {
     // Handle new format { subscription: [], free: [] }
@@ -3784,18 +5377,28 @@ function getStreamingServices(movie) {
     }
   }
 
-  // Fallback for Plex-only (no legacy /poster/ check)
-  const isInPlex =
+  // Fallback: detect personal library from guid format
+  const isPlexGuid =
     !!movie.guid &&
     (movie.guid.includes('plex://') ||
-      (!movie.guid.includes('tmdb://') && !movie.guid.includes('imdb://')))
+      (!movie.guid.includes('tmdb://') &&
+        !movie.guid.includes('imdb://') &&
+        !movie.guid.includes('emby://') &&
+        !movie.guid.includes('jellyfin://')))
+  const isEmbyGuid = !!movie.guid && movie.guid.includes('emby://')
+  const isJellyfinGuid = !!movie.guid && movie.guid.includes('jellyfin://')
 
-  if (isInPlex) {
+  if (isPlexGuid || isEmbyGuid || isJellyfinGuid) {
+    const libraryName = isEmbyGuid
+      ? window.EMBY_LIBRARY_NAME
+      : isJellyfinGuid
+      ? window.JELLYFIN_LIBRARY_NAME
+      : window.PLEX_LIBRARY_NAME
     return {
       subscription: [
         {
           id: 0,
-          name: window.PLEX_LIBRARY_NAME,
+          name: libraryName,
           logo_path: '/assets/logos/allvids.svg',
           type: 'subscription',
         },
@@ -3829,6 +5432,24 @@ async function checkRequestServiceStatus() {
   return false
 }
 
+// Returns the configured personal library name (Plex > Emby > Jellyfin)
+function getPersonalLibraryName() {
+  if (window.PLEX_CONFIGURED) return window.PLEX_LIBRARY_NAME
+  if (window.EMBY_CONFIGURED) return window.EMBY_LIBRARY_NAME
+  if (window.JELLYFIN_CONFIGURED) return window.JELLYFIN_LIBRARY_NAME
+  return window.PLEX_LIBRARY_NAME
+}
+
+// Returns true if the given service name belongs to any configured personal library
+function isPersonalLibraryService(name) {
+  if (!name) return false
+  return (
+    (window.PLEX_CONFIGURED && name === window.PLEX_LIBRARY_NAME) ||
+    (window.EMBY_CONFIGURED && name === window.EMBY_LIBRARY_NAME) ||
+    (window.JELLYFIN_CONFIGURED && name === window.JELLYFIN_LIBRARY_NAME)
+  )
+}
+
 // Handle movie request
 async function handleMovieRequest(tmdbId, movieTitle, buttonElement) {
   if (!tmdbId) {
@@ -3838,7 +5459,7 @@ async function handleMovieRequest(tmdbId, movieTitle, buttonElement) {
 
   buttonElement.disabled = true
   buttonElement.innerHTML =
-    '<i class="fas fa-spinner fa-spin"></i> Requesting...'
+    '<i class="fas fa-spinner fa-spin"></i><span class="provider-pill-name"> Requesting...</span>'
 
   try {
     const response = await fetch('/api/request-movie', {
@@ -3865,7 +5486,7 @@ async function handleMovieRequest(tmdbId, movieTitle, buttonElement) {
       // Check status again in 30 seconds
       setTimeout(refreshWatchListStatus, 30000)
     } else {
-      buttonElement.innerHTML = '<i class="fas fa-download"></i> ADD TO PLEX'
+      buttonElement.innerHTML = `<i class="fas fa-plus"></i><span class="provider-pill-name"> Request</span>`
       buttonElement.disabled = false
       alert(
         `Failed to request "${movieTitle}": ${
@@ -3875,7 +5496,7 @@ async function handleMovieRequest(tmdbId, movieTitle, buttonElement) {
     }
   } catch (err) {
     console.error('❌Error requesting movie:', err)
-    buttonElement.innerHTML = '<i class="fas fa-download"></i> ADD TO PLEX'
+    buttonElement.innerHTML = `<i class="fas fa-plus"></i> Add to ${getPersonalLibraryName()}`
     buttonElement.disabled = false
     alert(`Error requesting "${movieTitle}".`)
   }
@@ -3934,37 +5555,30 @@ async function refreshWatchListStatus() {
         if (plexResponse.ok) {
           const plexData = await plexResponse.json()
 
-          if (plexData.inPlex) {
-            const actionsContainer = card.querySelector('.watch-card-actions')
-            const btnToReplace = actionsContainer.querySelector(
-              '.add-to-plex-btn'
-            )
-
-            if (btnToReplace) {
-              btnToReplace.outerHTML = `
-                <div class="plex-status">
-                  <i class="fas fa-check-circle"></i> ${window.PLEX_LIBRARY_NAME}
-                </div>
-              `
+          if (plexData.inLibrary || plexData.inPlex) {
+            const btnToRemove = card.querySelector('.add-to-plex-btn')
+            if (btnToRemove) {
+              btnToRemove.remove()
               plexUpdated++
             }
           }
         }
       }
 
-      // 2. Check if "ADD TO PLEX" button should show "Requested" instead
-      if (addBtn && !addBtn.classList.contains('requested')) {
+      // 2. Check if request pill should show "Requested" instead
+      const currentAddBtn = card.querySelector('.add-to-plex-btn')
+      if (currentAddBtn && !currentAddBtn.classList.contains('requested')) {
         const requestResponse = await fetch(
           `/api/check-request-status?tmdbId=${tmdbId}`
         )
         if (requestResponse.ok) {
           const requestData = await requestResponse.json()
 
-          // If movie is pending/processing in Jellyseerr/Overseerr, update button
           if (requestData.pending || requestData.processing) {
-            addBtn.innerHTML = '<i class="fas fa-check"></i> Requested'
-            addBtn.classList.add('requested')
-            addBtn.disabled = true
+            currentAddBtn.innerHTML =
+              '<i class="fas fa-check"></i><span class="provider-pill-name"> Requested</span>'
+            currentAddBtn.classList.add('requested')
+            currentAddBtn.disabled = true
           }
         }
       }
@@ -3993,7 +5607,7 @@ async function refreshWatchListStatus() {
         if (subMenu) {
           const services = (
             streamingData.streamingServices?.subscription || []
-          ).filter(s => s.name !== window.PLEX_LIBRARY_NAME)
+          ).filter(s => !isPersonalLibraryService(s.name))
           subMenu.innerHTML = renderServiceItems(
             services,
             streamingData.streamingLink
@@ -4173,18 +5787,10 @@ async function checkDailyRefresh() {
         if (plexResponse.ok) {
           const plexData = await plexResponse.json()
 
-          if (plexData.inPlex) {
-            const actionsContainer = card.querySelector('.watch-card-actions')
-            const btnToReplace = actionsContainer.querySelector(
-              '.add-to-plex-btn'
-            )
-
-            if (btnToReplace) {
-              btnToReplace.outerHTML = `
-                <div class="plex-status">
-                  <i class="fas fa-check-circle"></i> ${window.PLEX_LIBRARY_NAME}
-                </div>
-              `
+          if (plexData.inLibrary || plexData.inPlex) {
+            const btnToRemove = card.querySelector('.add-to-plex-btn')
+            if (btnToRemove) {
+              btnToRemove.remove()
               plexUpdated++
             }
           }
@@ -4452,13 +6058,18 @@ const main = async () => {
     `🎬 Tracking ${ratedTmdbIds.size} unique TMDb IDs from rated movies`
   )
 
-  // Get Plex library name from server config (fallback to default)
+  // Get library names from server config (fallback to defaults)
   window.PLEX_LIBRARY_NAME = 'My Plex Library'
+  window.EMBY_LIBRARY_NAME = 'My Emby Library'
+  window.JELLYFIN_LIBRARY_NAME = 'My Jellyfin Library'
   window.PLEX_CONFIGURED = false
   window.EMBY_CONFIGURED = false
   window.JELLYFIN_CONFIGURED = false
+  window.TMDB_CONFIGURED = false
+  window.SETUP_WIZARD_COMPLETED = false
   await loadClientConfig()
   await setupSettingsUI()
+  await ensureInitialSourceSetup()
 
   const matchesView = new MatchesView(matches)
   const shownMatchGuids = new Set()
@@ -6718,7 +8329,11 @@ function updateSwipeSortButton(sortBy) {
 }
 
 function parsePaidServices() {
-  return parseArraySetting(window.PAID_STREAMING_SERVICES)
+  const fromWindow = parseArraySetting(window.PAID_STREAMING_SERVICES)
+  if (fromWindow.length > 0) return fromWindow
+  return parseArraySetting(
+    document.getElementById('setting-paid-streaming-services')?.value
+  )
 }
 
 function parsePersonalSources() {
@@ -6798,6 +8413,53 @@ function getVisibleSubscriptionOptions() {
     .map(input => input.value)
 }
 
+function getVisibleFreeStreamingOptions() {
+  return Array.from(
+    document.querySelectorAll(
+      '#swipe-free-options input[type="checkbox"][value]'
+    )
+  )
+    .filter(
+      input =>
+        !input.disabled && input.closest('label')?.style.display !== 'none'
+    )
+    .map(input => input.value)
+}
+
+function syncFreeStreamingOptionVisibility() {
+  const freeSet = new Set(FREE_STREAMING_SERVICE_OPTIONS)
+
+  document
+    .querySelectorAll('#swipe-free-options input[type="checkbox"][value]')
+    .forEach(input => {
+      const service = String(input.value || '').trim()
+      const isAvailable = freeSet.has(service)
+      const wrapper = input.closest('label')
+      if (wrapper) wrapper.style.display = isAvailable ? '' : 'none'
+      input.disabled = !isAvailable
+      if (!isAvailable) input.checked = false
+    })
+
+  const selected = Array.isArray(
+    window.filterState?.availability?.freeStreamingServices
+  )
+    ? window.filterState.availability.freeStreamingServices
+    : []
+
+  const visibleOptionSet = new Set(getVisibleFreeStreamingOptions())
+  const nextSelected = selected.filter(service => visibleOptionSet.has(service))
+
+  if (window.filterState?.availability) {
+    window.filterState.availability.freeStreamingServices = nextSelected
+  }
+
+  document
+    .querySelectorAll('#swipe-free-options input[type="checkbox"][value]')
+    .forEach(input => {
+      input.checked = nextSelected.includes(input.value)
+    })
+}
+
 function syncSubscriptionOptionVisibility() {
   const { paidServices, personalSources } = getAvailableSubscriptionOptions()
   const availableSet = new Set([...paidServices, ...personalSources])
@@ -6851,6 +8513,7 @@ function syncSubscriptionOptionVisibility() {
 
 function updateSwipeAvailabilityUI() {
   syncSubscriptionOptionVisibility()
+  syncFreeStreamingOptionVisibility()
 
   const availability = normalizeAvailabilityState(
     window.filterState?.availability,
@@ -6868,18 +8531,23 @@ function updateSwipeAvailabilityUI() {
     )
   )
   const freeInput = document.getElementById('swipe-availability-free')
+  const freeStreamingInputs = Array.from(
+    document.querySelectorAll(
+      '#swipe-free-options input[type="checkbox"][value]'
+    )
+  )
   const { paidServices, personalSources } = getAvailableSubscriptionOptions()
   const subscriptionsConfigured =
     paidServices.length + personalSources.length > 0
   const selectedSubscriptions = availability.subscriptionServices || []
+  const selectedFreeServices = availability.freeStreamingServices || []
   const selectedSubscriptionSet = new Set(selectedSubscriptions)
   const anySubscriptionSelected = selectedSubscriptions.length > 0
 
   if (anywhereInput) anywhereInput.checked = availability.anywhere
   if (subscriptionsInput) {
     subscriptionsInput.checked = anySubscriptionSelected
-    subscriptionsInput.disabled =
-      !subscriptionsConfigured || availability.anywhere
+    subscriptionsInput.disabled = !subscriptionsConfigured
     const visibleSubscriptionCount = getVisibleSubscriptionOptions().length
     subscriptionsInput.indeterminate =
       anySubscriptionSelected &&
@@ -6888,13 +8556,23 @@ function updateSwipeAvailabilityUI() {
   }
   subscriptionInputs.forEach(input => {
     input.checked = selectedSubscriptionSet.has(input.value)
-    input.disabled =
-      availability.anywhere || !subscriptionsConfigured || input.disabled
+    input.disabled = !subscriptionsConfigured || input.disabled
   })
   if (freeInput) {
     freeInput.checked = availability.freeStreaming
-    freeInput.disabled = availability.anywhere
+    freeInput.disabled = false
+    const visibleFreeCount = getVisibleFreeStreamingOptions().length
+    freeInput.indeterminate =
+      availability.freeStreaming &&
+      selectedFreeServices.length > 0 &&
+      selectedFreeServices.length < visibleFreeCount
   }
+
+  const selectedFreeSet = new Set(selectedFreeServices)
+  freeStreamingInputs.forEach(input => {
+    input.checked = selectedFreeSet.has(input.value)
+    input.disabled = !availability.freeStreaming || input.disabled
+  })
 
   const toggle = document.getElementById('swipe-availability-toggle')
   if (toggle) {
@@ -6908,7 +8586,13 @@ function updateSwipeAvailabilityUI() {
             : 'My Subscriptions'
         )
       }
-      if (availability.freeStreaming) selected.push('Free Streaming')
+      if (availability.freeStreaming) {
+        selected.push(
+          selectedFreeServices.length > 1
+            ? `Free Streaming (${selectedFreeServices.length})`
+            : 'Free Streaming'
+        )
+      }
       label = selected.length > 0 ? selected.join(', ') : 'Anywhere'
     }
     toggle.innerHTML = `${label} <span class="dropdown-arrow">▼</span>`
@@ -7136,6 +8820,8 @@ function enterDefaultsInlineEditor() {
 
 function exitDefaultsInlineEditor() {
   if (!swipeFilterModal) return
+
+  closeSwipeDropdowns()
 
   if (
     swipeFilterModalHomeParent &&
@@ -7613,6 +9299,9 @@ const swipeSubscriptionChildren = Array.from(
     '#swipe-subscriptions-options input[type="checkbox"][value]'
   )
 )
+const swipeFreeStreamingChildren = Array.from(
+  document.querySelectorAll('#swipe-free-options input[type="checkbox"][value]')
+)
 
 swipeAvailabilityAnywhere?.addEventListener('change', e => {
   if (e.target.checked) {
@@ -7622,10 +9311,14 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
       .filter(input => input.checked)
       .map(input => input.value)
     const selectedSet = new Set(selectedSubscriptionServices)
+    const selectedFreeServices = swipeFreeStreamingChildren
+      .filter(input => input.checked)
+      .map(input => input.value)
     const personalSet = new Set(
       getAvailableSubscriptionOptions().personalSources
     )
     const paidSet = new Set(parsePaidServices())
+    const freeStreamingEnabled = Boolean(swipeAvailabilityFree?.checked)
     setAvailabilityState({
       anywhere: false,
       roomPersonalMedia: selectedSubscriptionServices.some(service =>
@@ -7634,16 +9327,14 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
       paidSubscriptions: selectedSubscriptionServices.some(service =>
         paidSet.has(service)
       ),
-      freeStreaming: Boolean(swipeAvailabilityFree?.checked),
+      freeStreaming: freeStreamingEnabled,
       subscriptionServices: Array.from(selectedSet),
+      freeStreamingServices: freeStreamingEnabled ? selectedFreeServices : [],
     })
   }
 })
 ;[swipeAvailabilitySubscriptions, swipeAvailabilityFree].forEach(input => {
   input?.addEventListener('change', () => {
-    const selectedSubscriptionServices = swipeSubscriptionChildren
-      .filter(child => child.checked)
-      .map(child => child.value)
     const personalSet = new Set(
       getAvailableSubscriptionOptions().personalSources
     )
@@ -7662,9 +9353,26 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
       }
     }
 
+    if (input === swipeAvailabilityFree) {
+      if (swipeAvailabilityFree.checked) {
+        const visibleFree = getVisibleFreeStreamingOptions()
+        swipeFreeStreamingChildren.forEach(child => {
+          if (visibleFree.includes(child.value)) child.checked = true
+        })
+      } else {
+        swipeFreeStreamingChildren.forEach(child => {
+          child.checked = false
+        })
+      }
+    }
+
     const selectedAfterToggle = swipeSubscriptionChildren
       .filter(child => child.checked)
       .map(child => child.value)
+    const selectedFreeAfterToggle = swipeFreeStreamingChildren
+      .filter(child => child.checked)
+      .map(child => child.value)
+    const freeStreamingEnabled = Boolean(swipeAvailabilityFree?.checked)
 
     const next = {
       anywhere: false,
@@ -7674,8 +9382,11 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
       paidSubscriptions: selectedAfterToggle.some(service =>
         paidSet.has(service)
       ),
-      freeStreaming: Boolean(swipeAvailabilityFree?.checked),
+      freeStreaming: freeStreamingEnabled,
       subscriptionServices: selectedAfterToggle,
+      freeStreamingServices: freeStreamingEnabled
+        ? selectedFreeAfterToggle
+        : [],
     }
     setAvailabilityState(next)
   })
@@ -7691,12 +9402,48 @@ swipeSubscriptionChildren.forEach(input => {
     )
     const paidSet = new Set(parsePaidServices())
 
+    const freeStreamingEnabled = Boolean(swipeAvailabilityFree?.checked)
+    const selectedFreeServices = swipeFreeStreamingChildren
+      .filter(child => child.checked)
+      .map(child => child.value)
+
     const next = {
       anywhere: false,
       roomPersonalMedia: selected.some(service => personalSet.has(service)),
       paidSubscriptions: selected.some(service => paidSet.has(service)),
-      freeStreaming: Boolean(swipeAvailabilityFree?.checked),
+      freeStreaming: freeStreamingEnabled,
       subscriptionServices: selected,
+      freeStreamingServices: freeStreamingEnabled ? selectedFreeServices : [],
+    }
+    setAvailabilityState(next)
+  })
+})
+
+swipeFreeStreamingChildren.forEach(input => {
+  input.addEventListener('change', () => {
+    const selectedSubscriptions = swipeSubscriptionChildren
+      .filter(child => child.checked)
+      .map(child => child.value)
+    const selectedFreeServices = swipeFreeStreamingChildren
+      .filter(child => child.checked)
+      .map(child => child.value)
+    const personalSet = new Set(
+      getAvailableSubscriptionOptions().personalSources
+    )
+    const paidSet = new Set(parsePaidServices())
+    const freeStreamingEnabled = Boolean(swipeAvailabilityFree?.checked)
+
+    const next = {
+      anywhere: false,
+      roomPersonalMedia: selectedSubscriptions.some(service =>
+        personalSet.has(service)
+      ),
+      paidSubscriptions: selectedSubscriptions.some(service =>
+        paidSet.has(service)
+      ),
+      freeStreaming: freeStreamingEnabled,
+      subscriptionServices: selectedSubscriptions,
+      freeStreamingServices: freeStreamingEnabled ? selectedFreeServices : [],
     }
     setAvailabilityState(next)
   })
