@@ -9,6 +9,15 @@ const makeJsonHeaders = (req?: CompatRequest) => {
   return headers
 }
 
+// Same genre map used by the frontend filterDisplayNames
+const TMDB_GENRE_MAP: Record<number, string> = {
+  28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy',
+  80: 'Crime', 99: 'Documentary', 18: 'Drama', 10751: 'Family',
+  14: 'Fantasy', 36: 'History', 27: 'Horror', 10402: 'Music',
+  9648: 'Mystery', 10749: 'Romance', 878: 'Science Fiction',
+  10770: 'TV Movie', 53: 'Thriller', 10752: 'War', 37: 'Western',
+}
+
 export async function handleRecommendationsRoute(
   req: CompatRequest,
   path: string
@@ -51,7 +60,13 @@ export async function handleRecommendationsRoute(
       rating_tmdb: typeof m.vote_average === 'number'
         ? Number(m.vote_average.toFixed(1))
         : null,
-      genres: [],
+      genres: (m.genre_ids ?? [])
+        .map((id: number) => TMDB_GENRE_MAP[id])
+        .filter(Boolean),
+      original_language: m.original_language || null,
+      originalLanguage: m.original_language || null,
+      voteCount: m.vote_count || null,
+      popularity: m.popularity || null,
       type: 'movie',
     }))
 

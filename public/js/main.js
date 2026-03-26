@@ -6161,37 +6161,84 @@ const main = async () => {
   let recommendationsLoaded = false
 
   const buildRecommendationCard = movie => {
-    const posterUrl = movie.art
-      ? `${document.body.dataset.basePath || ''}${movie.art}`
-      : ''
-    const rating = movie.rating_tmdb
-      ? `<span class="rec-rating"><img src="${document.body.dataset.basePath || ''}/assets/logos/tmdb.svg" alt="TMDb" width="14" height="14" /> ${movie.rating_tmdb}</span>`
-      : ''
+    const basePath = document.body.dataset.basePath || ''
+    const likesList = document.querySelector('.likes-list')
+    const dislikesList = document.querySelector('.dislikes-list')
+    const seenList = document.querySelector('.seen-list')
+
+    // Build the same metadata badges as the Watch list
+    const genres = movie.genres || []
+    const genreDisplay = genres.length > 0 ? genres.slice(0, 2).join(', ') : null
+    const contentRating = movie.contentRating || null
+    const runtimeMin = (() => {
+      const candidates = [Number(movie.runtime), Number(movie.runtimeMinutes)].filter(v => Number.isFinite(v) && v > 0)
+      return candidates.length && candidates[0] < 1000 ? Math.round(candidates[0]) : null
+    })()
+    const runtimeDisplay = runtimeMin ? formatRuntime(runtimeMin) : null
+
+    const metadataBadges = []
+    if (contentRating) metadataBadges.push(`<span class="metadata-badge badge-rating"><i class="fas fa-tag"></i> ${contentRating}</span>`)
+    if (genreDisplay) metadataBadges.push(`<span class="metadata-badge badge-genre"><i class="fas fa-film"></i> ${genreDisplay}</span>`)
+    if (runtimeDisplay) metadataBadges.push(`<span class="metadata-badge badge-runtime"><i class="fas fa-clock"></i> ${runtimeDisplay}</span>`)
+    const metadataBadgesHTML = metadataBadges.length > 0 ? `<div class="watch-card-metadata">${metadataBadges.join('')}</div>` : ''
+
+    const ratingHtml = buildRatingHtml(movie, basePath)
+    const ratingSection = ratingHtml ? `<div class="watch-card-ratings">${ratingHtml}</div>` : ''
+
+    const posterUrl = (() => {
+      const p = normalizePoster(movie.art || '')
+      return p ? (p.startsWith('http') ? p : basePath + p) : ''
+    })()
+
     const card = document.createElement('div')
-    card.className = 'rec-card'
-    card.dataset.tmdbId = movie.tmdbId || ''
+    card.className = 'watch-card'
+    card.dataset.tmdbId = String(movie.tmdbId || '')
     card.dataset.guid = movie.guid || ''
+
     card.innerHTML = `
-      <div class="rec-card-poster">
-        ${posterUrl ? `<img src="${posterUrl}" alt="${movie.title} poster" loading="lazy" decoding="async" />` : '<div class="rec-card-no-poster"><i class="fas fa-film"></i></div>'}
+      <div class="watch-card-collapsed">
+        <div class="watch-card-header-compact">
+          <div class="watch-card-title-compact">
+            ${movie.title} <span class="watch-card-year">(${movie.year || 'N/A'})</span>
+          </div>
+          <div class="expand-icon"><i class="fas fa-chevron-down"></i></div>
+        </div>
       </div>
-      <div class="rec-card-body">
-        <div class="rec-card-title">${movie.title}${movie.year ? ` <span class="rec-card-year">(${movie.year})</span>` : ''}</div>
-        ${rating}
-        ${movie.summary ? `<p class="rec-card-summary">${movie.summary.slice(0, 120)}${movie.summary.length > 120 ? '…' : ''}</p>` : ''}
-        <div class="rec-card-actions">
-          <button class="rec-btn rec-btn-watch" title="Add to Watch list"><i class="fas fa-thumbs-up"></i> Watch</button>
-          <button class="rec-btn rec-btn-pass" title="Pass"><i class="fas fa-thumbs-down"></i> Pass</button>
+      <div class="watch-card-details">
+        <div class="watch-card-poster">
+          ${posterUrl ? `<img src="${posterUrl}" alt="${movie.title}" loading="lazy" decoding="async">` : ''}
+        </div>
+        <div class="watch-card-content">
+          ${movie.summary ? `<p class="watch-card-summary">${movie.summary}</p>` : ''}
+          ${metadataBadgesHTML}
+          ${ratingSection}
+          <div class="list-actions" style="margin-top:0.75rem;">
+            <button class="list-action-btn rec-action-watch" title="Add to Watch list">
+              <i class="fas fa-thumbs-up"></i> Watch
+            </button>
+            <button class="list-action-btn rec-action-pass" title="Pass">
+              <i class="fas fa-thumbs-down"></i> Pass
+            </button>
+          </div>
         </div>
       </div>
     `
 
-    card.querySelector('.rec-btn-watch').addEventListener('click', async () => {
+    card.querySelector('.watch-card-collapsed').addEventListener('click', () => {
+      card.classList.toggle('expanded')
+    })
+
+    card.querySelector('.rec-action-watch').addEventListener('click', async e => {
+      e.stopPropagation()
       await api.respond({ guid: movie.guid, wantsToWatch: true })
+      await appendRatedRow({ basePath, likesList, dislikesList, seenList }, movie, true)
       card.remove()
     })
-    card.querySelector('.rec-btn-pass').addEventListener('click', async () => {
+
+    card.querySelector('.rec-action-pass').addEventListener('click', async e => {
+      e.stopPropagation()
       await api.respond({ guid: movie.guid, wantsToWatch: false })
+      await appendRatedRow({ basePath, likesList, dislikesList, seenList }, movie, false)
       card.remove()
     })
 
