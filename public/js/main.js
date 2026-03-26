@@ -145,7 +145,6 @@ function preloadPosterForMovie(movie) {
 
 // ===== FUNNY LOADING MESSAGES =====
 const funnyLoadingMessages = [
-  'Reticulating popcorn kernels...',
   "Checking if it's better than the book...",
   "Convincing directors to release the director's cut...",
   'Asking Michael Bay to add more explosions...',
@@ -154,19 +153,16 @@ const funnyLoadingMessages = [
   'Adjusting the tracking on the VCR...',
   'Pretending to understand avant-garde cinema...',
   'Counting plot holes...',
-  'Bribing the Rotten Tomatoes critics...',
   'Checking if Nicolas Cage is in this...',
-  "Finding out what streaming service it's actually on...",
-  'Shushing the people in the back row...',
-  'Ignoring the low Rotten Tomatoes score...',
-  'Googling whether the twist was in the book too...',
-  'Calculating your exact cinema snack budget...',
-  'Fast-forwarding through the opening logos...',
-  'Debating whether the sequel counts as canon...',
-  'Consulting the IMDb trivia page...',
-  'Arguing with the algorithm...',
-  'Texting your friend who recommended this...',
-  'Mentally casting the remake already...',
+  'Adjusting brightness for that one dark scene...',
+  "Hoping the trailer didn't spoil everything...",
+  'Adjusting volume for sudden explosions...',
+  'Generating unnecessary slow motion...',
+  'Cueing emotional music swell...',
+  'Warming up the plot twist...',
+  'Setting up completely avoidable problem...',
+  'Ensuring the villain explains the plan...',
+  "Checking if it's in stock at Blockbuster...",
 ]
 
 // Get a random loading message
