@@ -670,6 +670,14 @@ function initTabs() {
       if (typeof window.refreshMatchesList === 'function') {
         window.refreshMatchesList()
       }
+    } else if (tabId === 'tab-stats') {
+      if (typeof window.refreshStatsTab === 'function') {
+        window.refreshStatsTab()
+      }
+    } else if (tabId === 'tab-recommendations') {
+      if (typeof window.refreshRecommendationsTab === 'function') {
+        window.refreshRecommendationsTab()
+      }
     } else {
       stopWatchListAutoRefresh()
     }
@@ -6106,7 +6114,247 @@ const main = async () => {
       showMatchPopup(matchData)
       shownMatchGuids.add(matchData.movie.guid)
     }
+    // Browser notification when tab is in background
+    if (
+      document.visibilityState === 'hidden' &&
+      window._comparrNotificationsGranted
+    ) {
+      const title = matchData?.movie?.title || 'a movie'
+      new Notification("It's a Match! 🎬", {
+        body: `You matched on "${title}". Open Comparr to see it.`,
+        icon: document.querySelector('link[rel="icon"]')?.href || undefined,
+      })
+    }
   })
+
+  // ===== BROWSER NOTIFICATIONS (group mode) =====
+  if (appMode === 'group' && 'Notification' in window) {
+    if (Notification.permission === 'granted') {
+      window._comparrNotificationsGranted = true
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then(permission => {
+        window._comparrNotificationsGranted = permission === 'granted'
+      })
+    }
+  }
+
+  // ===== ROOM MEMBER LIST =====
+  const roomMembersWidget = document.querySelector('.js-room-members-widget')
+  const roomMembersList = document.querySelector('.js-room-members-list')
+
+  const updateRoomMembers = members => {
+    if (!roomMembersWidget || !roomMembersList || appMode !== 'group') return
+    roomMembersList.textContent = members.join(', ')
+    roomMembersWidget.hidden = members.length === 0
+  }
+
+  // Populate from loginResponse members field
+  if (loginData.members && appMode === 'group') {
+    updateRoomMembers(loginData.members)
+  }
+
+  api.addEventListener('roomMembers', e => {
+    updateRoomMembers(e.data?.members ?? [])
+  })
+
+  // ===== RECOMMENDATIONS TAB =====
+  let recommendationsLoaded = false
+
+  const buildRecommendationCard = movie => {
+    const posterUrl = movie.art
+      ? `${document.body.dataset.basePath || ''}${movie.art}`
+      : ''
+    const rating = movie.rating_tmdb
+      ? `<span class="rec-rating"><img src="${document.body.dataset.basePath || ''}/assets/logos/tmdb.svg" alt="TMDb" width="14" height="14" /> ${movie.rating_tmdb}</span>`
+      : ''
+    const card = document.createElement('div')
+    card.className = 'rec-card'
+    card.dataset.tmdbId = movie.tmdbId || ''
+    card.dataset.guid = movie.guid || ''
+    card.innerHTML = `
+      <div class="rec-card-poster">
+        ${posterUrl ? `<img src="${posterUrl}" alt="${movie.title} poster" loading="lazy" decoding="async" />` : '<div class="rec-card-no-poster"><i class="fas fa-film"></i></div>'}
+      </div>
+      <div class="rec-card-body">
+        <div class="rec-card-title">${movie.title}${movie.year ? ` <span class="rec-card-year">(${movie.year})</span>` : ''}</div>
+        ${rating}
+        ${movie.summary ? `<p class="rec-card-summary">${movie.summary.slice(0, 120)}${movie.summary.length > 120 ? '…' : ''}</p>` : ''}
+        <div class="rec-card-actions">
+          <button class="rec-btn rec-btn-watch" title="Add to Watch list"><i class="fas fa-thumbs-up"></i> Watch</button>
+          <button class="rec-btn rec-btn-pass" title="Pass"><i class="fas fa-thumbs-down"></i> Pass</button>
+        </div>
+      </div>
+    `
+
+    card.querySelector('.rec-btn-watch').addEventListener('click', async () => {
+      await api.respond({ guid: movie.guid, wantsToWatch: true })
+      card.remove()
+    })
+    card.querySelector('.rec-btn-pass').addEventListener('click', async () => {
+      await api.respond({ guid: movie.guid, wantsToWatch: false })
+      card.remove()
+    })
+
+    return card
+  }
+
+  const loadRecommendations = async () => {
+    const list = document.querySelector('.js-recommendations-list')
+    const hint = document.querySelector('.js-recommendations-hint')
+    if (!list) return
+
+    // Pick up to 3 recently watched movies to seed recommendations
+    const watchCards = Array.from(document.querySelectorAll('.likes-list .watch-card'))
+    const seedIds = watchCards
+      .slice(0, 3)
+      .map(c => c.dataset.tmdbId)
+      .filter(Boolean)
+
+    if (seedIds.length === 0) {
+      if (hint) hint.hidden = false
+      return
+    }
+    if (hint) hint.hidden = true
+
+    list.innerHTML = '<p class="stats-empty">Loading recommendations…</p>'
+
+    const seenGuids = new Set([
+      ...Array.from(document.querySelectorAll('.likes-list .watch-card')).map(c => c.dataset.guid),
+      ...Array.from(document.querySelectorAll('.dislikes-list .watch-card')).map(c => c.dataset.guid),
+      ...Array.from(document.querySelectorAll('.seen-list .watch-card')).map(c => c.dataset.guid),
+    ])
+
+    const seenTmdbIds = new Set([
+      ...Array.from(document.querySelectorAll('.likes-list .watch-card')).map(c => c.dataset.tmdbId),
+      ...Array.from(document.querySelectorAll('.dislikes-list .watch-card')).map(c => c.dataset.tmdbId),
+      ...Array.from(document.querySelectorAll('.seen-list .watch-card')).map(c => c.dataset.tmdbId),
+    ])
+
+    const allMovies = new Map()
+    await Promise.all(
+      seedIds.map(async tmdbId => {
+        try {
+          const { movies } = await api.getRecommendations(tmdbId)
+          for (const m of movies) {
+            if (!allMovies.has(m.tmdbId) && !seenGuids.has(m.guid) && !seenTmdbIds.has(String(m.tmdbId))) {
+              allMovies.set(m.tmdbId, m)
+            }
+          }
+        } catch {
+          // ignore per-seed failures
+        }
+      })
+    )
+
+    list.innerHTML = ''
+    if (allMovies.size === 0) {
+      list.innerHTML = '<p class="stats-empty">No new recommendations found. Rate more movies to improve suggestions.</p>'
+      return
+    }
+
+    for (const movie of allMovies.values()) {
+      list.appendChild(buildRecommendationCard(movie))
+    }
+    recommendationsLoaded = true
+  }
+
+  document.getElementById('recommendations-refresh-btn')?.addEventListener('click', () => {
+    recommendationsLoaded = false
+    loadRecommendations()
+  })
+
+  window.refreshRecommendationsTab = () => {
+    if (!recommendationsLoaded) loadRecommendations()
+  }
+
+  // ===== STATS TAB =====
+  const refreshStatsTab = () => {
+    const watchCards = document.querySelectorAll('.likes-list .watch-card')
+    const passCards = document.querySelectorAll('.dislikes-list .watch-card')
+    const seenCards = document.querySelectorAll('.seen-list .watch-card')
+
+    const watchCount = watchCards.length
+    const passCount = passCards.length
+    const seenCount = seenCards.length
+    const totalRated = watchCount + passCount + seenCount
+
+    const setValue = (sel, val) => {
+      const el = document.querySelector(sel)
+      if (el) el.textContent = val
+    }
+    setValue('.js-stat-total-rated', totalRated)
+    setValue('.js-stat-watch-count', watchCount)
+    setValue('.js-stat-pass-count', passCount)
+    setValue('.js-stat-seen-count', seenCount)
+
+    // Genre breakdown from Watch list
+    const genreBar = document.querySelector('.js-stats-genre-bars')
+    if (genreBar) {
+      const genreCounts = {}
+      watchCards.forEach(card => {
+        const genreText = card.querySelector('.watch-card-genres')?.textContent || ''
+        genreText.split(',').forEach(g => {
+          const genre = g.trim()
+          if (genre) genreCounts[genre] = (genreCounts[genre] || 0) + 1
+        })
+      })
+
+      const sortedGenres = Object.entries(genreCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+
+      if (sortedGenres.length === 0) {
+        genreBar.innerHTML = '<p class="stats-empty">Rate some movies to see your genre breakdown.</p>'
+      } else {
+        const max = sortedGenres[0][1]
+        genreBar.innerHTML = sortedGenres.map(([genre, count]) => `
+          <div class="stats-genre-row">
+            <span class="stats-genre-name">${genre}</span>
+            <div class="stats-genre-bar-track">
+              <div class="stats-genre-bar-fill" style="width:${Math.round((count / max) * 100)}%"></div>
+            </div>
+            <span class="stats-genre-count">${count}</span>
+          </div>
+        `).join('')
+      }
+    }
+
+    // Average ratings from Watch list
+    const avgEl = document.querySelector('.js-stats-avg-ratings')
+    if (avgEl && watchCount > 0) {
+      const imdbScores = []
+      const tmdbScores = []
+
+      watchCards.forEach(card => {
+        const html = card.innerHTML
+        const imdbMatch = html.match(/imdb\.svg[^>]*>[\s\S]*?<\/img>\s*([\d.]+)/) ||
+          html.match(/imdb[^>]*>\s*([\d.]+)/)
+        const tmdbMatch = html.match(/tmdb\.svg[^>]*>[\s\S]*?<\/img>\s*([\d.]+)/) ||
+          html.match(/tmdb[^>]*>\s*([\d.]+)/)
+        if (imdbMatch) imdbScores.push(parseFloat(imdbMatch[1]))
+        if (tmdbMatch) tmdbScores.push(parseFloat(tmdbMatch[1]))
+      })
+
+      const avg = arr =>
+        arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1) : null
+
+      const avgImdb = avg(imdbScores)
+      const avgTmdb = avg(tmdbScores)
+
+      if (!avgImdb && !avgTmdb) {
+        avgEl.innerHTML = '<p class="stats-empty">No rating data available.</p>'
+      } else {
+        avgEl.innerHTML = [
+          avgImdb ? `<div class="stats-avg-row"><span>IMDb avg</span><strong>${avgImdb}</strong></div>` : '',
+          avgTmdb ? `<div class="stats-avg-row"><span>TMDb avg</span><strong>${avgTmdb}</strong></div>` : '',
+        ].join('')
+      }
+    } else if (avgEl) {
+      avgEl.innerHTML = '<p class="stats-empty">No watch list data yet.</p>'
+    }
+  }
+
+  window.refreshStatsTab = refreshStatsTab
 
   api.addEventListener('message', e => {
     const data = e.data

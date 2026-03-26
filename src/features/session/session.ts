@@ -1361,6 +1361,8 @@ class Session {
     saveState(persistedState).catch(err =>
       log.warn(`Failed to save state on add(): ${err}`)
     )
+
+    this.broadcastRoomMembers()
   }
 
   remove = (user: User, ws: WebSocket) => {
@@ -1371,6 +1373,20 @@ class Session {
     const activeUsers = [...this.users.values()].filter(ws => !ws?.isClosed)
     if (activeUsers.length === 0) {
       this.destroy()
+    } else {
+      this.broadcastRoomMembers()
+    }
+  }
+
+  broadcastRoomMembers = () => {
+    const members = [...this.users.keys()].map(u => u.name)
+    const msg = JSON.stringify({ type: 'roomMembers', payload: { members } })
+    for (const ws of this.users.values()) {
+      try {
+        if (ws && !ws.isClosed) ws.send(msg)
+      } catch {
+        // ignore send errors during broadcast
+      }
     }
   }
 
@@ -3338,6 +3354,7 @@ export const handleLogin = (
                 return true
               }),
               rated: ratedItems,
+              members: [...session.users.keys()].map(u => u.name),
             },
           }
           log.debug(

@@ -231,6 +231,12 @@ export class ComparrAPI extends EventTarget {
         )
         break
       }
+      case 'roomMembers': {
+        this.dispatchEvent(
+          new MessageEvent('roomMembers', { data: data.payload })
+        )
+        break
+      }
       case 'error': {
         console.error('Server error:', data.payload)
 
@@ -320,6 +326,14 @@ export class ComparrAPI extends EventTarget {
   }
 
   // ================== PASTE ENDS HERE ==================
+
+  async getRecommendations(tmdbId) {
+    const base = this._getBasePath()
+    const url = `${base}/api/recommendations?tmdbId=${encodeURIComponent(tmdbId)}`
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`GET ${url} failed: ${res.status}`)
+    return res.json()
+  }
 
   async respond({ guid, wantsToWatch }) {
     await this._waitOpen()
