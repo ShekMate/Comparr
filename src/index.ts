@@ -47,6 +47,7 @@ import { handleRequestServiceRoutes } from './infra/http/routes/request-service.
 import { handleRoomRoutes } from './infra/http/routes/rooms.ts'
 import { handleRequestMovieRoute } from './infra/http/routes/request-movie.ts'
 import { handleMovieRefreshRoute } from './infra/http/routes/movie-refresh.ts'
+import { handleRecommendationsRoute } from './infra/http/routes/recommendations.ts'
 import { handleStreamingRoutes } from './infra/http/routes/streaming.ts'
 import { handleImdbImportRoutes } from './infra/http/routes/imdb-import.ts'
 import { handleSystemRoutes } from './infra/http/routes/system.ts'
@@ -453,6 +454,7 @@ for await (const req of server) {
       handleRequestServiceRoutes,
       handleRoomRoutes,
       handleMatchesRoute,
+      handleRecommendationsRoute,
     ])
     if (routeResponse) {
       await req.respondWith(routeResponse)

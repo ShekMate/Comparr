@@ -1,0 +1,16 @@
+{
+  "name": "Comparr",
+  "short_name": "Comparr",
+  "description": "Tinder-style movie matcher for Plex",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "./assets/icons/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ]
+}

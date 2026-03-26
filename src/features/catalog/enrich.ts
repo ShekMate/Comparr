@@ -42,6 +42,7 @@ type EnrichmentPayload = {
   streamingLink: string | null
   voteCount: number | null
   tmdbId: number | null
+  trailerKey: string | null
 }
 
 type PersistedEnrichmentEntry = {
@@ -148,6 +149,7 @@ function sanitizeEnrichmentPayload(value: any): EnrichmentPayload {
     streamingLink: value?.streamingLink ?? null,
     voteCount: value?.voteCount ?? null,
     tmdbId: value?.tmdbId ?? null,
+    trailerKey: value?.trailerKey ?? null,
   }
 }
 
@@ -296,7 +298,7 @@ async function tmdbMovieDetails(id: number) {
   }
 
   const result = await tmdbFetch(`/movie/${id}`, TMDB, {
-    append_to_response: 'external_ids,watch/providers,credits,release_dates',
+    append_to_response: 'external_ids,watch/providers,credits,release_dates,videos',
   }).then(r => r.json())
   if (result) tmdbCache.set(cacheKey, result)
   return result
@@ -350,6 +352,7 @@ export async function enrich({
   let originalLanguage: string | null = null
   let streamingLink: string | null = null
   let voteCount: number | null = null
+  let trailerKey: string | null = null
 
   const cacheKey = buildEnrichmentCacheKey({
     title,
@@ -406,6 +409,14 @@ export async function enrich({
     originalLanguage = original_language
     voteCount = det?.vote_count || null
     contentRating = extractUsContentRating(det?.release_dates)
+
+    const trailerVideo = (det?.videos?.results ?? []).find(
+      (v: any) =>
+        v?.site === 'YouTube' &&
+        (v?.type === 'Trailer' || v?.type === 'Teaser') &&
+        v?.key
+    )
+    trailerKey = trailerVideo?.key ?? null
 
     const providers = det?.['watch/providers']?.results?.US
     if (providers) {
@@ -567,6 +578,7 @@ export async function enrich({
     streamingLink,
     voteCount,
     tmdbId: hit?.id || null,
+    trailerKey,
   }
 
   storeEnrichmentForKeys(
