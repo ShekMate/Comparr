@@ -64,13 +64,6 @@ export default class CardView {
     } = this.movieData
     node.dataset.guid = guid
 
-    console.log(
-      'DEBUG CardView art:',
-      art,
-      'starts with https:',
-      art.startsWith('https://')
-    )
-
     // Treat "/<digits>/thumb/<digits>" as a Plex-only path (not a real image file)
     const isPlexThumb = u => !!u && /^\/\d+\/thumb\/\d+/.test(u)
 
