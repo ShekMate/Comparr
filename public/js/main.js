@@ -7942,10 +7942,12 @@ const main = async () => {
 
       // Create card if we have a movie
       if (nextMovie) {
-        new CardView(nextMovie, cardStackEventTarget)
-        {
+        try {
+          new CardView(nextMovie, cardStackEventTarget)
           const guidKey = normalizeGuid(nextMovie.guid) || nextMovie.guid
           if (guidKey) movieByGuid.set(guidKey, nextMovie)
+        } catch (err) {
+          console.error('❌ Error creating CardView for movie:', nextMovie?.title, err)
         }
       } else {
         console.warn('⚠️ No movies available even after refill attempt')
