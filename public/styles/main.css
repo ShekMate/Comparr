@@ -4306,6 +4306,62 @@ footer {
   color: rgba(148, 163, 184, 0.55);
 }
 
+.imdb-import-cancel-actions {
+  margin-top: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(51, 65, 85, 0.3);
+}
+
+.imdb-import-cancel-msg {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.imdb-import-cancel-btns {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.imdb-import-keep-btn,
+.imdb-import-remove-btn {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.imdb-import-keep-btn {
+  background: rgba(51, 65, 85, 0.5);
+  color: var(--color-text-secondary);
+  border: 1px solid rgba(51, 65, 85, 0.5);
+}
+
+.imdb-import-keep-btn:hover {
+  background: rgba(51, 65, 85, 0.7);
+  color: var(--color-text-primary);
+}
+
+.imdb-import-remove-btn {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.imdb-import-remove-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.imdb-import-keep-btn:disabled,
+.imdb-import-remove-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .imdb-import-history {
   margin-top: 0.9rem;
   border-top: 1px solid rgba(51, 65, 85, 0.3);

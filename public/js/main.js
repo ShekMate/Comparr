@@ -6459,9 +6459,15 @@ const main = async () => {
   const imdbImportBar = document.getElementById('imdb-import-bar')
   const imdbImportDetail = document.getElementById('imdb-import-progress-detail')
   const imdbImportCancelBtn = document.getElementById('imdb-import-cancel-btn')
+  const imdbImportCancelActions = document.getElementById('imdb-import-cancel-actions')
+  const imdbImportCancelMsg = document.getElementById('imdb-import-cancel-msg')
+  const imdbImportKeepBtn = document.getElementById('imdb-import-keep-btn')
+  const imdbImportRemoveBtn = document.getElementById('imdb-import-remove-btn')
   let isImdbImportActive = false
   let currentImportRoomCode = null
   let currentImportUserName = null
+  // Track GUIDs added during the current import session for optional rollback
+  let sessionImportedGuids = []
 
   function resetImdbImportProgress() {
     if (imdbImportProgress) imdbImportProgress.style.display = 'none'
@@ -6475,6 +6481,8 @@ const main = async () => {
       imdbImportCancelBtn.disabled = false
       imdbImportCancelBtn.style.display = ''
     }
+    if (imdbImportCancelActions) imdbImportCancelActions.style.display = 'none'
+    sessionImportedGuids = []
   }
 
   // Ensure stale UI state does not survive navigation/reconnect.
@@ -6501,6 +6509,60 @@ const main = async () => {
     })
   }
 
+  if (imdbImportKeepBtn) {
+    imdbImportKeepBtn.addEventListener('click', () => {
+      sessionImportedGuids = []
+      if (typeof window.refreshImdbImportHistory === 'function') {
+        window.refreshImdbImportHistory()
+      }
+      setTimeout(() => resetImdbImportProgress(), 300)
+    })
+  }
+
+  if (imdbImportRemoveBtn) {
+    imdbImportRemoveBtn.addEventListener('click', async () => {
+      const guidsToRemove = [...sessionImportedGuids]
+      if (!guidsToRemove.length) {
+        resetImdbImportProgress()
+        return
+      }
+      imdbImportKeepBtn.disabled = true
+      imdbImportRemoveBtn.disabled = true
+      if (imdbImportCancelMsg)
+        imdbImportCancelMsg.textContent = 'Removing imported movies...'
+
+      try {
+        const apiBase = document.body.dataset.basePath || ''
+        await fetch(`${apiBase}/api/imdb-import-rollback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            roomCode: currentImportRoomCode,
+            userName: currentImportUserName,
+            guids: guidsToRemove,
+          }),
+        })
+      } catch (_) {
+        // best-effort; UI cleanup still proceeds
+      }
+
+      // Remove those rows from the Seen list DOM
+      const seenList = document.querySelector('.seen-list')
+      if (seenList) {
+        for (const guid of guidsToRemove) {
+          const row = seenList.querySelector(`[data-guid="${CSS.escape(guid)}"]`)
+          if (row) row.remove()
+        }
+      }
+
+      sessionImportedGuids = []
+      if (typeof window.refreshImdbImportHistory === 'function') {
+        window.refreshImdbImportHistory()
+      }
+      setTimeout(() => resetImdbImportProgress(), 300)
+    })
+  }
+
   api.addEventListener('message', e => {
     const data = e.data
 
@@ -6514,6 +6576,7 @@ const main = async () => {
 
       if (status === 'started') {
         isImdbImportActive = true
+        sessionImportedGuids = []
         if (imdbImportProgress) imdbImportProgress.style.display = 'block'
         if (imdbImportStatus)
           imdbImportStatus.textContent = `Starting import of ${total} movies...`
@@ -6526,6 +6589,7 @@ const main = async () => {
           imdbImportCancelBtn.disabled = false
           imdbImportCancelBtn.style.display = ''
         }
+        if (imdbImportCancelActions) imdbImportCancelActions.style.display = 'none'
       } else if (status === 'processing') {
         isImdbImportActive = true
         if (imdbImportProgress) imdbImportProgress.style.display = 'block'
@@ -6539,7 +6603,9 @@ const main = async () => {
         if (!isImdbImportActive) return
 
         isImdbImportActive = false
+        sessionImportedGuids = []
         if (imdbImportCancelBtn) imdbImportCancelBtn.style.display = 'none'
+        if (imdbImportCancelActions) imdbImportCancelActions.style.display = 'none'
         if (imdbImportStatus)
           imdbImportStatus.textContent = `Done! ${imported} imported, ${skipped} skipped.`
         if (imdbImportDetail) imdbImportDetail.textContent = ''
@@ -6548,7 +6614,6 @@ const main = async () => {
           `IMDb import complete: ${imported} movies added to Seen list.`
         )
 
-        // Re-enable button
         const imdbCsvUploadBtn = document.getElementById('imdb-csv-upload-btn')
         if (imdbCsvUploadBtn) imdbCsvUploadBtn.disabled = false
 
@@ -6556,28 +6621,34 @@ const main = async () => {
           window.refreshImdbImportHistory()
         }
 
-        // Hide progress after delay
-        setTimeout(() => {
-          resetImdbImportProgress()
-        }, 5000)
+        setTimeout(() => resetImdbImportProgress(), 5000)
       } else if (status === 'cancelled') {
         isImdbImportActive = false
         if (imdbImportCancelBtn) imdbImportCancelBtn.style.display = 'none'
-        if (imdbImportStatus)
-          imdbImportStatus.textContent = `Import cancelled. ${imported} movies were imported.`
-        if (imdbImportDetail) imdbImportDetail.textContent = ''
         if (imdbImportBar) imdbImportBar.classList.add('error')
+        if (imdbImportDetail) imdbImportDetail.textContent = ''
+
+        const count = sessionImportedGuids.length
+        if (imdbImportStatus)
+          imdbImportStatus.textContent = 'Import cancelled.'
 
         const imdbCsvUploadBtn = document.getElementById('imdb-csv-upload-btn')
         if (imdbCsvUploadBtn) imdbCsvUploadBtn.disabled = false
 
-        if (typeof window.refreshImdbImportHistory === 'function') {
-          window.refreshImdbImportHistory()
+        // Show keep/remove choice only if movies were actually imported
+        if (count > 0 && imdbImportCancelActions && imdbImportCancelMsg) {
+          if (imdbImportKeepBtn) imdbImportKeepBtn.disabled = false
+          if (imdbImportRemoveBtn) imdbImportRemoveBtn.disabled = false
+          imdbImportCancelMsg.textContent =
+            `${count} movie${count === 1 ? ' was' : 's were'} imported before cancellation. What would you like to do?`
+          imdbImportCancelActions.style.display = 'block'
+        } else {
+          // Nothing imported — just clear
+          if (typeof window.refreshImdbImportHistory === 'function') {
+            window.refreshImdbImportHistory()
+          }
+          setTimeout(() => resetImdbImportProgress(), 4000)
         }
-
-        setTimeout(() => {
-          resetImdbImportProgress()
-        }, 5000)
       }
     }
 
@@ -6595,6 +6666,8 @@ const main = async () => {
           movie,
           null
         )
+        // Track for potential rollback
+        if (movie.guid) sessionImportedGuids.push(movie.guid)
       }
     }
   })

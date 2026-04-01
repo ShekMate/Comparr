@@ -3511,6 +3511,51 @@ export function cancelImdbImport(roomCode: string, userName: string): void {
 }
 
 /**
+ * Remove a set of movies (by guid) from a user's response list and the movie index.
+ * Used to roll back a cancelled import.
+ */
+export async function rollbackImdbImport(
+  roomCode: string,
+  userName: string,
+  guids: string[]
+): Promise<{ removed: number }> {
+  if (!guids.length) return { removed: 0 }
+
+  const guidSet = new Set(guids)
+  const room = persistedState.rooms[roomCode]
+  if (!room) return { removed: 0 }
+
+  const userEntry = room.users.find(u => u.name === userName)
+  if (!userEntry) return { removed: 0 }
+
+  const before = userEntry.responses.length
+  userEntry.responses = userEntry.responses.filter(r => !guidSet.has(r.guid))
+  const removed = before - userEntry.responses.length
+
+  // Remove from movie index only if no other user in any room references the guid
+  for (const guid of guidSet) {
+    let stillReferenced = false
+    outer: for (const r of Object.values(persistedState.rooms)) {
+      for (const u of r.users) {
+        if (u.responses.some(resp => resp.guid === guid)) {
+          stillReferenced = true
+          break outer
+        }
+      }
+    }
+    if (!stillReferenced) {
+      delete persistedState.movieIndex[guid]
+    }
+  }
+
+  await saveState(persistedState).catch(err =>
+    log.warn(`Failed to save state after import rollback: ${err}`)
+  )
+
+  return { removed }
+}
+
+/**
  * Find the WebSocket for a user in a room.
  */
 function findUserWebSocket(
