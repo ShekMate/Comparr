@@ -1343,15 +1343,12 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 /* Empty state */
 .matches-list:empty::before {
-  position: absolute;
-  min-width: 80vw;
-  left: 50%;
-  top: 50%;
   content: var(--i18n-no-matches);
-  transform: translate(-50%, -50%);
   font-weight: 600;
   color: var(--color-text-muted);
   font-size: 1.1rem;
+  text-align: center;
+  width: 100%;
 }
 
 /* =========================================================
@@ -3322,15 +3319,12 @@ body:not(.is-logged-in) .card-stack:empty::after {
 
 /* Empty State */
 .matches-list:empty::before {
-  position: absolute;
-  min-width: 80vw;
-  left: 50%;
-  top: 50%;
   content: var(--i18n-no-matches);
-  transform: translate(-50%, -50%);
   font-weight: 600;
   color: var(--color-text-muted);
   font-size: 1.1rem;
+  text-align: center;
+  width: 100%;
 }
 
 /* Service Dropdown Buttons */
