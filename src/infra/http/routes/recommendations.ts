@@ -2,7 +2,7 @@ import type { CompatRequest } from '../compat-request.ts'
 import { addSecurityHeaders } from '../security-headers.ts'
 import { tmdbFetch } from '../../../api/tmdb.ts'
 import { getTmdbApiKey } from '../../../core/config.ts'
-import { getIMDbRating } from '../../catalog/imdb-datasets.ts'
+import { getIMDbRating } from '../../../features/catalog/imdb-datasets.ts'
 
 const makeJsonHeaders = (req?: CompatRequest) => {
   const headers = new Headers({ 'content-type': 'application/json' })
