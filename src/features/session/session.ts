@@ -3503,6 +3503,13 @@ export interface ImdbImportJob {
   importHistoryId?: string
 }
 
+// Track active import cancellation requests keyed by "roomCode:userName"
+const cancelledImports = new Set<string>()
+
+export function cancelImdbImport(roomCode: string, userName: string): void {
+  cancelledImports.add(`${roomCode}:${userName}`)
+}
+
 /**
  * Find the WebSocket for a user in a room.
  */
@@ -3586,8 +3593,31 @@ export async function processImdbImportBackground(
   let skipped = 0
 
   const TMDB_KEY = getTmdbApiKey()
+  const cancelKey = `${roomCode}:${userName}`
 
   for (const row of imdbRows) {
+    // Check for cancellation before processing each movie
+    if (cancelledImports.has(cancelKey)) {
+      cancelledImports.delete(cancelKey)
+      log.info(
+        `[IMDb Import] Cancelled for ${userName} in ${roomCode} after ${processed} movies`
+      )
+      await saveState(persistedState).catch(err =>
+        log.warn(`Failed to save state on cancel: ${err}`)
+      )
+      if (importHistoryId) {
+        finalizeImdbImportHistory(roomCode, userName, importHistoryId, 'failed')
+        await saveState(persistedState).catch(err =>
+          log.warn(`Failed to save import history on cancel: ${err}`)
+        )
+      }
+      sendToUser(roomCode, userName, {
+        type: 'imdbImportProgress',
+        payload: { status: 'cancelled', total, processed, imported, skipped },
+      })
+      return
+    }
+
     processed++
 
     // Rate limit: wait for token before making API calls

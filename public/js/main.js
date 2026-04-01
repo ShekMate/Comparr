@@ -6457,19 +6457,49 @@ const main = async () => {
   const imdbImportProgress = document.getElementById('imdb-import-progress')
   const imdbImportStatus = document.getElementById('imdb-import-status')
   const imdbImportBar = document.getElementById('imdb-import-bar')
+  const imdbImportDetail = document.getElementById('imdb-import-progress-detail')
+  const imdbImportCancelBtn = document.getElementById('imdb-import-cancel-btn')
   let isImdbImportActive = false
+  let currentImportRoomCode = null
+  let currentImportUserName = null
 
   function resetImdbImportProgress() {
     if (imdbImportProgress) imdbImportProgress.style.display = 'none'
     if (imdbImportStatus) imdbImportStatus.textContent = 'Importing...'
+    if (imdbImportDetail) imdbImportDetail.textContent = ''
     if (imdbImportBar) {
       imdbImportBar.style.width = '0%'
       imdbImportBar.classList.remove('error')
+    }
+    if (imdbImportCancelBtn) {
+      imdbImportCancelBtn.disabled = false
+      imdbImportCancelBtn.style.display = ''
     }
   }
 
   // Ensure stale UI state does not survive navigation/reconnect.
   resetImdbImportProgress()
+
+  if (imdbImportCancelBtn) {
+    imdbImportCancelBtn.addEventListener('click', async () => {
+      if (!isImdbImportActive) return
+      imdbImportCancelBtn.disabled = true
+      if (imdbImportStatus) imdbImportStatus.textContent = 'Cancelling...'
+      try {
+        const apiBase = document.body.dataset.basePath || ''
+        await fetch(`${apiBase}/api/imdb-import-cancel`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            roomCode: currentImportRoomCode,
+            userName: currentImportUserName,
+          }),
+        })
+      } catch (_) {
+        // ignore network errors — server will handle cleanup
+      }
+    })
+  }
 
   api.addEventListener('message', e => {
     const data = e.data
@@ -6478,7 +6508,7 @@ const main = async () => {
     if (data.type === 'imdbImportProgress') {
       const { status, total, processed, imported, skipped } = data.payload
 
-      if (!['started', 'processing', 'completed'].includes(status)) {
+      if (!['started', 'processing', 'completed', 'cancelled'].includes(status)) {
         return
       }
 
@@ -6487,25 +6517,35 @@ const main = async () => {
         if (imdbImportProgress) imdbImportProgress.style.display = 'block'
         if (imdbImportStatus)
           imdbImportStatus.textContent = `Starting import of ${total} movies...`
+        if (imdbImportDetail) imdbImportDetail.textContent = ''
         if (imdbImportBar) {
           imdbImportBar.style.width = '5%'
           imdbImportBar.classList.remove('error')
+        }
+        if (imdbImportCancelBtn) {
+          imdbImportCancelBtn.disabled = false
+          imdbImportCancelBtn.style.display = ''
         }
       } else if (status === 'processing') {
         isImdbImportActive = true
         if (imdbImportProgress) imdbImportProgress.style.display = 'block'
         const pct = total > 0 ? Math.round((processed / total) * 100) : 0
         if (imdbImportStatus)
-          imdbImportStatus.textContent = `Imported ${imported} out of ${total} movies (${processed}/${total} processed, ${skipped} skipped)`
+          imdbImportStatus.textContent = `Importing movie ${processed} of ${total}...`
+        if (imdbImportDetail)
+          imdbImportDetail.textContent = `${imported} added · ${skipped} skipped`
         if (imdbImportBar) imdbImportBar.style.width = `${pct}%`
       } else if (status === 'completed') {
         if (!isImdbImportActive) return
 
+        isImdbImportActive = false
+        if (imdbImportCancelBtn) imdbImportCancelBtn.style.display = 'none'
         if (imdbImportStatus)
           imdbImportStatus.textContent = `Done! ${imported} imported, ${skipped} skipped.`
+        if (imdbImportDetail) imdbImportDetail.textContent = ''
         if (imdbImportBar) imdbImportBar.style.width = '100%'
         showNotification(
-          `IMDb sync complete: ${imported} movies added to Seen list.`
+          `IMDb import complete: ${imported} movies added to Seen list.`
         )
 
         // Re-enable button
@@ -6518,7 +6558,24 @@ const main = async () => {
 
         // Hide progress after delay
         setTimeout(() => {
-          isImdbImportActive = false
+          resetImdbImportProgress()
+        }, 5000)
+      } else if (status === 'cancelled') {
+        isImdbImportActive = false
+        if (imdbImportCancelBtn) imdbImportCancelBtn.style.display = 'none'
+        if (imdbImportStatus)
+          imdbImportStatus.textContent = `Import cancelled. ${imported} movies were imported.`
+        if (imdbImportDetail) imdbImportDetail.textContent = ''
+        if (imdbImportBar) imdbImportBar.classList.add('error')
+
+        const imdbCsvUploadBtn = document.getElementById('imdb-csv-upload-btn')
+        if (imdbCsvUploadBtn) imdbCsvUploadBtn.disabled = false
+
+        if (typeof window.refreshImdbImportHistory === 'function') {
+          window.refreshImdbImportHistory()
+        }
+
+        setTimeout(() => {
           resetImdbImportProgress()
         }, 5000)
       }
@@ -7488,6 +7545,8 @@ const main = async () => {
         return
       }
 
+      currentImportRoomCode = roomCode
+      currentImportUserName = userName
       showImdbProgress('Reading file...')
       imdbCsvUploadBtn.disabled = true
 
@@ -7522,6 +7581,7 @@ const main = async () => {
           if (imdbImportStatus)
             imdbImportStatus.textContent = 'No movies found in the CSV file.'
           if (imdbImportBar) imdbImportBar.style.width = '100%'
+          if (imdbImportCancelBtn) imdbImportCancelBtn.style.display = 'none'
           imdbCsvUploadBtn.disabled = false
           loadImdbImportHistory()
           setTimeout(() => {
@@ -7530,19 +7590,14 @@ const main = async () => {
         } else if (result.status === 'started') {
           // Background processing started - progress updates will come via WebSocket
           if (imdbImportStatus)
-            imdbImportStatus.textContent = `Processing ${result.total} movies... (updates via WebSocket)`
-          if (imdbImportBar) imdbImportBar.style.width = '25%'
+            imdbImportStatus.textContent = `Importing movie 0 of ${result.total}...`
+          if (imdbImportBar) imdbImportBar.style.width = '5%'
 
-          // Set a fallback timeout - if no WebSocket updates after 30s, show a note
+          // Fallback: if no WebSocket progress after 30s, re-enable the button
           setTimeout(() => {
-            const currentStatus = imdbImportStatus?.textContent || ''
-            if (
-              currentStatus.includes('Processing') &&
-              currentStatus.includes('WebSocket')
-            ) {
+            if (isImdbImportActive && imdbImportStatus?.textContent?.includes('Importing movie 0')) {
               if (imdbImportStatus)
                 imdbImportStatus.textContent = `Processing ${result.total} movies... (check Seen list, refresh if needed)`
-              // Re-enable button so user isn't stuck
               imdbCsvUploadBtn.disabled = false
             }
           }, 30000)

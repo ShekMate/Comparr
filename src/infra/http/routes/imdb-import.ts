@@ -9,6 +9,7 @@ import {
   recordImdbImportHistoryStart,
   finalizeImdbImportHistory,
   getImdbImportHistory,
+  cancelImdbImport,
 } from '../../../features/session/session.ts'
 import { parseImdbCsv } from '../../../features/session/imdb-import.ts'
 
@@ -170,6 +171,31 @@ export async function handleImdbImportRoutes(
         }),
         { status: 500, headers: makeHeaders(req, 'application/json') }
       )
+    }
+  }
+
+  if (path === '/api/imdb-import-cancel' && req.method === 'POST') {
+    try {
+      const body = await req.text()
+      const { roomCode, userName } = JSON.parse(body)
+      const validationError = validateRoomCodeAndUserName(roomCode, userName)
+      if (validationError) {
+        return new Response(JSON.stringify({ error: validationError }), {
+          status: 400,
+          headers: makeHeaders(req, 'application/json'),
+        })
+      }
+      cancelImdbImport(roomCode, userName)
+      return new Response(JSON.stringify({ status: 'cancel_requested' }), {
+        status: 200,
+        headers: makeHeaders(req, 'application/json'),
+      })
+    } catch (err) {
+      log.error(`IMDb import cancel failed: ${err?.message || err}`)
+      return new Response(JSON.stringify({ error: 'Failed to cancel import' }), {
+        status: 500,
+        headers: makeHeaders(req, 'application/json'),
+      })
     }
   }
 
