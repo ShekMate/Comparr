@@ -6187,6 +6187,27 @@ const main = async () => {
     const ratingHtml = buildRatingHtml(movie, basePath)
     const ratingSection = ratingHtml ? `<div class="watch-card-ratings">${ratingHtml}</div>` : ''
 
+    const watchProviders = getWatchProviders(movie)
+    const providerPillsHtml = watchProviders
+      .map(provider => {
+        const logoUrl = provider.logo_path
+          ? provider.logo_path.startsWith('/assets/')
+            ? `${basePath}${provider.logo_path}`
+            : `https://image.tmdb.org/t/p/w92${provider.logo_path}`
+          : null
+        return `<span class="provider-pill">
+          ${logoUrl ? `<img src="${logoUrl}" alt="${provider.name}" class="provider-pill-logo">` : ''}
+          <span class="provider-pill-name">${provider.name}</span>
+        </span>`
+      })
+      .join('')
+    const whereToWatchHtml = watchProviders.length
+      ? `<div class="where-to-watch">
+          <div class="where-to-watch-title">Where to Watch</div>
+          <div class="provider-pill-list">${providerPillsHtml}</div>
+        </div>`
+      : ''
+
     const posterUrl = (() => {
       const p = normalizePoster(movie.art || '')
       return p ? (p.startsWith('http') ? p : basePath + p) : ''
@@ -6214,12 +6235,19 @@ const main = async () => {
           ${movie.summary ? `<p class="watch-card-summary">${movie.summary}</p>` : ''}
           ${metadataBadgesHTML}
           ${ratingSection}
-          <div class="list-actions" style="margin-top:0.75rem;">
-            <button class="list-action-btn rec-action-watch" title="Add to Watch list">
-              <i class="fas fa-thumbs-up"></i> Watch
+          ${whereToWatchHtml}
+          <div class="list-actions">
+            <button class="list-action-btn move-to-seen rec-action-seen" data-guid="${movie.guid}" title="Mark as Seen">
+              <i class="fas fa-eye"></i>
+              <span class="list-action-label">Seen</span>
             </button>
-            <button class="list-action-btn rec-action-pass" title="Pass">
-              <i class="fas fa-thumbs-down"></i> Pass
+            <button class="list-action-btn move-to-watch rec-action-watch" data-guid="${movie.guid}" title="Add to Watch list">
+              <i class="fas fa-thumbs-up"></i>
+              <span class="list-action-label">Watch</span>
+            </button>
+            <button class="list-action-btn move-to-pass rec-action-pass" data-guid="${movie.guid}" title="Pass">
+              <i class="fas fa-thumbs-down"></i>
+              <span class="list-action-label">Pass</span>
             </button>
           </div>
         </div>
@@ -6241,6 +6269,12 @@ const main = async () => {
       e.stopPropagation()
       await api.respond({ guid: movie.guid, wantsToWatch: false })
       await appendRatedRow({ basePath, likesList, dislikesList, seenList }, movie, false)
+      card.remove()
+    })
+
+    card.querySelector('.rec-action-seen').addEventListener('click', async e => {
+      e.stopPropagation()
+      await appendRatedRow({ basePath, likesList, dislikesList, seenList }, movie, null)
       card.remove()
     })
 
