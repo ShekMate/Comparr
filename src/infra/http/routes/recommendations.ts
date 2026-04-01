@@ -18,6 +18,37 @@ const TMDB_GENRE_MAP: Record<number, string> = {
   10770: 'TV Movie', 53: 'Thriller', 10752: 'War', 37: 'Western',
 }
 
+function extractUsContentRating(releaseDates: any): string | null {
+  const us = releaseDates?.results?.find((r: any) => r?.iso_3166_1 === 'US')
+  if (!us?.release_dates) return null
+  const preferredTypes = new Set([3, 2, 1])
+  for (const rd of us.release_dates) {
+    const cert = String(rd?.certification || '').trim()
+    if (cert && preferredTypes.has(Number(rd?.type))) return cert
+  }
+  const anyWithCert = us.release_dates.find((rd: any) => String(rd?.certification || '').trim())
+  return anyWithCert ? String(anyWithCert.certification).trim() : null
+}
+
+function extractWatchProviders(providers: any): any[] {
+  const us = providers?.results?.US
+  if (!us) return []
+  const seen = new Set<number>()
+  const result: any[] = []
+  for (const p of [...(us.flatrate || []), ...(us.free || [])]) {
+    if (!seen.has(p.provider_id)) {
+      seen.add(p.provider_id)
+      result.push({
+        id: p.provider_id,
+        name: p.provider_name,
+        logo_path: p.logo_path || null,
+        type: us.flatrate?.some((f: any) => f.provider_id === p.provider_id) ? 'subscription' : 'free',
+      })
+    }
+  }
+  return result
+}
+
 export async function handleRecommendationsRoute(
   req: CompatRequest,
   path: string
@@ -50,7 +81,7 @@ export async function handleRecommendationsRoute(
       page: '1',
     }).then(r => r.json())
 
-    const movies = (data?.results ?? []).slice(0, 20).map((m: any) => ({
+    const baseMovies = (data?.results ?? []).slice(0, 20).map((m: any) => ({
       tmdbId: m.id,
       guid: `tmdb://${m.id}`,
       title: m.title || '',
@@ -69,6 +100,26 @@ export async function handleRecommendationsRoute(
       popularity: m.popularity || null,
       type: 'movie',
     }))
+
+    // Enrich each movie with details (runtime, contentRating, watchProviders)
+    const movies = await Promise.all(
+      baseMovies.map(async (m: any) => {
+        try {
+          const details = await tmdbFetch(`/movie/${m.tmdbId}`, apiKey, {
+            append_to_response: 'release_dates,watch/providers',
+          }).then(r => r.json())
+
+          return {
+            ...m,
+            runtime: details?.runtime ?? null,
+            contentRating: extractUsContentRating(details?.release_dates),
+            watchProviders: extractWatchProviders(details?.['watch/providers']),
+          }
+        } catch {
+          return m
+        }
+      })
+    )
 
     return new Response(JSON.stringify({ movies }), {
       status: 200,
