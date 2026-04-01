@@ -2986,11 +2986,19 @@ body:not(.is-logged-in) .card-stack:empty::after {
   cursor: pointer;
   transition: all 0.2s ease;
   display: inline-flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: flex-start;
+  gap: 0.3rem;
   min-width: 36px;
   min-height: 36px;
   margin: 0;
+}
+
+.list-action-label {
+  font-weight: 700;
+  font-size: 0.875rem;
+  line-height: 1;
+  color: inherit;
 }
 
 .list-action-btn:hover {

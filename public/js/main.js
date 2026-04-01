@@ -4651,11 +4651,13 @@ async function appendRatedRow(
               movie.guid
             }" title="Mark as Seen">
               <i class="fas fa-eye"></i>
+              <span class="list-action-label">Seen</span>
             </button>
             <button class="list-action-btn move-to-pass" data-guid="${
               movie.guid
             }" title="Move to Pass">
               <i class="fas fa-thumbs-down"></i>
+              <span class="list-action-label">Pass</span>
             </button>
           </div>
         </div>
