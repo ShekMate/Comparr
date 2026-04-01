@@ -6543,23 +6543,12 @@ const main = async () => {
           }),
         })
       } catch (_) {
-        // best-effort; UI cleanup still proceeds
+        // best-effort; reload proceeds regardless
       }
 
-      // Remove those rows from the Seen list DOM
-      const seenList = document.querySelector('.seen-list')
-      if (seenList) {
-        for (const guid of guidsToRemove) {
-          const row = seenList.querySelector(`[data-guid="${CSS.escape(guid)}"]`)
-          if (row) row.remove()
-        }
-      }
-
+      // Reload so the Seen list reflects the rolled-back state
       sessionImportedGuids = []
-      if (typeof window.refreshImdbImportHistory === 'function') {
-        window.refreshImdbImportHistory()
-      }
-      setTimeout(() => resetImdbImportProgress(), 300)
+      setTimeout(() => window.location.reload(), 500)
     })
   }
 
@@ -6603,25 +6592,19 @@ const main = async () => {
         if (!isImdbImportActive) return
 
         isImdbImportActive = false
-        sessionImportedGuids = []
         if (imdbImportCancelBtn) imdbImportCancelBtn.style.display = 'none'
         if (imdbImportCancelActions) imdbImportCancelActions.style.display = 'none'
         if (imdbImportStatus)
-          imdbImportStatus.textContent = `Done! ${imported} imported, ${skipped} skipped.`
+          imdbImportStatus.textContent = `Done! ${imported} imported, ${skipped} skipped. Refreshing...`
         if (imdbImportDetail) imdbImportDetail.textContent = ''
         if (imdbImportBar) imdbImportBar.style.width = '100%'
-        showNotification(
-          `IMDb import complete: ${imported} movies added to Seen list.`
-        )
 
         const imdbCsvUploadBtn = document.getElementById('imdb-csv-upload-btn')
         if (imdbCsvUploadBtn) imdbCsvUploadBtn.disabled = false
 
-        if (typeof window.refreshImdbImportHistory === 'function') {
-          window.refreshImdbImportHistory()
-        }
-
-        setTimeout(() => resetImdbImportProgress(), 5000)
+        // Reload page so the full Seen list renders in one pass rather than
+        // inserting hundreds/thousands of individual DOM nodes in real-time.
+        setTimeout(() => window.location.reload(), 2500)
       } else if (status === 'cancelled') {
         isImdbImportActive = false
         if (imdbImportCancelBtn) imdbImportCancelBtn.style.display = 'none'
@@ -6652,23 +6635,13 @@ const main = async () => {
       }
     }
 
-    // Handle individual movie imports (add to Seen list as they arrive)
+    // Handle individual movie imports — track GUID for potential rollback,
+    // but do NOT insert into the DOM here. Rapid-fire DOM mutations for
+    // hundreds/thousands of movies hangs the browser renderer. The page
+    // reloads when the import completes so the Seen list renders in one pass.
     if (data.type === 'imdbImportMovie') {
       const { movie } = data.payload
-      const seenList = document.querySelector('.seen-list')
-      const basePath = document.body.dataset.basePath || ''
-      const likesList = document.querySelector('.likes-list')
-      const dislikesList = document.querySelector('.dislikes-list')
-
-      if (movie && seenList) {
-        appendRatedRow(
-          { basePath, likesList, dislikesList, seenList },
-          movie,
-          null
-        )
-        // Track for potential rollback
-        if (movie.guid) sessionImportedGuids.push(movie.guid)
-      }
+      if (movie?.guid) sessionImportedGuids.push(movie.guid)
     }
   })
 
