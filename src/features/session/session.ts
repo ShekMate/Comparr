@@ -3715,31 +3715,21 @@ export async function processImdbImportBackground(
         continue
       }
 
-      // 2. Full enrichment using existing pipeline (this respects rate limits internally via caching)
-      const enriched = await enrich({
-        title: tmdbMovie.title,
-        year: tmdbMovie.release_date
-          ? new Date(tmdbMovie.release_date).getFullYear()
-          : null,
-        imdbId: row.imdbId,
-      })
-
-      // 3. Build the full movie object
-      const posterPath = enriched?.tmdbPosterPath || tmdbMovie.poster_path
+      // 2. Build movie object from /find/ data only — no enrich() call.
+      // enrich() makes 2-3 extra unrate-limited TMDb calls per movie which
+      // starves the swipe screen's discovery requests. Basic data from /find/
+      // is sufficient to mark movies as seen; enrichment happens lazily later.
+      const posterPath = tmdbMovie.poster_path
       const artUrl = posterPath ? getBestPosterUrl(posterPath, 'tmdb') : ''
 
       if (posterPath) {
         prefetchPoster(posterPath, 'tmdb')
       }
 
-      // Build rating string like the discovery flow does
-      let ratingStr = ''
-      const ratingParts: string[] = []
-      if (enriched?.rating_imdb)
-        ratingParts.push(`IMDb: ${enriched.rating_imdb}`)
-      if (enriched?.rating_tmdb)
-        ratingParts.push(`TMDb: ${enriched.rating_tmdb}`)
-      if (ratingParts.length > 0) ratingStr = ratingParts.join(' | ')
+      const tmdbRating = tmdbMovie.vote_average
+        ? tmdbMovie.vote_average.toFixed(1)
+        : null
+      const ratingStr = tmdbRating ? `TMDb: ${tmdbRating}` : ''
 
       const movie: ImportedMovie = {
         guid,
@@ -3747,37 +3737,34 @@ export async function processImdbImportBackground(
         year: tmdbMovie.release_date
           ? String(new Date(tmdbMovie.release_date).getFullYear())
           : '',
-        summary: enriched?.plot || tmdbMovie.overview || '',
+        summary: tmdbMovie.overview || '',
         art: artUrl,
         rating: ratingStr,
         key: `/tmdb/${tmdbId}`,
         type: 'movie',
         tmdbId,
         imdbId: row.imdbId,
-        genres: enriched?.genres || [],
-        runtime: enriched?.runtime ?? null,
-        contentRating: enriched?.contentRating ?? null,
-        streamingServices: enriched?.streamingServices ?? {
-          subscription: [],
-          free: [],
-        },
-        watchProviders: enriched?.watchProviders ?? [],
-        streamingLink: enriched?.streamingLink ?? null,
+        genres: [],
+        runtime: null,
+        contentRating: null,
+        streamingServices: { subscription: [], free: [] },
+        watchProviders: [],
+        streamingLink: null,
       }
 
       // Also include fields needed by frontend filtering
       const movieWithExtras = {
         ...movie,
         genre_ids: tmdbMovie.genre_ids || [],
-        vote_count: enriched?.voteCount || tmdbMovie.vote_count || 0,
+        vote_count: tmdbMovie.vote_count || 0,
         original_language: tmdbMovie.original_language || null,
-        director: enriched?.director || null,
-        cast: enriched?.cast || [],
-        castMembers: enriched?.castMembers || [],
-        writers: enriched?.writers || [],
-        rating_imdb: enriched?.rating_imdb || null,
-        rating_tmdb: enriched?.rating_tmdb || null,
-        rating_comparr: enriched?.rating_comparr || null,
+        director: null,
+        cast: [],
+        castMembers: [],
+        writers: [],
+        rating_imdb: null,
+        rating_tmdb: tmdbRating,
+        rating_comparr: null,
       }
 
       // 4. Add response to user
@@ -3843,6 +3830,10 @@ export async function processImdbImportBackground(
         payload: { status: 'processing', total, processed, imported, skipped },
       })
     }
+
+    // Yield to the event loop so WebSocket handlers and other requests
+    // (e.g. swipe screen discovery) are not starved during long imports.
+    await new Promise(resolve => setTimeout(resolve, 0))
   }
 
   // Final save
