@@ -7493,6 +7493,9 @@ const main = async () => {
             }
             updateLoadMore()
             applyCurrentSeenListSort()
+            hydrateSeenRatingsRetroactively().catch(err => {
+              console.warn('Retro Seen ratings hydration failed:', err)
+            })
           }
 
           if (loadMoreBtn) loadMoreBtn.addEventListener('click', renderPage)
@@ -7565,9 +7568,9 @@ const main = async () => {
     )
   }
 
-  hydrateSeenRatingsRetroactively().catch(err => {
-    console.warn('Retro Seen ratings hydration failed:', err)
-  })
+  // hydrateSeenRatingsRetroactively is now called inside the deferred Seen
+  // renderer after each page of cards is appended, since Seen cards are no
+  // longer present in the DOM at this point in the initial load.
 
   // =========================================================
   // IMDb Import Handler (CSV upload + history)
