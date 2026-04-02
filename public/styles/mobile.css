@@ -36,31 +36,16 @@
 
 @media (max-width: 600px) {
   .card-stack:empty::before {
-    font-size: 2.5rem;
-    left: 50%;
-    top: calc(50% - 2rem);
-    transform: translateX(-50%) rotate(0deg);
-    animation: spin-mobile 1s linear infinite;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-width: 3px;
   }
 
   .card-stack:empty::after {
     font-size: 0.95rem;
-    left: 50%;
-    top: calc(50% + 1.5rem);
-    max-width: none;
-    width: 90vw;
-    padding: 0 0.5rem;
-    text-align: center;
+    max-width: 90vw;
     white-space: normal;
-  }
-
-  @keyframes spin-mobile {
-    from {
-      transform: translateX(-50%) rotate(0deg);
-    }
-    to {
-      transform: translateX(-50%) rotate(360deg);
-    }
+    text-align: center;
   }
 }
 

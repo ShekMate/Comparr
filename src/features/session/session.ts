@@ -1081,11 +1081,6 @@ class Session {
   private tmdbFormatInFlight: Map<number, Promise<any>> = new Map()
   private enrichmentCache: Map<string, Promise<any | undefined>> = new Map()
 
-  private discoverQueues: Map<string, DiscoverQueue> = new Map()
-  private tmdbFormatCache: Map<number, any> = new Map()
-  private tmdbFormatInFlight: Map<number, Promise<any>> = new Map()
-  private enrichmentCache: Map<string, Promise<any | undefined>> = new Map()
-
   constructor(roomCode: string) {
     this.roomCode = roomCode
 
@@ -1361,6 +1356,8 @@ class Session {
     saveState(persistedState).catch(err =>
       log.warn(`Failed to save state on add(): ${err}`)
     )
+
+    this.broadcastRoomMembers()
   }
 
   remove = (user: User, ws: WebSocket) => {
@@ -1371,6 +1368,20 @@ class Session {
     const activeUsers = [...this.users.values()].filter(ws => !ws?.isClosed)
     if (activeUsers.length === 0) {
       this.destroy()
+    } else {
+      this.broadcastRoomMembers()
+    }
+  }
+
+  broadcastRoomMembers = () => {
+    const members = [...this.users.keys()].map(u => u.name)
+    const msg = JSON.stringify({ type: 'roomMembers', payload: { members } })
+    for (const ws of this.users.values()) {
+      try {
+        if (ws && !ws.isClosed) ws.send(msg)
+      } catch {
+        // ignore send errors during broadcast
+      }
     }
   }
 
@@ -2592,7 +2603,7 @@ class Session {
                 prefetchPoster(fallback, 'tmdb')
                 return getBestPosterUrl(fallback, 'tmdb')
               }
-              return undefined
+              return ''
             }
             if (u) {
               prefetchPoster(u, 'tmdb')
@@ -3338,6 +3349,7 @@ export const handleLogin = (
                 return true
               }),
               rated: ratedItems,
+              members: [...session.users.keys()].map(u => u.name),
             },
           }
           log.debug(
@@ -3491,6 +3503,58 @@ export interface ImdbImportJob {
   importHistoryId?: string
 }
 
+// Track active import cancellation requests keyed by "roomCode:userName"
+const cancelledImports = new Set<string>()
+
+export function cancelImdbImport(roomCode: string, userName: string): void {
+  cancelledImports.add(`${roomCode}:${userName}`)
+}
+
+/**
+ * Remove a set of movies (by guid) from a user's response list and the movie index.
+ * Used to roll back a cancelled import.
+ */
+export async function rollbackImdbImport(
+  roomCode: string,
+  userName: string,
+  guids: string[]
+): Promise<{ removed: number }> {
+  if (!guids.length) return { removed: 0 }
+
+  const guidSet = new Set(guids)
+  const room = persistedState.rooms[roomCode]
+  if (!room) return { removed: 0 }
+
+  const userEntry = room.users.find(u => u.name === userName)
+  if (!userEntry) return { removed: 0 }
+
+  const before = userEntry.responses.length
+  userEntry.responses = userEntry.responses.filter(r => !guidSet.has(r.guid))
+  const removed = before - userEntry.responses.length
+
+  // Remove from movie index only if no other user in any room references the guid
+  for (const guid of guidSet) {
+    let stillReferenced = false
+    outer: for (const r of Object.values(persistedState.rooms)) {
+      for (const u of r.users) {
+        if (u.responses.some(resp => resp.guid === guid)) {
+          stillReferenced = true
+          break outer
+        }
+      }
+    }
+    if (!stillReferenced) {
+      delete persistedState.movieIndex[guid]
+    }
+  }
+
+  await saveState(persistedState).catch(err =>
+    log.warn(`Failed to save state after import rollback: ${err}`)
+  )
+
+  return { removed }
+}
+
 /**
  * Find the WebSocket for a user in a room.
  */
@@ -3574,8 +3638,31 @@ export async function processImdbImportBackground(
   let skipped = 0
 
   const TMDB_KEY = getTmdbApiKey()
+  const cancelKey = `${roomCode}:${userName}`
 
   for (const row of imdbRows) {
+    // Check for cancellation before processing each movie
+    if (cancelledImports.has(cancelKey)) {
+      cancelledImports.delete(cancelKey)
+      log.info(
+        `[IMDb Import] Cancelled for ${userName} in ${roomCode} after ${processed} movies`
+      )
+      await saveState(persistedState).catch(err =>
+        log.warn(`Failed to save state on cancel: ${err}`)
+      )
+      if (importHistoryId) {
+        finalizeImdbImportHistory(roomCode, userName, importHistoryId, 'failed')
+        await saveState(persistedState).catch(err =>
+          log.warn(`Failed to save import history on cancel: ${err}`)
+        )
+      }
+      sendToUser(roomCode, userName, {
+        type: 'imdbImportProgress',
+        payload: { status: 'cancelled', total, processed, imported, skipped },
+      })
+      return
+    }
+
     processed++
 
     // Rate limit: wait for token before making API calls
@@ -3628,31 +3715,21 @@ export async function processImdbImportBackground(
         continue
       }
 
-      // 2. Full enrichment using existing pipeline (this respects rate limits internally via caching)
-      const enriched = await enrich({
-        title: tmdbMovie.title,
-        year: tmdbMovie.release_date
-          ? new Date(tmdbMovie.release_date).getFullYear()
-          : null,
-        imdbId: row.imdbId,
-      })
-
-      // 3. Build the full movie object
-      const posterPath = enriched?.tmdbPosterPath || tmdbMovie.poster_path
+      // 2. Build movie object from /find/ data only — no enrich() call.
+      // enrich() makes 2-3 extra unrate-limited TMDb calls per movie which
+      // starves the swipe screen's discovery requests. Basic data from /find/
+      // is sufficient to mark movies as seen; enrichment happens lazily later.
+      const posterPath = tmdbMovie.poster_path
       const artUrl = posterPath ? getBestPosterUrl(posterPath, 'tmdb') : ''
 
       if (posterPath) {
         prefetchPoster(posterPath, 'tmdb')
       }
 
-      // Build rating string like the discovery flow does
-      let ratingStr = ''
-      const ratingParts: string[] = []
-      if (enriched?.rating_imdb)
-        ratingParts.push(`IMDb: ${enriched.rating_imdb}`)
-      if (enriched?.rating_tmdb)
-        ratingParts.push(`TMDb: ${enriched.rating_tmdb}`)
-      if (ratingParts.length > 0) ratingStr = ratingParts.join(' | ')
+      const tmdbRating = tmdbMovie.vote_average
+        ? tmdbMovie.vote_average.toFixed(1)
+        : null
+      const ratingStr = tmdbRating ? `TMDb: ${tmdbRating}` : ''
 
       const movie: ImportedMovie = {
         guid,
@@ -3660,37 +3737,34 @@ export async function processImdbImportBackground(
         year: tmdbMovie.release_date
           ? String(new Date(tmdbMovie.release_date).getFullYear())
           : '',
-        summary: enriched?.plot || tmdbMovie.overview || '',
+        summary: tmdbMovie.overview || '',
         art: artUrl,
         rating: ratingStr,
         key: `/tmdb/${tmdbId}`,
         type: 'movie',
         tmdbId,
         imdbId: row.imdbId,
-        genres: enriched?.genres || [],
-        runtime: enriched?.runtime ?? null,
-        contentRating: enriched?.contentRating ?? null,
-        streamingServices: enriched?.streamingServices ?? {
-          subscription: [],
-          free: [],
-        },
-        watchProviders: enriched?.watchProviders ?? [],
-        streamingLink: enriched?.streamingLink ?? null,
+        genres: [],
+        runtime: null,
+        contentRating: null,
+        streamingServices: { subscription: [], free: [] },
+        watchProviders: [],
+        streamingLink: null,
       }
 
       // Also include fields needed by frontend filtering
       const movieWithExtras = {
         ...movie,
         genre_ids: tmdbMovie.genre_ids || [],
-        vote_count: enriched?.voteCount || tmdbMovie.vote_count || 0,
+        vote_count: tmdbMovie.vote_count || 0,
         original_language: tmdbMovie.original_language || null,
-        director: enriched?.director || null,
-        cast: enriched?.cast || [],
-        castMembers: enriched?.castMembers || [],
-        writers: enriched?.writers || [],
-        rating_imdb: enriched?.rating_imdb || null,
-        rating_tmdb: enriched?.rating_tmdb || null,
-        rating_comparr: enriched?.rating_comparr || null,
+        director: null,
+        cast: [],
+        castMembers: [],
+        writers: [],
+        rating_imdb: null,
+        rating_tmdb: tmdbRating,
+        rating_comparr: null,
       }
 
       // 4. Add response to user
@@ -3756,6 +3830,10 @@ export async function processImdbImportBackground(
         payload: { status: 'processing', total, processed, imported, skipped },
       })
     }
+
+    // Yield to the event loop so WebSocket handlers and other requests
+    // (e.g. swipe screen discovery) are not starved during long imports.
+    await new Promise(resolve => setTimeout(resolve, 0))
   }
 
   // Final save

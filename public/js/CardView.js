@@ -64,13 +64,6 @@ export default class CardView {
     } = this.movieData
     node.dataset.guid = guid
 
-    console.log(
-      'DEBUG CardView art:',
-      art,
-      'starts with https:',
-      art.startsWith('https://')
-    )
-
     // Treat "/<digits>/thumb/<digits>" as a Plex-only path (not a real image file)
     const isPlexThumb = u => !!u && /^\/\d+\/thumb\/\d+/.test(u)
 
@@ -421,6 +414,7 @@ export default class CardView {
       language,
       watchProviders,
       streamingServices,
+      trailerKey,
     } = this.movieData
 
     console.log('DEBUG renderCrewInfo:', {
@@ -662,6 +656,14 @@ export default class CardView {
           .map(escapeHtml)
           .join(', ')}${hasMore ? ' & more' : ''}</div>`
       )
+    }
+
+    if (trailerKey) {
+      lines.push(`<div class="card-trailer-wrap" onclick="event.stopPropagation()">
+        <a class="card-trailer-btn" href="https://www.youtube.com/watch?v=${escapeHtml(trailerKey)}" target="_blank" rel="noopener noreferrer">
+          <i class="fab fa-youtube"></i> Watch Trailer
+        </a>
+      </div>`)
     }
 
     console.log('DEBUG lines generated:', lines.length)

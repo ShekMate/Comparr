@@ -145,7 +145,6 @@ function preloadPosterForMovie(movie) {
 
 // ===== FUNNY LOADING MESSAGES =====
 const funnyLoadingMessages = [
-  'Reticulating popcorn kernels...',
   "Checking if it's better than the book...",
   "Convincing directors to release the director's cut...",
   'Asking Michael Bay to add more explosions...',
@@ -154,6 +153,16 @@ const funnyLoadingMessages = [
   'Adjusting the tracking on the VCR...',
   'Pretending to understand avant-garde cinema...',
   'Counting plot holes...',
+  'Checking if Nicolas Cage is in this...',
+  'Adjusting brightness for that one dark scene...',
+  "Hoping the trailer didn't spoil everything...",
+  'Adjusting volume for sudden explosions...',
+  'Generating unnecessary slow motion...',
+  'Cueing emotional music swell...',
+  'Warming up the plot twist...',
+  'Setting up completely avoidable problem...',
+  'Ensuring the villain explains the plan...',
+  "Checking if it's in stock at Blockbuster...",
 ]
 
 // Get a random loading message
@@ -656,10 +665,22 @@ function initTabs() {
     } else if (tabId === 'tab-dislikes') {
       applyCurrentPassListSort()
     } else if (tabId === 'tab-seen') {
-      applyCurrentSeenListSort()
+      if (typeof window._renderDeferredSeen === 'function') {
+        window._renderDeferredSeen()
+      } else {
+        applyCurrentSeenListSort()
+      }
     } else if (tabId === 'tab-matches') {
       if (typeof window.refreshMatchesList === 'function') {
         window.refreshMatchesList()
+      }
+    } else if (tabId === 'tab-stats') {
+      if (typeof window.refreshStatsTab === 'function') {
+        window.refreshStatsTab()
+      }
+    } else if (tabId === 'tab-recommendations') {
+      if (typeof window.refreshRecommendationsTab === 'function') {
+        window.refreshRecommendationsTab()
       }
     } else {
       stopWatchListAutoRefresh()
@@ -4634,11 +4655,13 @@ async function appendRatedRow(
               movie.guid
             }" title="Mark as Seen">
               <i class="fas fa-eye"></i>
+              <span class="list-action-label">Seen</span>
             </button>
             <button class="list-action-btn move-to-pass" data-guid="${
               movie.guid
             }" title="Move to Pass">
               <i class="fas fa-thumbs-down"></i>
+              <span class="list-action-label">Pass</span>
             </button>
           </div>
         </div>
@@ -6097,7 +6120,328 @@ const main = async () => {
       showMatchPopup(matchData)
       shownMatchGuids.add(matchData.movie.guid)
     }
+    // Browser notification when tab is in background
+    if (
+      document.visibilityState === 'hidden' &&
+      window._comparrNotificationsGranted
+    ) {
+      const title = matchData?.movie?.title || 'a movie'
+      new Notification("It's a Match! 🎬", {
+        body: `You matched on "${title}". Open Comparr to see it.`,
+        icon: document.querySelector('link[rel="icon"]')?.href || undefined,
+      })
+    }
   })
+
+  // ===== BROWSER NOTIFICATIONS (group mode) =====
+  if (appMode === 'group' && 'Notification' in window) {
+    if (Notification.permission === 'granted') {
+      window._comparrNotificationsGranted = true
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then(permission => {
+        window._comparrNotificationsGranted = permission === 'granted'
+      })
+    }
+  }
+
+  // ===== ROOM MEMBER LIST =====
+  const roomMembersWidget = document.querySelector('.js-room-members-widget')
+  const roomMembersList = document.querySelector('.js-room-members-list')
+
+  const updateRoomMembers = members => {
+    if (!roomMembersWidget || !roomMembersList || appMode !== 'group') return
+    roomMembersList.textContent = members.join(', ')
+    roomMembersWidget.hidden = members.length === 0
+  }
+
+  // Populate from loginResponse members field
+  if (loginData.members && appMode === 'group') {
+    updateRoomMembers(loginData.members)
+  }
+
+  api.addEventListener('roomMembers', e => {
+    updateRoomMembers(e.data?.members ?? [])
+  })
+
+  // ===== RECOMMENDATIONS TAB =====
+  let recommendationsLoaded = false
+
+  const buildRecommendationCard = movie => {
+    const basePath = document.body.dataset.basePath || ''
+    const likesList = document.querySelector('.likes-list')
+    const dislikesList = document.querySelector('.dislikes-list')
+    const seenList = document.querySelector('.seen-list')
+
+    // Build the same metadata badges as the Watch list
+    const genres = movie.genres || []
+    const genreDisplay = genres.length > 0 ? genres.slice(0, 2).join(', ') : null
+    const contentRating = movie.contentRating || null
+    const runtimeMin = (() => {
+      const candidates = [Number(movie.runtime), Number(movie.runtimeMinutes)].filter(v => Number.isFinite(v) && v > 0)
+      return candidates.length && candidates[0] < 1000 ? Math.round(candidates[0]) : null
+    })()
+    const runtimeDisplay = runtimeMin ? formatRuntime(runtimeMin) : null
+
+    const metadataBadges = []
+    if (contentRating) metadataBadges.push(`<span class="metadata-badge badge-rating"><i class="fas fa-tag"></i> ${contentRating}</span>`)
+    if (genreDisplay) metadataBadges.push(`<span class="metadata-badge badge-genre"><i class="fas fa-film"></i> ${genreDisplay}</span>`)
+    if (runtimeDisplay) metadataBadges.push(`<span class="metadata-badge badge-runtime"><i class="fas fa-clock"></i> ${runtimeDisplay}</span>`)
+    const metadataBadgesHTML = metadataBadges.length > 0 ? `<div class="watch-card-metadata">${metadataBadges.join('')}</div>` : ''
+
+    const ratingHtml = buildRatingHtml(movie, basePath)
+    const ratingSection = ratingHtml ? `<div class="watch-card-ratings">${ratingHtml}</div>` : ''
+
+    const watchProviders = getWatchProviders(movie)
+    const providerPillsHtml = watchProviders
+      .map(provider => {
+        const logoUrl = provider.logo_path
+          ? provider.logo_path.startsWith('/assets/')
+            ? `${basePath}${provider.logo_path}`
+            : `https://image.tmdb.org/t/p/w92${provider.logo_path}`
+          : null
+        return `<span class="provider-pill">
+          ${logoUrl ? `<img src="${logoUrl}" alt="${provider.name}" class="provider-pill-logo">` : ''}
+          <span class="provider-pill-name">${provider.name}</span>
+        </span>`
+      })
+      .join('')
+    const whereToWatchHtml = watchProviders.length
+      ? `<div class="where-to-watch">
+          <div class="where-to-watch-title">Where to Watch</div>
+          <div class="provider-pill-list">${providerPillsHtml}</div>
+        </div>`
+      : ''
+
+    const posterUrl = (() => {
+      const p = normalizePoster(movie.art || '')
+      return p ? (p.startsWith('http') ? p : basePath + p) : ''
+    })()
+
+    const card = document.createElement('div')
+    card.className = 'watch-card'
+    card.dataset.tmdbId = String(movie.tmdbId || '')
+    card.dataset.guid = movie.guid || ''
+
+    card.innerHTML = `
+      <div class="watch-card-collapsed">
+        <div class="watch-card-header-compact">
+          <div class="watch-card-title-compact">
+            ${movie.title} <span class="watch-card-year">(${movie.year || 'N/A'})</span>
+          </div>
+          <div class="expand-icon"><i class="fas fa-chevron-down"></i></div>
+        </div>
+      </div>
+      <div class="watch-card-details">
+        <div class="watch-card-poster">
+          ${posterUrl ? `<img src="${posterUrl}" alt="${movie.title}" loading="lazy" decoding="async">` : ''}
+        </div>
+        <div class="watch-card-content">
+          ${movie.summary ? `<p class="watch-card-summary">${movie.summary}</p>` : ''}
+          ${metadataBadgesHTML}
+          ${ratingSection}
+          ${whereToWatchHtml}
+          <div class="list-actions">
+            <button class="list-action-btn move-to-seen rec-action-seen" data-guid="${movie.guid}" title="Mark as Seen">
+              <i class="fas fa-eye"></i>
+              <span class="list-action-label">Seen</span>
+            </button>
+            <button class="list-action-btn move-to-watch rec-action-watch" data-guid="${movie.guid}" title="Add to Watch list">
+              <i class="fas fa-thumbs-up"></i>
+              <span class="list-action-label">Watch</span>
+            </button>
+            <button class="list-action-btn move-to-pass rec-action-pass" data-guid="${movie.guid}" title="Pass">
+              <i class="fas fa-thumbs-down"></i>
+              <span class="list-action-label">Pass</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `
+
+    card.querySelector('.watch-card-collapsed').addEventListener('click', () => {
+      card.classList.toggle('expanded')
+    })
+
+    card.querySelector('.rec-action-watch').addEventListener('click', async e => {
+      e.stopPropagation()
+      await api.respond({ guid: movie.guid, wantsToWatch: true })
+      await appendRatedRow({ basePath, likesList, dislikesList, seenList }, movie, true)
+      card.remove()
+    })
+
+    card.querySelector('.rec-action-pass').addEventListener('click', async e => {
+      e.stopPropagation()
+      await api.respond({ guid: movie.guid, wantsToWatch: false })
+      await appendRatedRow({ basePath, likesList, dislikesList, seenList }, movie, false)
+      card.remove()
+    })
+
+    card.querySelector('.rec-action-seen').addEventListener('click', async e => {
+      e.stopPropagation()
+      await appendRatedRow({ basePath, likesList, dislikesList, seenList }, movie, null)
+      card.remove()
+    })
+
+    return card
+  }
+
+  const loadRecommendations = async () => {
+    const list = document.querySelector('.js-recommendations-list')
+    const hint = document.querySelector('.js-recommendations-hint')
+    if (!list) return
+
+    // Pick up to 3 recently watched movies to seed recommendations
+    const watchCards = Array.from(document.querySelectorAll('.likes-list .watch-card'))
+    const seedIds = watchCards
+      .slice(0, 3)
+      .map(c => c.dataset.tmdbId)
+      .filter(Boolean)
+
+    if (seedIds.length === 0) {
+      if (hint) hint.hidden = false
+      return
+    }
+    if (hint) hint.hidden = true
+
+    list.innerHTML = '<p class="stats-empty">Loading recommendations…</p>'
+
+    const seenGuids = new Set([
+      ...Array.from(document.querySelectorAll('.likes-list .watch-card')).map(c => c.dataset.guid),
+      ...Array.from(document.querySelectorAll('.dislikes-list .watch-card')).map(c => c.dataset.guid),
+      ...Array.from(document.querySelectorAll('.seen-list .watch-card')).map(c => c.dataset.guid),
+    ])
+
+    const seenTmdbIds = new Set([
+      ...Array.from(document.querySelectorAll('.likes-list .watch-card')).map(c => c.dataset.tmdbId),
+      ...Array.from(document.querySelectorAll('.dislikes-list .watch-card')).map(c => c.dataset.tmdbId),
+      ...Array.from(document.querySelectorAll('.seen-list .watch-card')).map(c => c.dataset.tmdbId),
+    ])
+
+    const allMovies = new Map()
+    await Promise.all(
+      seedIds.map(async tmdbId => {
+        try {
+          const { movies } = await api.getRecommendations(tmdbId)
+          for (const m of movies) {
+            if (!allMovies.has(m.tmdbId) && !seenGuids.has(m.guid) && !seenTmdbIds.has(String(m.tmdbId))) {
+              allMovies.set(m.tmdbId, m)
+            }
+          }
+        } catch {
+          // ignore per-seed failures
+        }
+      })
+    )
+
+    list.innerHTML = ''
+    if (allMovies.size === 0) {
+      list.innerHTML = '<p class="stats-empty">No new recommendations found. Rate more movies to improve suggestions.</p>'
+      return
+    }
+
+    for (const movie of allMovies.values()) {
+      list.appendChild(buildRecommendationCard(movie))
+    }
+    recommendationsLoaded = true
+  }
+
+  document.getElementById('recommendations-refresh-btn')?.addEventListener('click', () => {
+    recommendationsLoaded = false
+    loadRecommendations()
+  })
+
+  window.refreshRecommendationsTab = () => {
+    if (!recommendationsLoaded) loadRecommendations()
+  }
+
+  // ===== STATS TAB =====
+  const refreshStatsTab = () => {
+    const watchCards = document.querySelectorAll('.likes-list .watch-card')
+    const passCards = document.querySelectorAll('.dislikes-list .watch-card')
+    const seenCards = document.querySelectorAll('.seen-list .watch-card')
+
+    const watchCount = watchCards.length
+    const passCount = passCards.length
+    const seenCount = seenCards.length
+    const totalRated = watchCount + passCount + seenCount
+
+    const setValue = (sel, val) => {
+      const el = document.querySelector(sel)
+      if (el) el.textContent = val
+    }
+    setValue('.js-stat-total-rated', totalRated)
+    setValue('.js-stat-watch-count', watchCount)
+    setValue('.js-stat-pass-count', passCount)
+    setValue('.js-stat-seen-count', seenCount)
+
+    // Genre breakdown from Watch list
+    const genreBar = document.querySelector('.js-stats-genre-bars')
+    if (genreBar) {
+      const genreCounts = {}
+      watchCards.forEach(card => {
+        const genreText = card.querySelector('.watch-card-genres')?.textContent || ''
+        genreText.split(',').forEach(g => {
+          const genre = g.trim()
+          if (genre) genreCounts[genre] = (genreCounts[genre] || 0) + 1
+        })
+      })
+
+      const sortedGenres = Object.entries(genreCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+
+      if (sortedGenres.length === 0) {
+        genreBar.innerHTML = '<p class="stats-empty">Rate some movies to see your genre breakdown.</p>'
+      } else {
+        const max = sortedGenres[0][1]
+        genreBar.innerHTML = sortedGenres.map(([genre, count]) => `
+          <div class="stats-genre-row">
+            <span class="stats-genre-name">${genre}</span>
+            <div class="stats-genre-bar-track">
+              <div class="stats-genre-bar-fill" style="width:${Math.round((count / max) * 100)}%"></div>
+            </div>
+            <span class="stats-genre-count">${count}</span>
+          </div>
+        `).join('')
+      }
+    }
+
+    // Average ratings from Watch list
+    const avgEl = document.querySelector('.js-stats-avg-ratings')
+    if (avgEl && watchCount > 0) {
+      const imdbScores = []
+      const tmdbScores = []
+
+      watchCards.forEach(card => {
+        const html = card.innerHTML
+        const imdbMatch = html.match(/imdb\.svg[^>]*>[\s\S]*?<\/img>\s*([\d.]+)/) ||
+          html.match(/imdb[^>]*>\s*([\d.]+)/)
+        const tmdbMatch = html.match(/tmdb\.svg[^>]*>[\s\S]*?<\/img>\s*([\d.]+)/) ||
+          html.match(/tmdb[^>]*>\s*([\d.]+)/)
+        if (imdbMatch) imdbScores.push(parseFloat(imdbMatch[1]))
+        if (tmdbMatch) tmdbScores.push(parseFloat(tmdbMatch[1]))
+      })
+
+      const avg = arr =>
+        arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1) : null
+
+      const avgImdb = avg(imdbScores)
+      const avgTmdb = avg(tmdbScores)
+
+      if (!avgImdb && !avgTmdb) {
+        avgEl.innerHTML = '<p class="stats-empty">No rating data available.</p>'
+      } else {
+        avgEl.innerHTML = [
+          avgImdb ? `<div class="stats-avg-row"><span>IMDb avg</span><strong>${avgImdb}</strong></div>` : '',
+          avgTmdb ? `<div class="stats-avg-row"><span>TMDb avg</span><strong>${avgTmdb}</strong></div>` : '',
+        ].join('')
+      }
+    } else if (avgEl) {
+      avgEl.innerHTML = '<p class="stats-empty">No watch list data yet.</p>'
+    }
+  }
+
+  window.refreshStatsTab = refreshStatsTab
 
   api.addEventListener('message', e => {
     const data = e.data
@@ -6117,19 +6461,100 @@ const main = async () => {
   const imdbImportProgress = document.getElementById('imdb-import-progress')
   const imdbImportStatus = document.getElementById('imdb-import-status')
   const imdbImportBar = document.getElementById('imdb-import-bar')
+  const imdbImportDetail = document.getElementById('imdb-import-progress-detail')
+  const imdbImportCancelBtn = document.getElementById('imdb-import-cancel-btn')
+  const imdbImportCancelActions = document.getElementById('imdb-import-cancel-actions')
+  const imdbImportCancelMsg = document.getElementById('imdb-import-cancel-msg')
+  const imdbImportKeepBtn = document.getElementById('imdb-import-keep-btn')
+  const imdbImportRemoveBtn = document.getElementById('imdb-import-remove-btn')
   let isImdbImportActive = false
+  let currentImportRoomCode = null
+  let currentImportUserName = null
+  // Track GUIDs added during the current import session for optional rollback
+  let sessionImportedGuids = []
 
   function resetImdbImportProgress() {
     if (imdbImportProgress) imdbImportProgress.style.display = 'none'
     if (imdbImportStatus) imdbImportStatus.textContent = 'Importing...'
+    if (imdbImportDetail) imdbImportDetail.textContent = ''
     if (imdbImportBar) {
       imdbImportBar.style.width = '0%'
       imdbImportBar.classList.remove('error')
     }
+    if (imdbImportCancelBtn) {
+      imdbImportCancelBtn.disabled = false
+      imdbImportCancelBtn.style.display = ''
+    }
+    if (imdbImportCancelActions) imdbImportCancelActions.style.display = 'none'
+    sessionImportedGuids = []
   }
 
   // Ensure stale UI state does not survive navigation/reconnect.
   resetImdbImportProgress()
+
+  if (imdbImportCancelBtn) {
+    imdbImportCancelBtn.addEventListener('click', async () => {
+      if (!isImdbImportActive) return
+      imdbImportCancelBtn.disabled = true
+      if (imdbImportStatus) imdbImportStatus.textContent = 'Cancelling...'
+      try {
+        const apiBase = document.body.dataset.basePath || ''
+        await fetch(`${apiBase}/api/imdb-import-cancel`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            roomCode: currentImportRoomCode,
+            userName: currentImportUserName,
+          }),
+        })
+      } catch (_) {
+        // ignore network errors — server will handle cleanup
+      }
+    })
+  }
+
+  if (imdbImportKeepBtn) {
+    imdbImportKeepBtn.addEventListener('click', () => {
+      sessionImportedGuids = []
+      if (typeof window.refreshImdbImportHistory === 'function') {
+        window.refreshImdbImportHistory()
+      }
+      setTimeout(() => resetImdbImportProgress(), 300)
+    })
+  }
+
+  if (imdbImportRemoveBtn) {
+    imdbImportRemoveBtn.addEventListener('click', async () => {
+      const guidsToRemove = [...sessionImportedGuids]
+      if (!guidsToRemove.length) {
+        resetImdbImportProgress()
+        return
+      }
+      imdbImportKeepBtn.disabled = true
+      imdbImportRemoveBtn.disabled = true
+      if (imdbImportCancelMsg)
+        imdbImportCancelMsg.textContent = 'Removing imported movies...'
+
+      try {
+        const apiBase = document.body.dataset.basePath || ''
+        await fetch(`${apiBase}/api/imdb-import-rollback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            roomCode: currentImportRoomCode,
+            userName: currentImportUserName,
+            guids: guidsToRemove,
+          }),
+        })
+      } catch (_) {
+        // best-effort; reload proceeds regardless
+      }
+
+      // Reload so the Seen list reflects the rolled-back state
+      sessionImportedGuids = []
+      setTimeout(() => window.location.reload(), 500)
+    })
+  }
 
   api.addEventListener('message', e => {
     const data = e.data
@@ -6138,67 +6563,89 @@ const main = async () => {
     if (data.type === 'imdbImportProgress') {
       const { status, total, processed, imported, skipped } = data.payload
 
-      if (!['started', 'processing', 'completed'].includes(status)) {
+      if (!['started', 'processing', 'completed', 'cancelled'].includes(status)) {
         return
       }
 
       if (status === 'started') {
         isImdbImportActive = true
+        sessionImportedGuids = []
         if (imdbImportProgress) imdbImportProgress.style.display = 'block'
         if (imdbImportStatus)
           imdbImportStatus.textContent = `Starting import of ${total} movies...`
+        if (imdbImportDetail) imdbImportDetail.textContent = ''
         if (imdbImportBar) {
           imdbImportBar.style.width = '5%'
           imdbImportBar.classList.remove('error')
         }
+        if (imdbImportCancelBtn) {
+          imdbImportCancelBtn.disabled = false
+          imdbImportCancelBtn.style.display = ''
+        }
+        if (imdbImportCancelActions) imdbImportCancelActions.style.display = 'none'
       } else if (status === 'processing') {
         isImdbImportActive = true
         if (imdbImportProgress) imdbImportProgress.style.display = 'block'
         const pct = total > 0 ? Math.round((processed / total) * 100) : 0
         if (imdbImportStatus)
-          imdbImportStatus.textContent = `Imported ${imported} out of ${total} movies (${processed}/${total} processed, ${skipped} skipped)`
+          imdbImportStatus.textContent = `Importing movie ${processed} of ${total}...`
+        if (imdbImportDetail)
+          imdbImportDetail.textContent = `${imported} added · ${skipped} skipped`
         if (imdbImportBar) imdbImportBar.style.width = `${pct}%`
       } else if (status === 'completed') {
         if (!isImdbImportActive) return
 
+        isImdbImportActive = false
+        if (imdbImportCancelBtn) imdbImportCancelBtn.style.display = 'none'
+        if (imdbImportCancelActions) imdbImportCancelActions.style.display = 'none'
         if (imdbImportStatus)
-          imdbImportStatus.textContent = `Done! ${imported} imported, ${skipped} skipped.`
+          imdbImportStatus.textContent = `Done! ${imported} imported, ${skipped} skipped. Refreshing...`
+        if (imdbImportDetail) imdbImportDetail.textContent = ''
         if (imdbImportBar) imdbImportBar.style.width = '100%'
-        showNotification(
-          `IMDb sync complete: ${imported} movies added to Seen list.`
-        )
 
-        // Re-enable button
         const imdbCsvUploadBtn = document.getElementById('imdb-csv-upload-btn')
         if (imdbCsvUploadBtn) imdbCsvUploadBtn.disabled = false
 
-        if (typeof window.refreshImdbImportHistory === 'function') {
-          window.refreshImdbImportHistory()
-        }
+        // Reload page so the full Seen list renders in one pass rather than
+        // inserting hundreds/thousands of individual DOM nodes in real-time.
+        setTimeout(() => window.location.reload(), 2500)
+      } else if (status === 'cancelled') {
+        isImdbImportActive = false
+        if (imdbImportCancelBtn) imdbImportCancelBtn.style.display = 'none'
+        if (imdbImportBar) imdbImportBar.classList.add('error')
+        if (imdbImportDetail) imdbImportDetail.textContent = ''
 
-        // Hide progress after delay
-        setTimeout(() => {
-          isImdbImportActive = false
-          resetImdbImportProgress()
-        }, 5000)
+        const count = sessionImportedGuids.length
+        if (imdbImportStatus)
+          imdbImportStatus.textContent = 'Import cancelled.'
+
+        const imdbCsvUploadBtn = document.getElementById('imdb-csv-upload-btn')
+        if (imdbCsvUploadBtn) imdbCsvUploadBtn.disabled = false
+
+        // Show keep/remove choice only if movies were actually imported
+        if (count > 0 && imdbImportCancelActions && imdbImportCancelMsg) {
+          if (imdbImportKeepBtn) imdbImportKeepBtn.disabled = false
+          if (imdbImportRemoveBtn) imdbImportRemoveBtn.disabled = false
+          imdbImportCancelMsg.textContent =
+            `${count} movie${count === 1 ? ' was' : 's were'} imported before cancellation. What would you like to do?`
+          imdbImportCancelActions.style.display = 'block'
+        } else {
+          // Nothing imported — just clear
+          if (typeof window.refreshImdbImportHistory === 'function') {
+            window.refreshImdbImportHistory()
+          }
+          setTimeout(() => resetImdbImportProgress(), 4000)
+        }
       }
     }
 
-    // Handle individual movie imports (add to Seen list as they arrive)
+    // Handle individual movie imports — track GUID for potential rollback,
+    // but do NOT insert into the DOM here. Rapid-fire DOM mutations for
+    // hundreds/thousands of movies hangs the browser renderer. The page
+    // reloads when the import completes so the Seen list renders in one pass.
     if (data.type === 'imdbImportMovie') {
       const { movie } = data.payload
-      const seenList = document.querySelector('.seen-list')
-      const basePath = document.body.dataset.basePath || ''
-      const likesList = document.querySelector('.likes-list')
-      const dislikesList = document.querySelector('.dislikes-list')
-
-      if (movie && seenList) {
-        appendRatedRow(
-          { basePath, likesList, dislikesList, seenList },
-          movie,
-          null
-        )
-      }
+      if (movie?.guid) sessionImportedGuids.push(movie.guid)
     }
   })
 
@@ -6972,13 +7419,68 @@ const main = async () => {
   })
 
   if (rated && rated.length > 0) {
+    // Separate Seen items from Watch/Pass items.
+    // Watch and Pass lists are small — render immediately.
+    // Seen can have thousands of entries after an import; defer those to avoid
+    // hanging the browser renderer on initial page load.
+    const deferredSeenItems = []
+
     for (const item of rated) {
       if (item.movie) {
-        appendRatedRow(
-          { basePath, likesList, dislikesList, seenList },
-          item.movie,
-          item.wantsToWatch
-        )
+        if (item.wantsToWatch === null) {
+          deferredSeenItems.push(item)
+        } else {
+          appendRatedRow(
+            { basePath, likesList, dislikesList, seenList },
+            item.movie,
+            item.wantsToWatch
+          )
+        }
+      }
+    }
+
+    if (deferredSeenItems.length > 0) {
+      // Render Seen items in pages via a "Load more" button so the browser
+      // never has to process more than PAGE_SIZE DOM insertions at once.
+      const PAGE_SIZE = 50
+      let seenRenderIdx = 0
+
+      const loadMoreWrap = document.getElementById('seen-load-more-wrap')
+      const loadMoreBtn = document.getElementById('seen-load-more-btn')
+      const loadMoreCount = document.getElementById('seen-load-more-count')
+
+      const updateLoadMore = () => {
+        const remaining = deferredSeenItems.length - seenRenderIdx
+        if (remaining > 0 && loadMoreWrap) {
+          loadMoreWrap.hidden = false
+          if (loadMoreCount) loadMoreCount.textContent = `${remaining} remaining`
+        } else if (loadMoreWrap) {
+          loadMoreWrap.hidden = true
+        }
+      }
+
+      const renderPage = () => {
+        const end = Math.min(seenRenderIdx + PAGE_SIZE, deferredSeenItems.length)
+        for (; seenRenderIdx < end; seenRenderIdx++) {
+          const item = deferredSeenItems[seenRenderIdx]
+          appendRatedRow(
+            { basePath, likesList, dislikesList, seenList },
+            item.movie,
+            item.wantsToWatch
+          )
+        }
+        updateLoadMore()
+        applyCurrentSeenListSort()
+      }
+
+      if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', renderPage)
+      }
+
+      // Expose so the tab-switch handler can trigger the first page
+      window._renderDeferredSeen = () => {
+        if (seenRenderIdx === 0) renderPage()
+        else updateLoadMore()
       }
     }
   }
@@ -7148,6 +7650,8 @@ const main = async () => {
         return
       }
 
+      currentImportRoomCode = roomCode
+      currentImportUserName = userName
       showImdbProgress('Reading file...')
       imdbCsvUploadBtn.disabled = true
 
@@ -7182,6 +7686,7 @@ const main = async () => {
           if (imdbImportStatus)
             imdbImportStatus.textContent = 'No movies found in the CSV file.'
           if (imdbImportBar) imdbImportBar.style.width = '100%'
+          if (imdbImportCancelBtn) imdbImportCancelBtn.style.display = 'none'
           imdbCsvUploadBtn.disabled = false
           loadImdbImportHistory()
           setTimeout(() => {
@@ -7190,19 +7695,14 @@ const main = async () => {
         } else if (result.status === 'started') {
           // Background processing started - progress updates will come via WebSocket
           if (imdbImportStatus)
-            imdbImportStatus.textContent = `Processing ${result.total} movies... (updates via WebSocket)`
-          if (imdbImportBar) imdbImportBar.style.width = '25%'
+            imdbImportStatus.textContent = `Importing movie 0 of ${result.total}...`
+          if (imdbImportBar) imdbImportBar.style.width = '5%'
 
-          // Set a fallback timeout - if no WebSocket updates after 30s, show a note
+          // Fallback: if no WebSocket progress after 30s, re-enable the button
           setTimeout(() => {
-            const currentStatus = imdbImportStatus?.textContent || ''
-            if (
-              currentStatus.includes('Processing') &&
-              currentStatus.includes('WebSocket')
-            ) {
+            if (isImdbImportActive && imdbImportStatus?.textContent?.includes('Importing movie 0')) {
               if (imdbImportStatus)
                 imdbImportStatus.textContent = `Processing ${result.total} movies... (check Seen list, refresh if needed)`
-              // Re-enable button so user isn't stuck
               imdbCsvUploadBtn.disabled = false
             }
           }, 30000)
@@ -7638,10 +8138,12 @@ const main = async () => {
 
       // Create card if we have a movie
       if (nextMovie) {
-        new CardView(nextMovie, cardStackEventTarget)
-        {
+        try {
+          new CardView(nextMovie, cardStackEventTarget)
           const guidKey = normalizeGuid(nextMovie.guid) || nextMovie.guid
           if (guidKey) movieByGuid.set(guidKey, nextMovie)
+        } catch (err) {
+          console.error('❌ Error creating CardView for movie:', nextMovie?.title, err)
         }
       } else {
         console.warn('⚠️ No movies available even after refill attempt')

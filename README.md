@@ -7,7 +7,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ready-brightgreen.svg)](https://www.docker.com/)
-[![Deno](https://img.shields.io/badge/deno-1.38.5-blue.svg)](https://deno.land/)
+[![Deno](https://img.shields.io/badge/deno-2.7.4-blue.svg)](https://deno.land/)
 
 Help you and your friends decide what to watch from your Plex library with an intuitive swipe-based interface.
 
@@ -29,6 +29,7 @@ Help you and your friends decide what to watch from your Plex library with an in
 - [Configuration](#configuration)
   - [Required Variables](#required-variables)
   - [Optional Variables](#optional-variables)
+  - [Reverse Proxy Setup](#reverse-proxy-setup)
   - [Getting Your Plex Token](#getting-your-plex-token)
 - [Data Persistence](#data-persistence)
 - [Usage](#usage)
@@ -163,6 +164,58 @@ These are the only environment variables Comparr uses — they control how the c
 | `ALLOWED_ORIGINS` | Comma-separated allowed origins for Host/Origin checks | _(all)_   |
 | `MAX_BODY_SIZE`   | Max HTTP request body in bytes                         | `1048576` |
 | `FRAME_ANCESTORS` | CSP `frame-ancestors` value                            | `'none'`  |
+
+### Reverse Proxy Setup
+
+If you're putting Comparr behind a reverse proxy (to add HTTPS or serve from a subdomain), set `TRUST_PROXY=true` in your environment so the correct client IP is forwarded.
+
+> **WebSocket note:** Comparr uses WebSockets for live session updates. Your proxy config must forward the `Upgrade` header or the swipe interface will not sync in real time.
+
+**Caddy** (recommended — automatic HTTPS):
+
+```
+comparr.example.com {
+    reverse_proxy localhost:8000
+}
+```
+
+```yaml
+# docker-compose.yml addition
+environment:
+  - TRUST_PROXY=true
+  - FRAME_ANCESTORS=https://comparr.example.com
+```
+
+**Nginx:**
+
+```nginx
+server {
+    listen 80;
+    server_name comparr.example.com;
+
+    location / {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Required for WebSocket (live session sync)
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+```
+
+```yaml
+# docker-compose.yml addition
+environment:
+  - TRUST_PROXY=true
+  - FRAME_ANCESTORS=https://comparr.example.com
+```
+
+---
 
 ### Getting Your Plex Token
 

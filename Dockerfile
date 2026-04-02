@@ -1,5 +1,9 @@
 FROM denoland/deno:2.7.4
 
+LABEL org.opencontainers.image.title="Comparr" \
+      org.opencontainers.image.description="Tinder-style movie matcher for Plex" \
+      org.opencontainers.image.licenses="Apache-2.0"
+
 EXPOSE 8000
 WORKDIR /app
 USER root

@@ -1,0 +1,1339 @@
+5f04033 Initial commit - Comparr private repo
+7664be1 chore: ignore and untrack .txt reference files
+571932e fix: <what changed>
+da9fbab Merge pull request #1 from ShekMate/fix/poster-404
+6e85bbc fix: fix-plex-filter
+8024c1d Merge pull request #2 from ShekMate/fix/fix-plex-filter
+24a77bc Optimize watch list refresh concurrency
+4ea2437 Merge pull request #3 from ShekMate/codex/optimize-movie-swipe-screen-loading-speed
+f72f2e3 Create docker.yml
+1462602 Revert temporary Swipe filter tweaks
+0b33837 Merge pull request #4 from ShekMate/codex/evaluate-load-time-effects-of-movie-filters
+3ac4102 Streamline TMDb discovery and caching
+e979293 Merge pull request #5 from ShekMate/codex/optimize-movie-loading-procedure
+7dba7a3 Warm discovery cache for swipe batches
+8aedada Align discover queue promise types
+0cdc36c Document resolving session queue conflicts
+71587b6 Merge branch 'main' into codex/optimize-movie-loading-procedure
+3d2cce4 Merge pull request #6 from ShekMate/codex/optimize-movie-loading-procedure
+bb1af14 Restore matches list on Session
+ff222ef Merge branch 'main' into codex/optimize-movie-loading-procedure
+23ae286 Merge pull request #7 from ShekMate/codex/optimize-movie-loading-procedure
+6bc7691 Improve initial swipe warm-up
+537b325 Merge pull request #8 from ShekMate/codex/investigate-movie-card-loading-performance
+982a2f7 Adjust TMDb defaults for swipe filters
+11e1e37 Merge pull request #9 from ShekMate/codex/update-default-filters-for-swipe-screen
+f2afeeb Respect room-specific swipe filtering
+13e9dc1 Merge pull request #10 from ShekMate/codex/restore-logic-to-filter-rated-movies
+98ae3a6 Backfill per-user TMDb IDs when recording responses
+f7dec31 Merge branch 'main' into codex/restore-logic-to-filter-rated-movies
+7095957 Merge pull request #11 from ShekMate/codex/restore-logic-to-filter-rated-movies
+fbaff91 Handle TMDb IDs embedded in Plex-style GUIDs
+f5ea333 Merge branch 'main' into codex/restore-logic-to-filter-rated-movies
+f0c01a6 Merge pull request #12 from ShekMate/codex/restore-logic-to-filter-rated-movies
+d1019b5 Ensure watch list waits for warmed Plex cache
+0629ab5 Merge pull request #13 from ShekMate/codex/fix-watchlist-badge-display-issue
+c982135 Prevent duplicate movies in swipe stack
+f0cdd9c Merge pull request #14 from ShekMate/codex/fix-movie-repetition-on-swipe-screen
+d770b8c Remove legacy rating logo assets
+e354380 Merge pull request #15 from ShekMate/codex/delete-old-logo-files-and-update-references
+322af84 Fallback to Plex movies when TMDb is missing
+0d61640 Merge pull request #16 from ShekMate/codex/fix-loading-movies-issue-after-password-screen
+46d18c7 Lower default discover thresholds
+9096143 Merge pull request #17 from ShekMate/codex/lower-default-filter-thresholds
+6bbc8db Fix swipe buffer deduplication and exhaustion handling
+74ec830 Merge pull request #18 from ShekMate/codex/fix-movie-repetition-in-swipe-screen
+e437b50 Deduplicate watch list movies and improve sorting controls
+88a8977 Merge pull request #19 from ShekMate/codex/fix-duplicate-movies-in-watch-list
+999c338 Fix watch list sort direction button not toggling
+a6feb03 Merge pull request #20 from ShekMate/claude/github-repo-collaboration-01Ayt2QrH5KzYhvSHcrUNMZu
+cae6103 Add comprehensive professional-level testing infrastructure
+764b7b1 Fix CI workflow: Add environment variables for tests
+3567ba8 Merge pull request #21 from ShekMate/claude/testing-mhy8rl9s9vkqnzdz-011gwDUFydUGHNFZcspTXRug
+5ac8918 Fix all 7 failing frontend tests
+968f8ce Merge pull request #22 from ShekMate/claude/add-full-testing-016KVuf596w62m6nwLas8gpG
+d7a7d5b Fix swipe screen prematurely running out of movies
+0c6f995 Update vote count filter: Lower default to 25, change intervals to 25
+eb7b200 Merge pull request #23 from ShekMate/claude/fix-swipe-screen-loading-01WVMyAa7yLEcghWy1dfszm5
+d47b21d Fix IMDb sort filter causing "no more movies" error
+7220286 Remove IMDb/RT sort from filters, add IMDb rating filter
+4488392 Merge pull request #24 from ShekMate/claude/fix-imdb-sort-filter-bug-01WoeymD5kc92rYng9gyxCYz
+db55eb2 Add undo button to swipe cards for rating changes
+1d763a0 Merge pull request #25 from ShekMate/claude/resend-message-new-chat-01R2nJHn5S83HMYQgGqmNaNj
+18a205d Fix undo button to only allow undoing most recent swipe
+ab955b4 Merge pull request #27 from ShekMate/claude/resend-message-new-chat-01R2nJHn5S83HMYQgGqmNaNj
+91319c6 Add IMDb dataset integration for local ratings lookup
+78441e2 Merge pull request #28 from ShekMate/claude/source-implementation-01MzYNQSPkaFRqVSu8F1MNVD
+ff7047a Add Comparr rating score to movie cards
+2224619 Add Comparr score backfill for existing movies in watch/pass/seen lists
+23c40cf Merge pull request #29 from ShekMate/claude/add-rating-score-01HU9FF3L9ZLBNLwHZA7Uq91
+e62fa95 Add files via upload
+7ba4c63 Reduce rating spacing to fit all 4 ratings on same line
+96fd264 Merge pull request #30 from ShekMate/claude/add-rating-score-01HU9FF3L9ZLBNLwHZA7Uq91
+83c69d8 Fix missing tmdbId in enrich fallback path and add safety checks
+bf2ad33 Merge pull request #31 from ShekMate/claude/add-rating-score-01HU9FF3L9ZLBNLwHZA7Uq91
+6220dde Improve ensureComparrScore safety with better type checks and error handling
+64b97da Merge pull request #32 from ShekMate/claude/add-rating-score-01HU9FF3L9ZLBNLwHZA7Uq91
+72b4cb7 Reduce rating spacing to fit all 4 ratings on same line
+15f4edd Add files via upload
+867f6e1 Use proper Inkscape-generated Comparr logo from main branch
+9e03ff8 Merge pull request #33 from ShekMate/claude/add-rating-score-01HU9FF3L9ZLBNLwHZA7Uq91
+05d0744 Add files via upload
+8821e9d Fix movie card ratings layout to display all 4 ratings on one line
+d749689 Merge pull request #34 from ShekMate/claude/fix-movie-ratings-layout-01FwXJ3a77tASggjiZfVC1oK
+3ceef58 Enhance README with comprehensive professional documentation
+ed1f7f9 Merge pull request #35 from ShekMate/claude/review-readme-01EGGy5ioUnR8rW9J27aYA5Z
+d0be748 Clarify multi-language feature is UI-only, not entire app
+4c86719 Add missing features: personal lists, seen marking, and undo support
+1f6c5ae Merge pull request #36 from ShekMate/claude/review-readme-01EGGy5ioUnR8rW9J27aYA5Z
+1b09f74 Fix incorrect "no movies available" message on initial load
+72a1986 Merge pull request #37 from ShekMate/claude/fix-initial-message-error-01SdjgcxjMJCpvAqCYoRh7Dx
+822d51b Fix My Plex Only filter initial state mismatch
+8732aab Merge pull request #38 from ShekMate/claude/fix-my-plex-filter-018Lqyrpxg5cSuZreN2X9tHF
+d7740cb Fix "no movies found with filters" message showing on initial load
+4339daf Merge pull request #39 from ShekMate/claude/debug-initial-filter-message-01VYrf5CAqcq6G11vWHh1Ssn
+f605bcd Add funny loading messages to swipe screen
+29be333 Merge pull request #40 from ShekMate/claude/add-funny-loading-messages-01QeUahGDY4GFNhepQKM2Nc5
+31b719c Fix loading spinner display issues
+a402d04 Merge pull request #41 from ShekMate/claude/fix-loading-spinner-issues-012no6tWuL32Zj2cDzC4Ytgu
+58fde6e Fix loading spinner rotation and message display
+729f60f Merge pull request #42 from ShekMate/claude/fix-loading-spinner-issues-012no6tWuL32Zj2cDzC4Ytgu
+fcc011f Fix spinner centering and eliminate bouncing effect
+56fbe30 Merge pull request #43 from ShekMate/claude/fix-loading-spinner-issues-012no6tWuL32Zj2cDzC4Ytgu
+0e88eaf Make loading spinner centering responsive for mobile
+b9b7f3c Merge pull request #44 from ShekMate/claude/fix-loading-spinner-issues-012no6tWuL32Zj2cDzC4Ytgu
+e7413fd Fix spinner bouncing by using fixed horizontal positioning
+b326f3f Merge pull request #45 from ShekMate/claude/fix-loading-spinner-issues-012no6tWuL32Zj2cDzC4Ytgu
+5e0e5f3 Add mobile optimization for loading spinner and messages
+d8977e5 Merge pull request #46 from ShekMate/claude/fix-loading-spinner-issues-012no6tWuL32Zj2cDzC4Ytgu
+ba72fc5 Fix mobile layout by stacking spinner and message vertically
+d3f55f2 Merge pull request #47 from ShekMate/claude/fix-loading-spinner-issues-012no6tWuL32Zj2cDzC4Ytgu
+75cd3de Add files via upload
+81ac170 Fix loading spinner and message layout - prevent overlap and center properly
+c698786 Increase loading message width on mobile to reduce line wrapping
+9da396c Merge pull request #48 from ShekMate/claude/review-loading-image-layout-015TJtzWzRQA7Md1XFCgGdgw
+5ef74e0 Allow loading message to use full 90vw width on mobile
+b4feed1 Merge pull request #49 from ShekMate/claude/review-loading-image-layout-015TJtzWzRQA7Md1XFCgGdgw
+86dcd14 Fix missing IMDB ratings when Plex-only filter is enabled
+42c4c29 Merge pull request #50 from ShekMate/claude/fix-plex-filter-imdb-ratings-01BbjKTYRaiEFqC15bomkWJE
+ba421d5 Add Unraid template for easy installation
+d42e440 Rename template to comparr.xml for consistency
+b92f371 Merge pull request #51 from ShekMate/claude/docker-access-setup-012oLTN7Cuwogy5JXNGAe3zP
+8b70bdf Add comprehensive security and privacy documentation
+3d92a23 Reorganize CSS into mobile and desktop sections
+4a9619c Add backup of original CSS before reorganization
+009d714 Merge pull request #52 from ShekMate/claude/security-data-privacy-01LnEFkZv45gsgRsKyEDyHGE
+59fe2dd Clean up CSS: remove duplicates and fix critical issues
+584aef3 Add backup of CSS before cleanup
+3c383c3 Merge pull request #53 from ShekMate/claude/mobile-design-optimization-011scZk9sHic9Ypw5sJmp21w
+43c91c3 Fix tab display issue on password screen in mobile view
+0dd1aa4 Merge pull request #54 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+143fadf Fix tab display on password screen for desktop view
+f8e4783 Merge pull request #55 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+2ca7280 Apply full gradient background to desktop password screen
+e5d1a52 Merge pull request #56 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+187e143 Remove white space around password screen on desktop
+9788648 Merge pull request #57 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+d258124 Add files via upload
+41a6ba8 Fix desktop password screen to have full gradient background
+b61be35 Merge pull request #58 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+a384420 Use hardcoded gradients and more specific selectors for desktop
+b28ca01 Merge pull request #59 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+e328ab5 Wrap universal login/password styles in mobile-only media query
+5f38b8f Merge pull request #60 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+530ffa8 Add complete desktop password screen layout and styling
+e1d9bf8 Merge pull request #61 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+ac6a1fb Update CSS cache-busting version to force browser reload
+cab9e69 Simplify desktop selectors and add !important to force override
+9d88d27 Update CSS version to 20251116b for cache busting
+9bb53ea Merge pull request #62 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+2fbf431 COMPLETE REWRITE: Minimal desktop CSS that MUST work
+75c3351 Merge pull request #63 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+2a976e1 Remove inline style blocking desktop CSS from working
+f4a43b1 Merge pull request #64 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+ee724f4 TEST: Add bright colors to verify desktop CSS applies
+774d7b3 Merge pull request #65 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+a6e7779 FIX: Close unclosed mobile media query that was blocking desktop CSS
+c0d247d Merge pull request #66 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+c731826 Replace test colors with proper gradient and full styling
+dc64e55 Merge pull request #67 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+76912a6 Add desktop styling for login form and fix display mode
+18e82cd Merge pull request #68 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+b12179a TEST: Add bright colors to verify desktop login form CSS applies
+a4f8da1 Fix both forms showing simultaneously by adding display property
+9035b7a Merge pull request #69 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+4e037e6 Replace test colors with proper gradient and full styling
+5bd1300 Merge pull request #70 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+ba8bdb8 Add complete desktop styling to match mobile view
+218d9b9 Merge pull request #71 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+96d77b1 Restore compressed mobile tabbar styling and add desktop tabbar styles
+9cfac8f Merge pull request #72 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+e1dda5d Restore working CSS and add only tabbar styles
+77487b0 Merge pull request #73 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+719a432 Complete revert to clean mobile state plus minimal desktop support
+1f55eed Merge pull request #74 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+4e28252 Add files via upload
+ff9fecb Fix mobile login form layout - add display: grid !important
+8b4b58e Isolate mobile and desktop CSS - remove all base style conflicts
+c51055e Merge pull request #75 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+5b7e1ca Add files via upload
+43f3fd1 Use WORKING CSS and HTML from testing folder plus add desktop support
+8e81bdd Merge pull request #76 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+4d01baf Revert "Merge pull request #76 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt"
+d26931d Merge pull request #77 from ShekMate/claude/revert-all-11-16-changes-012dUqsAaqEfpFz7PfYdQ9tt
+52087ee Revert ALL changes from 11/16/2025 - restore to 11/15 state
+f2b5e5a Merge branch 'main' into claude/revert-everything-11-16-012dUqsAaqEfpFz7PfYdQ9tt
+7d86bd8 Merge pull request #78 from ShekMate/claude/revert-everything-11-16-012dUqsAaqEfpFz7PfYdQ9tt
+463a54b ACTUALLY restore files to 11/15 state - fix merge conflict resolution
+7583fd8 Merge pull request #79 from ShekMate/claude/fix-merge-conflict-revert-012dUqsAaqEfpFz7PfYdQ9tt
+075740b Update package.json
+4b2b8bf Remove border-radius from Troll bridge keeper image
+b54e774 Merge pull request #80 from ShekMate/claude/troll-keeper-transparency-01KVU2MVq5TDuzDyypFCFkER
+1b7121c Add Docker build support for dev branch
+f7be43a Add dev branch to test workflow triggers
+8229e6c Merge pull request #81 from ShekMate/claude/troll-keeper-transparency-01KVU2MVq5TDuzDyypFCFkER
+7834747 Update README.md
+af1cbc4 Add manual trigger option to Docker workflow
+278a6f6 Merge pull request #82 from ShekMate/claude/troll-keeper-transparency-01KVU2MVq5TDuzDyypFCFkER
+3045a09 Bump version to trigger dev workflows
+b103bb2 Merge pull request #83 from ShekMate/claude/troll-keeper-transparency-01KVU2MVq5TDuzDyypFCFkER
+26bf760 Remove conditional blocking Docker workflow
+ec4f4c7 Merge pull request #84 from ShekMate/claude/troll-keeper-transparency-01KVU2MVq5TDuzDyypFCFkER
+463bb72 Make UI elements transparent - remove colored backgrounds and borders
+4d741d8 Merge pull request #85 from ShekMate/claude/remove-ui-borders-01QZdsmERw5MiAwuX6j6JjaM
+5a87146 Remove all colors from password form elements
+9129d23 Merge pull request #86 from ShekMate/claude/remove-ui-borders-01QZdsmERw5MiAwuX6j6JjaM
+5049bcc Restore enhanced password input and submit button styling
+cf164aa Merge branch 'dev' into claude/style-password-submit-01J8w6Zr2joh7bJY9rTh81AE
+502a710 Merge pull request #87 from ShekMate/claude/style-password-submit-01J8w6Zr2joh7bJY9rTh81AE
+966759e Add visible blue border to password input inactive state
+66ec147 Merge pull request #88 from ShekMate/claude/style-password-submit-01J8w6Zr2joh7bJY9rTh81AE
+54c35e5 Apply enhanced styling to login form inputs and submit button
+c28867c Merge pull request #89 from ShekMate/claude/style-password-submit-01J8w6Zr2joh7bJY9rTh81AE
+a29b9a9 Add desktop-only styling for login instructions
+edb6fce Merge pull request #90 from ShekMate/claude/style-password-submit-01J8w6Zr2joh7bJY9rTh81AE
+ffe94ae Remove spacing and match width for login instructions - DESKTOP ONLY
+50112c8 Force remove all spacing from login instructions on desktop
+8422a75 Merge branch 'dev' into claude/style-password-submit-01J8w6Zr2joh7bJY9rTh81AE
+82b10b5 Merge pull request #91 from ShekMate/claude/style-password-submit-01J8w6Zr2joh7bJY9rTh81AE
+a9e50dd Reduce spacing above submit button on login form - DESKTOP ONLY
+7df6a11 Merge pull request #92 from ShekMate/claude/style-password-submit-01J8w6Zr2joh7bJY9rTh81AE
+d3dad28 Merge pull request #93 from ShekMate/dev
+fa675eb Fix background blending - prevent card stack bleed-through
+87e3e7e Merge pull request #94 from ShekMate/claude/fix-background-styling-01CKQGpufrLn4ZueoHNh6zmZ
+651bf39 Fix swipe screen poster background color
+1bd840a Merge pull request #95 from ShekMate/claude/fix-swipe-screen-background-01QNZGRHfAA2f8bbZ5uTpPk8
+75c8727 Increase movie card width to match tabbar on desktop
+b599dd0 Merge pull request #96 from ShekMate/claude/movie-card-tabbar-width-01G9yMJVDSPQ9gw2MjRQQz7h
+4c3674d Fix poster-wrapper width to match new card width on desktop
+7be8e05 Merge pull request #97 from ShekMate/claude/movie-card-tabbar-width-01G9yMJVDSPQ9gw2MjRQQz7h
+7a42c6f Space rating buttons across full card width on desktop
+7b6806b Merge pull request #98 from ShekMate/claude/movie-card-tabbar-width-01G9yMJVDSPQ9gw2MjRQQz7h
+2558152 Align rating buttons with poster edges and tighten label spacing
+2428b2c Merge pull request #99 from ShekMate/claude/movie-card-tabbar-width-01G9yMJVDSPQ9gw2MjRQQz7h
+a0802f5 Fix button alignment to match poster width (80%)
+4649f6a Merge pull request #100 from ShekMate/claude/movie-card-tabbar-width-01G9yMJVDSPQ9gw2MjRQQz7h
+eb5ba58 Fix poster-wrapper to eliminate side borders on desktop
+4705328 Merge pull request #101 from ShekMate/claude/movie-card-tabbar-width-01G9yMJVDSPQ9gw2MjRQQz7h
+05f6072 Remove poster-wrapper background on desktop to fix borders
+8db7ec4 Merge pull request #102 from ShekMate/claude/movie-card-tabbar-width-01G9yMJVDSPQ9gw2MjRQQz7h
+11f70af Make poster-wrapper full width for solid background across card
+4dbdd07 Merge pull request #103 from ShekMate/claude/movie-card-tabbar-width-01G9yMJVDSPQ9gw2MjRQQz7h
+ab3ee00 Extend rate-controls background full width with padding
+0c953ab Merge pull request #104 from ShekMate/claude/movie-card-tabbar-width-01G9yMJVDSPQ9gw2MjRQQz7h
+f14a204 Increase spacing between ratings on movie cards - DESKTOP ONLY
+f760fed Merge pull request #105 from ShekMate/claude/space-ratings-desktop-01TFFFpASkzLix7KvMYJHXs7
+41a455b Add background to ratings dropdown menu
+e056f14 Merge pull request #106 from ShekMate/claude/add-ratings-dropdown-background-01LWCfm3RVpzUxHzPLcBH2Gd
+db9b06c Restore borders to Filter tab dropdown and input fields
+63e072c Merge pull request #107 from ShekMate/claude/restore-filter-borders-01CHY7R9VKN6Gcu1bTmxdgHG
+38b4d7d Adjust filter layout: narrow desktop container and reduce mobile spacing
+71cacd3 Merge pull request #108 from ShekMate/claude/adjust-filter-layout-01HkpkqDqATGFhc4PdUev2Kb
+9e045cd Merge pull request #109 from ShekMate/dev
+f045238 Improve desktop layout: side-by-side poster and metadata
+66b91a0 Merge pull request #110 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+e53bc7b Increase card height and fix background coverage
+e632aed Merge pull request #111 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+86db671 Desktop only: Fill poster height, bigger metadata, solid backgrounds
+9758fff Merge pull request #112 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+70093e5 Fix desktop layout: proper poster ratio, smaller text, solid backgrounds
+48ab8fe Merge pull request #113 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+9c47bea Desktop: Increase metadata spacing and rating size
+3e41b35 Merge pull request #114 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+3eedbd7 Desktop: Add spacing and bigger buttons
+d289a9d Merge pull request #115 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+7792361 Desktop: Increase button icon size to match larger buttons
+4657df4 Merge pull request #116 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+bf61c25 Desktop: Double spacing and align buttons left
+29de412 Merge pull request #117 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+262cfcb Desktop: Bigger plot text and left-aligned button icons
+883c88e Merge pull request #118 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+08b3293 Desktop: Align button labels with left-aligned icons
+3a9427e Merge pull request #119 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+d130439 Desktop: Center buttons and add border for alignment visibility
+f9d0702 Merge pull request #120 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+9bc338a Desktop: Make poster fill full 75vh height seamlessly
+8f89c72 Merge pull request #121 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+138c162 Desktop: Increase poster wrapper width for full 75vh height
+61b7d42 Merge pull request #122 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+589e88f Desktop: Bigger title, reduced spacing, full plot display
+5a20249 Merge pull request #123 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+23de5c4 Desktop: Bigger title, less spacing, smaller buttons
+38359b6 Merge pull request #124 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+0359763 Desktop: Make rating logos and values slightly bigger
+9587361 Merge pull request #125 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+613a508 Desktop: Fix poster aspect ratio by removing width constraints
+5349a98 Merge pull request #126 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+299cc8e Desktop: Two-column grid layout for filters
+60c62a9 Merge pull request #127 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+839a3f4 Desktop: Add borders and backgrounds to filter groups
+053d15a Merge pull request #128 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+ef40dac Desktop: Fix poster aspect ratio with explicit constraints
+40bce18 Merge pull request #129 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+c2f5e0c Desktop: Make poster fill full 75vh height
+eb72b35 Merge pull request #130 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+471f958 Desktop: Fix poster aspect ratio with explicit 50vh width
+4f9a38d Merge pull request #131 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+7af251d Desktop: Increase card max-width to prevent cutoff
+6e69408 Merge pull request #132 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+7311f3b Desktop: Reduce card max-width to 1100px
+03afba4 Merge pull request #133 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+604b389 Desktop: Reduce card width and tighten button spacing
+5060033 Merge pull request #134 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+b7c3aa8 Desktop: Restore button gap to original 1rem
+97c11ec Desktop: Restore button gap to 2rem
+5187b51 Desktop: Increase button gap to 4rem for better alignment
+d9f27a4 Merge pull request #135 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+18c5881 Desktop: Increase button gap to 8rem
+068e6bb Merge pull request #136 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+1f6b2ae Desktop: Increase button gap to 12rem
+d7ca6ce Merge pull request #137 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+4ee6631 Desktop: Reduce button gap to 10rem for better alignment
+d4f3589 Merge pull request #138 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+ed7e53b Desktop: Fine-tune button gap to 9.75rem
+c4e06ed Merge pull request #139 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+d5e7f63 Reorganize filters layout into 2-column desktop grid
+40376fb Merge pull request #140 from ShekMate/claude/reorganize-filters-layout-01BXsRZjneDA9dxUqnL1TTew
+9abc110 Fix grid layout to properly position header and buttons
+8306117 Merge pull request #141 from ShekMate/claude/reorganize-filters-layout-01BXsRZjneDA9dxUqnL1TTew
+ec15f86 Fix desktop grid layout z-index and spacing issues
+0dbb4e2 Merge pull request #142 from ShekMate/claude/reorganize-filters-layout-01BXsRZjneDA9dxUqnL1TTew
+0b13334 Fix grid-area selectors with proper scoping
+d515d6f Merge pull request #143 from ShekMate/claude/reorganize-filters-layout-01BXsRZjneDA9dxUqnL1TTew
+505a097 Fix header overlap and spacing above vote count filter
+15f0331 Merge pull request #144 from ShekMate/claude/reorganize-filters-layout-01BXsRZjneDA9dxUqnL1TTew
+ff64180 Override position and margin rules causing layout issues
+06ad39f Merge pull request #145 from ShekMate/claude/reorganize-filters-layout-01BXsRZjneDA9dxUqnL1TTew
+f691a5c Use explicit grid positioning with !important flags
+17d0ece Merge pull request #146 from ShekMate/claude/reorganize-filters-layout-01BXsRZjneDA9dxUqnL1TTew
+196fa72 Disable swipe gestures on desktop, keep for mobile only
+f202999 Merge pull request #147 from ShekMate/claude/plan-swipe-gestures-01CF87gSbUcmd9EgEa7jz4aN
+7e07fd4 Double desktop spacing between cast/plot and plot/ratings
+47ccc81 Merge branch 'dev' into claude/increase-desktop-spacing-01BSvYhb8apk39Po5LDJRicW
+3dde805 Merge pull request #148 from ShekMate/claude/increase-desktop-spacing-01BSvYhb8apk39Po5LDJRicW
+3fc9307 Increase spacing between cast/plot and plot/ratings on desktop
+5b38e73 Merge pull request #149 from ShekMate/claude/increase-details-spacing-01YVHgHTeanszPMmRrQ7fCsN
+f313afd Increase crew info font size to 1.05rem for desktop to match plot font size
+facaecc Merge pull request #150 from ShekMate/claude/enlarge-movie-card-fonts-01A7DnZ8Ga85fckeQGBFz3og
+98bd164 Allow crew info text to wrap on desktop instead of truncating
+14a4e3e Merge pull request #151 from ShekMate/claude/enlarge-movie-card-fonts-01A7DnZ8Ga85fckeQGBFz3og
+cdb5e7a Increase poster size and consolidate desktop card layout
+98b2e6b Merge pull request #152 from ShekMate/claude/check-poster-sizes-01D1DtCMzjJ87VK1PbZPV4SJ
+fc0423d Update CSS cache-busting version to force browser refresh
+326cb65 Merge pull request #153 from ShekMate/claude/check-poster-sizes-01D1DtCMzjJ87VK1PbZPV4SJ
+d5b0903 Add files via upload
+3acb65b Add files via upload
+3a1cfa2 Enlarge posters and consolidate layout for Watch/Pass/Seen lists on desktop
+d016760 Merge pull request #154 from ShekMate/claude/enlarge-watch-list-posters-01D1DtCMzjJ87VK1PbZPV4SJ
+81dc11a Fix expand/collapse functionality for watch list cards on desktop
+8967335 Merge pull request #155 from ShekMate/claude/enlarge-watch-list-posters-01D1DtCMzjJ87VK1PbZPV4SJ
+5938914 Adjust font sizes and layout for watch list cards on desktop
+49281a5 Merge pull request #156 from ShekMate/claude/enlarge-watch-list-posters-01D1DtCMzjJ87VK1PbZPV4SJ
+8c3bf74 Keep streaming/action buttons horizontal with proper spacing
+db60ef1 Merge pull request #157 from ShekMate/claude/enlarge-watch-list-posters-01D1DtCMzjJ87VK1PbZPV4SJ
+c8297a7 Fix metadata badge icon size and center watch list header on desktop
+ccf2176 Merge pull request #158 from ShekMate/claude/enlarge-watch-list-posters-01D1DtCMzjJ87VK1PbZPV4SJ
+d0a215d Reorganize watch list header and action buttons layout on desktop
+2d0fa8e Merge pull request #159 from ShekMate/claude/enlarge-watch-list-posters-01D1DtCMzjJ87VK1PbZPV4SJ
+2680859 Fix expand/collapse functionality for watch list cards on desktop
+ece4650 Merge pull request #160 from ShekMate/claude/enlarge-watch-list-posters-01D1DtCMzjJ87VK1PbZPV4SJ
+570074f Add IMDb CSV import to sync watched movies with Seen list
+93d0ab0 Add URL-based IMDb sync alongside CSV upload
+8b4df97 Merge pull request #161 from ShekMate/claude/imdb-sync-feature-BbnpI
+5d6144f Refactor IMDb sync to background processing with rate limiting
+e451f67 Fix IMDb URL parsing to be more lenient
+15144ca Merge pull request #162 from ShekMate/claude/imdb-sync-feature-BbnpI
+69382cf Add debug logging for IMDb CSV response content
+b10a4e1 Improve IMDb import UX for background processing
+775c0d2 Merge pull request #164 from ShekMate/claude/imdb-sync-feature-BbnpI
+c8365d2 Fix 404 error when accessing root URL with query parameters
+4703533 Merge pull request #165 from ShekMate/claude/debug-issue-XqzaD
+2889b81 Fix duplicate imdbImportProgress variable declaration
+35b12e2 Merge pull request #166 from ShekMate/claude/debug-issue-XqzaD
+3374b2c Fix Seen header centering and add desktop sidebar navigation
+e790abc Merge pull request #167 from ShekMate/claude/fix-seen-header-layout-4giYW
+ea50263 Fix watch list card width and move swipe filters to modal
+be6645c Merge pull request #168 from ShekMate/claude/fix-list-filter-layout-Bl03O
+0246792 Enable IMDb rating filter for swipe screen
+223b043 Merge pull request #169 from ShekMate/claude/fix-list-filter-layout-Bl03O
+1636b75 Fix sidebar showing on mobile - use mobile-first approach
+63cbc4d Merge pull request #170 from ShekMate/claude/fix-list-filter-layout-Bl03O
+422ac62 Bump CSS version for cache busting
+8d73eae Strengthen mobile sidebar hide rule with multiple selectors
+85330ec Revert sidebar CSS to original state
+25bbb39 Merge pull request #172 from ShekMate/claude/fix-list-filter-layout-Bl03O
+8e08a06 Force hide sidebar on mobile with high-specificity CSS
+09f9e8b Merge pull request #173 from ShekMate/claude/fix-list-filter-layout-Bl03O
+29a886d Fix sidebar visibility for mobile
+b88ae19 Merge pull request #174 from ShekMate/codex/fix-sidebar-menu-display-on-mobile
+8aa6c97 Convert rating controls to pill buttons
+cf24cd7 Merge pull request #175 from ShekMate/codex/fix-sidebar-menu-display-on-mobile-aroex7
+ec74fdf Fix dropdown menu background
+148a74b Merge pull request #176 from ShekMate/codex/fix-dropdown-background-transparency
+3a3fcfe Remove ratings header from sidebar
+fb4e235 Merge pull request #177 from ShekMate/codex/remove-ratings-header-from-side-menu
+b666b33 Adjust watch list title sizing on desktop
+1971548 Merge pull request #178 from ShekMate/codex/reduce-font-size-for-movie-titles
+f1e6085 Unify watch list widths and refine title sizing
+ed7636f Merge pull request #179 from ShekMate/codex/reduce-font-size-for-movie-titles
+ec423c7 Align watch list layout widths
+23916ef Merge pull request #180 from ShekMate/codex/reduce-font-size-for-movie-titles-41ve62
+d517b41 Replace favicon 512
+4889481 Replace flavicon.ico
+2ecbd49 Replace comparr.svg
+f0422db Fix seen list header width alignment with watch list
+403da3a Merge pull request #182 from ShekMate/codex/fix-seen-list-width
+3494a17 Decouple seen list sync button from header width
+bc86c45 Merge branch 'dev' into codex/fix-seen-list-width-02pcxh
+4171967 Merge pull request #183 from ShekMate/codex/fix-seen-list-width-02pcxh
+a82c91e Move seen sync control outside list layout container
+c822d1c Merge branch 'dev' into codex/fix-seen-list-width-u24i6f
+3313d9e Merge pull request #184 from ShekMate/codex/fix-seen-list-width-u24i6f
+97c5ef2 Fix seen header merge outcome and remove duplicate sync placement
+83583ba Merge branch 'dev' into codex/fix-seen-list-width-4hrh1c
+36e01c7 Merge pull request #185 from ShekMate/codex/fix-seen-list-width-4hrh1c
+d6b8e2b Fix duplicate IMDb sync button in Seen watch list
+b2ffaa9 Merge pull request #186 from ShekMate/codex/fix-duplicate-imdb-sync-buttons
+77a767f Fix seen list container width to match watch list
+c15a5d4 Merge pull request #187 from ShekMate/codex/match-seen-list-width-to-watch-list
+d369cbf Make watch/pass/seen and matches lists full width on desktop
+a07719b Merge pull request #188 from ShekMate/codex/expand-lists-to-full-width
+b8dd97c Fix collapsed seen/pass cards to use full list width
+d787c07 Merge pull request #189 from ShekMate/codex/set-full-width-for-collapsed-lists
+77a25d2 Fix list width inconsistency by setting flex: 1 on tab panels
+f3660f8 Merge pull request #190 from ShekMate/claude/fix-list-widths-NpgPM
+fbbb8e5 Prioritize liked movies for room users
+f590e16 Merge pull request #191 from ShekMate/codex/prioritize-watched-movies-for-matches
+6ee3610 Refresh matches on open and show match popups
+e3daf49 Merge pull request #192 from ShekMate/codex/fix-matches-list-update-and-notifications
+1009a8e Fix match tracking refresh
+d45dfc7 Merge branch 'dev' into codex/fix-matches-list-update-and-notifications-dvkqog
+e9bb03f Merge pull request #193 from ShekMate/codex/fix-matches-list-update-and-notifications-dvkqog
+daabe2a Fix matches logic: zombie matches, dead code, and debug logs
+0e7960b Update package-lock.json from npm install
+8412789 Fix matches not triggering: likedMovies Map key identity bug
+4500727 Merge pull request #194 from ShekMate/claude/fix-matches-logic-AEEQZ
+16b6d4a Fix match display to exclude current user's name
+893ca57 Merge pull request #195 from ShekMate/claude/fix-match-display-wzaam
+17dfad0 Reduce watch list poster sizes
+1c500c8 Merge pull request #196 from ShekMate/codex/reduce-poster-size-by-25%
+5cc51be Reduce watch list poster sizes further
+edb4141 Merge branch 'dev' into codex/reduce-poster-size-by-25%
+1ed2157 Merge pull request #197 from ShekMate/codex/reduce-poster-size-by-25%
+997bab8 Restore mobile watch poster size
+e38deaf Merge branch 'dev' into codex/reduce-poster-size-by-25%-np8pve
+c479331 Merge pull request #198 from ShekMate/codex/reduce-poster-size-by-25%-np8pve
+930a751 Restore mobile watch poster size
+721c685 Merge pull request #199 from ShekMate/codex/reduce-poster-size-by-25%-94jpuk
+2588408 Update watch list poster sizes
+08c3ca6 Merge pull request #200 from ShekMate/codex/find-current-movie-poster-sizes
+acc969a Comment out Comparr rating average logic
+79126bd Merge pull request #201 from ShekMate/codex/comment-out-comparr-rating-code-and-document
+865fd28 Add UI settings screen and persisted config
+27d8041 Merge pull request #203 from ShekMate/codex/move-settings-to-dedicated-settings-tab
+d2ee1c3 Allow settings access from private networks
+2144639 Merge branch 'dev' into codex/move-settings-to-dedicated-settings-tab-m82t4j
+df5262e Merge pull request #204 from ShekMate/codex/move-settings-to-dedicated-settings-tab-m82t4j
+31e1bef Move settings into sidebar menu with submenu
+45a0e06 Merge branch 'dev' into codex/move-settings-to-dedicated-settings-tab-jz74p0
+7279839 Merge pull request #205 from ShekMate/codex/move-settings-to-dedicated-settings-tab-jz74p0
+eac7bc6 Make settings submenu switch sections
+ca827d5 Merge branch 'dev' into codex/move-settings-to-dedicated-settings-tab-j2g38u
+66a3b13 Merge pull request #206 from ShekMate/codex/move-settings-to-dedicated-settings-tab-j2g38u
+d22f444 Refine settings submenu styling
+052b09f Merge branch 'dev' into codex/move-settings-to-dedicated-settings-tab-x28cg1
+fa0e39a Merge pull request #207 from ShekMate/codex/move-settings-to-dedicated-settings-tab-x28cg1
+8dc1acb Fix settings dropdown option contrast
+e904cf0 Merge pull request #208 from ShekMate/codex/change-dropdown-background-color
+1e974f3 Remove link type setting from UI
+d41e427 Merge pull request #209 from ShekMate/codex/explain-setting-details
+831142d Remove settings field descriptions
+a2500e2 Merge pull request #210 from ShekMate/codex/remove-descriptions-from-settings-fields
+a1a394b Match list card layout to watch list style
+4e5667e Merge pull request #211 from ShekMate/codex/align-matches-list-layout-with-watch-list
+c1227c6 Left-align collapsed match card titles
+eea9008 Merge pull request #212 from ShekMate/codex/align-matches-list-layout-with-watch-list-joix8u
+372978a Add mobile settings dropdown sections in tab bar
+da5d202 Merge pull request #213 from ShekMate/codex/add-dropdown-options-for-mobile-settings
+405e2fe Only highlight mobile settings option after selection
+924972d Merge branch 'dev' into codex/add-dropdown-options-for-mobile-settings-qcd9du
+973eaa1 Merge pull request #214 from ShekMate/codex/add-dropdown-options-for-mobile-settings-qcd9du
+10adacf Fix mobile settings dropdown default highlight
+caa3911 Merge pull request #215 from ShekMate/codex/fix-mobile-settings-menu-highlighting
+ef6f36b Fix mobile settings tab highlight state
+0b07a97 Merge pull request #216 from ShekMate/codex/fix-settings-highlight-behavior-on-mobile
+64e9d60 Move IMDb seen sync controls into Settings Sync section
+e59e835 Merge pull request #217 from ShekMate/codex/move-imdb-sync-to-settings
+aaf2f5b Add Sync section entry to settings navigation
+68fe660 Merge branch 'dev' into codex/move-imdb-sync-to-settings-794gts
+e5257f4 Merge pull request #218 from ShekMate/codex/move-imdb-sync-to-settings-794gts
+f7f1d46 chore: stabilize lint checks and normalize formatting
+53bf32a Merge pull request #220 from ShekMate/codex/fix-duplicate-class-properties-in-session.ts
+6abe303 docs: add repository health check report
+bbb57ef Merge pull request #221 from ShekMate/codex/perform-health-check-on-repo
+5eae0c6 refactor(http): extract settings routes from server entrypoint
+8f75f32 Merge pull request #222 from ShekMate/codex/refactor-large-files-into-smaller-files
+465bc38 refactor(http): extract core api routes behind router
+fc4a666 Merge pull request #223 from ShekMate/codex/find-recommendations-for-repo-architecture
+ba5ec5b Improve nav accessibility and localize login/navigation copy
+1489a67 Merge pull request #224 from ShekMate/codex/provide-ui-recommendations
+7488b25 Add streaming profile settings scaffolding
+146af86 Merge pull request #225 from ShekMate/codex/add-optional-plex-integration-feature
+68de744 Expose streaming profile settings in UI and client config
+e609da1 Merge pull request #226 from ShekMate/codex/add-optional-plex-integration-feature-cr5gfo
+c1ad3e2 Apply streaming profile modes to batch discovery
+550b2c7 Merge pull request #227 from ShekMate/codex/add-optional-plex-integration-feature-jjjzut
+5fa5e00 Align Where to Watch labels with streaming profile mode
+e1c04e9 Merge pull request #228 from ShekMate/codex/add-optional-plex-integration-feature-tc1zcp
+a31fffa Replace personal media sources JSON input with checkboxes
+6009bff Merge branch 'dev' into codex/add-optional-plex-integration-feature-s9tusr
+dcd2d68 Merge pull request #231 from ShekMate/codex/add-optional-plex-integration-feature-s9tusr
+e306ed9 Add Streaming Profile entry to settings navigation menus
+b587920 Merge branch 'dev' into codex/add-optional-plex-integration-feature-hoj501
+a2d149d Merge pull request #233 from ShekMate/codex/add-optional-plex-integration-feature-hoj501
+35144a2 Fix missing personal media sources binding in session mode logic
+d2b2629 Merge pull request #234 from ShekMate/codex/resolve-merge-conflicts
+e123d75 Make paid streaming services a multi-select setting
+94c9fbb Merge pull request #235 from ShekMate/codex/change-streaming-services-to-multi-select-dropdown
+02c8110 Use checkbox dropdown for paid streaming services
+5d9ff5e Merge branch 'dev' into codex/change-streaming-services-to-multi-select-dropdown-zivo4x
+f9b45d8 Merge pull request #236 from ShekMate/codex/change-streaming-services-to-multi-select-dropdown-zivo4x
+9c0e9ff Restyle paid services as filter-style checkbox dropdown
+d8e5ccb Merge branch 'dev' into codex/change-streaming-services-to-multi-select-dropdown-miswoi
+7159ac1 Merge pull request #237 from ShekMate/codex/change-streaming-services-to-multi-select-dropdown-miswoi
+2eeecc7 Restyle paid subscriptions dropdown in settings
+a4c7136 Merge pull request #238 from ShekMate/codex/update-paid-subscriptions-dropdown-style
+950de57 Align settings subscriptions dropdown spacing with swipe filters
+b4555ab Merge branch 'dev' into codex/update-paid-subscriptions-dropdown-style-nwf2fz
+c86c5b7 Merge pull request #239 from ShekMate/codex/update-paid-subscriptions-dropdown-style-nwf2fz
+fbbe579 Reduce settings subscriptions dropdown control size
+2f38b73 Merge branch 'dev' into codex/update-paid-subscriptions-dropdown-style-3pebcn
+2316669 Merge pull request #240 from ShekMate/codex/update-paid-subscriptions-dropdown-style-3pebcn
+da90e96 Match Personal Media Sources control to subscriptions dropdown
+e544bb3 Merge branch 'dev' into codex/update-paid-subscriptions-dropdown-style-19oe07
+dc1113b Merge pull request #241 from ShekMate/codex/update-paid-subscriptions-dropdown-style-19oe07
+abf578d Move Plex settings under streaming profile and require selected source config
+c80b3a6 Merge pull request #242 from ShekMate/codex/move-plex-settings-under-streaming-profile
+1bc2854 Remove obsolete Plex section type setting
+a6bd05f Merge pull request #243 from ShekMate/codex/determine-necessity-of-feature
+63c0b3f Finish settings roadmap with JSON list normalization and server tests
+bf67138 Merge pull request #244 from ShekMate/codex/suggest-improvements-for-settings
+7a93277 Fix advanced settings visibility for dynamic integration sections
+5ede668 Merge pull request #246 from ShekMate/codex/add-logic-for-showing-advanced-settings
+b668df7 Fix settings advanced toggle feedback and add integration test buttons
+79452a1 Merge pull request #247 from ShekMate/codex/fix-advanced-settings-toggle-and-add-test-button
+21aa5d5 Add availability dropdown flow and admin-password settings guard
+2572884 Merge pull request #248 from ShekMate/codex/remove-profile-mode-setting-and-add-availability-filter
+e0cddfc Defer admin password prompt until settings is opened
+5d93bec Merge branch 'dev' into codex/remove-profile-mode-setting-and-add-availability-filter-vknjgz
+4de74f9 Merge pull request #249 from ShekMate/codex/remove-profile-mode-setting-and-add-availability-filter-vknjgz
+a7cb97a Scope admin password to Admin settings sub-tabs
+9746f4b Merge branch 'dev' into codex/remove-profile-mode-setting-and-add-availability-filter-ep50li
+0652028 Merge pull request #250 from ShekMate/codex/remove-profile-mode-setting-and-add-availability-filter-ep50li
+d7bbf42 Add Plex token help tooltip in settings
+7be2b07 Merge pull request #251 from ShekMate/codex/find-plex-token-in-settings
+bb7cc41 fix: normalize plex token in settings connection test
+08966b8 Merge pull request #252 from ShekMate/codex/investigate-failing-plex-test
+b4012c0 Fix Plex connection checks for /web URLs
+bcbe65f Merge pull request #253 from ShekMate/codex/fix-plex-connection-test-failure
+85fd1e2 Improve admin auth UX for settings tests and proxy local detection
+cbf06bb Merge pull request #254 from ShekMate/codex/continue-fix-for-plex-403-auth-issue
+48a2bf6 Fix settings test status persistence and Plex label casing
+b8a45a8 Merge pull request #255 from ShekMate/codex/fix-plex-test-message-persistence
+3d7c8cf Fix settings sidebar selection styling alignment
+22221ea Merge pull request #256 from ShekMate/codex/update-settings-tab-highlight-color
+ba17f48 Adjust settings submenu active text behavior
+0facd1a Merge branch 'dev' into codex/update-settings-tab-highlight-color-2nzdu9
+76820df Merge pull request #257 from ShekMate/codex/update-settings-tab-highlight-color-2nzdu9
+a1325d2 Fix settings subtab label colors for active state only
+e00811c Merge branch 'dev' into codex/update-settings-tab-highlight-color-54d5au
+ab6b2b4 Merge pull request #258 from ShekMate/codex/update-settings-tab-highlight-color-54d5au
+780bd8a Ensure only active settings subtab uses highlight color
+faac569 Merge branch 'dev' into codex/update-settings-tab-highlight-color-js5cao
+4465837 Merge pull request #259 from ShekMate/codex/update-settings-tab-highlight-color-js5cao
+4c0b5c0 Fix settings submenu activation logic across nav items
+822adba Merge pull request #260 from ShekMate/codex/update-settings-tab-highlight-color-rn9gsm
+f523f60 Refactor admin settings into tabbed sections and lock system fields
+5d8c46f Merge pull request #261 from ShekMate/codex/find-docker-container-settings-for-sonarr-and-radarr
+1634701 Improve settings subsection title prominence
+9443b9d Strengthen settings heading hierarchy
+479c594 Merge pull request #262 from ShekMate/codex/enhance-section-headers-for-settings
+91cc57b Fix settings hydration after admin auth
+7831d48 Merge pull request #263 from ShekMate/codex/fix-settings-persistence-issue
+b6ceac2 Migrate remaining app env settings into web UI
+7c14b5c Merge pull request #264 from ShekMate/codex/identify-env-variables-for-web-ui-transition
+1866883 Add password visibility toggles for secure inputs
+301b4dc Merge pull request #265 from ShekMate/codex/add-eyeball-icon-to-show-input
+27063ca Update swipe filter labels to minimum wording
+e012ac2 Merge pull request #266 from ShekMate/codex/add-minimum-prefix-to-filter-names
+0fe9da1 Add sorting and expand/collapse controls to Pass and Seen lists
+ee3feda Merge pull request #267 from ShekMate/claude/investigate-list-sorting-vBuXf
+70df1ef Fix pass/seen expand-all buttons to use square sizing
+cf9ffe0 Merge pull request #268 from ShekMate/codex/fix-expand/collapse-button-shape
+8d4592e Fix watch/pass/seen list ordering refresh on tab open
+5763d3a Merge pull request #269 from ShekMate/codex/update-list-sorting-to-newest-first
+214ea54 Rename Availability settings tab/header to Streaming
+945e565 Merge pull request #270 from ShekMate/codex/rename-tab-and-header-to-streaming
+bf071b0 Refine settings UI visibility and status behavior
+df8eac2 Merge pull request #271 from ShekMate/codex/update-streaming-settings-layout-and-behavior
+986dcbb Fix settings save button width
+c41a652 Merge pull request #272 from ShekMate/codex/fix-save-changes-button-size
+d893aed Remove redundant settings header block
+14c56fd Merge pull request #273 from ShekMate/codex/remove-redundant-section
+29deed3 Rework settings basic/advanced layout toggle
+5fb1dc5 Merge pull request #274 from ShekMate/codex/rework-settings-layout-and-advanced-options
+971e58e Fix advanced settings hidden state in basic mode
+1294232 Merge pull request #275 from ShekMate/codex/rework-settings-layout-and-advanced-options-1anwhy
+7086412 Preserve advanced mode across settings tab switches
+5663ab0 Merge branch 'dev' into codex/rework-settings-layout-and-advanced-options-9mt9yz
+d427909 Merge pull request #276 from ShekMate/codex/rework-settings-layout-and-advanced-options-9mt9yz
+8d102d6 Fix swipe availability checkbox state handling
+1f4b997 Merge pull request #277 from ShekMate/codex/fix-availability-filter-behavior-in-swipe
+7e9e66e Clarify Plex link type setting behavior in UI
+177fc03 Merge pull request #283 from ShekMate/codex/clarify-non-applicable-setting
+84a9214 Refine availability filter into My Subscriptions with provider options
+4b42084 Merge pull request #284 from ShekMate/codex/propose-cleaner-subscription-filter-options
+df71b8b Adjust availability and host-managed personal services UI
+c4d8898 Merge pull request #285 from ShekMate/codex/remove-plex-from-filter-and-update-settings
+b64305a Hide host-managed subscription services unless enabled
+213495a Merge pull request #286 from ShekMate/codex/hide-plex-emby-jellyfin-unless-enabled
+030fa84 Fix swipe filter dropdown lingering after modal close
+937b85b Merge pull request #287 from ShekMate/codex/fix-dropdown-not-closing-when-clicking-outside
+4642d1b Respect hidden attribute for settings checkbox options
+ae2c143 Merge pull request #288 from ShekMate/codex/hide-plex-emby-jellyfin-unless-enabled-b7opyi
+c73e5a6 Add swipe filter defaults settings tab
+cd94023 Merge pull request #289 from ShekMate/codex/add-defaults-settings-tab-for-filters
+633c2bb Use swipe filter modal UI for defaults editing
+29e3896 Merge branch 'dev' into codex/add-defaults-settings-tab-for-filters-40yqw9
+f820c48 Merge pull request #290 from ShekMate/codex/add-defaults-settings-tab-for-filters-40yqw9
+43b2ec9 Fix undefined defaults button handler in main script
+3ac75d3 Merge pull request #291 from ShekMate/codex/fix-login-screen-password-issue
+3b4a7ec Simplify defaults settings with inline swipe filters
+796200a Merge pull request #292 from ShekMate/codex/remove-unnecessary-buttons-from-ui
+f31dfff Update availability dropdown with per-option info icons
+2d10ed3 Merge pull request #293 from ShekMate/codex/remove-message-from-dropbox-and-add-info-icons
+b0601c3 Tighten defaults filter width on desktop
+5afa6a5 Merge pull request #294 from ShekMate/codex/adjust-filter-options-width-in-settings
+5b38474 Unify defaults settings actions at footer
+c5128c3 Merge pull request #295 from ShekMate/codex/remove-duplicate-save-changes-button
+9ccb226 Move IMDb imports into user Imports settings tab
+e9c2ad1 Merge pull request #296 from ShekMate/codex/move-imdb-list-setting-to-imports-tab
+e4d2687 Reorder IMDb sync/import controls and move interval to advanced
+a8beaf4 Merge pull request #297 from ShekMate/codex/reorganize-sync-and-import-buttons
+a46ab64 Fix advanced settings toggle visibility for non-admin sections
+2dca406 Merge pull request #298 from ShekMate/codex/add-basic/advanced-toggle-for-settings
+6e2562c Improve login error feedback for invalid access password
+aac4f69 Merge pull request #299 from ShekMate/codex/fix-password-error-message-display
+ac2a1a8 Validate access password before showing login form
+fc9fd55 Merge pull request #300 from ShekMate/codex/fix-password-error-message-display-2snl0u
+0426067 Fix access-password verify URL base path
+f3f6413 Merge branch 'dev' into codex/fix-password-error-message-display-iyvkxx
+3d7ea85 Merge pull request #301 from ShekMate/codex/fix-password-error-message-display-iyvkxx
+534870a Refactor login screen layout and simplify onboarding copy
+afffbde Merge pull request #302 from ShekMate/codex/review-login-screen-ux
+64ceba9 Internationalize login helper and tip prefix copy
+6a2bfe1 Restore semantic login heading for accessibility
+63e78c0 Merge pull request #305 from ShekMate/codex/clean-up-login-screen-design
+9de063b Tone down login typography and input sizing
+918f834 Merge branch 'dev' into codex/clean-up-login-screen-design-s6vyta
+771de28 Merge pull request #306 from ShekMate/codex/clean-up-login-screen-design-s6vyta
+8664dc3 Tighten login form sizing and spacing
+fea7c58 Merge pull request #307 from ShekMate/codex/fix-oversized-login-screen-elements
+4a7e455 Clean mobile login width overrides
+13081d2 Merge branch 'dev' into codex/fix-oversized-login-screen-elements-bhq244
+125e2b9 Merge pull request #308 from ShekMate/codex/fix-oversized-login-screen-elements-bhq244
+f467bc3 Center login inputs and align helper copy
+ccf7bcc Merge pull request #309 from ShekMate/codex/center-input-fields-and-align-instructions
+62aa730 Increase login input spacing to 1rem
+5bd739a Merge branch 'dev' into codex/center-input-fields-and-align-instructions-5uoo9s
+3ac9966 Merge pull request #310 from ShekMate/codex/center-input-fields-and-align-instructions-5uoo9s
+6ddcfb1 Increase login field width to 16rem
+829d7e0 Merge branch 'dev' into codex/center-input-fields-and-align-instructions-y8exls
+80ec2f6 Merge pull request #311 from ShekMate/codex/center-input-fields-and-align-instructions-y8exls
+6cd9a11 Increase space above name step to 2rem
+da8d133 Merge branch 'dev' into codex/center-input-fields-and-align-instructions-qf9d8x
+ad59cb8 Merge pull request #312 from ShekMate/codex/center-input-fields-and-align-instructions-qf9d8x
+bb8baa8 Widen login fields to 18rem and update step copy
+c2271b1 Merge branch 'dev' into codex/center-input-fields-and-align-instructions-e8n3sv
+97c0979 Merge pull request #313 from ShekMate/codex/center-input-fields-and-align-instructions-e8n3sv
+ca333a1 Increase intro-to-name spacing to 4rem
+ef2ea39 Merge branch 'dev' into codex/center-input-fields-and-align-instructions-swsaxj
+e531358 Merge pull request #314 from ShekMate/codex/center-input-fields-and-align-instructions-swsaxj
+4a96f94 Increase login first input bottom spacing to 2.5rem
+e5b4a41 Merge pull request #315 from ShekMate/codex/measure-space-below-first-name-input
+84c9e11 Match room code field spacing to 2.5rem
+03067ce Merge pull request #316 from ShekMate/codex/measure-space-below-first-name-input-5xxrre
+a428fe2 Set login helper text size to 0.75rem
+92266e4 Merge pull request #317 from ShekMate/codex/measure-space-below-first-name-input-vqwwph
+5c22db4 Increase login form element width to 22rem
+a8adb75 Merge pull request #318 from ShekMate/codex/measure-space-below-first-name-input-u8nqcp
+56b8d01 Increase login input text size to 1.5rem
+a6d1ad3 Merge branch 'dev' into codex/measure-space-below-first-name-input-luvkt9
+739905b Remove settings loaded status message
+250552d Merge pull request #320 from ShekMate/codex/update-messaging-in-settings-for-professionalism
+0a52c8d Merge pull request #319 from ShekMate/codex/measure-space-below-first-name-input-luvkt9
+244a0f1 Add join/create room tabs with unique room code checks
+760df53 Show login failures in visible login form
+5dfddb1 Merge pull request #321 from ShekMate/codex/implement-tabbed-approach-for-room-code-section
+fd562f1 Update join/create instruction copy and helper text
+45ba233 Merge branch 'dev' into codex/implement-tabbed-approach-for-room-code-section-efeywt
+53946b6 Merge pull request #322 from ShekMate/codex/implement-tabbed-approach-for-room-code-section-efeywt
+6d2fcea Refine login room mode layout with yes/no flow
+041129d Merge pull request #323 from ShekMate/codex/redesign-login-screen-layout
+efb7216 Polish login toggle spacing and room step instructions
+702af12 Merge branch 'dev' into codex/redesign-login-screen-layout-py8ew7
+e3710e1 Merge pull request #324 from ShekMate/codex/redesign-login-screen-layout-py8ew7
+369a85f Adjust login control widths to half size
+0ad3f27 Merge branch 'dev' into codex/redesign-login-screen-layout
+c630064 Merge pull request #326 from ShekMate/codex/redesign-login-screen-layout
+ef3c3af Correct new here row sizing behavior
+9e22d92 Merge branch 'dev' into codex/redesign-login-screen-layout-9cblgs
+cf57a14 Merge pull request #327 from ShekMate/codex/redesign-login-screen-layout-9cblgs
+c6fbd61 Left-align login name and room code fields
+10b3677 Merge branch 'dev' into codex/redesign-login-screen-layout-7jgva9
+04aff3d Merge pull request #328 from ShekMate/codex/redesign-login-screen-layout-7jgva9
+28f3d80 Fix room code field width to match name input
+61d037a Merge branch 'dev' into codex/redesign-login-screen-layout-biuj3z
+534748e Merge pull request #329 from ShekMate/codex/redesign-login-screen-layout-biuj3z
+5e83afd Increase login name and room code input widths to 60%
+36c5751 Merge pull request #330 from ShekMate/codex/find-current-input-widths-on-login-screen
+209116b feat: implement public deployment security hardening
+902957b Merge pull request #331 from ShekMate/codex/review-comparr-vulnerabilities-and-proposed-fixes
+400233a Adjust login layout for room-mode controls spacing
+06cbfb4 Merge pull request #332 from ShekMate/codex/align-and-space-login-screen-elements
+ed87a4f Refine login room-mode alignment with input column
+39c5cdd Merge branch 'dev' into codex/align-and-space-login-screen-elements-j8x08g
+69fbc6b Merge pull request #333 from ShekMate/codex/align-and-space-login-screen-elements-j8x08g
+2ec0c5a Fix settings route syntax error blocking Docker build
+f093cd4 Merge pull request #334 from ShekMate/codex/fix-github-actions-docker-build-failure
+ed4e092 Fix login step separation and restore left-aligned intro layout
+b2de375 Merge pull request #335 from ShekMate/codex/revert-login-merge-on-password-screen
+c9548fb Adjust login alignment: centered intro/helper and left-aligned fields
+d7838b2 Merge branch 'dev' into codex/revert-login-merge-on-password-screen-duj3gr
+5c22183 Merge pull request #336 from ShekMate/codex/revert-login-merge-on-password-screen-duj3gr
+bf415b4 Fix login alignment for intro, fields, and continue button
+8612911 Merge pull request #337 from ShekMate/codex/center-welcome-message-and-button-layout
+d263bcb Tighten login form spacing and prevent room instruction wrapping
+f3b1c2e Merge pull request #338 from ShekMate/codex/fix-login-screen-text-wrapping
+23c6b5e Set login section spacing to 5rem for requested gaps
+950edb5 Merge branch 'dev' into codex/fix-login-screen-text-wrapping-wki5f0
+8a2a46e Merge pull request #339 from ShekMate/codex/fix-login-screen-text-wrapping-wki5f0
+e49d623 Reduce login section spacing from 5rem to 2.5rem
+a32287a Merge branch 'dev' into codex/fix-login-screen-text-wrapping-c5iruc
+4426935 Merge pull request #340 from ShekMate/codex/fix-login-screen-text-wrapping-c5iruc
+cf5268b Adjust login room mode buttons layout
+b26a76a Merge pull request #341 from ShekMate/codex/move-and-center-buttons-on-login-screen
+12c0295 Center login form layout alignment
+9a33143 Merge pull request #342 from ShekMate/codex/move-and-center-buttons-on-login-screen-u1boru
+3ca5735 Fix missing left border on login NO tab
+8bbf7a1 Merge pull request #343 from ShekMate/codex/investigate-missing-border-on-no-button
+3c4406b Add 'dev_split' branch to Docker workflow triggers
+5947f54 ci: publish docker image for dev_split branch
+b9ff771 Merge pull request #344 from ShekMate/codex/evaluate-app-feature-focus-and-simplification
+e7e0713 Fix room code error placement and update not-found copy
+18dffef Merge pull request #345 from ShekMate/fix-room-code-error-message-display
+11c3662 Adjust login helper and error text widths
+f04a278 Merge pull request #346 from ShekMate/codex/fix-cut-off-error-message-and-adjust-widths
+79b761a Fix truncated room-not-found i18n message in login data attrs
+80e9bed Merge pull request #347 from ShekMate/codex/fix-cut-off-error-message-and-adjust-widths-gwppwh
+2fa576b Add post-password mode picker for personal vs group flows
+434172b Merge pull request #348 from ShekMate/codex/add-mode-picker-after-password-unlock
+9701c3f Fix stale IMDb importing progress state
+0500855 Merge pull request #349 from ShekMate/codex/fix-imdb-seen-list-import-status
+3275690 Fix group login prefill to ignore personal defaults
+c153da2 Merge pull request #350 from ShekMate/codex/fix-prefill-behavior-on-group-matching-screen
+3c7d23c Fix group create-mode room code prefill behavior
+c5d570d Merge pull request #351 from ShekMate/codex/fix-prefill-behavior-for-new-here-selection
+78d958c Fix watch list filter/refresh button styling
+6adbf71 Merge pull request #352 from ShekMate/codex/fix-filter-and-refresh-button-styling
+db2652e Fix CSP rules for inline styles and Google Fonts
+cbc5437 Merge pull request #353 from ShekMate/codex/fix-content-security-policy-violations
+0ceaa6e Fix vote-count filtering fallback for TMDb batch candidates
+e04e811 Merge pull request #354 from ShekMate/codex/fix-content-security-policy-violations-frhhmg
+46b3ab4 Add Plex fallback when TMDb batch candidate fetch fails
+decd6ec Merge pull request #355 from ShekMate/codex/fix-content-security-policy-violations-olkyry
+3a89e2b Fix runtime error in poster fallback path
+4f98190 Merge pull request #356 from ShekMate/codex/fix-content-security-policy-violations-570fux
+51c5e09 Fix IMDb sync parsing and support bare list/user IDs
+3c47347 Merge pull request #358 from ShekMate/codex/fix-imdb-list-sync-functionality
+eb12602 Improve IMDb sync error handling and update ID placeholder
+8c51a6b Merge branch 'dev_split' into codex/fix-imdb-list-sync-functionality-vgczu4
+2a556d6 Merge pull request #359 from ShekMate/codex/fix-imdb-list-sync-functionality-vgczu4
+c5e1dab Fix missing getMaxBodySize import in IMDb sync route
+e1d8857 Merge pull request #360 from ShekMate/codex/fix-imdb-list-sync-functionality-l0urri
+7a1a4a4 Add IMDb ratings->watchlist fallback for empty ur imports
+ac740fe Merge pull request #361 from ShekMate/codex/fix-imdb-list-sync-functionality-v6l897
+4e81580 Improve IMDb export URL detection across HTML payload variants
+3ea8f8f Merge pull request #362 from ShekMate/codex/fix-imdb-sync-function
+8185c9e Fix IMDB list import skipping page URL fallback when discovered URL matches target
+c96e34b Fix IMDb /export HTML fallback short-circuit
+fcc5a64 Merge branch 'dev_split' into codex/fix-imdb-sync-function-b14xqz
+b4e1caf Merge pull request #363 from ShekMate/codex/fix-imdb-sync-function-b14xqz
+f64b578 Add IMDb HTML fallback for sync import
+e502c9f Merge pull request #364 from ShekMate/codex/investigate-imdb-sync-issue
+cd8fd32 Make IMDB URL/list import robust with three-layer fallback strategy
+5841f98 Merge branch 'dev_split' into claude/debug-imdb-import-url-gi704
+9d38594 Merge pull request #366 from ShekMate/claude/debug-imdb-import-url-gi704
+ec78e10 Fix Docker runtime user setup and DATA_DIR permissions
+9a82a68 Merge pull request #367 from ShekMate/codex/fix-docker-not-working-issue
+b707798 Revert "Harden Docker entrypoint: validate PUID/PGID, honor DATA_DIR, install passwd"
+fc57e19 Merge pull request #368 from ShekMate/revert-367-codex/fix-docker-not-working-issue
+26ccea8 Revert "Add HTML scraping fallback for IMDb list imports"
+eeded8d Merge pull request #369 from ShekMate/revert-366-claude/debug-imdb-import-url-gi704
+b779283 Add save feedback for default swipe settings
+870d7a1 Merge pull request #370 from ShekMate/codex/add-feedback-for-saving-settings-defaults
+662ccab Limit IMDb imports to CSV and add import history
+3dd369a Merge pull request #371 from ShekMate/codex/add-import-history-section
+c1be861 Improve IMDb import progress status text
+8f463ed Merge pull request #372 from ShekMate/codex/update-imdb-csv-import-progress-bar
+b53b870 Reduce swipe first-movie latency with batch timeouts
+19d5fd3 Merge pull request #373 from ShekMate/codex/fix-slow-loading-of-swipe-screen
+99707df Add active-session takeover confirmation during login
+bbd4eb9 Merge pull request #374 from ShekMate/codex/find-error-when-accessing-personal-discovery
+e4a767a Improve swipe first-load responsiveness
+dcd1002 Merge pull request #375 from ShekMate/codex/identify-bottleneck-in-swipe-screen-loading
+14221dd Further reduce swipe startup blocking and cap enrichment latency
+7da9612 Fix ensureMovieBuffer target escalation during in-flight loads
+52f6987 Merge pull request #376 from ShekMate/codex/identify-bottleneck-in-swipe-screen-loading-6k58ls
+379ae72 Reduce login blocking and prefetch first swipe batch
+3f43160 Merge branch 'dev_split' into codex/identify-bottleneck-in-swipe-screen-loading-grpp4i
+c0071ab Merge pull request #377 from ShekMate/codex/identify-bottleneck-in-swipe-screen-loading-grpp4i
+9867955 Speed up first swipe by fast-pathing initial batch generation
+8ea0b0e Merge branch 'dev_split' into codex/identify-bottleneck-in-swipe-screen-loading-t2y8ut
+75b4041 Merge pull request #378 from ShekMate/codex/identify-bottleneck-in-swipe-screen-loading-t2y8ut
+91fc15b Improve metadata reliability and retroactively restore seen-list rating logos
+3ffa966 Merge pull request #379 from ShekMate/codex/identify-components-causing-slow-movie-stack-load
+2268242 Fix missing Radarr helper import in request endpoint
+bf8a704 Merge pull request #380 from ShekMate/codex/fix-error-adding-to-plex-from-watch-list
+b1ef333 Fix My Subscriptions toggle for Plex-only setups
+4e28aa6 Fix Plex-only subscription filter state handling
+ae2f02c Merge pull request #381 from ShekMate/codex/fix-subscription-filter-checkbox-issue
+60e6c56 Sync subscription filter options with saved settings
+e801dbb Merge pull request #382 from ShekMate/codex/update-submenu-to-include-all-subscriptions
+33edc19 Add swipe header home button to return to mode selection
+bd7fbfb Merge pull request #383 from ShekMate/codex/add-home-button-to-top-right
+ad350d3 Fix home button placement and restore mode selection flow
+405319b Merge branch 'dev_split' into codex/add-home-button-to-top-right-1hcrlb
+5880b6e Merge pull request #384 from ShekMate/codex/add-home-button-to-top-right-1hcrlb
+9552133 Remove duplicate home buttons from list headers
+212773b Merge pull request #385 from ShekMate/codex/add-home-button-to-top-right-12funt
+913a53a Deduplicate swipe home button at runtime
+7fc313d Merge branch 'dev_split' into codex/add-home-button-to-top-right-d5lqv6
+7f0f0ac Merge pull request #386 from ShekMate/codex/add-home-button-to-top-right-d5lqv6
+f0ecbeb Remove duplicate swipe home button
+b7e032d Merge pull request #387 from ShekMate/codex/remove-left-home-button
+45b0646 Fix pre-login tab panel flash on mode transitions
+0de0866 Merge pull request #388 from ShekMate/codex/fix-loading-screen-glitches
+2de9c2b Add persistent enrichment cache and discover prewarm
+cb5f4e1 Merge pull request #389 from ShekMate/codex/identify-bottlenecks-for-swipe-screen-load-time
+479c922 Improve enrichment cache hit rate across lookup keys
+0c4c924 Merge branch 'dev_split' into codex/identify-bottlenecks-for-swipe-screen-load-time-9mrk0d
+b5c6a16 Merge pull request #390 from ShekMate/codex/identify-bottlenecks-for-swipe-screen-load-time-9mrk0d
+f027e53 Drop OMDb/RT metadata path and add compact expandable swipe cards
+feb79ad Merge pull request #392 from ShekMate/codex/identify-slow-movie-loading-issues
+2368363 Fix collapsed swipe layout: controls under poster and poster-click details
+17cd0e5 Merge branch 'dev_split' into codex/identify-slow-movie-loading-issues-zk5hdg
+3d2f4d8 Merge pull request #393 from ShekMate/codex/identify-slow-movie-loading-issues-zk5hdg
+727dd3b Adjust swipe poster overlay plot behavior on desktop
+10ffd4c Merge pull request #394 from ShekMate/codex/find-current-font-size-of-overlay-plot
+e49f78a refactor: isolate swipe breakpoint sizing into split css files
+a639010 refactor: split responsive layout css into main/mobile/tablet/desktop
+faddc8f Merge pull request #395 from ShekMate/codex/find-sizes-and-spacing-for-swipe-screen
+6b86e39 Adjust desktop collapsed card typography and sizing
+aae1e3f Merge pull request #396 from ShekMate/codex/update-desktop-layout-styling
+af82cae Improve card metadata readability with translucent overlay panel
+059f338 Merge pull request #397 from ShekMate/codex/add-transparent-background-for-meta-data
+6d0e9fd Reduce poster metadata overlay opacity to 40%
+15eb24f Merge branch 'dev_split' into codex/add-transparent-background-for-meta-data-05si16
+886d7ab Merge pull request #398 from ShekMate/codex/add-transparent-background-for-meta-data-05si16
+1d8b526 Reduce poster metadata panel opacity to 25 percent
+adc6808 Merge pull request #399 from ShekMate/codex/remove-secondary-background-around-frame
+8ac7969 Enable desktop click-drag swipe on movie cards
+7f3e60b Add desktop drag-to-swipe requirement checklist
+a0f811d Merge pull request #401 from ShekMate/codex/implement-drag-to-swipe-for-desktop
+d1a33c5 Implement desktop drag-to-swipe parity behavior
+505b1ee Merge branch 'dev_split' into codex/implement-drag-to-swipe-for-desktop-h0j3bb
+4fbc63e Merge pull request #403 from ShekMate/codex/implement-drag-to-swipe-for-desktop-h0j3bb
+e91ee4a Fix desktop swipe cursor and drag responsiveness
+93a3569 Merge branch 'dev_split' into codex/implement-drag-to-swipe-for-desktop-vjtmu4
+81c06cb Merge pull request #404 from ShekMate/codex/implement-drag-to-swipe-for-desktop-vjtmu4
+4b9d7c7 Require name and room code for personal mode login
+1e7642a Merge pull request #405 from ShekMate/codex/add-name-and-room-code-requirement-for-solo
+9d0f1ca Restore room mode yes/no toggle behavior
+5454f12 Merge branch 'dev_split' into codex/add-name-and-room-code-requirement-for-solo-b8tgdh
+d461a07 Merge pull request #406 from ShekMate/codex/add-name-and-room-code-requirement-for-solo-b8tgdh
+690be4b Adjust login copy and tighten auth screen spacing
+ce9e7a5 Merge pull request #407 from ShekMate/codex/implement-ui-improvements-for-ratings-and-room-code
+2973ef1 Tighten desktop login spacing further
+e6e5015 Merge branch 'dev_split' into codex/implement-ui-improvements-for-ratings-and-room-code-rjecp7
+8df8c5b Merge pull request #408 from ShekMate/codex/implement-ui-improvements-for-ratings-and-room-code-rjecp7
+a5a8aa3 Widen login helper copy to match input fields
+9442a61 Merge pull request #409 from ShekMate/codex/update-message-width-on-login-screen
+79f700b Keep swipe action buttons stationary below movie cards
+ce8e09f Merge pull request #410 from ShekMate/codex/move-pass-seen-watch-buttons-beneath-movie-card
+6cc0153 Make stationary swipe controls background transparent
+5180c7f Merge branch 'dev_split' into codex/move-pass-seen-watch-buttons-beneath-movie-card-xavbz2
+5b42572 Merge pull request #411 from ShekMate/codex/move-pass-seen-watch-buttons-beneath-movie-card-xavbz2
+28ffb5d Make swipe-rate-controls bar transparent on desktop
+cd99910 Merge pull request #412 from ShekMate/codex/move-pass-seen-watch-buttons-beneath-movie-card-eeiel4
+d5c3b1f Remove rating-logo right margins for ratings display
+9ecbd2f Merge pull request #413 from ShekMate/codex/find-spacing-between-logos-and-ratings
+e58c9e4 Reduce overlay plot vertical margins on desktop
+8319212 Merge pull request #414 from ShekMate/codex/reduce-plot-top-and-bottom-margins-by-30%
+4a310b0 Remove rating separator bullet between source ratings
+351e992 Merge pull request #415 from ShekMate/codex/remove-rating-separator-from-display
+8eb09f3 Add title and year to expanded card details
+2be2c12 Merge pull request #416 from ShekMate/codex/add-movie-title-and-year-to-details
+4fdb912 Add gradient overlay on movie posters for readability
+1c483c4 Merge pull request #417 from ShekMate/codex/add-gradient-overlay-to-movie-posters
+aa7e1a8 Add TMDb-style horizontal cast cards in expanded movie view
+962d0b8 Merge pull request #418 from ShekMate/codex/add-scrolling-cast-section-to-movie-card
+85e8819 Refine cast section to circular avatar style
+9a9ddf4 Merge branch 'dev_split' into codex/add-scrolling-cast-section-to-movie-card-mpkfjp
+5798abb Merge pull request #419 from ShekMate/codex/add-scrolling-cast-section-to-movie-card-mpkfjp
+9ffae38 Tighten cast spacing in expanded movie card
+0520fa4 Merge branch 'dev_split' into codex/add-scrolling-cast-section-to-movie-card-0qnbhp
+e702e30 Merge pull request #420 from ShekMate/codex/add-scrolling-cast-section-to-movie-card-0qnbhp
+702cc54 Style cast list scrollbar to match theme colors
+9e8cb39 Merge pull request #421 from ShekMate/codex/update-cast-scroll-bar-colors
+b9c03af Adjust expanded swipe card metadata typography and labels
+6a6bb7e Merge pull request #422 from ShekMate/codex/find-font-sizes-for-metadata-in-swipe-screen
+842ae43 Fix storyline spacing and ensure original language is surfaced
+23fa3a9 Merge branch 'dev_split' into codex/find-font-sizes-for-metadata-in-swipe-screen-q10dc6
+e303afc Merge pull request #423 from ShekMate/codex/find-font-sizes-for-metadata-in-swipe-screen-q10dc6
+035b65d Populate original language from TMDb enrichment data
+d505366 Merge pull request #424 from ShekMate/codex/find-font-sizes-for-metadata-in-swipe-screen-1zbi6q
+55b2b7f Improve metadata language labels and rating/crew typography
+af2fa3f Merge pull request #425 from ShekMate/codex/update-language-display-and-font-sizes
+103ca72 Reorder card metadata sections for ratings and plot
+7ff1057 Merge pull request #426 from ShekMate/codex/rearrange-layout-for-logos-and-plot
+9e76055 Fix CardView rating ReferenceError on render
+9e1b6de Merge pull request #427 from ShekMate/codex/fix-error-encountered
+49825c4 Adjust card ratings spacing above directors
+a5bfeec Merge pull request #428 from ShekMate/codex/find-spacing-between-directors,-writers,-storyline
+f125db0 Fix desktop ratings-to-director spacing override
+e79c10c Merge pull request #429 from ShekMate/codex/find-spacing-between-directors,-writers,-storyline-ajsj33
+5a5297a Adjust desktop card crew and ratings spacing
+41180f2 Merge pull request #430 from ShekMate/codex/clarify-required-code-changes
+5e77de7 Adjust poster genres and desktop ratings spacing
+2a03295 Merge pull request #431 from ShekMate/codex/confirm-changes-before-implementation
+9a84f6f Adjust card crew labels and desktop ratings spacing
+91976c3 make-margin-and-spacing-updates
+78a62ba Redesign access password screen layout
+c6f1acd Merge pull request #433 from ShekMate/codex/design-new-access-password-screen-layout
+89f28b8 Add continue button to access password row
+5d35c5b Merge branch 'dev_split' into codex/design-new-access-password-screen-layout-gqhbio
+9f64b03 Merge pull request #434 from ShekMate/codex/design-new-access-password-screen-layout-gqhbio
+8552c90 Tighten password field width and restore square show toggle
+55989d2 Merge branch 'dev_split' into codex/design-new-access-password-screen-layout-a9baoo
+e34e677 Merge pull request #435 from ShekMate/codex/design-new-access-password-screen-layout-a9baoo
+46a810a Adjust access password input sizing and typography
+b0d9fe7 Merge pull request #436 from ShekMate/codex/update-access-password-input-styling
+0bc9db7 Widen password arrow submit button
+ba0bcc0 Merge branch 'dev_split' into codex/update-access-password-input-styling-99dq78
+01f7e02 Merge pull request #437 from ShekMate/codex/update-access-password-input-styling-99dq78
+b08690f Right-align password row and widen enter button
+15b3219 Merge branch 'dev_split' into codex/update-access-password-input-styling-c869oc
+09a3945 Merge pull request #438 from ShekMate/codex/update-access-password-input-styling-c869oc
+cddd3d9 Recenter password row and expand width for troll-edge alignment
+6bb12e0 Merge branch 'dev_split' into codex/update-access-password-input-styling-o63tnh
+da70f00 Merge pull request #439 from ShekMate/codex/update-access-password-input-styling-o63tnh
+1f838b6 Set password input container width to 415px
+afd9dd2 Merge branch 'dev_split' into codex/update-access-password-input-styling-7sod7c
+f9b2233 Merge pull request #440 from ShekMate/codex/update-access-password-input-styling-7sod7c
+011f3d2 Make password input container explicitly 415px wide
+428103b Merge branch 'dev_split' into codex/update-access-password-input-styling-nxbjc4
+a1a86e6 Merge pull request #441 from ShekMate/codex/update-access-password-input-styling-nxbjc4
+187d9d6 Adjust password row width rule to avoid layout override
+c3ec9ca Merge branch 'dev_split' into codex/update-access-password-input-styling-i03k4y
+61de843 Merge pull request #442 from ShekMate/codex/update-access-password-input-styling-i03k4y
+30cce36 Increase password form offset under logo to 7rem
+a906427 Merge pull request #443 from ShekMate/codex/find-spacing-between-comparr-logo-and-elements
+41bae8f Adjust choose mode spacing and vertical mode card layout
+a9117a5 Merge pull request #444 from ShekMate/codex/provide-devtools-script-for-spacing-adjustments
+a94f0a5 Update mode picker descriptions
+3c0d345 Merge pull request #445 from ShekMate/codex/update-mode-button-descriptions
+19d13c5 Adjust mode selection buttons to half width
+56c89a3 Merge pull request #446 from ShekMate/codex/reduce-mode-selection-buttons-width
+ec5dedb Align New here toggles inline with label
+086cf62 Merge pull request #447 from ShekMate/codex/move-yes/no-buttons-next-to-new-here
+14ab419 Adjust login form alignment and spacing
+4845fb2 Merge pull request #448 from ShekMate/codex/apply-requested-changes
+8c0c826 Adjust login continue button left offset control
+d83e977 Merge pull request #449 from ShekMate/codex/adjust-margin-for-continue-button
+3ba0d06 Set Continue button left alignment and default left margin
+0f659c9 Merge branch 'dev_split' into codex/adjust-margin-for-continue-button-6cejp3
+627ff93 Merge pull request #450 from ShekMate/codex/adjust-margin-for-continue-button-6cejp3
+99e6eab Inline room-code continue action for join mode
+8d16f09 Merge pull request #451 from ShekMate/codex/remove-continue-button-from-new-here-no-screen
+01ae480 Fix login continue button visibility for join mode
+4839bd7 Merge pull request #452 from ShekMate/codex/remove-continue-button-from-no-screen
+e0c031f Adjust login room code label text and square submit button
+3daf98b Merge pull request #453 from ShekMate/codex/update-input-layout-and-labels
+2e3956e Fix room code submit button to true square dimensions
+4bf1642 Merge branch 'dev_split' into codex/update-input-layout-and-labels-ofukiu
+fd2adb2 Merge pull request #454 from ShekMate/codex/update-input-layout-and-labels-ofukiu
+5be6cfd Align generated room codes with 4-character login constraints
+9092ce8 Merge pull request #455 from ShekMate/codex/fix-room-code-generation-to-4-digits
+f216157 Add Display settings toggles for Seen and Pass lists
+9980cf4 Merge pull request #456 from ShekMate/codex/add-display-settings-sub-tab
+5462d77 Fix swipe tab login flash and convert display list controls to toggles
+c39159f Merge pull request #457 from ShekMate/codex/fix-swipe-tab-loading-issue-and-update-toggle-ui
+3f9e431 Fix filter dropdown positioning while scrolling
+328d33e Merge pull request #458 from ShekMate/codex/fix-dropdown-position-on-scroll
+46ef8f8 Add Emby and Jellyfin personal media settings integration
+59affc4 Merge pull request #459 from ShekMate/codex/add-emby-and-jellyfin-integration
+4935f98 Add Emby and Jellyfin personal media settings sections
+fcaba96 Merge pull request #460 from ShekMate/codex/add-admin-settings-for-emby-and-jellyfin
+e584739 Always show Emby and Jellyfin admin config sections
+72e30e7 Merge pull request #461 from ShekMate/codex/add-admin-settings-for-emby-and-jellyfin-7tblni
+b0b1a32 Fix host-managed streaming options after Emby/Jellyfin save
+8ea40be Merge pull request #462 from ShekMate/codex/fix-emby-settings-visibility-issue
+579e372 Adjust Seen/Pass display helper text to requested wording
+5ec3f29 Merge pull request #463 from ShekMate/codex/rename-navigation-tabs-for-clarity
+661302d Make password access enter button square
+05a80d8 Merge pull request #464 from ShekMate/codex/make-enter-button-square-on-password-screen
+ffd51bb Adjust password visibility field layout spacing
+62730b6 Merge pull request #465 from ShekMate/codex/update-css-for-password-visibility-field
+531822e Move password offset styles to #access-password
+5328799 Merge pull request #466 from ShekMate/codex/update-css-for-password-visibility-field-44gf3y
+a81dae2 Adjust access password field position without shifting right edge
+5226fc7 Merge pull request #467 from ShekMate/codex/provide-script-to-adjust-password-input-position
+530a04c Revert "Set #access-password margin and width to align with password field"
+7494b36 Merge pull request #468 from ShekMate/revert-467-codex/provide-script-to-adjust-password-input-position
+8e740d9 Revert "Add layout rules for #access-password to align with password controls"
+f9f5a69 Merge pull request #469 from ShekMate/revert-466-codex/update-css-for-password-visibility-field-44gf3y
+29e71bb Revert "Adjust password visibility field layout spacing"
+c0862c9 Merge pull request #470 from ShekMate/revert-465-codex/update-css-for-password-visibility-field
+b96226b Adjust access password field layout spacing
+fe2ff9d Merge pull request #471 from ShekMate/codex/update-css-for-password-visibility-field-ghrtb4
+91fb1bd Merge pull request #473 from ShekMate/dev_split
+cffcb49 Update docker workflow to publish private comparr-dev image on main
+5661ad1 Merge pull request #1 from ShekMate/codex/update-github-actions-workflow-for-docker-image
+4524483 Restrict dev latest tag publishing to main ref
+aa03cff Merge pull request #2 from ShekMate/codex/verify-dev-docker-image-existence
+9a3fee8 Add first-run host setup gate with TMDb guidance
+680ef5d Merge pull request #3 from ShekMate/codex/design-new-docker-installation-flow
+f3f7742 Fix login room-code validation in create mode
+1537e82 Merge pull request #4 from ShekMate/codex/diagnose-console-error-after-code-generation
+63d78d3 Refine onboarding copy and TMDb link wording
+85a3f78 Merge branch 'main' into codex/design-new-docker-installation-flow-u9zn8i
+56fc48f Merge pull request #5 from ShekMate/codex/design-new-docker-installation-flow-u9zn8i
+ec3f7ac Replace first-run settings modal with guided setup wizard
+6aa13f2 Merge pull request #6 from ShekMate/codex/update-settings-popup-navigation-and-validation
+f3bf17c Polish first-run settings wizard selection and navigation styles
+054c828 Merge pull request #7 from ShekMate/codex/fix-settings-popup-navigation-styles
+d7195c5 Adjust first-run wizard greeting and prompt copy
+68b91b4 Merge pull request #8 from ShekMate/codex/update-walkthrough-prompts-and-messages
+82b6c1e Update first-run personal media labels and themed test buttons
+762453f Merge pull request #9 from ShekMate/codex/update-headers-and-button-styles
+c1dccbb Style setup test connection buttons to match primary action
+ac8cc0a Merge pull request #10 from ShekMate/codex/update-test-connection-button-styling
+4eadfaa Adjust setup walkthrough TMDb and requirements copy
+44350b5 Merge pull request #11 from ShekMate/codex/update-tmdb-setup-screens-and-instructions
+627be23 Adjust setup wizard TMDb flow to include subscriptions step
+627fdaa Merge pull request #12 from ShekMate/codex/change-tmdb-screen-button-to-next
+f3abc67 Update onboarding flow with requests and defaults steps
+a8c1df5 Merge pull request #13 from ShekMate/codex/update-walkthrough-screen-flow
+1bf0835 Require TMDb messaging for combined setup flow
+8a7cc5e Merge pull request #14 from ShekMate/codex/make-tmdb-required-for-all-options
+63c6dae Add request service selector to first-run movie requests step
+417637f Merge pull request #15 from ShekMate/codex/add-radio-button-for-overseerr-or-jellyseerr
+f6bbad0 Add admin request-service selector and Seerr integration
+d451120 Merge pull request #16 from ShekMate/codex/locate-radio-button-logic-in-admin-settings
+463616b Fix setup wizard modal scrolling on small screens
+15865d4 Merge pull request #17 from ShekMate/codex/fix-cutoff-default-screen-in-setup-wizard
+d539ecc Fix wizard defaults subscription availability behavior
+8e7e29a Merge pull request #18 from ShekMate/codex/fix-streaming-subscriptions-not-stored-in-defaults
+765d53c Add selectable free streaming services in availability filters
+3c0d526 Merge pull request #19 from ShekMate/codex/add-user-choice-for-free-streaming-services
+709e378 Close defaults dropdowns when exiting inline editor
+e8b10cf Merge pull request #20 from ShekMate/codex/fix-persisted-expanded-dropdown-in-filter
+d0bf909 Adjust card detail spacing to consistent 0.75rem
+26a4191 Merge pull request #21 from ShekMate/codex/find-spacing-between-content-and-rating-lines
+16b6e85 Adjust expanded card metadata line ordering and spacing
+91fa37b Merge pull request #22 from ShekMate/codex/update-expanded-movie-card-layout
+687c595 Tighten cast section vertical spacing
+a558f02 Merge pull request #23 from ShekMate/codex/adjust-padding-in-cast-section
+b6646a9 Add Where to Watch provider pills in expanded watch cards
+4bccb35 Merge pull request #24 from ShekMate/codex/add-where-to-watch-section-to-card
+0ed73eb Add Where to Watch pills to expanded swipe card details
+1e8984d Merge pull request #25 from ShekMate/codex/add-where-to-watch-section-to-card-s0f6iv
+341a936 Prevent Where to Watch provider logos from being cropped
+7b83917 Merge branch 'main' into codex/add-where-to-watch-section-to-card-uwed44
+b8e6479 Merge pull request #26 from ShekMate/codex/add-where-to-watch-section-to-card-uwed44
+c76ba10 Sync personal library pill name with current settings
+ed86cd9 Merge branch 'main' into codex/add-where-to-watch-section-to-card-uyyifc
+772d21c Merge pull request #27 from ShekMate/codex/add-where-to-watch-section-to-card-uyyifc
+27fb262 Fix access password setup and preserve configured value
+65b04df Allow admins to clear ACCESS_PASSWORD via settings
+36f250a Merge pull request #28 from ShekMate/codex/fix-access-code-linking-in-admin-settings
+c01dee8 Update security copy and start setup wizard on security settings
+76d9475 Merge pull request #29 from ShekMate/codex/update-security-tab-text-and-setup-wizard
+06b3f2e Show personal media configs only for selected sources
+88b45fb Merge pull request #30 from ShekMate/codex/update-media-settings-visibility-trigger
+2ff2bd8 Update admin password helper copy
+9a58203 Merge pull request #31 from ShekMate/codex/update-password-instructions-for-clarity
+7262f6a Update security wizard password field copy
+42855b6 Merge pull request #32 from ShekMate/codex/update-access-and-admin-settings-password-text
+7f98cb6 Remove duplicate security instruction in setup wizard
+9faae58 Merge branch 'main' into codex/update-access-and-admin-settings-password-text-2h52fe
+145d823 Merge pull request #33 from ShekMate/codex/update-access-and-admin-settings-password-text-2h52fe
+6e023a6 Refine security wizard password step behavior and styling
+2c1ec08 Merge pull request #34 from ShekMate/codex/update-security-settings-setup-wizard
+c1931fa Fix security wizard instruction placement
+b7ab8df Merge pull request #35 from ShekMate/codex/move-input-instructions-above-input-field
+2abf9db Adjust first-run security field spacing
+5244c12 Merge pull request #36 from ShekMate/codex/update-admin-settings-password-gap
+db005bc Improve setup wizard resume behavior and loading feedback
+6bf20ca Handle setup completion save failures in wizard
+b988b34 Merge pull request #37 from ShekMate/codex/improve-setup-wizard-usability
+0d18e6a Fix security wizard admin password authorization header
+d23b22e Preserve authenticated admin header in wizard settings saves
+4fb2421 Merge pull request #38 from ShekMate/codex/find-cause-of-password-input-error
+1402fe3 Fix setup wizard admin auth for connection tests
+fad72bd Merge pull request #40 from ShekMate/codex/fix-setup-wizard-issue
+290ee1f Revert README/reverse-proxy security doc additions
+b04d4f7 Merge pull request #41 from ShekMate/codex/evaluate-setup-wizard-usefulness
+2b40699 security: harden API paths, IDs, and outbound request handling
+1bcdea6 Merge pull request #42 from ShekMate/codex/review-critical-security-feedback
+47c668d security: enforce access-password auth and bound rate limiter state
+fad745b Merge branch 'main' into codex/review-critical-security-feedback-y9g2qv
+a6886f3 Merge pull request #43 from ShekMate/codex/review-critical-security-feedback-y9g2qv
+63a54f9 security: remove inline CSP allowance and migrate TMDb auth + audit/shutdown
+b93ce5f Merge branch 'main' into codex/review-critical-security-feedback-qdkcc1
+6b1f9fb Merge pull request #44 from ShekMate/codex/review-critical-security-feedback-qdkcc1
+b821eac docs: add clear status of completed vs remaining security work
+affa3cb Merge pull request #45 from ShekMate/codex/review-critical-security-feedback-cztln3
+592d74b security: finish remaining hardening follow-ups for tmdb, shutdown, and auditing
+7d7bd10 Merge branch 'main' into codex/review-critical-security-feedback-tksz1u
+830b2fc Merge pull request #46 from ShekMate/codex/review-critical-security-feedback-tksz1u
+3522031 security: complete CSP patch by removing inline styles and tightening directives
+7c125ad Merge branch 'main' into codex/review-critical-security-feedback-eynkk9
+840590e Merge pull request #47 from ShekMate/codex/review-critical-security-feedback-eynkk9
+29fcaf5 security: add CSRF tokens and keep admin password in-memory only
+9d21221 Merge branch 'main' into codex/review-critical-security-feedback-8igwyd
+14f2223 Merge pull request #48 from ShekMate/codex/review-critical-security-feedback-8igwyd
+c1c25bc security: close remaining origin/csrf/disclosure gaps before reassessment
+e5cf854 Merge branch 'main' into codex/review-critical-security-feedback-sjx5ho
+5110a93 Merge pull request #49 from ShekMate/codex/review-critical-security-feedback-sjx5ho
+6b6e43a Fix first-run admin bootstrap and harden reliability checks
+e9845ed Stabilize CI checks and fix stylelint regressions
+04646b0 Merge pull request #50 from ShekMate/codex/fix-bootstrap-wizard-for-remote-docker-installs
+ed5ecc7 Implement remaining security hardening fixes
+489a508 Merge pull request #51 from ShekMate/codex/fix-bootstrap-wizard-for-remote-docker-installs-sxhlz0
+26f4c87 Fix backend TypeScript test errors in CI
+1a01359 Merge pull request #52 from ShekMate/codex/fix-bootstrap-wizard-for-remote-docker-installs-bx4iai
+5cd691c Fix match-action crash and harden import/audit/cache handling
+647a4f7 Address Codex review: add health endpoint and guard bootstrap scope
+26414a0 Merge branch 'main' into codex/fix-bootstrap-wizard-for-remote-docker-installs-sy6ui9
+fa7cf26 Merge pull request #53 from ShekMate/codex/fix-bootstrap-wizard-for-remote-docker-installs-sy6ui9
+9bbbb6d Tighten CI gating and scope runtime network permissions
+5fdfa5b Merge branch 'main' into codex/fix-bootstrap-wizard-for-remote-docker-installs-sin2rz
+6ea3cf9 Merge pull request #54 from ShekMate/codex/fix-bootstrap-wizard-for-remote-docker-installs-sin2rz
+09c4fde Fix stale Radarr cache refresh call regression
+3667555 Merge pull request #55 from ShekMate/codex/fix-bootstrap-wizard-for-remote-docker-installs-mplos4
+55eb6f8 Make CI fully blocking and fix Radarr stale-cache refresh bug
+1083b23 Merge branch 'main' into codex/fix-bootstrap-wizard-for-remote-docker-installs-fkwoc6
+91b5a76 Merge pull request #56 from ShekMate/codex/fix-bootstrap-wizard-for-remote-docker-installs-fkwoc6
+98beba4 Allow Unraid iframe embedding by removing frame-blocking headers
+8c5438a Restore secure defaults and make frame embedding configurable
+31ff0ba Merge pull request #57 from ShekMate/codex/investigate-error-message-cause
+20bc7dd Handle JSON parse failures across config, i18n, and session flows
+43dc576 Merge pull request #58 from ShekMate/codex/fix-unprotected-json.parse-calls
+f54a1e7 Adjust JSON.parse guards in config version and i18n loading
+a09aa2b Merge branch 'main' into codex/fix-unprotected-json.parse-calls-yugt4w
+4677166 Merge pull request #59 from ShekMate/codex/fix-unprotected-json.parse-calls-yugt4w
+4b2ffe7 Replace console logging with structured logger
+1579e9f Merge pull request #60 from ShekMate/codex/replace-console-logs-with-structured-logger
+9b9f07f Fix Deno assertRejects usage in tests
+0cdbfc3 Merge pull request #61 from ShekMate/codex/fix-github-pr-linting-errors
+ec30ed9 ci: add npm audit high-severity check to test workflow
+2ca0b76 Merge pull request #62 from ShekMate/codex/add-npm-audit-step-to-ci
+3224ddd refactor: migrate log imports and proxyPoster to native request/response
+a28577b Merge pull request #63 from ShekMate/codex/update-deno-base-image-in-dockerfile
+11371a0 test: migrate Deno assert imports and remove stale import map
+cd35b96 Merge pull request #64 from ShekMate/codex/update-deno-base-image-in-dockerfile-010b1x
+3ccaf30 refactor: replace deno.land/x accepts/denoflate/sqlite deps
+e00620e Merge branch 'main' into codex/update-deno-base-image-in-dockerfile
+40998f5 Merge pull request #65 from ShekMate/codex/update-deno-base-image-in-dockerfile
+4e58de6 refactor: introduce shared CompatRequest typing across infra handlers
+26d1f98 Merge branch 'main' into codex/update-deno-base-image-in-dockerfile-i73hly
+7893be3 Merge pull request #66 from ShekMate/codex/update-deno-base-image-in-dockerfile-i73hly
+c8979c5 refactor: migrate non-settings routes to Response-return handlers
+35287cd Merge branch 'main' into codex/update-deno-base-image-in-dockerfile-kxc8lu
+1b45e2d Merge pull request #67 from ShekMate/codex/update-deno-base-image-in-dockerfile-kxc8lu
+38822b0 refactor: remove req.respond usage outside main server loop
+e0daa08 Merge branch 'main' into codex/update-deno-base-image-in-dockerfile
+5fc8b66 Merge pull request #68 from ShekMate/codex/update-deno-base-image-in-dockerfile
+dcf4a03 refactor: return Response from respondFile helper in index loop
+ed6d547 Merge branch 'main' into codex/update-deno-base-image-in-dockerfile
+fb84ce1 Merge pull request #69 from ShekMate/codex/update-deno-base-image-in-dockerfile
+39151be fix: pass request context into makeHeaders in index
+086b327 Merge branch 'main' into codex/update-deno-base-image-in-dockerfile-b1doq7
+78e20fd Merge pull request #70 from ShekMate/codex/update-deno-base-image-in-dockerfile-b1doq7
+e63019d fix: clean up websocket clients and add missing favicon/image MIME types
+366f0f3 Merge pull request #71 from ShekMate/codex/update-deno-base-image-in-dockerfile-e5mazs
+4805c17 fix: allow deno serve to bind on 0.0.0.0
+d9efd23 Merge pull request #72 from ShekMate/codex/fix-allowed_net_hosts-in-entrypoint-script
+31ac966 fix: bind deno serve to 0.0.0.0 in compat server
+589ed76 Merge pull request #73 from ShekMate/codex/fix-allowed_net_hosts-in-entrypoint-script-netbwz
+0aa1cac fix: make serveCompat hostname explicit for container binding
+c0a0fb1 Merge branch 'main' into codex/fix-allowed_net_hosts-in-entrypoint-script-nyrt0q
+167d0b6 Merge pull request #74 from ShekMate/codex/fix-allowed_net_hosts-in-entrypoint-script-nyrt0q
+4551b7b fix: keep PORT env-only and out of persisted settings
+2409897 Merge branch 'main' into codex/fix-allowed_net_hosts-in-entrypoint-script-g0dqou
+d1c335e Merge pull request #75 from ShekMate/codex/fix-allowed_net_hosts-in-entrypoint-script-g0dqou
+47a2855 fix: make docker healthcheck deno2 permission-safe and port-aware
+8bef976 Merge pull request #76 from ShekMate/codex/fix-allowed_net_hosts-in-entrypoint-script-ho2wfq
+bf597d5 fix: prevent shell expansion in docker healthcheck eval script
+f6aa458 Merge branch 'main' into codex/fix-allowed_net_hosts-in-entrypoint-script-24fkoe
+8a11435 Merge pull request #77 from ShekMate/codex/fix-allowed_net_hosts-in-entrypoint-script-24fkoe
+34310b1 fix: restore required deno sqlite runtime permissions
+d7145bc Merge pull request #78 from ShekMate/codex/fix-allowed_net_hosts-in-entrypoint-script-z93j3c
+2e1ee96 fix: avoid container crash loops by running deno with allow-all
+f388bea Merge branch 'main' into codex/fix-allowed_net_hosts-in-entrypoint-script-d77okh
+876db09 Merge pull request #79 from ShekMate/codex/fix-allowed_net_hosts-in-entrypoint-script-d77okh
+d10e18f feat: add startup diagnostic logging to identify restart cause
+75752af Merge pull request #80 from ShekMate/claude/fix-webui-restart-17OTf
+b6e86b2 fix: remove bash-only ERR trap from POSIX sh entrypoint
+1a26a73 Merge pull request #81 from ShekMate/claude/fix-webui-restart-17OTf
+84ae19e fix: replace deno eval with deno run to fix Deno 2.x restart loop
+85a504f Merge pull request #82 from ShekMate/claude/fix-webui-restart-17OTf
+f6bde1a fix: move heredoc closing paren to own line for dash/sh compatibility
+446b669 Merge pull request #83 from ShekMate/claude/fix-webui-restart-17OTf
+85e199f fix: chown /deno-dir at startup and remove deprecated --unstable flag
+d8e1cb0 Merge branch 'main' into claude/fix-webui-restart-17OTf
+b31fe67 Merge pull request #84 from ShekMate/claude/fix-webui-restart-17OTf
+208743c fix: allow DENO_SQLITE_PATH env var and remove unsupported allowJs
+4f7f77e Merge pull request #85 from ShekMate/claude/fix-webui-restart-17OTf
+d89638f fix: install system libsqlite3 and resolve path at startup
+ad33228 fix: use libsqlite3-0 instead of libsqlite3-dev
+d1c4d37 Merge pull request #86 from ShekMate/claude/fix-webui-restart-17OTf
+7f3b3b3 fix: update @std/log API usage for 1.x compatibility
+49cbfbf Merge pull request #87 from ShekMate/claude/fix-webui-restart-17OTf
+861ca30 fix: rename log.warning to log.warn for @std/log 1.x
+101d509 Merge pull request #88 from ShekMate/claude/fix-webui-restart-17OTf
+ff4bf80 fix: accept cookie-based access password on WebSocket login
+26c1a91 Merge pull request #89 from ShekMate/claude/fix-webui-restart-17OTf
+b57013f fix: pre-populate access password in setup wizard when already configured
+b72f868 Merge pull request #90 from ShekMate/claude/fix-setup-wizard-password-LLOZy
+4f143f4 fix: skip button incorrectly disabled when access password already set
+c4c3761 Merge pull request #91 from ShekMate/claude/fix-setup-wizard-password-LLOZy
+69bd744 feat: redesign setup wizard security screen for already-configured passwords
+1704fe7 Merge pull request #92 from ShekMate/claude/fix-setup-wizard-password-LLOZy
+4811cd7 fix: bypass admin password auth during setup wizard
+fd76f02 Merge pull request #93 from ShekMate/claude/fix-setup-wizard-password-LLOZy
+744bbcb fix: use unrestricted --allow-net in Docker entrypoint
+05114b9 Merge pull request #94 from ShekMate/claude/fix-setup-wizard-password-LLOZy
+f4c7272 Fix watchlist card expansion blocked by Content Security Policy
+4852d64 Merge pull request #95 from ShekMate/claude/fix-watchlist-card-expansion-dvxJ1
+d69fff8 Remove redundant Subscription/Free dropdowns and plex-status from Watch List cards
+7a96f9a Merge pull request #96 from ShekMate/claude/fix-watchlist-card-expansion-dvxJ1
+a61c54b feat: add Emby/Jellyfin library caches, request pill in Where to Watch, refresh btn in header
+10659dc Merge pull request #97 from ShekMate/claude/fix-watchlist-card-expansion-dvxJ1
+a1b3d67 fix: remove stale Jellyseerr/Overseerr imports from config debug route
+1d0a8a8 Merge pull request #98 from ShekMate/claude/fix-watchlist-card-expansion-dvxJ1
+1e260f4 fix: allvids badge for Emby/Jellyfin, rename request button to 'Request'
+663e5c4 fix: Personal Media settings blank after admin login
+0ae9a43 Merge pull request #99 from ShekMate/claude/fix-watchlist-card-expansion-dvxJ1
+d9a251b Fix settings not pre-populating after wizard setup
+4e0ae59 Merge pull request #100 from ShekMate/claude/fix-watchlist-card-expansion-dvxJ1
+de8ee97 Fix admin settings blank after wizard: re-hydrate form on wizard complete
+6af5325 Merge pull request #101 from ShekMate/claude/fix-watchlist-card-expansion-dvxJ1
+bafd9a0 Diagnose and fix silent admin auth failure in settings fetch
+01c94e2 Merge pull request #102 from ShekMate/claude/fix-watchlist-card-expansion-dvxJ1
+27a82aa Add Reset tab to admin settings with Reset Settings and Clear User History
+7f3d12b Merge pull request #103 from ShekMate/claude/add-reset-settings-admin-2mpPU
+0832659 fix: update session admin password when changed via settings form
+4d4ab3a Merge pull request #104 from ShekMate/claude/fix-admin-password-auth-i0Wb5
+06d9a4e fix: comprehensive admin password auth overhaul
+7587e41 Merge pull request #105 from ShekMate/claude/fix-admin-password-auth-i0Wb5
+3890315 fix: cap hydrateSettingsForm retries at 1 and track admin auth success
+26bb300 Merge pull request #106 from ShekMate/claude/fix-admin-password-auth-i0Wb5
+e077478 Fix admin password sync across admin settings tabs
+8b2c2a1 Merge pull request #107 from ShekMate/codex/fix-admin-password-authentication-issue
+50f9226 fix: prevent double admin prompt and Reset tab 403 re-prompt loop
+cff9203 Merge branch 'main' into claude/fix-admin-password-auth-i0Wb5
+5c0260b Merge pull request #108 from ShekMate/claude/fix-admin-password-auth-i0Wb5
+fa3b4d6 debug: add admin auth diagnostic logging to trace double-prompt root cause
+b44627a Merge pull request #109 from ShekMate/claude/fix-admin-password-auth-i0Wb5
+ee16d93 Fix clear user history not populating — read live session state
+f7c1151 Merge pull request #110 from ShekMate/claude/fix-user-history-display-owWT4
+085e09a Fix Emby/Jellyfin library filtering — movies not found when filtering to Emby/Jellyfin only
+13d2804 Merge pull request #111 from ShekMate/claude/fix-emby-library-filtering-rSnNm
+9bdd586 Update AppData default path to Comparr-dev/data subfolder
+6e469fa Merge pull request #112 from ShekMate/claude/repo-audit-review-e9t7D
+0668c49 Merge Emby/Jellyfin cache into shared factory
+dec553e Merge pull request #113 from ShekMate/claude/repo-audit-review-e9t7D
+e45b3ee Three audit improvements: DATA_DIR, password hashing, index.ts refactor
+0a2e17b chore: remove unused imports from index.ts post-refactor
+f1f83db Merge pull request #114 from ShekMate/claude/repo-audit-review-e9t7D
+9cae685 docs: add full repository audit report
+2fc4cf8 docs: consolidate and clean up markdown files
+f3e6c44 chore: delete testing/ folder
+0a1ab39 chore: remove unused files
+f2d59bd Merge pull request #115 from ShekMate/claude/repo-audit-report-VpDzx
+6c5db49 Delete docs/repo-audit.md
+47c8c7c docs: remove repo-audit.md and docker-compose.md, merge into README
+51c991d Delete docs/docker-compose.md
+c50ebe5 Merge pull request #116 from ShekMate/claude/repo-audit-report-VpDzx
+9fce536 refactor: merge room-code-fallback into main.js, move tests to root tests/
+50cf08b Merge pull request #117 from ShekMate/claude/repo-audit-report-VpDzx
+b279251 refactor: move style.css into public/styles/ alongside other stylesheets
+e7d26f7 chore: remove public/style.css after move to public/styles/style.css
+a2fa2be Merge pull request #118 from ShekMate/claude/repo-audit-report-VpDzx
+7123698 fix: remove --unstable flag from deno lint (dropped in Deno 1.38)
+5e62335 Merge pull request #119 from ShekMate/claude/repo-audit-report-VpDzx
+77db46c refactor: move shared test fixtures from src/__tests__/ to src/testdata/
+4f2e4bc Merge pull request #120 from ShekMate/claude/repo-audit-report-VpDzx
+54020f2 Switch to WebUI-first config model (arr stack pattern)
+890fcf8 Merge pull request #121 from ShekMate/claude/env-config-setup-xksR5
+667eacc fix settings bootstrap scope and css import/lint issues
+6734e38 Merge pull request #122 from ShekMate/codex/identify-files-not-following-standards
+b174ee2 refactor startup initialization into app bootstrap module
+dbee45f Merge pull request #123 from ShekMate/codex/identify-files-not-following-standards-wa1cb5
+e7d5cf8 extract system routes from index and fix css lint violation
+88f1877 Merge branch 'main' into codex/identify-files-not-following-standards-07gzy5
+241836e Merge pull request #124 from ShekMate/codex/identify-files-not-following-standards-07gzy5
+5954bc3 extract movie metadata helpers from main frontend bundle
+ec704bb Merge pull request #125 from ShekMate/codex/identify-files-not-following-standards-fke8qv
+1dbaaaa standardize container image naming and tag guidance
+e9c17ca Merge pull request #126 from ShekMate/codex/identify-files-not-following-standards-svva7l
+5a739d8 add match-action validation and align image namespace
+0d40ed2 Merge branch 'main' into codex/identify-files-not-following-standards-e3tixa
+afa95ea Merge pull request #127 from ShekMate/codex/identify-files-not-following-standards-e3tixa
+5dc4d00 Redesign Personal Discovery/Group Match and login screens
+83a63c0 fix: resolve all deno lint errors to pass CI checks
+d0a7507 fix: resolve npm audit high/critical vulnerabilities
+bd63bbc Merge pull request #128 from ShekMate/claude/redesign-discovery-screens-GMPPd
+68b49ed Merge pull request #129 from ShekMate/claude/fix-github-tests-5R4aE
+812c807 Polish login form layout, copy, and proportions
+a730c8e Drop redundant welcome header, update tagline
+cc0f19f Merge pull request #130 from ShekMate/claude/redesign-discovery-screens-GMPPd
+a4a1116 fix: apply prettier formatting to all source files
+04cf09c Merge pull request #131 from ShekMate/claude/fix-github-tests-5R4aE
+8c60b2f fix: sync active session state when clearing user history
+578cc8f Merge pull request #132 from ShekMate/claude/fix-reset-data-persistence-mFYWz
+f7177c6 fix: replace undefined ENRICH_DATA_DIR and DATA_DIR with getDataDir()
+a4cc29c Merge pull request #133 from ShekMate/claude/fix-github-tests-5R4aE

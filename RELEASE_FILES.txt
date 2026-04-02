@@ -1,0 +1,4307 @@
+COMMIT a4cc29c Merge pull request #133 from ShekMate/claude/fix-github-tests-5R4aE
+COMMIT f7177c6 fix: replace undefined ENRICH_DATA_DIR and DATA_DIR with getDataDir()
+M	src/features/catalog/enrich.ts
+M	src/features/catalog/imdb-datasets.ts
+
+COMMIT 578cc8f Merge pull request #132 from ShekMate/claude/fix-reset-data-persistence-mFYWz
+COMMIT 8c60b2f fix: sync active session state when clearing user history
+M	src/features/session/session.ts
+
+COMMIT 04cf09c Merge pull request #131 from ShekMate/claude/fix-github-tests-5R4aE
+COMMIT a4a1116 fix: apply prettier formatting to all source files
+M	public/js/MatchesView.js
+M	src/api/__tests__/plex.test.ts
+M	src/api/plex.ts
+M	src/core/__tests__/settings.test.ts
+M	src/core/config.ts
+M	src/core/security.ts
+M	src/core/settings.ts
+M	src/features/catalog/__tests__/enrich.test.ts
+M	src/features/catalog/enrich.ts
+M	src/features/catalog/imdb-datasets.ts
+M	src/features/media/poster-validation.ts
+M	src/features/session/session.ts
+M	src/index.ts
+M	src/infra/http/fetch-with-timeout.ts
+M	src/infra/http/network-access.test.ts
+M	src/infra/http/network-access.ts
+M	src/infra/http/routes/imdb-import.ts
+M	src/infra/http/routes/movie-refresh.ts
+M	src/infra/http/routes/request-movie.ts
+M	src/infra/http/routes/request-service.ts
+M	src/infra/http/routes/streaming.ts
+M	src/infra/http/security-headers.ts
+M	src/infra/http/staticFileServer.ts
+M	src/infra/ws/websocketServer.ts
+M	src/integrations/emby/cache.ts
+M	src/integrations/jellyfin/cache.ts
+M	src/integrations/shared/media-server-cache.ts
+M	src/testdata/test-helpers.ts
+
+COMMIT cc0f19f Merge pull request #130 from ShekMate/claude/redesign-discovery-screens-GMPPd
+COMMIT a730c8e Drop redundant welcome header, update tagline
+M	i18n/en.json
+M	public/index.html
+M	public/styles/main.css
+
+COMMIT 812c807 Polish login form layout, copy, and proportions
+M	i18n/en.json
+M	public/styles/main.css
+M	public/styles/mobile.css
+
+COMMIT 68b49ed Merge pull request #129 from ShekMate/claude/fix-github-tests-5R4aE
+COMMIT bd63bbc Merge pull request #128 from ShekMate/claude/redesign-discovery-screens-GMPPd
+COMMIT d0a7507 fix: resolve npm audit high/critical vulnerabilities
+M	package-lock.json
+M	package.json
+
+COMMIT 83a63c0 fix: resolve all deno lint errors to pass CI checks
+M	src/api/__tests__/plex.test.ts
+M	src/api/plex.ts
+M	src/core/persistence.ts
+M	src/features/catalog/__tests__/enrich.test.ts
+M	src/features/catalog/enrich.ts
+M	src/features/session/__tests__/session-matching.test.ts
+M	src/index.ts
+M	src/infra/http/routes/config.ts
+M	src/infra/http/routes/matches.ts
+M	src/infra/http/routes/settings.ts
+M	src/infra/http/routes/streaming.ts
+M	src/infra/http/staticFileServer.ts
+M	src/infra/ws/websocketServer.ts
+M	src/integrations/plex/cache.ts
+M	src/services/cache/poster-cache.ts
+
+COMMIT 5dc4d00 Redesign Personal Discovery/Group Match and login screens
+M	public/index.html
+M	public/styles/main.css
+M	public/styles/mobile.css
+
+COMMIT afa95ea Merge pull request #127 from ShekMate/codex/identify-files-not-following-standards-e3tixa
+COMMIT 0d40ed2 Merge branch 'main' into codex/identify-files-not-following-standards-e3tixa
+COMMIT 5a739d8 add match-action validation and align image namespace
+M	README.md
+M	deno.json
+M	docker-compose.yml
+M	healthcheck.ts
+M	package.json
+A	public/js/features/movie-metadata.js
+M	public/js/main.js
+M	public/styles/main.css
+M	public/styles/style.css
+A	src/app/bootstrap.ts
+M	src/index.ts
+M	src/infra/http/routes/settings.ts
+A	src/infra/http/routes/system.ts
+
+COMMIT e9c17ca Merge pull request #126 from ShekMate/codex/identify-files-not-following-standards-svva7l
+COMMIT 1dbaaaa standardize container image naming and tag guidance
+M	README.md
+M	deno.json
+M	docker-compose.yml
+M	healthcheck.ts
+M	package.json
+A	public/js/features/movie-metadata.js
+M	public/js/main.js
+M	public/styles/main.css
+M	public/styles/style.css
+A	src/app/bootstrap.ts
+M	src/index.ts
+M	src/infra/http/routes/settings.ts
+A	src/infra/http/routes/system.ts
+
+COMMIT ec704bb Merge pull request #125 from ShekMate/codex/identify-files-not-following-standards-fke8qv
+COMMIT 5954bc3 extract movie metadata helpers from main frontend bundle
+M	deno.json
+M	healthcheck.ts
+A	public/js/features/movie-metadata.js
+M	public/js/main.js
+M	public/styles/main.css
+M	public/styles/style.css
+A	src/app/bootstrap.ts
+M	src/index.ts
+M	src/infra/http/routes/settings.ts
+A	src/infra/http/routes/system.ts
+
+COMMIT 241836e Merge pull request #124 from ShekMate/codex/identify-files-not-following-standards-07gzy5
+COMMIT 88f1877 Merge branch 'main' into codex/identify-files-not-following-standards-07gzy5
+COMMIT e7d5cf8 extract system routes from index and fix css lint violation
+M	deno.json
+M	healthcheck.ts
+M	public/styles/main.css
+M	public/styles/style.css
+A	src/app/bootstrap.ts
+M	src/index.ts
+M	src/infra/http/routes/settings.ts
+A	src/infra/http/routes/system.ts
+
+COMMIT dbee45f Merge pull request #123 from ShekMate/codex/identify-files-not-following-standards-wa1cb5
+COMMIT b174ee2 refactor startup initialization into app bootstrap module
+M	deno.json
+M	healthcheck.ts
+M	public/styles/main.css
+M	public/styles/style.css
+A	src/app/bootstrap.ts
+M	src/index.ts
+M	src/infra/http/routes/settings.ts
+
+COMMIT 6734e38 Merge pull request #122 from ShekMate/codex/identify-files-not-following-standards
+COMMIT 667eacc fix settings bootstrap scope and css import/lint issues
+M	deno.json
+M	healthcheck.ts
+M	public/styles/main.css
+M	public/styles/style.css
+M	src/infra/http/routes/settings.ts
+
+COMMIT 890fcf8 Merge pull request #121 from ShekMate/claude/env-config-setup-xksR5
+COMMIT 54020f2 Switch to WebUI-first config model (arr stack pattern)
+D	.env.example
+M	.gitignore
+M	README.md
+A	docker-compose.yml
+M	docker-entrypoint.sh
+M	src/core/settings.ts
+
+COMMIT 4f2e4bc Merge pull request #120 from ShekMate/claude/repo-audit-report-VpDzx
+COMMIT 77db46c refactor: move shared test fixtures from src/__tests__/ to src/testdata/
+M	src/api/__tests__/plex.test.ts
+M	src/core/__tests__/config.test.ts
+M	src/core/__tests__/settings.test.ts
+M	src/features/catalog/__tests__/enrich.test.ts
+M	src/features/session/__tests__/session-matching.test.ts
+R100	src/__tests__/mocks/omdb-mocks.ts	src/testdata/omdb-mocks.ts
+R100	src/__tests__/mocks/plex-mocks.ts	src/testdata/plex-mocks.ts
+R100	src/__tests__/utils/test-helpers.ts	src/testdata/test-helpers.ts
+R100	src/__tests__/mocks/tmdb-mocks.ts	src/testdata/tmdb-mocks.ts
+
+COMMIT 5e62335 Merge pull request #119 from ShekMate/claude/repo-audit-report-VpDzx
+COMMIT 7123698 fix: remove --unstable flag from deno lint (dropped in Deno 1.38)
+M	scripts/run-deno-lint.js
+
+COMMIT a2fa2be Merge pull request #118 from ShekMate/claude/repo-audit-report-VpDzx
+COMMIT e7d26f7 chore: remove public/style.css after move to public/styles/style.css
+D	public/style.css
+
+COMMIT b279251 refactor: move style.css into public/styles/ alongside other stylesheets
+M	public/index.html
+A	public/styles/style.css
+
+COMMIT 50cf08b Merge pull request #117 from ShekMate/claude/repo-audit-report-VpDzx
+COMMIT 9fce536 refactor: merge room-code-fallback into main.js, move tests to root tests/
+M	public/index.html
+M	public/js/main.js
+D	public/js/room-code-fallback.js
+R099	public/js/__tests__/ComparrAPI.test.js	tests/ComparrAPI.test.js
+M	vitest.config.js
+
+COMMIT c50ebe5 Merge pull request #116 from ShekMate/claude/repo-audit-report-VpDzx
+COMMIT 51c991d Delete docs/docker-compose.md
+D	docs/docker-compose.md
+
+COMMIT 47c8c7c docs: remove repo-audit.md and docker-compose.md, merge into README
+M	README.md
+D	docs/docker-compose.md
+D	docs/repo-audit.md
+
+COMMIT 6c5db49 Delete docs/repo-audit.md
+D	docs/repo-audit.md
+
+COMMIT f2d59bd Merge pull request #115 from ShekMate/claude/repo-audit-report-VpDzx
+COMMIT 0a1ab39 chore: remove unused files
+D	docs/comparr-rating-reimplementation.md
+D	docs/desktop-drag-to-swipe-requirements.md
+D	docs/swipe-screen-sizing.md
+D	public/assets/logos/justwatch.svg
+
+COMMIT f3e6c44 chore: delete testing/ folder
+D	testing/loadingmessage1.png
+D	testing/watchscreen.png
+D	testing/watchscreen2.png
+
+COMMIT 2fc4cf8 docs: consolidate and clean up markdown files
+D	HEALTH_CHECK.md
+M	TESTING.md
+D	TEST_SUMMARY.md
+D	docs/merge-resolution-note.md
+D	docs/security-feedback-assessment.md
+D	docs/security-fix-status.md
+D	docs/security-review-claude-plan.md
+A	docs/security.md
+D	docs/swipe-discover-conflict-guide.md
+
+COMMIT 9cae685 docs: add full repository audit report
+A	docs/repo-audit.md
+
+COMMIT f1f83db Merge pull request #114 from ShekMate/claude/repo-audit-review-e9t7D
+COMMIT 0a2e17b chore: remove unused imports from index.ts post-refactor
+M	src/index.ts
+
+COMMIT e45b3ee Three audit improvements: DATA_DIR, password hashing, index.ts refactor
+M	src/core/config.ts
+A	src/core/env.ts
+M	src/core/persistence.ts
+M	src/core/security.ts
+M	src/core/settings.ts
+A	src/core/state.ts
+M	src/features/catalog/enrich.ts
+M	src/features/catalog/imdb-datasets.ts
+M	src/features/session/session.ts
+A	src/features/streaming/streaming-update.ts
+M	src/index.ts
+A	src/infra/http/audit.ts
+A	src/infra/http/routes/imdb-import.ts
+A	src/infra/http/routes/movie-refresh.ts
+A	src/infra/http/routes/request-movie.ts
+M	src/infra/http/routes/settings.ts
+A	src/infra/http/routes/streaming.ts
+M	src/infra/http/security-headers.ts
+M	src/services/cache/poster-cache.ts
+
+COMMIT dec553e Merge pull request #113 from ShekMate/claude/repo-audit-review-e9t7D
+COMMIT 0668c49 Merge Emby/Jellyfin cache into shared factory
+M	src/integrations/emby/cache.ts
+M	src/integrations/jellyfin/cache.ts
+A	src/integrations/shared/media-server-cache.ts
+
+COMMIT 6e469fa Merge pull request #112 from ShekMate/claude/repo-audit-review-e9t7D
+COMMIT 9bdd586 Update AppData default path to Comparr-dev/data subfolder
+M	comparr.xml
+
+COMMIT 13d2804 Merge pull request #111 from ShekMate/claude/fix-emby-library-filtering-rSnNm
+COMMIT 085e09a Fix Emby/Jellyfin library filtering — movies not found when filtering to Emby/Jellyfin only
+M	src/features/session/session.ts
+M	src/integrations/emby/cache.ts
+M	src/integrations/jellyfin/cache.ts
+
+COMMIT f7c1151 Merge pull request #110 from ShekMate/claude/fix-user-history-display-owWT4
+COMMIT ee16d93 Fix clear user history not populating — read live session state
+M	src/features/session/session.ts
+M	src/index.ts
+
+COMMIT b44627a Merge pull request #109 from ShekMate/claude/fix-admin-password-auth-i0Wb5
+COMMIT fa3b4d6 debug: add admin auth diagnostic logging to trace double-prompt root cause
+M	public/js/main.js
+M	src/infra/http/routes/settings.ts
+
+COMMIT 5c0260b Merge pull request #108 from ShekMate/claude/fix-admin-password-auth-i0Wb5
+COMMIT cff9203 Merge branch 'main' into claude/fix-admin-password-auth-i0Wb5
+COMMIT 50f9226 fix: prevent double admin prompt and Reset tab 403 re-prompt loop
+M	public/js/main.js
+
+COMMIT 8b2c2a1 Merge pull request #107 from ShekMate/codex/fix-admin-password-authentication-issue
+COMMIT e077478 Fix admin password sync across admin settings tabs
+M	public/js/main.js
+
+COMMIT 26bb300 Merge pull request #106 from ShekMate/claude/fix-admin-password-auth-i0Wb5
+COMMIT 3890315 fix: cap hydrateSettingsForm retries at 1 and track admin auth success
+M	public/js/main.js
+
+COMMIT 7587e41 Merge pull request #105 from ShekMate/claude/fix-admin-password-auth-i0Wb5
+COMMIT 06d9a4e fix: comprehensive admin password auth overhaul
+M	public/js/main.js
+
+COMMIT 4d4ab3a Merge pull request #104 from ShekMate/claude/fix-admin-password-auth-i0Wb5
+COMMIT 0832659 fix: update session admin password when changed via settings form
+M	public/js/main.js
+
+COMMIT 7f3d12b Merge pull request #103 from ShekMate/claude/add-reset-settings-admin-2mpPU
+COMMIT 27a82aa Add Reset tab to admin settings with Reset Settings and Clear User History
+M	public/index.html
+M	public/js/main.js
+M	public/styles/main.css
+M	src/core/persistence.ts
+M	src/core/settings.ts
+M	src/index.ts
+M	src/infra/http/routes/settings.ts
+
+COMMIT 01c94e2 Merge pull request #102 from ShekMate/claude/fix-watchlist-card-expansion-dvxJ1
+COMMIT bafd9a0 Diagnose and fix silent admin auth failure in settings fetch
+M	public/js/main.js
+M	src/infra/http/routes/settings.ts
+
+COMMIT 6af5325 Merge pull request #101 from ShekMate/claude/fix-watchlist-card-expansion-dvxJ1
+COMMIT de8ee97 Fix admin settings blank after wizard: re-hydrate form on wizard complete
+M	public/js/main.js
+
+COMMIT 4e0ae59 Merge pull request #100 from ShekMate/claude/fix-watchlist-card-expansion-dvxJ1
+COMMIT d9a251b Fix settings not pre-populating after wizard setup
+M	public/js/main.js
+
+COMMIT 0ae9a43 Merge pull request #99 from ShekMate/claude/fix-watchlist-card-expansion-dvxJ1
+COMMIT 663e5c4 fix: Personal Media settings blank after admin login
+M	public/js/main.js
+
+COMMIT 1e260f4 fix: allvids badge for Emby/Jellyfin, rename request button to 'Request'
+M	public/js/main.js
+M	src/features/catalog/enrich.ts
+M	src/features/session/session.ts
+M	src/index.ts
+
+COMMIT 1d0a8a8 Merge pull request #98 from ShekMate/claude/fix-watchlist-card-expansion-dvxJ1
+COMMIT a1b3d67 fix: remove stale Jellyseerr/Overseerr imports from config debug route
+M	src/infra/http/routes/config.ts
+
+COMMIT 10659dc Merge pull request #97 from ShekMate/claude/fix-watchlist-card-expansion-dvxJ1
+COMMIT a61c54b feat: add Emby/Jellyfin library caches, request pill in Where to Watch, refresh btn in header
+M	public/index.html
+M	public/js/main.js
+M	public/styles/main.css
+M	src/api/jellyseerr.ts
+M	src/core/config.ts
+M	src/core/settings.ts
+M	src/index.ts
+M	src/infra/http/routes/request-service.ts
+M	src/infra/http/routes/settings.ts
+A	src/integrations/emby/cache.ts
+A	src/integrations/jellyfin/cache.ts
+
+COMMIT 7a96f9a Merge pull request #96 from ShekMate/claude/fix-watchlist-card-expansion-dvxJ1
+COMMIT d69fff8 Remove redundant Subscription/Free dropdowns and plex-status from Watch List cards
+M	public/js/main.js
+
+COMMIT 4852d64 Merge pull request #95 from ShekMate/claude/fix-watchlist-card-expansion-dvxJ1
+COMMIT f4c7272 Fix watchlist card expansion blocked by Content Security Policy
+M	public/js/MatchesView.js
+M	public/js/main.js
+
+COMMIT 05114b9 Merge pull request #94 from ShekMate/claude/fix-setup-wizard-password-LLOZy
+COMMIT 744bbcb fix: use unrestricted --allow-net in Docker entrypoint
+M	docker-entrypoint.sh
+
+COMMIT fd76f02 Merge pull request #93 from ShekMate/claude/fix-setup-wizard-password-LLOZy
+COMMIT 4811cd7 fix: bypass admin password auth during setup wizard
+M	src/infra/http/routes/settings.ts
+
+COMMIT 1704fe7 Merge pull request #92 from ShekMate/claude/fix-setup-wizard-password-LLOZy
+COMMIT 69bd744 feat: redesign setup wizard security screen for already-configured passwords
+M	public/js/main.js
+M	public/styles/main.css
+M	src/infra/http/routes/settings.ts
+
+COMMIT c4c3761 Merge pull request #91 from ShekMate/claude/fix-setup-wizard-password-LLOZy
+COMMIT 4f143f4 fix: skip button incorrectly disabled when access password already set
+M	public/js/main.js
+
+COMMIT b72f868 Merge pull request #90 from ShekMate/claude/fix-setup-wizard-password-LLOZy
+COMMIT b57013f fix: pre-populate access password in setup wizard when already configured
+M	public/js/main.js
+M	src/infra/http/routes/settings.ts
+
+COMMIT 26c1a91 Merge pull request #89 from ShekMate/claude/fix-webui-restart-17OTf
+COMMIT ff4bf80 fix: accept cookie-based access password on WebSocket login
+M	src/features/session/session.ts
+M	src/index.ts
+
+COMMIT 101d509 Merge pull request #88 from ShekMate/claude/fix-webui-restart-17OTf
+COMMIT 861ca30 fix: rename log.warning to log.warn for @std/log 1.x
+M	src/api/jellyseerr.ts
+M	src/api/radarr.ts
+M	src/features/catalog/discover.ts
+M	src/features/session/imdb-import.ts
+M	src/features/session/session.ts
+M	src/index.ts
+M	src/infra/http/staticFileServer.ts
+
+COMMIT 49cbfbf Merge pull request #87 from ShekMate/claude/fix-webui-restart-17OTf
+COMMIT 7f3b3b3 fix: update @std/log API usage for 1.x compatibility
+M	src/core/config.ts
+
+COMMIT d1c4d37 Merge pull request #86 from ShekMate/claude/fix-webui-restart-17OTf
+COMMIT ad33228 fix: use libsqlite3-0 instead of libsqlite3-dev
+M	Dockerfile
+
+COMMIT d89638f fix: install system libsqlite3 and resolve path at startup
+M	Dockerfile
+M	docker-entrypoint.sh
+
+COMMIT 4f7f77e Merge pull request #85 from ShekMate/claude/fix-webui-restart-17OTf
+COMMIT 208743c fix: allow DENO_SQLITE_PATH env var and remove unsupported allowJs
+M	deno.json
+M	docker-entrypoint.sh
+
+COMMIT b31fe67 Merge pull request #84 from ShekMate/claude/fix-webui-restart-17OTf
+COMMIT d8e1cb0 Merge branch 'main' into claude/fix-webui-restart-17OTf
+COMMIT 85e199f fix: chown /deno-dir at startup and remove deprecated --unstable flag
+M	docker-entrypoint.sh
+
+COMMIT 446b669 Merge pull request #83 from ShekMate/claude/fix-webui-restart-17OTf
+COMMIT f6bde1a fix: move heredoc closing paren to own line for dash/sh compatibility
+M	docker-entrypoint.sh
+
+COMMIT 85a504f Merge pull request #82 from ShekMate/claude/fix-webui-restart-17OTf
+COMMIT 84ae19e fix: replace deno eval with deno run to fix Deno 2.x restart loop
+M	Dockerfile
+M	docker-entrypoint.sh
+A	healthcheck.ts
+
+COMMIT 1a26a73 Merge pull request #81 from ShekMate/claude/fix-webui-restart-17OTf
+COMMIT b6e86b2 fix: remove bash-only ERR trap from POSIX sh entrypoint
+M	docker-entrypoint.sh
+
+COMMIT 75752af Merge pull request #80 from ShekMate/claude/fix-webui-restart-17OTf
+COMMIT d10e18f feat: add startup diagnostic logging to identify restart cause
+M	docker-entrypoint.sh
+M	src/index.ts
+
+COMMIT 876db09 Merge pull request #79 from ShekMate/codex/fix-allowed_net_hosts-in-entrypoint-script-d77okh
+COMMIT f388bea Merge branch 'main' into codex/fix-allowed_net_hosts-in-entrypoint-script-d77okh
+COMMIT 2e1ee96 fix: avoid container crash loops by running deno with allow-all
+M	Dockerfile
+M	README.md
+M	docker-entrypoint.sh
+M	src/core/__tests__/settings.test.ts
+M	src/core/config.ts
+M	src/core/settings.ts
+M	src/index.ts
+
+COMMIT d7145bc Merge pull request #78 from ShekMate/codex/fix-allowed_net_hosts-in-entrypoint-script-z93j3c
+COMMIT 34310b1 fix: restore required deno sqlite runtime permissions
+M	Dockerfile
+M	README.md
+M	docker-entrypoint.sh
+M	src/core/__tests__/settings.test.ts
+M	src/core/config.ts
+M	src/core/settings.ts
+M	src/index.ts
+
+COMMIT 8a11435 Merge pull request #77 from ShekMate/codex/fix-allowed_net_hosts-in-entrypoint-script-24fkoe
+COMMIT f6aa458 Merge branch 'main' into codex/fix-allowed_net_hosts-in-entrypoint-script-24fkoe
+COMMIT bf597d5 fix: prevent shell expansion in docker healthcheck eval script
+M	Dockerfile
+M	README.md
+M	docker-entrypoint.sh
+M	src/core/__tests__/settings.test.ts
+M	src/core/config.ts
+M	src/core/settings.ts
+M	src/index.ts
+
+COMMIT 8bef976 Merge pull request #76 from ShekMate/codex/fix-allowed_net_hosts-in-entrypoint-script-ho2wfq
+COMMIT 47a2855 fix: make docker healthcheck deno2 permission-safe and port-aware
+M	Dockerfile
+M	README.md
+M	docker-entrypoint.sh
+M	src/core/__tests__/settings.test.ts
+M	src/core/config.ts
+M	src/core/settings.ts
+M	src/index.ts
+
+COMMIT d1c335e Merge pull request #75 from ShekMate/codex/fix-allowed_net_hosts-in-entrypoint-script-g0dqou
+COMMIT 2409897 Merge branch 'main' into codex/fix-allowed_net_hosts-in-entrypoint-script-g0dqou
+COMMIT 4551b7b fix: keep PORT env-only and out of persisted settings
+M	README.md
+M	docker-entrypoint.sh
+M	src/core/__tests__/settings.test.ts
+M	src/core/config.ts
+M	src/core/settings.ts
+M	src/index.ts
+
+COMMIT 167d0b6 Merge pull request #74 from ShekMate/codex/fix-allowed_net_hosts-in-entrypoint-script-nyrt0q
+COMMIT c0a0fb1 Merge branch 'main' into codex/fix-allowed_net_hosts-in-entrypoint-script-nyrt0q
+COMMIT 0aa1cac fix: make serveCompat hostname explicit for container binding
+M	docker-entrypoint.sh
+M	src/index.ts
+
+COMMIT 589ed76 Merge pull request #73 from ShekMate/codex/fix-allowed_net_hosts-in-entrypoint-script-netbwz
+COMMIT 31ac966 fix: bind deno serve to 0.0.0.0 in compat server
+M	docker-entrypoint.sh
+M	src/index.ts
+
+COMMIT d9efd23 Merge pull request #72 from ShekMate/codex/fix-allowed_net_hosts-in-entrypoint-script
+COMMIT 4805c17 fix: allow deno serve to bind on 0.0.0.0
+M	docker-entrypoint.sh
+
+COMMIT 366f0f3 Merge pull request #71 from ShekMate/codex/update-deno-base-image-in-dockerfile-e5mazs
+COMMIT e63019d fix: clean up websocket clients and add missing favicon/image MIME types
+M	Dockerfile
+M	deno.json
+D	import_map.json
+M	src/__tests__/utils/test-helpers.ts
+M	src/api/jellyseerr.ts
+M	src/api/plex.ts
+M	src/api/radarr.ts
+A	src/core/assert.ts
+M	src/core/config.ts
+M	src/core/i18n.ts
+M	src/core/persistence.ts
+M	src/features/catalog/discover.ts
+M	src/features/catalog/enrich.ts
+M	src/features/catalog/imdb-datasets.ts
+M	src/features/media/poster-validation.ts
+M	src/features/session/__tests__/imdb-import.test.ts
+M	src/features/session/imdb-import.ts
+M	src/features/session/session.ts
+M	src/index.ts
+A	src/infra/http/compat-request.ts
+M	src/infra/http/network-access.test.ts
+M	src/infra/http/router.ts
+M	src/infra/http/routes/config.ts
+M	src/infra/http/routes/matches.ts
+M	src/infra/http/routes/request-service.ts
+M	src/infra/http/routes/rooms.ts
+M	src/infra/http/routes/settings.ts
+M	src/infra/http/staticFileServer.ts
+M	src/infra/ws/websocketServer.ts
+M	src/integrations/plex/cache.ts
+M	src/services/cache/poster-cache.ts
+
+COMMIT 78e20fd Merge pull request #70 from ShekMate/codex/update-deno-base-image-in-dockerfile-b1doq7
+COMMIT 086b327 Merge branch 'main' into codex/update-deno-base-image-in-dockerfile-b1doq7
+COMMIT 39151be fix: pass request context into makeHeaders in index
+M	Dockerfile
+M	deno.json
+D	import_map.json
+M	src/__tests__/utils/test-helpers.ts
+M	src/api/jellyseerr.ts
+M	src/api/plex.ts
+M	src/api/radarr.ts
+A	src/core/assert.ts
+M	src/core/config.ts
+M	src/core/i18n.ts
+M	src/core/persistence.ts
+M	src/features/catalog/discover.ts
+M	src/features/catalog/enrich.ts
+M	src/features/catalog/imdb-datasets.ts
+M	src/features/media/poster-validation.ts
+M	src/features/session/__tests__/imdb-import.test.ts
+M	src/features/session/imdb-import.ts
+M	src/features/session/session.ts
+M	src/index.ts
+A	src/infra/http/compat-request.ts
+M	src/infra/http/network-access.test.ts
+M	src/infra/http/router.ts
+M	src/infra/http/routes/config.ts
+M	src/infra/http/routes/matches.ts
+M	src/infra/http/routes/request-service.ts
+M	src/infra/http/routes/rooms.ts
+M	src/infra/http/routes/settings.ts
+M	src/infra/http/staticFileServer.ts
+M	src/infra/ws/websocketServer.ts
+M	src/integrations/plex/cache.ts
+M	src/services/cache/poster-cache.ts
+
+COMMIT fb84ce1 Merge pull request #69 from ShekMate/codex/update-deno-base-image-in-dockerfile
+COMMIT ed6d547 Merge branch 'main' into codex/update-deno-base-image-in-dockerfile
+COMMIT dcf4a03 refactor: return Response from respondFile helper in index loop
+M	Dockerfile
+M	deno.json
+D	import_map.json
+M	src/__tests__/utils/test-helpers.ts
+M	src/api/jellyseerr.ts
+M	src/api/plex.ts
+M	src/api/radarr.ts
+A	src/core/assert.ts
+M	src/core/config.ts
+M	src/core/i18n.ts
+M	src/core/persistence.ts
+M	src/features/catalog/discover.ts
+M	src/features/catalog/enrich.ts
+M	src/features/catalog/imdb-datasets.ts
+M	src/features/media/poster-validation.ts
+M	src/features/session/__tests__/imdb-import.test.ts
+M	src/features/session/imdb-import.ts
+M	src/features/session/session.ts
+M	src/index.ts
+A	src/infra/http/compat-request.ts
+M	src/infra/http/network-access.test.ts
+M	src/infra/http/router.ts
+M	src/infra/http/routes/config.ts
+M	src/infra/http/routes/matches.ts
+M	src/infra/http/routes/request-service.ts
+M	src/infra/http/routes/rooms.ts
+M	src/infra/http/routes/settings.ts
+M	src/infra/http/staticFileServer.ts
+M	src/infra/ws/websocketServer.ts
+M	src/integrations/plex/cache.ts
+M	src/services/cache/poster-cache.ts
+
+COMMIT 5fc8b66 Merge pull request #68 from ShekMate/codex/update-deno-base-image-in-dockerfile
+COMMIT e0daa08 Merge branch 'main' into codex/update-deno-base-image-in-dockerfile
+COMMIT 38822b0 refactor: remove req.respond usage outside main server loop
+M	Dockerfile
+M	deno.json
+D	import_map.json
+M	src/__tests__/utils/test-helpers.ts
+M	src/api/jellyseerr.ts
+M	src/api/plex.ts
+M	src/api/radarr.ts
+A	src/core/assert.ts
+M	src/core/config.ts
+M	src/core/i18n.ts
+M	src/core/persistence.ts
+M	src/features/catalog/discover.ts
+M	src/features/catalog/enrich.ts
+M	src/features/catalog/imdb-datasets.ts
+M	src/features/media/poster-validation.ts
+M	src/features/session/__tests__/imdb-import.test.ts
+M	src/features/session/imdb-import.ts
+M	src/features/session/session.ts
+M	src/index.ts
+A	src/infra/http/compat-request.ts
+M	src/infra/http/network-access.test.ts
+M	src/infra/http/router.ts
+M	src/infra/http/routes/config.ts
+M	src/infra/http/routes/matches.ts
+M	src/infra/http/routes/request-service.ts
+M	src/infra/http/routes/rooms.ts
+M	src/infra/http/routes/settings.ts
+M	src/infra/http/staticFileServer.ts
+M	src/infra/ws/websocketServer.ts
+M	src/integrations/plex/cache.ts
+M	src/services/cache/poster-cache.ts
+
+COMMIT 1b45e2d Merge pull request #67 from ShekMate/codex/update-deno-base-image-in-dockerfile-kxc8lu
+COMMIT 35287cd Merge branch 'main' into codex/update-deno-base-image-in-dockerfile-kxc8lu
+COMMIT c8979c5 refactor: migrate non-settings routes to Response-return handlers
+M	Dockerfile
+M	deno.json
+D	import_map.json
+M	src/__tests__/utils/test-helpers.ts
+M	src/api/jellyseerr.ts
+M	src/api/plex.ts
+M	src/api/radarr.ts
+A	src/core/assert.ts
+M	src/core/config.ts
+M	src/core/i18n.ts
+M	src/core/persistence.ts
+M	src/features/catalog/discover.ts
+M	src/features/catalog/enrich.ts
+M	src/features/catalog/imdb-datasets.ts
+M	src/features/media/poster-validation.ts
+M	src/features/session/__tests__/imdb-import.test.ts
+M	src/features/session/imdb-import.ts
+M	src/features/session/session.ts
+M	src/index.ts
+A	src/infra/http/compat-request.ts
+M	src/infra/http/network-access.test.ts
+M	src/infra/http/router.ts
+M	src/infra/http/routes/config.ts
+M	src/infra/http/routes/matches.ts
+M	src/infra/http/routes/request-service.ts
+M	src/infra/http/routes/rooms.ts
+M	src/infra/http/routes/settings.ts
+M	src/infra/http/staticFileServer.ts
+M	src/infra/ws/websocketServer.ts
+M	src/integrations/plex/cache.ts
+M	src/services/cache/poster-cache.ts
+
+COMMIT 7893be3 Merge pull request #66 from ShekMate/codex/update-deno-base-image-in-dockerfile-i73hly
+COMMIT 26d1f98 Merge branch 'main' into codex/update-deno-base-image-in-dockerfile-i73hly
+COMMIT 4e58de6 refactor: introduce shared CompatRequest typing across infra handlers
+M	Dockerfile
+M	deno.json
+D	import_map.json
+M	src/__tests__/utils/test-helpers.ts
+M	src/api/jellyseerr.ts
+M	src/api/plex.ts
+M	src/api/radarr.ts
+A	src/core/assert.ts
+M	src/core/config.ts
+M	src/core/i18n.ts
+M	src/core/persistence.ts
+M	src/features/catalog/discover.ts
+M	src/features/catalog/enrich.ts
+M	src/features/catalog/imdb-datasets.ts
+M	src/features/media/poster-validation.ts
+M	src/features/session/__tests__/imdb-import.test.ts
+M	src/features/session/imdb-import.ts
+M	src/features/session/session.ts
+M	src/index.ts
+A	src/infra/http/compat-request.ts
+M	src/infra/http/network-access.test.ts
+M	src/infra/http/router.ts
+M	src/infra/http/routes/config.ts
+M	src/infra/http/routes/matches.ts
+M	src/infra/http/routes/request-service.ts
+M	src/infra/http/routes/rooms.ts
+M	src/infra/http/routes/settings.ts
+M	src/infra/http/staticFileServer.ts
+M	src/infra/ws/websocketServer.ts
+M	src/integrations/plex/cache.ts
+M	src/services/cache/poster-cache.ts
+
+COMMIT 40998f5 Merge pull request #65 from ShekMate/codex/update-deno-base-image-in-dockerfile
+COMMIT e00620e Merge branch 'main' into codex/update-deno-base-image-in-dockerfile
+COMMIT 3ccaf30 refactor: replace deno.land/x accepts/denoflate/sqlite deps
+M	Dockerfile
+M	deno.json
+D	import_map.json
+M	src/__tests__/utils/test-helpers.ts
+M	src/api/jellyseerr.ts
+M	src/api/plex.ts
+M	src/api/radarr.ts
+A	src/core/assert.ts
+M	src/core/config.ts
+M	src/core/i18n.ts
+M	src/core/persistence.ts
+M	src/features/catalog/discover.ts
+M	src/features/catalog/enrich.ts
+M	src/features/catalog/imdb-datasets.ts
+M	src/features/media/poster-validation.ts
+M	src/features/session/__tests__/imdb-import.test.ts
+M	src/features/session/imdb-import.ts
+M	src/features/session/session.ts
+M	src/index.ts
+M	src/infra/http/network-access.test.ts
+M	src/infra/http/routes/request-service.ts
+M	src/infra/http/routes/rooms.ts
+M	src/infra/http/routes/settings.ts
+M	src/infra/http/staticFileServer.ts
+M	src/infra/ws/websocketServer.ts
+M	src/integrations/plex/cache.ts
+M	src/services/cache/poster-cache.ts
+
+COMMIT cd35b96 Merge pull request #64 from ShekMate/codex/update-deno-base-image-in-dockerfile-010b1x
+COMMIT 11371a0 test: migrate Deno assert imports and remove stale import map
+M	Dockerfile
+M	deno.json
+D	import_map.json
+M	src/__tests__/utils/test-helpers.ts
+M	src/api/jellyseerr.ts
+M	src/api/plex.ts
+M	src/api/radarr.ts
+A	src/core/assert.ts
+M	src/core/config.ts
+M	src/core/i18n.ts
+M	src/core/persistence.ts
+M	src/features/catalog/discover.ts
+M	src/features/catalog/enrich.ts
+M	src/features/catalog/imdb-datasets.ts
+M	src/features/media/poster-validation.ts
+M	src/features/session/__tests__/imdb-import.test.ts
+M	src/features/session/imdb-import.ts
+M	src/features/session/session.ts
+M	src/index.ts
+M	src/infra/http/network-access.test.ts
+M	src/infra/http/routes/request-service.ts
+M	src/infra/http/routes/rooms.ts
+M	src/infra/http/routes/settings.ts
+M	src/infra/http/staticFileServer.ts
+M	src/infra/ws/websocketServer.ts
+M	src/integrations/plex/cache.ts
+M	src/services/cache/poster-cache.ts
+
+COMMIT a28577b Merge pull request #63 from ShekMate/codex/update-deno-base-image-in-dockerfile
+COMMIT 3224ddd refactor: migrate log imports and proxyPoster to native request/response
+M	Dockerfile
+M	src/api/jellyseerr.ts
+M	src/api/plex.ts
+M	src/api/radarr.ts
+A	src/core/assert.ts
+M	src/core/config.ts
+M	src/core/i18n.ts
+M	src/core/persistence.ts
+M	src/features/catalog/discover.ts
+M	src/features/catalog/enrich.ts
+M	src/features/catalog/imdb-datasets.ts
+M	src/features/media/poster-validation.ts
+M	src/features/session/imdb-import.ts
+M	src/features/session/session.ts
+M	src/index.ts
+M	src/infra/http/routes/request-service.ts
+M	src/infra/http/routes/rooms.ts
+M	src/infra/http/routes/settings.ts
+M	src/infra/http/staticFileServer.ts
+M	src/infra/ws/websocketServer.ts
+M	src/integrations/plex/cache.ts
+M	src/services/cache/poster-cache.ts
+
+COMMIT 2ca0b76 Merge pull request #62 from ShekMate/codex/add-npm-audit-step-to-ci
+COMMIT ec30ed9 ci: add npm audit high-severity check to test workflow
+M	.github/workflows/test.yml
+
+COMMIT 0cdbfc3 Merge pull request #61 from ShekMate/codex/fix-github-pr-linting-errors
+COMMIT 9b9f07f Fix Deno assertRejects usage in tests
+M	src/api/__tests__/plex.test.ts
+M	src/core/__tests__/settings.test.ts
+
+COMMIT 1579e9f Merge pull request #60 from ShekMate/codex/replace-console-logs-with-structured-logger
+COMMIT 4b2ffe7 Replace console logging with structured logger
+M	src/core/i18n.ts
+M	src/core/persistence.ts
+M	src/features/catalog/enrich.ts
+M	src/features/media/poster-validation.ts
+
+COMMIT 4677166 Merge pull request #59 from ShekMate/codex/fix-unprotected-json.parse-calls-yugt4w
+COMMIT a09aa2b Merge branch 'main' into codex/fix-unprotected-json.parse-calls-yugt4w
+COMMIT f54a1e7 Adjust JSON.parse guards in config version and i18n loading
+M	src/api/jellyseerr.ts
+M	src/core/config.ts
+M	src/core/i18n.ts
+M	src/features/session/session.ts
+
+COMMIT 43dc576 Merge pull request #58 from ShekMate/codex/fix-unprotected-json.parse-calls
+COMMIT 20bc7dd Handle JSON parse failures across config, i18n, and session flows
+M	src/api/jellyseerr.ts
+M	src/core/config.ts
+M	src/core/i18n.ts
+M	src/features/session/session.ts
+
+COMMIT 31ff0ba Merge pull request #57 from ShekMate/codex/investigate-error-message-cause
+COMMIT 8c5438a Restore secure defaults and make frame embedding configurable
+M	README.md
+M	docker-entrypoint.sh
+M	src/index.ts
+M	src/infra/http/routes/matches.ts
+M	src/infra/http/routes/request-service.ts
+M	src/infra/http/routes/rooms.ts
+M	src/infra/http/routes/settings.ts
+M	src/infra/http/security-headers.ts
+M	src/infra/http/staticFileServer.ts
+
+COMMIT 98beba4 Allow Unraid iframe embedding by removing frame-blocking headers
+M	src/infra/http/security-headers.ts
+
+COMMIT 91b5a76 Merge pull request #56 from ShekMate/codex/fix-bootstrap-wizard-for-remote-docker-installs-fkwoc6
+COMMIT 1083b23 Merge branch 'main' into codex/fix-bootstrap-wizard-for-remote-docker-installs-fkwoc6
+COMMIT 55eb6f8 Make CI fully blocking and fix Radarr stale-cache refresh bug
+M	.github/workflows/test.yml
+M	Dockerfile
+M	docker-entrypoint.sh
+M	public/js/main.js
+M	public/styles/main.css
+M	public/styles/mobile.css
+M	src/__tests__/utils/test-helpers.ts
+M	src/api/__tests__/plex.test.ts
+M	src/api/radarr.ts
+M	src/features/catalog/__tests__/enrich.test.ts
+M	src/features/catalog/imdb-datasets.ts
+M	src/features/session/__tests__/session-matching.test.ts
+M	src/features/session/session.ts
+M	src/index.ts
+M	src/infra/http/routes/settings.ts
+M	src/infra/http/security-headers.ts
+M	src/integrations/plex/cache.ts
+M	src/services/cache/poster-cache.ts
+
+COMMIT 3667555 Merge pull request #55 from ShekMate/codex/fix-bootstrap-wizard-for-remote-docker-installs-mplos4
+COMMIT 09c4fde Fix stale Radarr cache refresh call regression
+M	.github/workflows/test.yml
+M	Dockerfile
+M	docker-entrypoint.sh
+M	public/js/main.js
+M	public/styles/main.css
+M	public/styles/mobile.css
+M	src/__tests__/utils/test-helpers.ts
+M	src/api/__tests__/plex.test.ts
+M	src/api/radarr.ts
+M	src/features/catalog/__tests__/enrich.test.ts
+M	src/features/catalog/imdb-datasets.ts
+M	src/features/session/__tests__/session-matching.test.ts
+M	src/features/session/session.ts
+M	src/index.ts
+M	src/infra/http/routes/settings.ts
+M	src/infra/http/security-headers.ts
+M	src/integrations/plex/cache.ts
+M	src/services/cache/poster-cache.ts
+
+COMMIT 6ea3cf9 Merge pull request #54 from ShekMate/codex/fix-bootstrap-wizard-for-remote-docker-installs-sin2rz
+COMMIT 5fdfa5b Merge branch 'main' into codex/fix-bootstrap-wizard-for-remote-docker-installs-sin2rz
+COMMIT 9bbbb6d Tighten CI gating and scope runtime network permissions
+M	.github/workflows/test.yml
+M	Dockerfile
+M	docker-entrypoint.sh
+M	public/js/main.js
+M	public/styles/main.css
+M	public/styles/mobile.css
+M	src/__tests__/utils/test-helpers.ts
+M	src/api/__tests__/plex.test.ts
+M	src/api/radarr.ts
+M	src/features/catalog/__tests__/enrich.test.ts
+M	src/features/catalog/imdb-datasets.ts
+M	src/features/session/__tests__/session-matching.test.ts
+M	src/features/session/session.ts
+M	src/index.ts
+M	src/infra/http/routes/settings.ts
+M	src/infra/http/security-headers.ts
+M	src/integrations/plex/cache.ts
+M	src/services/cache/poster-cache.ts
+
+COMMIT fa7cf26 Merge pull request #53 from ShekMate/codex/fix-bootstrap-wizard-for-remote-docker-installs-sy6ui9
+COMMIT 26414a0 Merge branch 'main' into codex/fix-bootstrap-wizard-for-remote-docker-installs-sy6ui9
+COMMIT 647a4f7 Address Codex review: add health endpoint and guard bootstrap scope
+M	docker-entrypoint.sh
+M	src/index.ts
+M	src/infra/http/routes/settings.ts
+
+COMMIT 5cd691c Fix match-action crash and harden import/audit/cache handling
+M	.github/workflows/test.yml
+M	Dockerfile
+M	docker-entrypoint.sh
+M	public/js/main.js
+M	public/styles/main.css
+M	public/styles/mobile.css
+M	src/__tests__/utils/test-helpers.ts
+M	src/api/__tests__/plex.test.ts
+M	src/api/radarr.ts
+M	src/features/catalog/__tests__/enrich.test.ts
+M	src/features/catalog/imdb-datasets.ts
+M	src/features/session/__tests__/session-matching.test.ts
+M	src/features/session/session.ts
+M	src/index.ts
+M	src/infra/http/routes/settings.ts
+M	src/infra/http/security-headers.ts
+M	src/integrations/plex/cache.ts
+M	src/services/cache/poster-cache.ts
+
+COMMIT 1a01359 Merge pull request #52 from ShekMate/codex/fix-bootstrap-wizard-for-remote-docker-installs-bx4iai
+COMMIT 26f4c87 Fix backend TypeScript test errors in CI
+M	.github/workflows/test.yml
+M	Dockerfile
+M	docker-entrypoint.sh
+M	public/js/main.js
+M	public/styles/main.css
+M	public/styles/mobile.css
+M	src/__tests__/utils/test-helpers.ts
+M	src/api/__tests__/plex.test.ts
+M	src/api/radarr.ts
+M	src/features/catalog/__tests__/enrich.test.ts
+M	src/features/catalog/imdb-datasets.ts
+M	src/features/session/__tests__/session-matching.test.ts
+M	src/index.ts
+M	src/infra/http/routes/settings.ts
+M	src/infra/http/security-headers.ts
+M	src/integrations/plex/cache.ts
+M	src/services/cache/poster-cache.ts
+
+COMMIT 489a508 Merge pull request #51 from ShekMate/codex/fix-bootstrap-wizard-for-remote-docker-installs-sxhlz0
+COMMIT ed5ecc7 Implement remaining security hardening fixes
+M	.github/workflows/test.yml
+M	Dockerfile
+M	docker-entrypoint.sh
+M	public/js/main.js
+M	public/styles/main.css
+M	public/styles/mobile.css
+M	src/api/radarr.ts
+M	src/features/catalog/imdb-datasets.ts
+M	src/index.ts
+M	src/infra/http/routes/settings.ts
+M	src/infra/http/security-headers.ts
+M	src/services/cache/poster-cache.ts
+
+COMMIT 04646b0 Merge pull request #50 from ShekMate/codex/fix-bootstrap-wizard-for-remote-docker-installs
+COMMIT e9845ed Stabilize CI checks and fix stylelint regressions
+M	.github/workflows/test.yml
+M	public/styles/main.css
+M	public/styles/mobile.css
+
+COMMIT 6b6e43a Fix first-run admin bootstrap and harden reliability checks
+M	.github/workflows/test.yml
+M	Dockerfile
+M	src/api/radarr.ts
+M	src/features/catalog/imdb-datasets.ts
+M	src/infra/http/routes/settings.ts
+M	src/services/cache/poster-cache.ts
+
+COMMIT 5110a93 Merge pull request #49 from ShekMate/codex/review-critical-security-feedback-sjx5ho
+COMMIT e5cf854 Merge branch 'main' into codex/review-critical-security-feedback-sjx5ho
+COMMIT c1c25bc security: close remaining origin/csrf/disclosure gaps before reassessment
+M	docker-entrypoint.sh
+A	docs/merge-resolution-note.md
+A	docs/security-feedback-assessment.md
+A	docs/security-fix-status.md
+M	public/index.html
+M	public/js/ComparrAPI.js
+M	public/js/main.js
+M	public/style.css
+M	src/api/jellyseerr.ts
+M	src/api/plex.ts
+A	src/api/tmdb.ts
+M	src/features/catalog/discover.ts
+M	src/features/catalog/enrich.ts
+M	src/features/catalog/imdb-datasets.ts
+M	src/features/session/imdb-import.ts
+M	src/features/session/session.ts
+M	src/index.ts
+A	src/infra/http/fetch-with-timeout.ts
+M	src/infra/http/ip-rate-limiter.ts
+M	src/infra/http/network-access.ts
+M	src/infra/http/routes/settings.ts
+M	src/infra/http/security-headers.ts
+M	src/infra/http/staticFileServer.ts
+M	src/infra/ws/websocketServer.ts
+
+COMMIT 14f2223 Merge pull request #48 from ShekMate/codex/review-critical-security-feedback-8igwyd
+COMMIT 9d21221 Merge branch 'main' into codex/review-critical-security-feedback-8igwyd
+COMMIT 29fcaf5 security: add CSRF tokens and keep admin password in-memory only
+M	docker-entrypoint.sh
+A	docs/merge-resolution-note.md
+A	docs/security-feedback-assessment.md
+A	docs/security-fix-status.md
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+M	src/api/jellyseerr.ts
+M	src/api/plex.ts
+A	src/api/tmdb.ts
+M	src/features/catalog/discover.ts
+M	src/features/catalog/enrich.ts
+M	src/features/catalog/imdb-datasets.ts
+M	src/features/session/imdb-import.ts
+M	src/features/session/session.ts
+M	src/index.ts
+A	src/infra/http/fetch-with-timeout.ts
+M	src/infra/http/ip-rate-limiter.ts
+M	src/infra/http/routes/settings.ts
+M	src/infra/http/security-headers.ts
+M	src/infra/http/staticFileServer.ts
+M	src/infra/ws/websocketServer.ts
+
+COMMIT 840590e Merge pull request #47 from ShekMate/codex/review-critical-security-feedback-eynkk9
+COMMIT 7c125ad Merge branch 'main' into codex/review-critical-security-feedback-eynkk9
+COMMIT 3522031 security: complete CSP patch by removing inline styles and tightening directives
+M	docker-entrypoint.sh
+A	docs/merge-resolution-note.md
+A	docs/security-feedback-assessment.md
+A	docs/security-fix-status.md
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+M	src/api/jellyseerr.ts
+M	src/api/plex.ts
+A	src/api/tmdb.ts
+M	src/features/catalog/discover.ts
+M	src/features/catalog/enrich.ts
+M	src/features/catalog/imdb-datasets.ts
+M	src/features/session/imdb-import.ts
+M	src/features/session/session.ts
+M	src/index.ts
+A	src/infra/http/fetch-with-timeout.ts
+M	src/infra/http/ip-rate-limiter.ts
+M	src/infra/http/routes/settings.ts
+M	src/infra/http/security-headers.ts
+M	src/infra/http/staticFileServer.ts
+M	src/infra/ws/websocketServer.ts
+
+COMMIT 830b2fc Merge pull request #46 from ShekMate/codex/review-critical-security-feedback-tksz1u
+COMMIT 7d7bd10 Merge branch 'main' into codex/review-critical-security-feedback-tksz1u
+COMMIT 592d74b security: finish remaining hardening follow-ups for tmdb, shutdown, and auditing
+M	docker-entrypoint.sh
+A	docs/merge-resolution-note.md
+A	docs/security-feedback-assessment.md
+A	docs/security-fix-status.md
+M	public/js/main.js
+M	src/api/jellyseerr.ts
+M	src/api/plex.ts
+A	src/api/tmdb.ts
+M	src/features/catalog/discover.ts
+M	src/features/catalog/enrich.ts
+M	src/features/catalog/imdb-datasets.ts
+M	src/features/session/imdb-import.ts
+M	src/features/session/session.ts
+M	src/index.ts
+A	src/infra/http/fetch-with-timeout.ts
+M	src/infra/http/ip-rate-limiter.ts
+M	src/infra/http/routes/settings.ts
+M	src/infra/http/security-headers.ts
+M	src/infra/http/staticFileServer.ts
+M	src/infra/ws/websocketServer.ts
+
+COMMIT affa3cb Merge pull request #45 from ShekMate/codex/review-critical-security-feedback-cztln3
+COMMIT b821eac docs: add clear status of completed vs remaining security work
+M	docker-entrypoint.sh
+A	docs/merge-resolution-note.md
+A	docs/security-feedback-assessment.md
+A	docs/security-fix-status.md
+M	public/js/main.js
+M	src/api/jellyseerr.ts
+M	src/api/plex.ts
+A	src/api/tmdb.ts
+M	src/features/catalog/discover.ts
+M	src/features/catalog/enrich.ts
+M	src/features/session/imdb-import.ts
+M	src/features/session/session.ts
+M	src/index.ts
+A	src/infra/http/fetch-with-timeout.ts
+M	src/infra/http/ip-rate-limiter.ts
+M	src/infra/http/routes/settings.ts
+M	src/infra/http/security-headers.ts
+M	src/infra/http/staticFileServer.ts
+M	src/infra/ws/websocketServer.ts
+
+COMMIT 6b1f9fb Merge pull request #44 from ShekMate/codex/review-critical-security-feedback-qdkcc1
+COMMIT b93ce5f Merge branch 'main' into codex/review-critical-security-feedback-qdkcc1
+COMMIT 63a54f9 security: remove inline CSP allowance and migrate TMDb auth + audit/shutdown
+M	docker-entrypoint.sh
+A	docs/merge-resolution-note.md
+A	docs/security-feedback-assessment.md
+M	public/js/main.js
+M	src/api/jellyseerr.ts
+M	src/api/plex.ts
+A	src/api/tmdb.ts
+M	src/features/catalog/discover.ts
+M	src/features/catalog/enrich.ts
+M	src/features/session/imdb-import.ts
+M	src/features/session/session.ts
+M	src/index.ts
+A	src/infra/http/fetch-with-timeout.ts
+M	src/infra/http/ip-rate-limiter.ts
+M	src/infra/http/routes/settings.ts
+M	src/infra/http/security-headers.ts
+M	src/infra/http/staticFileServer.ts
+M	src/infra/ws/websocketServer.ts
+
+COMMIT a6886f3 Merge pull request #43 from ShekMate/codex/review-critical-security-feedback-y9g2qv
+COMMIT fad745b Merge branch 'main' into codex/review-critical-security-feedback-y9g2qv
+COMMIT 47c668d security: enforce access-password auth and bound rate limiter state
+M	docker-entrypoint.sh
+A	docs/security-feedback-assessment.md
+M	public/js/main.js
+M	src/api/jellyseerr.ts
+M	src/api/plex.ts
+M	src/features/session/session.ts
+M	src/index.ts
+A	src/infra/http/fetch-with-timeout.ts
+M	src/infra/http/ip-rate-limiter.ts
+M	src/infra/http/routes/settings.ts
+M	src/infra/http/staticFileServer.ts
+M	src/infra/ws/websocketServer.ts
+
+COMMIT 1bcdea6 Merge pull request #42 from ShekMate/codex/review-critical-security-feedback
+COMMIT 2b40699 security: harden API paths, IDs, and outbound request handling
+M	docker-entrypoint.sh
+A	docs/security-feedback-assessment.md
+M	src/api/jellyseerr.ts
+M	src/api/plex.ts
+M	src/features/session/session.ts
+M	src/index.ts
+A	src/infra/http/fetch-with-timeout.ts
+M	src/infra/http/staticFileServer.ts
+M	src/infra/ws/websocketServer.ts
+
+COMMIT b04d4f7 Merge pull request #41 from ShekMate/codex/evaluate-setup-wizard-usefulness
+COMMIT 290ee1f Revert README/reverse-proxy security doc additions
+M	src/infra/http/routes/settings.ts
+
+COMMIT fad72bd Merge pull request #40 from ShekMate/codex/fix-setup-wizard-issue
+COMMIT 1402fe3 Fix setup wizard admin auth for connection tests
+M	public/js/main.js
+
+COMMIT 4fb2421 Merge pull request #38 from ShekMate/codex/find-cause-of-password-input-error
+COMMIT d23b22e Preserve authenticated admin header in wizard settings saves
+M	public/js/main.js
+
+COMMIT 0d18e6a Fix security wizard admin password authorization header
+M	public/js/main.js
+
+COMMIT b988b34 Merge pull request #37 from ShekMate/codex/improve-setup-wizard-usability
+COMMIT 6bf20ca Handle setup completion save failures in wizard
+M	public/js/main.js
+
+COMMIT db005bc Improve setup wizard resume behavior and loading feedback
+M	public/js/main.js
+M	public/styles/main.css
+M	src/core/__tests__/settings.test.ts
+M	src/core/settings.ts
+M	src/infra/http/routes/settings.ts
+
+COMMIT 5244c12 Merge pull request #36 from ShekMate/codex/update-admin-settings-password-gap
+COMMIT 2abf9db Adjust first-run security field spacing
+M	public/js/main.js
+M	public/styles/main.css
+
+COMMIT b7ab8df Merge pull request #35 from ShekMate/codex/move-input-instructions-above-input-field
+COMMIT c1931fa Fix security wizard instruction placement
+M	public/js/main.js
+
+COMMIT 2c1ec08 Merge pull request #34 from ShekMate/codex/update-security-settings-setup-wizard
+COMMIT 6e023a6 Refine security wizard password step behavior and styling
+M	public/js/main.js
+M	public/styles/main.css
+
+COMMIT 145d823 Merge pull request #33 from ShekMate/codex/update-access-and-admin-settings-password-text-2h52fe
+COMMIT 9faae58 Merge branch 'main' into codex/update-access-and-admin-settings-password-text-2h52fe
+COMMIT 7f98cb6 Remove duplicate security instruction in setup wizard
+M	public/js/main.js
+
+COMMIT 42855b6 Merge pull request #32 from ShekMate/codex/update-access-and-admin-settings-password-text
+COMMIT 7262f6a Update security wizard password field copy
+M	public/js/main.js
+
+COMMIT 9a58203 Merge pull request #31 from ShekMate/codex/update-password-instructions-for-clarity
+COMMIT 2ff2bd8 Update admin password helper copy
+M	public/index.html
+M	public/js/main.js
+
+COMMIT 88b45fb Merge pull request #30 from ShekMate/codex/update-media-settings-visibility-trigger
+COMMIT 06b3f2e Show personal media configs only for selected sources
+M	public/js/main.js
+
+COMMIT 76d9475 Merge pull request #29 from ShekMate/codex/update-security-tab-text-and-setup-wizard
+COMMIT c01dee8 Update security copy and start setup wizard on security settings
+M	public/index.html
+M	public/js/main.js
+
+COMMIT 36f250a Merge pull request #28 from ShekMate/codex/fix-access-code-linking-in-admin-settings
+COMMIT 65b04df Allow admins to clear ACCESS_PASSWORD via settings
+M	src/infra/http/routes/settings.ts
+
+COMMIT 27fb262 Fix access password setup and preserve configured value
+M	public/js/ComparrAPI.js
+M	public/js/__tests__/ComparrAPI.test.js
+M	public/js/main.js
+M	src/infra/http/routes/settings.ts
+
+COMMIT 772d21c Merge pull request #27 from ShekMate/codex/add-where-to-watch-section-to-card-uyyifc
+COMMIT ed86cd9 Merge branch 'main' into codex/add-where-to-watch-section-to-card-uyyifc
+COMMIT c76ba10 Sync personal library pill name with current settings
+M	public/js/CardView.js
+M	public/js/main.js
+M	public/styles/main.css
+M	src/features/catalog/enrich.ts
+M	src/features/session/session.ts
+M	src/index.ts
+
+COMMIT b8e6479 Merge pull request #26 from ShekMate/codex/add-where-to-watch-section-to-card-uwed44
+COMMIT 7b83917 Merge branch 'main' into codex/add-where-to-watch-section-to-card-uwed44
+COMMIT 341a936 Prevent Where to Watch provider logos from being cropped
+M	public/js/CardView.js
+M	public/js/main.js
+M	public/styles/main.css
+M	src/features/catalog/enrich.ts
+M	src/features/session/session.ts
+M	src/index.ts
+
+COMMIT 1e8984d Merge pull request #25 from ShekMate/codex/add-where-to-watch-section-to-card-s0f6iv
+COMMIT 0ed73eb Add Where to Watch pills to expanded swipe card details
+M	public/js/CardView.js
+M	public/js/main.js
+M	public/styles/main.css
+M	src/features/catalog/enrich.ts
+M	src/features/session/session.ts
+M	src/index.ts
+
+COMMIT 4bccb35 Merge pull request #24 from ShekMate/codex/add-where-to-watch-section-to-card
+COMMIT b6646a9 Add Where to Watch provider pills in expanded watch cards
+M	public/js/main.js
+M	public/styles/main.css
+M	src/features/catalog/enrich.ts
+M	src/features/session/session.ts
+M	src/index.ts
+
+COMMIT a558f02 Merge pull request #23 from ShekMate/codex/adjust-padding-in-cast-section
+COMMIT 687c595 Tighten cast section vertical spacing
+M	public/styles/main.css
+
+COMMIT 91fa37b Merge pull request #22 from ShekMate/codex/update-expanded-movie-card-layout
+COMMIT 16b6e85 Adjust expanded card metadata line ordering and spacing
+M	public/js/CardView.js
+M	public/styles/main.css
+
+COMMIT 26a4191 Merge pull request #21 from ShekMate/codex/find-spacing-between-content-and-rating-lines
+COMMIT d0bf909 Adjust card detail spacing to consistent 0.75rem
+M	public/styles/desktop.css
+M	public/styles/main.css
+
+COMMIT e8b10cf Merge pull request #20 from ShekMate/codex/fix-persisted-expanded-dropdown-in-filter
+COMMIT 709e378 Close defaults dropdowns when exiting inline editor
+M	public/js/main.js
+
+COMMIT 3c0d526 Merge pull request #19 from ShekMate/codex/add-user-choice-for-free-streaming-services
+COMMIT 765d53c Add selectable free streaming services in availability filters
+M	public/index.html
+M	public/js/main.js
+M	src/features/session/session.ts
+
+COMMIT 8e7e29a Merge pull request #18 from ShekMate/codex/fix-streaming-subscriptions-not-stored-in-defaults
+COMMIT d539ecc Fix wizard defaults subscription availability behavior
+M	public/js/main.js
+
+COMMIT 15865d4 Merge pull request #17 from ShekMate/codex/fix-cutoff-default-screen-in-setup-wizard
+COMMIT 463616b Fix setup wizard modal scrolling on small screens
+M	public/styles/main.css
+
+COMMIT d451120 Merge pull request #16 from ShekMate/codex/locate-radio-button-logic-in-admin-settings
+COMMIT f6bbad0 Add admin request-service selector and Seerr integration
+M	public/index.html
+M	public/js/main.js
+M	src/api/jellyseerr.ts
+M	src/core/config.ts
+M	src/core/settings.ts
+M	src/index.ts
+M	src/infra/http/routes/config.ts
+M	src/infra/http/routes/settings.ts
+
+COMMIT 417637f Merge pull request #15 from ShekMate/codex/add-radio-button-for-overseerr-or-jellyseerr
+COMMIT 63c6dae Add request service selector to first-run movie requests step
+M	public/js/main.js
+M	public/styles/main.css
+
+COMMIT 8a7cc5e Merge pull request #14 from ShekMate/codex/make-tmdb-required-for-all-options
+COMMIT 1bf0835 Require TMDb messaging for combined setup flow
+M	public/js/main.js
+
+COMMIT a8c1df5 Merge pull request #13 from ShekMate/codex/update-walkthrough-screen-flow
+COMMIT f3abc67 Update onboarding flow with requests and defaults steps
+M	public/js/main.js
+M	public/styles/main.css
+
+COMMIT 627fdaa Merge pull request #12 from ShekMate/codex/change-tmdb-screen-button-to-next
+COMMIT 627be23 Adjust setup wizard TMDb flow to include subscriptions step
+M	public/js/main.js
+
+COMMIT 44350b5 Merge pull request #11 from ShekMate/codex/update-tmdb-setup-screens-and-instructions
+COMMIT 4eadfaa Adjust setup walkthrough TMDb and requirements copy
+M	public/js/main.js
+
+COMMIT ac8cc0a Merge pull request #10 from ShekMate/codex/update-test-connection-button-styling
+COMMIT c1dccbb Style setup test connection buttons to match primary action
+M	public/js/main.js
+M	public/styles/main.css
+
+COMMIT 762453f Merge pull request #9 from ShekMate/codex/update-headers-and-button-styles
+COMMIT 82b6c1e Update first-run personal media labels and themed test buttons
+M	public/js/main.js
+M	public/styles/main.css
+
+COMMIT 68b91b4 Merge pull request #8 from ShekMate/codex/update-walkthrough-prompts-and-messages
+COMMIT d7195c5 Adjust first-run wizard greeting and prompt copy
+M	public/js/main.js
+
+COMMIT 054c828 Merge pull request #7 from ShekMate/codex/fix-settings-popup-navigation-styles
+COMMIT f3bf17c Polish first-run settings wizard selection and navigation styles
+M	public/js/main.js
+M	public/styles/main.css
+
+COMMIT 6aa13f2 Merge pull request #6 from ShekMate/codex/update-settings-popup-navigation-and-validation
+COMMIT ec3f7ac Replace first-run settings modal with guided setup wizard
+M	public/js/main.js
+M	public/styles/main.css
+
+COMMIT 56fc48f Merge pull request #5 from ShekMate/codex/design-new-docker-installation-flow-u9zn8i
+COMMIT 85a3f78 Merge branch 'main' into codex/design-new-docker-installation-flow-u9zn8i
+COMMIT 63d78d3 Refine onboarding copy and TMDb link wording
+M	public/js/main.js
+M	public/styles/main.css
+M	src/infra/http/routes/settings.ts
+
+COMMIT 1537e82 Merge pull request #4 from ShekMate/codex/diagnose-console-error-after-code-generation
+COMMIT f3f7742 Fix login room-code validation in create mode
+M	public/js/main.js
+
+COMMIT 680ef5d Merge pull request #3 from ShekMate/codex/design-new-docker-installation-flow
+COMMIT 9a3fee8 Add first-run host setup gate with TMDb guidance
+M	public/js/main.js
+M	public/styles/main.css
+M	src/infra/http/routes/settings.ts
+
+COMMIT aa03cff Merge pull request #2 from ShekMate/codex/verify-dev-docker-image-existence
+COMMIT 4524483 Restrict dev latest tag publishing to main ref
+M	.github/workflows/docker.yml
+
+COMMIT 5661ad1 Merge pull request #1 from ShekMate/codex/update-github-actions-workflow-for-docker-image
+COMMIT cffcb49 Update docker workflow to publish private comparr-dev image on main
+M	.github/workflows/docker.yml
+
+COMMIT 91fb1bd Merge pull request #473 from ShekMate/dev_split
+COMMIT fe2ff9d Merge pull request #471 from ShekMate/codex/update-css-for-password-visibility-field-ghrtb4
+COMMIT b96226b Adjust access password field layout spacing
+M	public/styles/main.css
+
+COMMIT c0862c9 Merge pull request #470 from ShekMate/revert-465-codex/update-css-for-password-visibility-field
+COMMIT 29e71bb Revert "Adjust password visibility field layout spacing"
+M	public/styles/main.css
+
+COMMIT f9f5a69 Merge pull request #469 from ShekMate/revert-466-codex/update-css-for-password-visibility-field-44gf3y
+COMMIT 8e740d9 Revert "Add layout rules for #access-password to align with password controls"
+M	public/styles/main.css
+
+COMMIT 7494b36 Merge pull request #468 from ShekMate/revert-467-codex/provide-script-to-adjust-password-input-position
+COMMIT 530a04c Revert "Set #access-password margin and width to align with password field"
+M	public/styles/main.css
+
+COMMIT 5226fc7 Merge pull request #467 from ShekMate/codex/provide-script-to-adjust-password-input-position
+COMMIT a81dae2 Adjust access password field position without shifting right edge
+M	public/styles/main.css
+
+COMMIT 5328799 Merge pull request #466 from ShekMate/codex/update-css-for-password-visibility-field-44gf3y
+COMMIT 531822e Move password offset styles to #access-password
+M	public/styles/main.css
+
+COMMIT 62730b6 Merge pull request #465 from ShekMate/codex/update-css-for-password-visibility-field
+COMMIT ffd51bb Adjust password visibility field layout spacing
+M	public/styles/main.css
+
+COMMIT 05a80d8 Merge pull request #464 from ShekMate/codex/make-enter-button-square-on-password-screen
+COMMIT 661302d Make password access enter button square
+M	public/styles/main.css
+
+COMMIT 5ec3f29 Merge pull request #463 from ShekMate/codex/rename-navigation-tabs-for-clarity
+COMMIT 579e372 Adjust Seen/Pass display helper text to requested wording
+M	public/index.html
+
+COMMIT 8ea40be Merge pull request #462 from ShekMate/codex/fix-emby-settings-visibility-issue
+COMMIT b0b1a32 Fix host-managed streaming options after Emby/Jellyfin save
+M	public/js/main.js
+
+COMMIT 72e30e7 Merge pull request #461 from ShekMate/codex/add-admin-settings-for-emby-and-jellyfin-7tblni
+COMMIT e584739 Always show Emby and Jellyfin admin config sections
+M	public/index.html
+M	public/js/main.js
+M	src/core/__tests__/config.test.ts
+M	src/core/config.ts
+M	src/core/settings.ts
+M	src/infra/http/routes/settings.ts
+
+COMMIT fcaba96 Merge pull request #460 from ShekMate/codex/add-admin-settings-for-emby-and-jellyfin
+COMMIT 4935f98 Add Emby and Jellyfin personal media settings sections
+M	public/index.html
+M	src/core/__tests__/config.test.ts
+M	src/core/config.ts
+M	src/core/settings.ts
+M	src/infra/http/routes/settings.ts
+
+COMMIT 59affc4 Merge pull request #459 from ShekMate/codex/add-emby-and-jellyfin-integration
+COMMIT 46ef8f8 Add Emby and Jellyfin personal media settings integration
+M	.env.example
+M	public/index.html
+M	public/js/main.js
+M	src/core/__tests__/config.test.ts
+M	src/core/config.ts
+M	src/core/settings.ts
+M	src/infra/http/routes/settings.ts
+
+COMMIT 328d33e Merge pull request #458 from ShekMate/codex/fix-dropdown-position-on-scroll
+COMMIT 3f9e431 Fix filter dropdown positioning while scrolling
+M	public/js/main.js
+
+COMMIT c39159f Merge pull request #457 from ShekMate/codex/fix-swipe-tab-loading-issue-and-update-toggle-ui
+COMMIT 5462d77 Fix swipe tab login flash and convert display list controls to toggles
+M	public/index.html
+M	public/js/main.js
+M	public/styles/main.css
+
+COMMIT 9980cf4 Merge pull request #456 from ShekMate/codex/add-display-settings-sub-tab
+COMMIT f216157 Add Display settings toggles for Seen and Pass lists
+M	public/index.html
+M	public/js/main.js
+
+COMMIT 9092ce8 Merge pull request #455 from ShekMate/codex/fix-room-code-generation-to-4-digits
+COMMIT 5be6cfd Align generated room codes with 4-character login constraints
+M	public/js/main.js
+M	src/features/session/session.ts
+M	src/infra/http/routes/rooms.ts
+
+COMMIT fd2adb2 Merge pull request #454 from ShekMate/codex/update-input-layout-and-labels-ofukiu
+COMMIT 4bf1642 Merge branch 'dev_split' into codex/update-input-layout-and-labels-ofukiu
+COMMIT 2e3956e Fix room code submit button to true square dimensions
+M	i18n/en.json
+M	public/js/main.js
+M	public/styles/main.css
+M	public/styles/mobile.css
+
+COMMIT 3daf98b Merge pull request #453 from ShekMate/codex/update-input-layout-and-labels
+COMMIT e0c031f Adjust login room code label text and square submit button
+M	i18n/en.json
+M	public/js/main.js
+M	public/styles/main.css
+
+COMMIT 4839bd7 Merge pull request #452 from ShekMate/codex/remove-continue-button-from-no-screen
+COMMIT 01ae480 Fix login continue button visibility for join mode
+M	public/styles/main.css
+
+COMMIT 8d16f09 Merge pull request #451 from ShekMate/codex/remove-continue-button-from-new-here-no-screen
+COMMIT 99e6eab Inline room-code continue action for join mode
+M	public/index.html
+M	public/js/main.js
+M	public/styles/main.css
+
+COMMIT 627ff93 Merge pull request #450 from ShekMate/codex/adjust-margin-for-continue-button-6cejp3
+COMMIT 0f659c9 Merge branch 'dev_split' into codex/adjust-margin-for-continue-button-6cejp3
+COMMIT 3ba0d06 Set Continue button left alignment and default left margin
+M	public/styles/main.css
+
+COMMIT d83e977 Merge pull request #449 from ShekMate/codex/adjust-margin-for-continue-button
+COMMIT 8c0c826 Adjust login continue button left offset control
+M	public/styles/main.css
+
+COMMIT 4845fb2 Merge pull request #448 from ShekMate/codex/apply-requested-changes
+COMMIT 14ab419 Adjust login form alignment and spacing
+M	public/styles/main.css
+
+COMMIT 086cf62 Merge pull request #447 from ShekMate/codex/move-yes/no-buttons-next-to-new-here
+COMMIT ec5dedb Align New here toggles inline with label
+M	public/styles/main.css
+
+COMMIT 56c89a3 Merge pull request #446 from ShekMate/codex/reduce-mode-selection-buttons-width
+COMMIT 19d13c5 Adjust mode selection buttons to half width
+M	public/styles/main.css
+
+COMMIT 3c0d345 Merge pull request #445 from ShekMate/codex/update-mode-button-descriptions
+COMMIT a94f0a5 Update mode picker descriptions
+M	public/index.html
+
+COMMIT a9117a5 Merge pull request #444 from ShekMate/codex/provide-devtools-script-for-spacing-adjustments
+COMMIT 41bae8f Adjust choose mode spacing and vertical mode card layout
+M	public/index.html
+M	public/styles/main.css
+
+COMMIT a906427 Merge pull request #443 from ShekMate/codex/find-spacing-between-comparr-logo-and-elements
+COMMIT 30cce36 Increase password form offset under logo to 7rem
+M	public/styles/main.css
+
+COMMIT 61de843 Merge pull request #442 from ShekMate/codex/update-access-password-input-styling-i03k4y
+COMMIT c3ec9ca Merge branch 'dev_split' into codex/update-access-password-input-styling-i03k4y
+COMMIT 187d9d6 Adjust password row width rule to avoid layout override
+M	public/styles/main.css
+
+COMMIT a1a86e6 Merge pull request #441 from ShekMate/codex/update-access-password-input-styling-nxbjc4
+COMMIT 428103b Merge branch 'dev_split' into codex/update-access-password-input-styling-nxbjc4
+COMMIT 011f3d2 Make password input container explicitly 415px wide
+M	public/styles/main.css
+
+COMMIT f9b2233 Merge pull request #440 from ShekMate/codex/update-access-password-input-styling-7sod7c
+COMMIT afd9dd2 Merge branch 'dev_split' into codex/update-access-password-input-styling-7sod7c
+COMMIT 1f838b6 Set password input container width to 415px
+M	public/styles/main.css
+
+COMMIT da70f00 Merge pull request #439 from ShekMate/codex/update-access-password-input-styling-o63tnh
+COMMIT 6bb12e0 Merge branch 'dev_split' into codex/update-access-password-input-styling-o63tnh
+COMMIT cddd3d9 Recenter password row and expand width for troll-edge alignment
+M	public/styles/main.css
+
+COMMIT 09a3945 Merge pull request #438 from ShekMate/codex/update-access-password-input-styling-c869oc
+COMMIT 15b3219 Merge branch 'dev_split' into codex/update-access-password-input-styling-c869oc
+COMMIT b08690f Right-align password row and widen enter button
+M	public/styles/main.css
+
+COMMIT 01f7e02 Merge pull request #437 from ShekMate/codex/update-access-password-input-styling-99dq78
+COMMIT ba0bcc0 Merge branch 'dev_split' into codex/update-access-password-input-styling-99dq78
+COMMIT 0bc9db7 Widen password arrow submit button
+M	public/styles/main.css
+
+COMMIT b0d9fe7 Merge pull request #436 from ShekMate/codex/update-access-password-input-styling
+COMMIT 46a810a Adjust access password input sizing and typography
+M	public/styles/main.css
+
+COMMIT e34e677 Merge pull request #435 from ShekMate/codex/design-new-access-password-screen-layout-a9baoo
+COMMIT 55989d2 Merge branch 'dev_split' into codex/design-new-access-password-screen-layout-a9baoo
+COMMIT 8552c90 Tighten password field width and restore square show toggle
+M	public/index.html
+M	public/styles/main.css
+
+COMMIT 9f64b03 Merge pull request #434 from ShekMate/codex/design-new-access-password-screen-layout-gqhbio
+COMMIT 5d35c5b Merge branch 'dev_split' into codex/design-new-access-password-screen-layout-gqhbio
+COMMIT 89f28b8 Add continue button to access password row
+M	public/index.html
+M	public/styles/main.css
+
+COMMIT c6f1acd Merge pull request #433 from ShekMate/codex/design-new-access-password-screen-layout
+COMMIT 78a62ba Redesign access password screen layout
+M	public/index.html
+M	public/styles/main.css
+
+COMMIT 91976c3 make-margin-and-spacing-updates
+COMMIT 9a84f6f Adjust card crew labels and desktop ratings spacing
+M	public/js/CardView.js
+M	public/styles/desktop.css
+
+COMMIT 2a03295 Merge pull request #431 from ShekMate/codex/confirm-changes-before-implementation
+COMMIT 5e77de7 Adjust poster genres and desktop ratings spacing
+M	public/styles/desktop.css
+M	public/styles/main.css
+
+COMMIT 41180f2 Merge pull request #430 from ShekMate/codex/clarify-required-code-changes
+COMMIT 5a5297a Adjust desktop card crew and ratings spacing
+M	public/styles/desktop.css
+
+COMMIT e79c10c Merge pull request #429 from ShekMate/codex/find-spacing-between-directors,-writers,-storyline-ajsj33
+COMMIT f125db0 Fix desktop ratings-to-director spacing override
+M	public/styles/desktop.css
+M	public/styles/main.css
+
+COMMIT a5bfeec Merge pull request #428 from ShekMate/codex/find-spacing-between-directors,-writers,-storyline
+COMMIT 49825c4 Adjust card ratings spacing above directors
+M	public/styles/main.css
+
+COMMIT 9e1b6de Merge pull request #427 from ShekMate/codex/fix-error-encountered
+COMMIT 9e76055 Fix CardView rating ReferenceError on render
+M	public/js/CardView.js
+
+COMMIT 7ff1057 Merge pull request #426 from ShekMate/codex/rearrange-layout-for-logos-and-plot
+COMMIT 103ca72 Reorder card metadata sections for ratings and plot
+M	public/js/CardView.js
+
+COMMIT af2fa3f Merge pull request #425 from ShekMate/codex/update-language-display-and-font-sizes
+COMMIT 55b2b7f Improve metadata language labels and rating/crew typography
+M	public/js/CardView.js
+M	public/js/main.js
+M	public/styles/main.css
+M	src/features/session/session.ts
+
+COMMIT d505366 Merge pull request #424 from ShekMate/codex/find-font-sizes-for-metadata-in-swipe-screen-1zbi6q
+COMMIT 035b65d Populate original language from TMDb enrichment data
+M	public/js/CardView.js
+M	public/styles/desktop.css
+M	public/styles/main.css
+M	src/features/catalog/enrich.ts
+M	src/features/session/session.ts
+M	src/index.ts
+
+COMMIT e303afc Merge pull request #423 from ShekMate/codex/find-font-sizes-for-metadata-in-swipe-screen-q10dc6
+COMMIT 23fa3a9 Merge branch 'dev_split' into codex/find-font-sizes-for-metadata-in-swipe-screen-q10dc6
+COMMIT 842ae43 Fix storyline spacing and ensure original language is surfaced
+M	public/js/CardView.js
+M	public/styles/desktop.css
+M	public/styles/main.css
+M	src/index.ts
+
+COMMIT 6a6bb7e Merge pull request #422 from ShekMate/codex/find-font-sizes-for-metadata-in-swipe-screen
+COMMIT b9c03af Adjust expanded swipe card metadata typography and labels
+M	public/js/CardView.js
+M	public/styles/desktop.css
+M	public/styles/main.css
+
+COMMIT 9e8cb39 Merge pull request #421 from ShekMate/codex/update-cast-scroll-bar-colors
+COMMIT 702cc54 Style cast list scrollbar to match theme colors
+M	public/styles/main.css
+
+COMMIT e702e30 Merge pull request #420 from ShekMate/codex/add-scrolling-cast-section-to-movie-card-0qnbhp
+COMMIT 0520fa4 Merge branch 'dev_split' into codex/add-scrolling-cast-section-to-movie-card-0qnbhp
+COMMIT 9ffae38 Tighten cast spacing in expanded movie card
+M	public/js/CardView.js
+M	public/styles/desktop.css
+M	public/styles/main.css
+M	public/styles/mobile.css
+M	src/features/catalog/enrich.ts
+M	src/features/session/session.ts
+M	src/index.ts
+
+COMMIT 5798abb Merge pull request #419 from ShekMate/codex/add-scrolling-cast-section-to-movie-card-mpkfjp
+COMMIT 9a9ddf4 Merge branch 'dev_split' into codex/add-scrolling-cast-section-to-movie-card-mpkfjp
+COMMIT 85e8819 Refine cast section to circular avatar style
+M	public/js/CardView.js
+M	public/styles/desktop.css
+M	public/styles/main.css
+M	public/styles/mobile.css
+M	src/features/catalog/enrich.ts
+M	src/features/session/session.ts
+M	src/index.ts
+
+COMMIT 962d0b8 Merge pull request #418 from ShekMate/codex/add-scrolling-cast-section-to-movie-card
+COMMIT aa7e1a8 Add TMDb-style horizontal cast cards in expanded movie view
+M	public/js/CardView.js
+M	public/styles/desktop.css
+M	public/styles/main.css
+M	public/styles/mobile.css
+M	src/features/catalog/enrich.ts
+M	src/features/session/session.ts
+M	src/index.ts
+
+COMMIT 1c483c4 Merge pull request #417 from ShekMate/codex/add-gradient-overlay-to-movie-posters
+COMMIT 4fdb912 Add gradient overlay on movie posters for readability
+M	public/styles/main.css
+
+COMMIT 2be2c12 Merge pull request #416 from ShekMate/codex/add-movie-title-and-year-to-details
+COMMIT 8eb09f3 Add title and year to expanded card details
+M	public/js/CardView.js
+M	public/styles/main.css
+
+COMMIT 351e992 Merge pull request #415 from ShekMate/codex/remove-rating-separator-from-display
+COMMIT 4a310b0 Remove rating separator bullet between source ratings
+M	src/features/session/session.ts
+
+COMMIT 8319212 Merge pull request #414 from ShekMate/codex/reduce-plot-top-and-bottom-margins-by-30%
+COMMIT e58c9e4 Reduce overlay plot vertical margins on desktop
+M	public/styles/desktop.css
+
+COMMIT 9ecbd2f Merge pull request #413 from ShekMate/codex/find-spacing-between-logos-and-ratings
+COMMIT d5c3b1f Remove rating-logo right margins for ratings display
+M	public/styles/desktop.css
+M	public/styles/main.css
+M	public/styles/mobile.css
+
+COMMIT cd99910 Merge pull request #412 from ShekMate/codex/move-pass-seen-watch-buttons-beneath-movie-card-eeiel4
+COMMIT 28ffb5d Make swipe-rate-controls bar transparent on desktop
+M	public/index.html
+M	public/js/CardView.js
+M	public/js/main.js
+M	public/styles/desktop.css
+M	public/styles/main.css
+
+COMMIT 5b42572 Merge pull request #411 from ShekMate/codex/move-pass-seen-watch-buttons-beneath-movie-card-xavbz2
+COMMIT 5180c7f Merge branch 'dev_split' into codex/move-pass-seen-watch-buttons-beneath-movie-card-xavbz2
+COMMIT 6cc0153 Make stationary swipe controls background transparent
+M	public/index.html
+M	public/js/CardView.js
+M	public/js/main.js
+M	public/styles/main.css
+
+COMMIT ce8e09f Merge pull request #410 from ShekMate/codex/move-pass-seen-watch-buttons-beneath-movie-card
+COMMIT 79f700b Keep swipe action buttons stationary below movie cards
+M	public/index.html
+M	public/js/CardView.js
+M	public/js/main.js
+M	public/styles/main.css
+
+COMMIT 9442a61 Merge pull request #409 from ShekMate/codex/update-message-width-on-login-screen
+COMMIT a5a8aa3 Widen login helper copy to match input fields
+M	public/styles/main.css
+M	public/styles/mobile.css
+
+COMMIT 8df8c5b Merge pull request #408 from ShekMate/codex/implement-ui-improvements-for-ratings-and-room-code-rjecp7
+COMMIT e6e5015 Merge branch 'dev_split' into codex/implement-ui-improvements-for-ratings-and-room-code-rjecp7
+COMMIT 2973ef1 Tighten desktop login spacing further
+M	public/index.html
+M	public/js/main.js
+M	public/styles/main.css
+M	public/styles/mobile.css
+
+COMMIT ce9e7a5 Merge pull request #407 from ShekMate/codex/implement-ui-improvements-for-ratings-and-room-code
+COMMIT 690be4b Adjust login copy and tighten auth screen spacing
+M	public/index.html
+M	public/js/main.js
+M	public/styles/main.css
+M	public/styles/mobile.css
+
+COMMIT d461a07 Merge pull request #406 from ShekMate/codex/add-name-and-room-code-requirement-for-solo-b8tgdh
+COMMIT 5454f12 Merge branch 'dev_split' into codex/add-name-and-room-code-requirement-for-solo-b8tgdh
+COMMIT 9d0f1ca Restore room mode yes/no toggle behavior
+M	public/js/main.js
+
+COMMIT 1e7642a Merge pull request #405 from ShekMate/codex/add-name-and-room-code-requirement-for-solo
+COMMIT 4b9d7c7 Require name and room code for personal mode login
+M	public/js/main.js
+
+COMMIT 81c06cb Merge pull request #404 from ShekMate/codex/implement-drag-to-swipe-for-desktop-vjtmu4
+COMMIT 93a3569 Merge branch 'dev_split' into codex/implement-drag-to-swipe-for-desktop-vjtmu4
+COMMIT e91ee4a Fix desktop swipe cursor and drag responsiveness
+A	docs/desktop-drag-to-swipe-requirements.md
+M	public/js/CardView.js
+M	public/styles/main.css
+
+COMMIT 4fbc63e Merge pull request #403 from ShekMate/codex/implement-drag-to-swipe-for-desktop-h0j3bb
+COMMIT 505b1ee Merge branch 'dev_split' into codex/implement-drag-to-swipe-for-desktop-h0j3bb
+COMMIT d1a33c5 Implement desktop drag-to-swipe parity behavior
+A	docs/desktop-drag-to-swipe-requirements.md
+M	public/js/CardView.js
+
+COMMIT a0f811d Merge pull request #401 from ShekMate/codex/implement-drag-to-swipe-for-desktop
+COMMIT 7f3e60b Add desktop drag-to-swipe requirement checklist
+A	docs/desktop-drag-to-swipe-requirements.md
+
+COMMIT 8ac7969 Enable desktop click-drag swipe on movie cards
+M	public/js/CardView.js
+
+COMMIT adc6808 Merge pull request #399 from ShekMate/codex/remove-secondary-background-around-frame
+COMMIT 1d8b526 Reduce poster metadata panel opacity to 25 percent
+M	public/styles/main.css
+
+COMMIT 886d7ab Merge pull request #398 from ShekMate/codex/add-transparent-background-for-meta-data-05si16
+COMMIT 15eb24f Merge branch 'dev_split' into codex/add-transparent-background-for-meta-data-05si16
+COMMIT 6d0e9fd Reduce poster metadata overlay opacity to 40%
+M	public/js/CardView.js
+M	public/styles/main.css
+
+COMMIT 059f338 Merge pull request #397 from ShekMate/codex/add-transparent-background-for-meta-data
+COMMIT af82cae Improve card metadata readability with translucent overlay panel
+M	public/js/CardView.js
+M	public/styles/main.css
+
+COMMIT aae1e3f Merge pull request #396 from ShekMate/codex/update-desktop-layout-styling
+COMMIT 6b86e39 Adjust desktop collapsed card typography and sizing
+M	public/js/CardView.js
+M	public/styles/desktop.css
+
+COMMIT faddc8f Merge pull request #395 from ShekMate/codex/find-sizes-and-spacing-for-swipe-screen
+COMMIT a639010 refactor: split responsive layout css into main/mobile/tablet/desktop
+M	public/style.css
+A	public/styles/desktop.css
+A	public/styles/main.css
+A	public/styles/mobile.css
+D	public/styles/swipe-desktop.css
+D	public/styles/swipe-mobile.css
+D	public/styles/swipe-tablet.css
+A	public/styles/tablet.css
+
+COMMIT e49f78a refactor: isolate swipe breakpoint sizing into split css files
+A	docs/swipe-screen-sizing.md
+M	public/style.css
+A	public/styles/swipe-desktop.css
+A	public/styles/swipe-mobile.css
+A	public/styles/swipe-tablet.css
+
+COMMIT 10ffd4c Merge pull request #394 from ShekMate/codex/find-current-font-size-of-overlay-plot
+COMMIT 727dd3b Adjust swipe poster overlay plot behavior on desktop
+M	public/style.css
+
+COMMIT 3d2f4d8 Merge pull request #393 from ShekMate/codex/identify-slow-movie-loading-issues-zk5hdg
+COMMIT 17cd0e5 Merge branch 'dev_split' into codex/identify-slow-movie-loading-issues-zk5hdg
+COMMIT 2368363 Fix collapsed swipe layout: controls under poster and poster-click details
+M	public/index.html
+M	public/js/CardView.js
+M	public/js/main.js
+M	public/style.css
+M	src/core/config.ts
+M	src/core/rate-limiter.ts
+M	src/core/settings.ts
+M	src/features/catalog/enrich.ts
+M	src/features/session/session.ts
+M	src/index.ts
+M	src/infra/http/routes/config.ts
+M	src/infra/http/routes/settings.ts
+
+COMMIT feb79ad Merge pull request #392 from ShekMate/codex/identify-slow-movie-loading-issues
+COMMIT f027e53 Drop OMDb/RT metadata path and add compact expandable swipe cards
+M	public/js/CardView.js
+M	public/js/main.js
+M	public/style.css
+M	src/core/config.ts
+M	src/core/rate-limiter.ts
+M	src/core/settings.ts
+M	src/features/catalog/enrich.ts
+M	src/features/session/session.ts
+M	src/index.ts
+M	src/infra/http/routes/config.ts
+M	src/infra/http/routes/settings.ts
+
+COMMIT b5c6a16 Merge pull request #390 from ShekMate/codex/identify-bottlenecks-for-swipe-screen-load-time-9mrk0d
+COMMIT 0c4c924 Merge branch 'dev_split' into codex/identify-bottlenecks-for-swipe-screen-load-time-9mrk0d
+COMMIT 479c922 Improve enrichment cache hit rate across lookup keys
+M	src/features/catalog/enrich.ts
+M	src/features/session/session.ts
+
+COMMIT cb5f4e1 Merge pull request #389 from ShekMate/codex/identify-bottlenecks-for-swipe-screen-load-time
+COMMIT 2de9c2b Add persistent enrichment cache and discover prewarm
+M	src/features/catalog/enrich.ts
+M	src/features/session/session.ts
+
+COMMIT 0de0866 Merge pull request #388 from ShekMate/codex/fix-loading-screen-glitches
+COMMIT 45b0646 Fix pre-login tab panel flash on mode transitions
+M	public/style.css
+
+COMMIT b7e032d Merge pull request #387 from ShekMate/codex/remove-left-home-button
+COMMIT f0ecbeb Remove duplicate swipe home button
+M	public/index.html
+
+COMMIT 7f0f0ac Merge pull request #386 from ShekMate/codex/add-home-button-to-top-right-d5lqv6
+COMMIT 7fc313d Merge branch 'dev_split' into codex/add-home-button-to-top-right-d5lqv6
+COMMIT 913a53a Deduplicate swipe home button at runtime
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT 212773b Merge pull request #385 from ShekMate/codex/add-home-button-to-top-right-12funt
+COMMIT 9552133 Remove duplicate home buttons from list headers
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT 5880b6e Merge pull request #384 from ShekMate/codex/add-home-button-to-top-right-1hcrlb
+COMMIT 405319b Merge branch 'dev_split' into codex/add-home-button-to-top-right-1hcrlb
+COMMIT ad350d3 Fix home button placement and restore mode selection flow
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT bd7fbfb Merge pull request #383 from ShekMate/codex/add-home-button-to-top-right
+COMMIT 33edc19 Add swipe header home button to return to mode selection
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT e801dbb Merge pull request #382 from ShekMate/codex/update-submenu-to-include-all-subscriptions
+COMMIT 60e6c56 Sync subscription filter options with saved settings
+M	public/js/main.js
+
+COMMIT ae2f02c Merge pull request #381 from ShekMate/codex/fix-subscription-filter-checkbox-issue
+COMMIT 4e28aa6 Fix Plex-only subscription filter state handling
+M	public/index.html
+M	public/js/main.js
+
+COMMIT b1ef333 Fix My Subscriptions toggle for Plex-only setups
+M	public/js/main.js
+M	src/infra/http/routes/settings.ts
+
+COMMIT bf8a704 Merge pull request #380 from ShekMate/codex/fix-error-adding-to-plex-from-watch-list
+COMMIT 2268242 Fix missing Radarr helper import in request endpoint
+M	src/index.ts
+
+COMMIT 3ffa966 Merge pull request #379 from ShekMate/codex/identify-components-causing-slow-movie-stack-load
+COMMIT 91fc15b Improve metadata reliability and retroactively restore seen-list rating logos
+M	public/js/main.js
+M	src/features/session/session.ts
+
+COMMIT 75b4041 Merge pull request #378 from ShekMate/codex/identify-bottleneck-in-swipe-screen-loading-t2y8ut
+COMMIT 8ea0b0e Merge branch 'dev_split' into codex/identify-bottleneck-in-swipe-screen-loading-t2y8ut
+COMMIT 9867955 Speed up first swipe by fast-pathing initial batch generation
+M	public/js/main.js
+M	src/features/session/session.ts
+
+COMMIT c0071ab Merge pull request #377 from ShekMate/codex/identify-bottleneck-in-swipe-screen-loading-grpp4i
+COMMIT 3f43160 Merge branch 'dev_split' into codex/identify-bottleneck-in-swipe-screen-loading-grpp4i
+COMMIT 379ae72 Reduce login blocking and prefetch first swipe batch
+M	public/js/main.js
+M	src/features/session/session.ts
+
+COMMIT 52f6987 Merge pull request #376 from ShekMate/codex/identify-bottleneck-in-swipe-screen-loading-6k58ls
+COMMIT 7da9612 Fix ensureMovieBuffer target escalation during in-flight loads
+M	public/js/main.js
+
+COMMIT 14221dd Further reduce swipe startup blocking and cap enrichment latency
+M	public/js/main.js
+M	src/features/session/session.ts
+
+COMMIT dcd1002 Merge pull request #375 from ShekMate/codex/identify-bottleneck-in-swipe-screen-loading
+COMMIT e4a767a Improve swipe first-load responsiveness
+M	public/js/main.js
+
+COMMIT bbd4eb9 Merge pull request #374 from ShekMate/codex/find-error-when-accessing-personal-discovery
+COMMIT 99707df Add active-session takeover confirmation during login
+M	public/index.html
+M	public/js/ComparrAPI.js
+M	public/js/__tests__/ComparrAPI.test.js
+M	public/js/main.js
+M	public/style.css
+M	src/features/session/session.ts
+
+COMMIT 19d5fd3 Merge pull request #373 from ShekMate/codex/fix-slow-loading-of-swipe-screen
+COMMIT b53b870 Reduce swipe first-movie latency with batch timeouts
+M	src/features/session/session.ts
+
+COMMIT 8f463ed Merge pull request #372 from ShekMate/codex/update-imdb-csv-import-progress-bar
+COMMIT c1be861 Improve IMDb import progress status text
+M	public/js/main.js
+
+COMMIT 3dd369a Merge pull request #371 from ShekMate/codex/add-import-history-section
+COMMIT 662ccab Limit IMDb imports to CSV and add import history
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+M	src/features/session/session.ts
+M	src/index.ts
+
+COMMIT 870d7a1 Merge pull request #370 from ShekMate/codex/add-feedback-for-saving-settings-defaults
+COMMIT b779283 Add save feedback for default swipe settings
+M	public/js/main.js
+M	public/style.css
+
+COMMIT eeded8d Merge pull request #369 from ShekMate/revert-366-claude/debug-imdb-import-url-gi704
+COMMIT 26ccea8 Revert "Add HTML scraping fallback for IMDb list imports"
+M	src/features/session/__tests__/imdb-import.test.ts
+M	src/features/session/imdb-import.ts
+M	src/index.ts
+
+COMMIT fc57e19 Merge pull request #368 from ShekMate/revert-367-codex/fix-docker-not-working-issue
+COMMIT b707798 Revert "Harden Docker entrypoint: validate PUID/PGID, honor DATA_DIR, install passwd"
+M	Dockerfile
+M	docker-entrypoint.sh
+
+COMMIT 9a82a68 Merge pull request #367 from ShekMate/codex/fix-docker-not-working-issue
+COMMIT ec78e10 Fix Docker runtime user setup and DATA_DIR permissions
+M	Dockerfile
+M	docker-entrypoint.sh
+
+COMMIT 9d38594 Merge pull request #366 from ShekMate/claude/debug-imdb-import-url-gi704
+COMMIT 5841f98 Merge branch 'dev_split' into claude/debug-imdb-import-url-gi704
+COMMIT cd8fd32 Make IMDB URL/list import robust with three-layer fallback strategy
+M	src/features/session/__tests__/imdb-import.test.ts
+M	src/features/session/imdb-import.ts
+M	src/index.ts
+
+COMMIT e502c9f Merge pull request #364 from ShekMate/codex/investigate-imdb-sync-issue
+COMMIT f64b578 Add IMDb HTML fallback for sync import
+M	src/features/session/__tests__/imdb-import.test.ts
+M	src/features/session/imdb-import.ts
+M	src/index.ts
+
+COMMIT b4e1caf Merge pull request #363 from ShekMate/codex/fix-imdb-sync-function-b14xqz
+COMMIT fcc5a64 Merge branch 'dev_split' into codex/fix-imdb-sync-function-b14xqz
+COMMIT c96e34b Fix IMDb /export HTML fallback short-circuit
+M	src/features/session/__tests__/imdb-import.test.ts
+M	src/features/session/imdb-import.ts
+M	src/index.ts
+
+COMMIT 8185c9e Fix IMDB list import skipping page URL fallback when discovered URL matches target
+M	src/index.ts
+
+COMMIT 3ea8f8f Merge pull request #362 from ShekMate/codex/fix-imdb-sync-function
+COMMIT 4e81580 Improve IMDb export URL detection across HTML payload variants
+M	src/features/session/__tests__/imdb-import.test.ts
+M	src/features/session/imdb-import.ts
+M	src/index.ts
+
+COMMIT ac740fe Merge pull request #361 from ShekMate/codex/fix-imdb-list-sync-functionality-v6l897
+COMMIT 7a1a4a4 Add IMDb ratings->watchlist fallback for empty ur imports
+M	public/index.html
+M	public/js/main.js
+A	src/features/session/__tests__/imdb-import.test.ts
+M	src/features/session/imdb-import.ts
+M	src/index.ts
+
+COMMIT e1d8857 Merge pull request #360 from ShekMate/codex/fix-imdb-list-sync-functionality-l0urri
+COMMIT c5e1dab Fix missing getMaxBodySize import in IMDb sync route
+M	public/index.html
+M	public/js/main.js
+A	src/features/session/__tests__/imdb-import.test.ts
+M	src/features/session/imdb-import.ts
+M	src/index.ts
+
+COMMIT 2a556d6 Merge pull request #359 from ShekMate/codex/fix-imdb-list-sync-functionality-vgczu4
+COMMIT 8c51a6b Merge branch 'dev_split' into codex/fix-imdb-list-sync-functionality-vgczu4
+COMMIT eb12602 Improve IMDb sync error handling and update ID placeholder
+M	public/index.html
+M	public/js/main.js
+A	src/features/session/__tests__/imdb-import.test.ts
+M	src/features/session/imdb-import.ts
+M	src/index.ts
+
+COMMIT 3c47347 Merge pull request #358 from ShekMate/codex/fix-imdb-list-sync-functionality
+COMMIT 51c5e09 Fix IMDb sync parsing and support bare list/user IDs
+M	public/index.html
+M	public/js/main.js
+A	src/features/session/__tests__/imdb-import.test.ts
+M	src/features/session/imdb-import.ts
+M	src/index.ts
+
+COMMIT 4f98190 Merge pull request #356 from ShekMate/codex/fix-content-security-policy-violations-570fux
+COMMIT 3a89e2b Fix runtime error in poster fallback path
+M	public/js/main.js
+M	src/features/media/poster-validation.ts
+M	src/features/session/session.ts
+M	src/infra/http/security-headers.ts
+
+COMMIT decd6ec Merge pull request #355 from ShekMate/codex/fix-content-security-policy-violations-olkyry
+COMMIT 46b3ab4 Add Plex fallback when TMDb batch candidate fetch fails
+M	public/js/main.js
+M	src/features/session/session.ts
+M	src/infra/http/security-headers.ts
+
+COMMIT e04e811 Merge pull request #354 from ShekMate/codex/fix-content-security-policy-violations-frhhmg
+COMMIT 0ceaa6e Fix vote-count filtering fallback for TMDb batch candidates
+M	src/features/session/session.ts
+M	src/infra/http/security-headers.ts
+
+COMMIT cbc5437 Merge pull request #353 from ShekMate/codex/fix-content-security-policy-violations
+COMMIT db2652e Fix CSP rules for inline styles and Google Fonts
+M	src/infra/http/security-headers.ts
+
+COMMIT 6adbf71 Merge pull request #352 from ShekMate/codex/fix-filter-and-refresh-button-styling
+COMMIT 78d958c Fix watch list filter/refresh button styling
+M	public/index.html
+M	public/style.css
+
+COMMIT c5d570d Merge pull request #351 from ShekMate/codex/fix-prefill-behavior-for-new-here-selection
+COMMIT 3c7d23c Fix group create-mode room code prefill behavior
+M	public/js/main.js
+
+COMMIT c153da2 Merge pull request #350 from ShekMate/codex/fix-prefill-behavior-on-group-matching-screen
+COMMIT 3275690 Fix group login prefill to ignore personal defaults
+M	public/js/main.js
+
+COMMIT 0500855 Merge pull request #349 from ShekMate/codex/fix-imdb-seen-list-import-status
+COMMIT 9701c3f Fix stale IMDb importing progress state
+M	public/js/main.js
+
+COMMIT 434172b Merge pull request #348 from ShekMate/codex/add-mode-picker-after-password-unlock
+COMMIT 2fa576b Add post-password mode picker for personal vs group flows
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT 80e9bed Merge pull request #347 from ShekMate/codex/fix-cut-off-error-message-and-adjust-widths-gwppwh
+COMMIT 79b761a Fix truncated room-not-found i18n message in login data attrs
+M	i18n/de.json
+M	i18n/en.json
+M	i18n/es.json
+M	i18n/fr.json
+M	i18n/it.json
+M	i18n/ja.json
+M	i18n/ko.json
+M	i18n/nl.json
+M	i18n/pt-BR.json
+M	i18n/ru.json
+M	i18n/zh-CN.json
+M	public/js/main.js
+M	public/style.css
+
+COMMIT f04a278 Merge pull request #346 from ShekMate/codex/fix-cut-off-error-message-and-adjust-widths
+COMMIT 11c3662 Adjust login helper and error text widths
+M	public/style.css
+
+COMMIT 18dffef Merge pull request #345 from ShekMate/fix-room-code-error-message-display
+COMMIT e7e0713 Fix room code error placement and update not-found copy
+M	i18n/de.json
+M	i18n/en.json
+M	i18n/es.json
+M	i18n/fr.json
+M	i18n/it.json
+M	i18n/ja.json
+M	i18n/ko.json
+M	i18n/nl.json
+M	i18n/pt-BR.json
+M	i18n/ru.json
+M	i18n/zh-CN.json
+M	public/js/main.js
+M	public/style.css
+
+COMMIT b9ff771 Merge pull request #344 from ShekMate/codex/evaluate-app-feature-focus-and-simplification
+COMMIT 5947f54 ci: publish docker image for dev_split branch
+M	.github/workflows/docker.yml
+
+COMMIT 3c4406b Add 'dev_split' branch to Docker workflow triggers
+M	.github/workflows/docker.yml
+
+COMMIT 8bbf7a1 Merge pull request #343 from ShekMate/codex/investigate-missing-border-on-no-button
+COMMIT 3ca5735 Fix missing left border on login NO tab
+M	public/style.css
+
+COMMIT 9a33143 Merge pull request #342 from ShekMate/codex/move-and-center-buttons-on-login-screen-u1boru
+COMMIT 12c0295 Center login form layout alignment
+M	public/style.css
+
+COMMIT b26a76a Merge pull request #341 from ShekMate/codex/move-and-center-buttons-on-login-screen
+COMMIT cf5268b Adjust login room mode buttons layout
+M	public/style.css
+
+COMMIT 4426935 Merge pull request #340 from ShekMate/codex/fix-login-screen-text-wrapping-c5iruc
+COMMIT a32287a Merge branch 'dev' into codex/fix-login-screen-text-wrapping-c5iruc
+COMMIT e49d623 Reduce login section spacing from 5rem to 2.5rem
+M	public/index.html
+M	public/style.css
+
+COMMIT 8a2a46e Merge pull request #339 from ShekMate/codex/fix-login-screen-text-wrapping-wki5f0
+COMMIT 950edb5 Merge branch 'dev' into codex/fix-login-screen-text-wrapping-wki5f0
+COMMIT 23c6b5e Set login section spacing to 5rem for requested gaps
+M	public/index.html
+M	public/style.css
+
+COMMIT f3b1c2e Merge pull request #338 from ShekMate/codex/fix-login-screen-text-wrapping
+COMMIT d263bcb Tighten login form spacing and prevent room instruction wrapping
+M	public/style.css
+
+COMMIT 8612911 Merge pull request #337 from ShekMate/codex/center-welcome-message-and-button-layout
+COMMIT bf415b4 Fix login alignment for intro, fields, and continue button
+M	public/style.css
+
+COMMIT 5c22183 Merge pull request #336 from ShekMate/codex/revert-login-merge-on-password-screen-duj3gr
+COMMIT d7838b2 Merge branch 'dev' into codex/revert-login-merge-on-password-screen-duj3gr
+COMMIT c9548fb Adjust login alignment: centered intro/helper and left-aligned fields
+M	public/js/main.js
+M	public/style.css
+
+COMMIT b2de375 Merge pull request #335 from ShekMate/codex/revert-login-merge-on-password-screen
+COMMIT ed4e092 Fix login step separation and restore left-aligned intro layout
+M	public/js/main.js
+M	public/style.css
+
+COMMIT f093cd4 Merge pull request #334 from ShekMate/codex/fix-github-actions-docker-build-failure
+COMMIT 2ec0c5a Fix settings route syntax error blocking Docker build
+M	src/infra/http/routes/settings.ts
+
+COMMIT 69fbc6b Merge pull request #333 from ShekMate/codex/align-and-space-login-screen-elements-j8x08g
+COMMIT 39c5cdd Merge branch 'dev' into codex/align-and-space-login-screen-elements-j8x08g
+COMMIT ed87a4f Refine login room-mode alignment with input column
+M	public/index.html
+M	public/style.css
+
+COMMIT 06cbfb4 Merge pull request #332 from ShekMate/codex/align-and-space-login-screen-elements
+COMMIT 400233a Adjust login layout for room-mode controls spacing
+M	public/index.html
+M	public/style.css
+
+COMMIT 902957b Merge pull request #331 from ShekMate/codex/review-comparr-vulnerabilities-and-proposed-fixes
+COMMIT 209116b feat: implement public deployment security hardening
+M	.env.example
+M	docs/reverse-proxy.md
+A	docs/security-review-claude-plan.md
+M	public/index.html
+M	public/js/CardView.js
+M	public/js/ComparrAPI.js
+M	public/js/MatchesView.js
+M	public/js/main.js
+A	public/js/room-code-fallback.js
+A	public/js/utils.js
+M	src/core/config.ts
+A	src/core/security.ts
+M	src/features/session/session.ts
+M	src/index.ts
+A	src/infra/http/ip-rate-limiter.ts
+M	src/infra/http/network-access.test.ts
+M	src/infra/http/network-access.ts
+M	src/infra/http/routes/matches.ts
+M	src/infra/http/routes/request-service.ts
+M	src/infra/http/routes/rooms.ts
+M	src/infra/http/routes/settings.ts
+A	src/infra/http/security-headers.ts
+M	src/infra/http/staticFileServer.ts
+M	src/infra/ws/websocketServer.ts
+
+COMMIT 36c5751 Merge pull request #330 from ShekMate/codex/find-current-input-widths-on-login-screen
+COMMIT 5e83afd Increase login name and room code input widths to 60%
+M	public/style.css
+
+COMMIT 534748e Merge pull request #329 from ShekMate/codex/redesign-login-screen-layout-biuj3z
+COMMIT 61d037a Merge branch 'dev' into codex/redesign-login-screen-layout-biuj3z
+COMMIT 28f3d80 Fix room code field width to match name input
+M	i18n/de.json
+M	i18n/en.json
+M	i18n/es.json
+M	i18n/fr.json
+M	i18n/it.json
+M	i18n/ja.json
+M	i18n/ko.json
+M	i18n/nl.json
+M	i18n/pt-BR.json
+M	i18n/ru.json
+M	i18n/zh-CN.json
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT 04aff3d Merge pull request #328 from ShekMate/codex/redesign-login-screen-layout-7jgva9
+COMMIT 10b3677 Merge branch 'dev' into codex/redesign-login-screen-layout-7jgva9
+COMMIT c6fbd61 Left-align login name and room code fields
+M	i18n/de.json
+M	i18n/en.json
+M	i18n/es.json
+M	i18n/fr.json
+M	i18n/it.json
+M	i18n/ja.json
+M	i18n/ko.json
+M	i18n/nl.json
+M	i18n/pt-BR.json
+M	i18n/ru.json
+M	i18n/zh-CN.json
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT cf57a14 Merge pull request #327 from ShekMate/codex/redesign-login-screen-layout-9cblgs
+COMMIT 9e22d92 Merge branch 'dev' into codex/redesign-login-screen-layout-9cblgs
+COMMIT ef3c3af Correct new here row sizing behavior
+M	i18n/de.json
+M	i18n/en.json
+M	i18n/es.json
+M	i18n/fr.json
+M	i18n/it.json
+M	i18n/ja.json
+M	i18n/ko.json
+M	i18n/nl.json
+M	i18n/pt-BR.json
+M	i18n/ru.json
+M	i18n/zh-CN.json
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT c630064 Merge pull request #326 from ShekMate/codex/redesign-login-screen-layout
+COMMIT 0ad3f27 Merge branch 'dev' into codex/redesign-login-screen-layout
+COMMIT 369a85f Adjust login control widths to half size
+M	i18n/de.json
+M	i18n/en.json
+M	i18n/es.json
+M	i18n/fr.json
+M	i18n/it.json
+M	i18n/ja.json
+M	i18n/ko.json
+M	i18n/nl.json
+M	i18n/pt-BR.json
+M	i18n/ru.json
+M	i18n/zh-CN.json
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT e3710e1 Merge pull request #324 from ShekMate/codex/redesign-login-screen-layout-py8ew7
+COMMIT 702af12 Merge branch 'dev' into codex/redesign-login-screen-layout-py8ew7
+COMMIT efb7216 Polish login toggle spacing and room step instructions
+M	i18n/de.json
+M	i18n/en.json
+M	i18n/es.json
+M	i18n/fr.json
+M	i18n/it.json
+M	i18n/ja.json
+M	i18n/ko.json
+M	i18n/nl.json
+M	i18n/pt-BR.json
+M	i18n/ru.json
+M	i18n/zh-CN.json
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT 041129d Merge pull request #323 from ShekMate/codex/redesign-login-screen-layout
+COMMIT 6d2fcea Refine login room mode layout with yes/no flow
+M	i18n/de.json
+M	i18n/en.json
+M	i18n/es.json
+M	i18n/fr.json
+M	i18n/it.json
+M	i18n/ja.json
+M	i18n/ko.json
+M	i18n/nl.json
+M	i18n/pt-BR.json
+M	i18n/ru.json
+M	i18n/zh-CN.json
+M	public/index.html
+M	public/style.css
+
+COMMIT 53946b6 Merge pull request #322 from ShekMate/codex/implement-tabbed-approach-for-room-code-section-efeywt
+COMMIT 45ba233 Merge branch 'dev' into codex/implement-tabbed-approach-for-room-code-section-efeywt
+COMMIT fd562f1 Update join/create instruction copy and helper text
+M	i18n/de.json
+M	i18n/en.json
+M	i18n/es.json
+M	i18n/fr.json
+M	i18n/it.json
+M	i18n/ja.json
+M	i18n/ko.json
+M	i18n/nl.json
+M	i18n/pt-BR.json
+M	i18n/ru.json
+M	i18n/zh-CN.json
+M	public/index.html
+M	public/js/ComparrAPI.js
+M	public/js/__tests__/ComparrAPI.test.js
+M	public/js/main.js
+M	public/style.css
+M	src/features/session/session.ts
+M	src/index.ts
+A	src/infra/http/routes/rooms.ts
+
+COMMIT 5dfddb1 Merge pull request #321 from ShekMate/codex/implement-tabbed-approach-for-room-code-section
+COMMIT 760df53 Show login failures in visible login form
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT 244a0f1 Add join/create room tabs with unique room code checks
+M	i18n/de.json
+M	i18n/en.json
+M	i18n/es.json
+M	i18n/fr.json
+M	i18n/it.json
+M	i18n/ja.json
+M	i18n/ko.json
+M	i18n/nl.json
+M	i18n/pt-BR.json
+M	i18n/ru.json
+M	i18n/zh-CN.json
+M	public/index.html
+M	public/js/ComparrAPI.js
+M	public/js/__tests__/ComparrAPI.test.js
+M	public/js/main.js
+M	public/style.css
+M	src/features/session/session.ts
+M	src/index.ts
+A	src/infra/http/routes/rooms.ts
+
+COMMIT 0a52c8d Merge pull request #319 from ShekMate/codex/measure-space-below-first-name-input-luvkt9
+COMMIT 250552d Merge pull request #320 from ShekMate/codex/update-messaging-in-settings-for-professionalism
+COMMIT 739905b Remove settings loaded status message
+M	public/js/main.js
+
+COMMIT a6d1ad3 Merge branch 'dev' into codex/measure-space-below-first-name-input-luvkt9
+COMMIT 56b8d01 Increase login input text size to 1.5rem
+M	public/style.css
+
+COMMIT a8adb75 Merge pull request #318 from ShekMate/codex/measure-space-below-first-name-input-u8nqcp
+COMMIT 5c22db4 Increase login form element width to 22rem
+M	public/style.css
+
+COMMIT 92266e4 Merge pull request #317 from ShekMate/codex/measure-space-below-first-name-input-vqwwph
+COMMIT a428fe2 Set login helper text size to 0.75rem
+M	public/style.css
+
+COMMIT 03067ce Merge pull request #316 from ShekMate/codex/measure-space-below-first-name-input-5xxrre
+COMMIT 84c9e11 Match room code field spacing to 2.5rem
+M	public/style.css
+
+COMMIT e5b4a41 Merge pull request #315 from ShekMate/codex/measure-space-below-first-name-input
+COMMIT 4a96f94 Increase login first input bottom spacing to 2.5rem
+M	public/style.css
+
+COMMIT e531358 Merge pull request #314 from ShekMate/codex/center-input-fields-and-align-instructions-swsaxj
+COMMIT ef2ea39 Merge branch 'dev' into codex/center-input-fields-and-align-instructions-swsaxj
+COMMIT ca333a1 Increase intro-to-name spacing to 4rem
+M	i18n/en.json
+M	public/style.css
+
+COMMIT 97c0979 Merge pull request #313 from ShekMate/codex/center-input-fields-and-align-instructions-e8n3sv
+COMMIT c2271b1 Merge branch 'dev' into codex/center-input-fields-and-align-instructions-e8n3sv
+COMMIT bb8baa8 Widen login fields to 18rem and update step copy
+M	i18n/en.json
+M	public/style.css
+
+COMMIT ad59cb8 Merge pull request #312 from ShekMate/codex/center-input-fields-and-align-instructions-qf9d8x
+COMMIT da8d133 Merge branch 'dev' into codex/center-input-fields-and-align-instructions-qf9d8x
+COMMIT 6cd9a11 Increase space above name step to 2rem
+M	public/style.css
+
+COMMIT 80ec2f6 Merge pull request #311 from ShekMate/codex/center-input-fields-and-align-instructions-y8exls
+COMMIT 829d7e0 Merge branch 'dev' into codex/center-input-fields-and-align-instructions-y8exls
+COMMIT 6ddcfb1 Increase login field width to 16rem
+M	public/style.css
+
+COMMIT 3ac9966 Merge pull request #310 from ShekMate/codex/center-input-fields-and-align-instructions-5uoo9s
+COMMIT 5bd739a Merge branch 'dev' into codex/center-input-fields-and-align-instructions-5uoo9s
+COMMIT 62aa730 Increase login input spacing to 1rem
+M	public/style.css
+
+COMMIT ccf7bcc Merge pull request #309 from ShekMate/codex/center-input-fields-and-align-instructions
+COMMIT f467bc3 Center login inputs and align helper copy
+M	public/style.css
+
+COMMIT 125e2b9 Merge pull request #308 from ShekMate/codex/fix-oversized-login-screen-elements-bhq244
+COMMIT 13081d2 Merge branch 'dev' into codex/fix-oversized-login-screen-elements-bhq244
+COMMIT 4a7e455 Clean mobile login width overrides
+M	public/style.css
+
+COMMIT fea7c58 Merge pull request #307 from ShekMate/codex/fix-oversized-login-screen-elements
+COMMIT 8664dc3 Tighten login form sizing and spacing
+M	public/style.css
+
+COMMIT 771de28 Merge pull request #306 from ShekMate/codex/clean-up-login-screen-design-s6vyta
+COMMIT 918f834 Merge branch 'dev' into codex/clean-up-login-screen-design-s6vyta
+COMMIT 9de063b Tone down login typography and input sizing
+M	i18n/de.json
+M	i18n/en.json
+M	i18n/es.json
+M	i18n/fr.json
+M	i18n/it.json
+M	i18n/ja.json
+M	i18n/ko.json
+M	i18n/nl.json
+M	i18n/pt-BR.json
+M	i18n/ru.json
+M	i18n/zh-CN.json
+M	public/index.html
+M	public/style.css
+
+COMMIT 63e78c0 Merge pull request #305 from ShekMate/codex/clean-up-login-screen-design
+COMMIT 6a2bfe1 Restore semantic login heading for accessibility
+M	public/index.html
+M	public/style.css
+
+COMMIT 64ceba9 Internationalize login helper and tip prefix copy
+M	i18n/de.json
+M	i18n/en.json
+M	i18n/es.json
+M	i18n/fr.json
+M	i18n/it.json
+M	i18n/ja.json
+M	i18n/ko.json
+M	i18n/nl.json
+M	i18n/pt-BR.json
+M	i18n/ru.json
+M	i18n/zh-CN.json
+M	public/index.html
+M	public/style.css
+
+COMMIT afffbde Merge pull request #302 from ShekMate/codex/review-login-screen-ux
+COMMIT 534870a Refactor login screen layout and simplify onboarding copy
+M	i18n/de.json
+M	i18n/en.json
+M	i18n/es.json
+M	i18n/fr.json
+M	i18n/it.json
+M	i18n/ja.json
+M	i18n/ko.json
+M	i18n/nl.json
+M	i18n/pt-BR.json
+M	i18n/ru.json
+M	i18n/zh-CN.json
+M	public/index.html
+M	public/style.css
+
+COMMIT 3d7ea85 Merge pull request #301 from ShekMate/codex/fix-password-error-message-display-iyvkxx
+COMMIT f3f6413 Merge branch 'dev' into codex/fix-password-error-message-display-iyvkxx
+COMMIT 0426067 Fix access-password verify URL base path
+M	public/js/ComparrAPI.js
+M	public/js/__tests__/ComparrAPI.test.js
+M	public/js/main.js
+M	public/style.css
+M	src/features/session/session.ts
+M	src/infra/http/routes/settings.ts
+
+COMMIT fc9fd55 Merge pull request #300 from ShekMate/codex/fix-password-error-message-display-2snl0u
+COMMIT ac2a1a8 Validate access password before showing login form
+M	public/js/ComparrAPI.js
+M	public/js/__tests__/ComparrAPI.test.js
+M	public/js/main.js
+M	public/style.css
+M	src/features/session/session.ts
+M	src/infra/http/routes/settings.ts
+
+COMMIT aac4f69 Merge pull request #299 from ShekMate/codex/fix-password-error-message-display
+COMMIT 6e2562c Improve login error feedback for invalid access password
+M	public/js/ComparrAPI.js
+M	public/js/__tests__/ComparrAPI.test.js
+M	public/js/main.js
+M	public/style.css
+M	src/features/session/session.ts
+
+COMMIT 2dca406 Merge pull request #298 from ShekMate/codex/add-basic/advanced-toggle-for-settings
+COMMIT a46ab64 Fix advanced settings toggle visibility for non-admin sections
+M	public/index.html
+M	public/js/main.js
+
+COMMIT a8beaf4 Merge pull request #297 from ShekMate/codex/reorganize-sync-and-import-buttons
+COMMIT e4d2687 Reorder IMDb sync/import controls and move interval to advanced
+M	public/index.html
+M	public/style.css
+
+COMMIT e9c2ad1 Merge pull request #296 from ShekMate/codex/move-imdb-list-setting-to-imports-tab
+COMMIT 9ccb226 Move IMDb imports into user Imports settings tab
+M	public/index.html
+M	public/js/main.js
+M	src/infra/http/routes/settings.ts
+
+COMMIT c5128c3 Merge pull request #295 from ShekMate/codex/remove-duplicate-save-changes-button
+COMMIT 5b38474 Unify defaults settings actions at footer
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT 5afa6a5 Merge pull request #294 from ShekMate/codex/adjust-filter-options-width-in-settings
+COMMIT b0601c3 Tighten defaults filter width on desktop
+M	public/style.css
+
+COMMIT 2d10ed3 Merge pull request #293 from ShekMate/codex/remove-message-from-dropbox-and-add-info-icons
+COMMIT f31dfff Update availability dropdown with per-option info icons
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT 796200a Merge pull request #292 from ShekMate/codex/remove-unnecessary-buttons-from-ui
+COMMIT 3b4a7ec Simplify defaults settings with inline swipe filters
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT 3ac75d3 Merge pull request #291 from ShekMate/codex/fix-login-screen-password-issue
+COMMIT 43b2ec9 Fix undefined defaults button handler in main script
+M	public/js/main.js
+M	src/features/session/session.ts
+
+COMMIT f820c48 Merge pull request #290 from ShekMate/codex/add-defaults-settings-tab-for-filters-40yqw9
+COMMIT 29e3896 Merge branch 'dev' into codex/add-defaults-settings-tab-for-filters-40yqw9
+COMMIT 633c2bb Use swipe filter modal UI for defaults editing
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT cd94023 Merge pull request #289 from ShekMate/codex/add-defaults-settings-tab-for-filters
+COMMIT c73e5a6 Add swipe filter defaults settings tab
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT ae2c143 Merge pull request #288 from ShekMate/codex/hide-plex-emby-jellyfin-unless-enabled-b7opyi
+COMMIT 4642d1b Respect hidden attribute for settings checkbox options
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT 937b85b Merge pull request #287 from ShekMate/codex/fix-dropdown-not-closing-when-clicking-outside
+COMMIT 030fa84 Fix swipe filter dropdown lingering after modal close
+M	public/js/main.js
+
+COMMIT 213495a Merge pull request #286 from ShekMate/codex/hide-plex-emby-jellyfin-unless-enabled
+COMMIT b64305a Hide host-managed subscription services unless enabled
+M	public/index.html
+M	public/js/main.js
+
+COMMIT c4d8898 Merge pull request #285 from ShekMate/codex/remove-plex-from-filter-and-update-settings
+COMMIT df71b8b Adjust availability and host-managed personal services UI
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT 4b42084 Merge pull request #284 from ShekMate/codex/propose-cleaner-subscription-filter-options
+COMMIT 84a9214 Refine availability filter into My Subscriptions with provider options
+M	public/index.html
+M	public/js/main.js
+
+COMMIT 177fc03 Merge pull request #283 from ShekMate/codex/clarify-non-applicable-setting
+COMMIT 7e9e66e Clarify Plex link type setting behavior in UI
+M	public/index.html
+
+COMMIT 1f4b997 Merge pull request #277 from ShekMate/codex/fix-availability-filter-behavior-in-swipe
+COMMIT 8d102d6 Fix swipe availability checkbox state handling
+M	public/js/main.js
+
+COMMIT d427909 Merge pull request #276 from ShekMate/codex/rework-settings-layout-and-advanced-options-9mt9yz
+COMMIT 5663ab0 Merge branch 'dev' into codex/rework-settings-layout-and-advanced-options-9mt9yz
+COMMIT 7086412 Preserve advanced mode across settings tab switches
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT 1294232 Merge pull request #275 from ShekMate/codex/rework-settings-layout-and-advanced-options-1anwhy
+COMMIT 971e58e Fix advanced settings hidden state in basic mode
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT 5fb1dc5 Merge pull request #274 from ShekMate/codex/rework-settings-layout-and-advanced-options
+COMMIT 29deed3 Rework settings basic/advanced layout toggle
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT 14c56fd Merge pull request #273 from ShekMate/codex/remove-redundant-section
+COMMIT d893aed Remove redundant settings header block
+M	public/index.html
+
+COMMIT c41a652 Merge pull request #272 from ShekMate/codex/fix-save-changes-button-size
+COMMIT 986dcbb Fix settings save button width
+M	public/style.css
+
+COMMIT df8eac2 Merge pull request #271 from ShekMate/codex/update-streaming-settings-layout-and-behavior
+COMMIT bf071b0 Refine settings UI visibility and status behavior
+M	public/index.html
+M	public/js/main.js
+
+COMMIT 945e565 Merge pull request #270 from ShekMate/codex/rename-tab-and-header-to-streaming
+COMMIT 214ea54 Rename Availability settings tab/header to Streaming
+M	public/index.html
+
+COMMIT 5763d3a Merge pull request #269 from ShekMate/codex/update-list-sorting-to-newest-first
+COMMIT 8d4592e Fix watch/pass/seen list ordering refresh on tab open
+M	public/js/main.js
+
+COMMIT cf9ffe0 Merge pull request #268 from ShekMate/codex/fix-expand/collapse-button-shape
+COMMIT 70df1ef Fix pass/seen expand-all buttons to use square sizing
+M	public/style.css
+
+COMMIT ee3feda Merge pull request #267 from ShekMate/claude/investigate-list-sorting-vBuXf
+COMMIT 0fe9da1 Add sorting and expand/collapse controls to Pass and Seen lists
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT e012ac2 Merge pull request #266 from ShekMate/codex/add-minimum-prefix-to-filter-names
+COMMIT 27063ca Update swipe filter labels to minimum wording
+M	public/index.html
+
+COMMIT 301b4dc Merge pull request #265 from ShekMate/codex/add-eyeball-icon-to-show-input
+COMMIT 1866883 Add password visibility toggles for secure inputs
+M	public/js/main.js
+M	public/style.css
+
+COMMIT 7c14b5c Merge pull request #264 from ShekMate/codex/identify-env-variables-for-web-ui-transition
+COMMIT b6ceac2 Migrate remaining app env settings into web UI
+M	README.md
+M	docs/docker-compose.md
+M	public/index.html
+M	src/infra/http/routes/settings.ts
+
+COMMIT 7831d48 Merge pull request #263 from ShekMate/codex/fix-settings-persistence-issue
+COMMIT 91cc57b Fix settings hydration after admin auth
+M	public/js/main.js
+
+COMMIT 479c594 Merge pull request #262 from ShekMate/codex/enhance-section-headers-for-settings
+COMMIT 9443b9d Strengthen settings heading hierarchy
+M	public/style.css
+
+COMMIT 1634701 Improve settings subsection title prominence
+M	public/style.css
+
+COMMIT 5d8c46f Merge pull request #261 from ShekMate/codex/find-docker-container-settings-for-sonarr-and-radarr
+COMMIT f523f60 Refactor admin settings into tabbed sections and lock system fields
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+M	src/infra/http/routes/settings.ts
+
+COMMIT 822adba Merge pull request #260 from ShekMate/codex/update-settings-tab-highlight-color-rn9gsm
+COMMIT 4c0b5c0 Fix settings submenu activation logic across nav items
+M	public/js/main.js
+M	public/style.css
+
+COMMIT 4465837 Merge pull request #259 from ShekMate/codex/update-settings-tab-highlight-color-js5cao
+COMMIT faac569 Merge branch 'dev' into codex/update-settings-tab-highlight-color-js5cao
+COMMIT 780bd8a Ensure only active settings subtab uses highlight color
+M	public/style.css
+
+COMMIT ab6b2b4 Merge pull request #258 from ShekMate/codex/update-settings-tab-highlight-color-54d5au
+COMMIT e00811c Merge branch 'dev' into codex/update-settings-tab-highlight-color-54d5au
+COMMIT a1325d2 Fix settings subtab label colors for active state only
+M	public/style.css
+
+COMMIT 76820df Merge pull request #257 from ShekMate/codex/update-settings-tab-highlight-color-2nzdu9
+COMMIT 0facd1a Merge branch 'dev' into codex/update-settings-tab-highlight-color-2nzdu9
+COMMIT ba17f48 Adjust settings submenu active text behavior
+M	public/style.css
+
+COMMIT 22221ea Merge pull request #256 from ShekMate/codex/update-settings-tab-highlight-color
+COMMIT 3d7c8cf Fix settings sidebar selection styling alignment
+M	public/style.css
+
+COMMIT b8a45a8 Merge pull request #255 from ShekMate/codex/fix-plex-test-message-persistence
+COMMIT 48a2bf6 Fix settings test status persistence and Plex label casing
+M	public/js/main.js
+
+COMMIT cbf06bb Merge pull request #254 from ShekMate/codex/continue-fix-for-plex-403-auth-issue
+COMMIT 85fd1e2 Improve admin auth UX for settings tests and proxy local detection
+M	public/js/main.js
+A	src/infra/http/network-access.test.ts
+M	src/infra/http/network-access.ts
+M	src/infra/http/routes/settings.ts
+
+COMMIT bcbe65f Merge pull request #253 from ShekMate/codex/fix-plex-connection-test-failure
+COMMIT b4012c0 Fix Plex connection checks for /web URLs
+A	src/core/__tests__/config.test.ts
+M	src/core/config.ts
+M	src/infra/http/routes/settings.ts
+
+COMMIT 08966b8 Merge pull request #252 from ShekMate/codex/investigate-failing-plex-test
+COMMIT bb7cc41 fix: normalize plex token in settings connection test
+M	src/infra/http/routes/settings.ts
+
+COMMIT 7be2b07 Merge pull request #251 from ShekMate/codex/find-plex-token-in-settings
+COMMIT d7bbf42 Add Plex token help tooltip in settings
+M	public/index.html
+
+COMMIT 0652028 Merge pull request #250 from ShekMate/codex/remove-profile-mode-setting-and-add-availability-filter-ep50li
+COMMIT 9746f4b Merge branch 'dev' into codex/remove-profile-mode-setting-and-add-availability-filter-ep50li
+COMMIT a7cb97a Scope admin password to Admin settings sub-tabs
+M	public/index.html
+M	public/js/ComparrAPI.js
+M	public/js/main.js
+M	public/style.css
+M	src/core/__tests__/settings.test.ts
+M	src/core/settings.ts
+M	src/features/session/session.ts
+M	src/infra/http/routes/settings.ts
+
+COMMIT 4de74f9 Merge pull request #249 from ShekMate/codex/remove-profile-mode-setting-and-add-availability-filter-vknjgz
+COMMIT 5d93bec Merge branch 'dev' into codex/remove-profile-mode-setting-and-add-availability-filter-vknjgz
+COMMIT e0cddfc Defer admin password prompt until settings is opened
+M	public/index.html
+M	public/js/ComparrAPI.js
+M	public/js/main.js
+M	public/style.css
+M	src/core/__tests__/settings.test.ts
+M	src/core/settings.ts
+M	src/features/session/session.ts
+M	src/infra/http/routes/settings.ts
+
+COMMIT 2572884 Merge pull request #248 from ShekMate/codex/remove-profile-mode-setting-and-add-availability-filter
+COMMIT 21aa5d5 Add availability dropdown flow and admin-password settings guard
+M	public/index.html
+M	public/js/ComparrAPI.js
+M	public/js/main.js
+M	public/style.css
+M	src/core/__tests__/settings.test.ts
+M	src/core/settings.ts
+M	src/features/session/session.ts
+M	src/infra/http/routes/settings.ts
+
+COMMIT 79452a1 Merge pull request #247 from ShekMate/codex/fix-advanced-settings-toggle-and-add-test-button
+COMMIT b668df7 Fix settings advanced toggle feedback and add integration test buttons
+M	public/index.html
+M	public/js/main.js
+M	src/infra/http/routes/settings.ts
+
+COMMIT 5ede668 Merge pull request #246 from ShekMate/codex/add-logic-for-showing-advanced-settings
+COMMIT 7a93277 Fix advanced settings visibility for dynamic integration sections
+M	public/js/main.js
+
+COMMIT bf67138 Merge pull request #244 from ShekMate/codex/suggest-improvements-for-settings
+COMMIT 63c0b3f Finish settings roadmap with JSON list normalization and server tests
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+M	src/core/__tests__/settings.test.ts
+M	src/core/settings.ts
+M	src/core/streamingProfileSettings.ts
+M	src/infra/http/routes/settings.ts
+
+COMMIT a6bd05f Merge pull request #243 from ShekMate/codex/determine-necessity-of-feature
+COMMIT 1bc2854 Remove obsolete Plex section type setting
+M	README.md
+M	public/index.html
+M	src/api/__tests__/plex.test.ts
+M	src/api/plex.ts
+M	src/core/config.ts
+M	src/core/settings.ts
+
+COMMIT c80b3a6 Merge pull request #242 from ShekMate/codex/move-plex-settings-under-streaming-profile
+COMMIT abf578d Move Plex settings under streaming profile and require selected source config
+M	public/index.html
+M	public/js/main.js
+
+COMMIT dc1113b Merge pull request #241 from ShekMate/codex/update-paid-subscriptions-dropdown-style-19oe07
+COMMIT e544bb3 Merge branch 'dev' into codex/update-paid-subscriptions-dropdown-style-19oe07
+COMMIT da90e96 Match Personal Media Sources control to subscriptions dropdown
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT 2316669 Merge pull request #240 from ShekMate/codex/update-paid-subscriptions-dropdown-style-3pebcn
+COMMIT 2f38b73 Merge branch 'dev' into codex/update-paid-subscriptions-dropdown-style-3pebcn
+COMMIT fbbe579 Reduce settings subscriptions dropdown control size
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT c86c5b7 Merge pull request #239 from ShekMate/codex/update-paid-subscriptions-dropdown-style-nwf2fz
+COMMIT b4555ab Merge branch 'dev' into codex/update-paid-subscriptions-dropdown-style-nwf2fz
+COMMIT 950de57 Align settings subscriptions dropdown spacing with swipe filters
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT a4c7136 Merge pull request #238 from ShekMate/codex/update-paid-subscriptions-dropdown-style
+COMMIT 2eeecc7 Restyle paid subscriptions dropdown in settings
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT 7159ac1 Merge pull request #237 from ShekMate/codex/change-streaming-services-to-multi-select-dropdown-miswoi
+COMMIT d8e5ccb Merge branch 'dev' into codex/change-streaming-services-to-multi-select-dropdown-miswoi
+COMMIT 9c0e9ff Restyle paid services as filter-style checkbox dropdown
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT f9b45d8 Merge pull request #236 from ShekMate/codex/change-streaming-services-to-multi-select-dropdown-zivo4x
+COMMIT 5d9ff5e Merge branch 'dev' into codex/change-streaming-services-to-multi-select-dropdown-zivo4x
+COMMIT 02c8110 Use checkbox dropdown for paid streaming services
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT 94c9fbb Merge pull request #235 from ShekMate/codex/change-streaming-services-to-multi-select-dropdown
+COMMIT e123d75 Make paid streaming services a multi-select setting
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT d2b2629 Merge pull request #234 from ShekMate/codex/resolve-merge-conflicts
+COMMIT 35144a2 Fix missing personal media sources binding in session mode logic
+M	src/features/session/session.ts
+
+COMMIT a2d149d Merge pull request #233 from ShekMate/codex/add-optional-plex-integration-feature-hoj501
+COMMIT b587920 Merge branch 'dev' into codex/add-optional-plex-integration-feature-hoj501
+COMMIT e306ed9 Add Streaming Profile entry to settings navigation menus
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+A	src/core/__tests__/settings.test.ts
+M	src/core/config.ts
+M	src/core/settings.ts
+A	src/core/streamingProfileSettings.ts
+M	src/features/session/session.ts
+M	src/infra/http/routes/settings.ts
+
+COMMIT dcd2d68 Merge pull request #231 from ShekMate/codex/add-optional-plex-integration-feature-s9tusr
+COMMIT 6009bff Merge branch 'dev' into codex/add-optional-plex-integration-feature-s9tusr
+COMMIT a31fffa Replace personal media sources JSON input with checkboxes
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+A	src/core/__tests__/settings.test.ts
+M	src/core/config.ts
+M	src/core/settings.ts
+A	src/core/streamingProfileSettings.ts
+M	src/features/session/session.ts
+M	src/infra/http/routes/settings.ts
+
+COMMIT e1c04e9 Merge pull request #228 from ShekMate/codex/add-optional-plex-integration-feature-tc1zcp
+COMMIT 5fa5e00 Align Where to Watch labels with streaming profile mode
+M	public/index.html
+M	public/js/main.js
+A	src/core/__tests__/settings.test.ts
+M	src/core/config.ts
+M	src/core/settings.ts
+M	src/features/session/session.ts
+M	src/infra/http/routes/settings.ts
+
+COMMIT 550b2c7 Merge pull request #227 from ShekMate/codex/add-optional-plex-integration-feature-jjjzut
+COMMIT c1ad3e2 Apply streaming profile modes to batch discovery
+M	public/index.html
+M	public/js/main.js
+A	src/core/__tests__/settings.test.ts
+M	src/core/config.ts
+M	src/core/settings.ts
+M	src/features/session/session.ts
+M	src/infra/http/routes/settings.ts
+
+COMMIT e609da1 Merge pull request #226 from ShekMate/codex/add-optional-plex-integration-feature-cr5gfo
+COMMIT 68de744 Expose streaming profile settings in UI and client config
+M	public/index.html
+M	public/js/main.js
+A	src/core/__tests__/settings.test.ts
+M	src/core/settings.ts
+M	src/infra/http/routes/settings.ts
+
+COMMIT 146af86 Merge pull request #225 from ShekMate/codex/add-optional-plex-integration-feature
+COMMIT 7488b25 Add streaming profile settings scaffolding
+A	src/core/__tests__/settings.test.ts
+M	src/core/settings.ts
+
+COMMIT 1489a67 Merge pull request #224 from ShekMate/codex/provide-ui-recommendations
+COMMIT ba5ec5b Improve nav accessibility and localize login/navigation copy
+M	i18n/de.json
+M	i18n/en.json
+M	i18n/es.json
+M	i18n/fr.json
+M	i18n/it.json
+M	i18n/ja.json
+M	i18n/ko.json
+M	i18n/nl.json
+M	i18n/pt-BR.json
+M	i18n/ru.json
+M	i18n/zh-CN.json
+M	public/index.html
+M	public/style.css
+
+COMMIT fc4a666 Merge pull request #223 from ShekMate/codex/find-recommendations-for-repo-architecture
+COMMIT 465bc38 refactor(http): extract core api routes behind router
+M	README.md
+A	docs/repo-architecture-roadmap.md
+M	src/index.ts
+A	src/infra/http/router.ts
+A	src/infra/http/routes/config.ts
+A	src/infra/http/routes/matches.ts
+A	src/infra/http/routes/request-service.ts
+
+COMMIT 8f75f32 Merge pull request #222 from ShekMate/codex/refactor-large-files-into-smaller-files
+COMMIT 5eae0c6 refactor(http): extract settings routes from server entrypoint
+M	src/index.ts
+A	src/infra/http/network-access.ts
+A	src/infra/http/routes/settings.ts
+
+COMMIT bbb57ef Merge pull request #221 from ShekMate/codex/perform-health-check-on-repo
+COMMIT 6abe303 docs: add repository health check report
+A	HEALTH_CHECK.md
+
+COMMIT 53bf32a Merge pull request #220 from ShekMate/codex/fix-duplicate-class-properties-in-session.ts
+COMMIT f7f1d46 chore: stabilize lint checks and normalize formatting
+M	i18n/nl.json
+M	package.json
+M	public/js/CardView.js
+M	public/js/ComparrAPI.js
+M	public/js/MatchesView.js
+M	public/js/__tests__/ComparrAPI.test.js
+M	public/style.css
+M	src/__tests__/mocks/omdb-mocks.ts
+M	src/__tests__/mocks/plex-mocks.ts
+M	src/__tests__/mocks/tmdb-mocks.ts
+M	src/__tests__/utils/test-helpers.ts
+M	src/api/__tests__/plex.test.ts
+M	src/api/jellyseerr.ts
+M	src/api/plex.ts
+M	src/api/radarr.ts
+M	src/core/config.ts
+M	src/core/persistence.ts
+M	src/features/catalog/__tests__/enrich.test.ts
+M	src/features/catalog/discover.ts
+M	src/features/catalog/enrich.ts
+M	src/features/catalog/imdb-datasets.ts
+M	src/features/media/poster-validation.ts
+M	src/features/session/__tests__/session-matching.test.ts
+M	src/features/session/imdb-import.ts
+M	src/features/session/session.ts
+M	src/index.ts
+M	src/infra/constants/streamingProvidersMapping.ts
+M	src/infra/http/staticFileServer.ts
+M	src/integrations/plex/cache.ts
+M	src/services/cache/poster-cache.ts
+M	test-setup.js
+
+COMMIT e5257f4 Merge pull request #218 from ShekMate/codex/move-imdb-sync-to-settings-794gts
+COMMIT 68fe660 Merge branch 'dev' into codex/move-imdb-sync-to-settings-794gts
+COMMIT aaf2f5b Add Sync section entry to settings navigation
+M	public/index.html
+M	public/js/main.js
+M	src/core/settings.ts
+
+COMMIT e59e835 Merge pull request #217 from ShekMate/codex/move-imdb-sync-to-settings
+COMMIT 64e9d60 Move IMDb seen sync controls into Settings Sync section
+M	public/index.html
+M	public/js/main.js
+M	src/core/settings.ts
+
+COMMIT 0b07a97 Merge pull request #216 from ShekMate/codex/fix-settings-highlight-behavior-on-mobile
+COMMIT ef6f36b Fix mobile settings tab highlight state
+M	public/js/main.js
+
+COMMIT caa3911 Merge pull request #215 from ShekMate/codex/fix-mobile-settings-menu-highlighting
+COMMIT 10adacf Fix mobile settings dropdown default highlight
+M	public/js/main.js
+
+COMMIT 973eaa1 Merge pull request #214 from ShekMate/codex/add-dropdown-options-for-mobile-settings-qcd9du
+COMMIT 924972d Merge branch 'dev' into codex/add-dropdown-options-for-mobile-settings-qcd9du
+COMMIT 405e2fe Only highlight mobile settings option after selection
+M	public/index.html
+M	public/js/main.js
+
+COMMIT da5d202 Merge pull request #213 from ShekMate/codex/add-dropdown-options-for-mobile-settings
+COMMIT 372978a Add mobile settings dropdown sections in tab bar
+M	public/index.html
+M	public/js/main.js
+
+COMMIT eea9008 Merge pull request #212 from ShekMate/codex/align-matches-list-layout-with-watch-list-joix8u
+COMMIT c1227c6 Left-align collapsed match card titles
+M	public/js/MatchesView.js
+M	public/style.css
+
+COMMIT 4e5667e Merge pull request #211 from ShekMate/codex/align-matches-list-layout-with-watch-list
+COMMIT a1a394b Match list card layout to watch list style
+M	public/js/MatchesView.js
+
+COMMIT a2500e2 Merge pull request #210 from ShekMate/codex/remove-descriptions-from-settings-fields
+COMMIT 831142d Remove settings field descriptions
+M	public/index.html
+
+COMMIT d41e427 Merge pull request #209 from ShekMate/codex/explain-setting-details
+COMMIT 1e974f3 Remove link type setting from UI
+M	public/index.html
+
+COMMIT e904cf0 Merge pull request #208 from ShekMate/codex/change-dropdown-background-color
+COMMIT 8dc1acb Fix settings dropdown option contrast
+M	public/style.css
+
+COMMIT fa0e39a Merge pull request #207 from ShekMate/codex/move-settings-to-dedicated-settings-tab-x28cg1
+COMMIT 052b09f Merge branch 'dev' into codex/move-settings-to-dedicated-settings-tab-x28cg1
+COMMIT d22f444 Refine settings submenu styling
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+M	src/api/__tests__/plex.test.ts
+M	src/api/jellyseerr.ts
+M	src/api/plex.ts
+M	src/api/radarr.ts
+M	src/core/config.ts
+M	src/core/i18n.ts
+A	src/core/settings.ts
+M	src/features/catalog/discover.ts
+M	src/features/catalog/enrich.ts
+M	src/features/media/poster-validation.ts
+M	src/features/session/session.ts
+M	src/index.ts
+M	src/integrations/plex/cache.ts
+
+COMMIT 66a3b13 Merge pull request #206 from ShekMate/codex/move-settings-to-dedicated-settings-tab-j2g38u
+COMMIT ca827d5 Merge branch 'dev' into codex/move-settings-to-dedicated-settings-tab-j2g38u
+COMMIT eac7bc6 Make settings submenu switch sections
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+M	src/api/__tests__/plex.test.ts
+M	src/api/jellyseerr.ts
+M	src/api/plex.ts
+M	src/api/radarr.ts
+M	src/core/config.ts
+M	src/core/i18n.ts
+A	src/core/settings.ts
+M	src/features/catalog/discover.ts
+M	src/features/catalog/enrich.ts
+M	src/features/media/poster-validation.ts
+M	src/features/session/session.ts
+M	src/index.ts
+M	src/integrations/plex/cache.ts
+
+COMMIT 7279839 Merge pull request #205 from ShekMate/codex/move-settings-to-dedicated-settings-tab-jz74p0
+COMMIT 45a0e06 Merge branch 'dev' into codex/move-settings-to-dedicated-settings-tab-jz74p0
+COMMIT 31e1bef Move settings into sidebar menu with submenu
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+M	src/api/__tests__/plex.test.ts
+M	src/api/jellyseerr.ts
+M	src/api/plex.ts
+M	src/api/radarr.ts
+M	src/core/config.ts
+M	src/core/i18n.ts
+A	src/core/settings.ts
+M	src/features/catalog/discover.ts
+M	src/features/catalog/enrich.ts
+M	src/features/media/poster-validation.ts
+M	src/features/session/session.ts
+M	src/index.ts
+M	src/integrations/plex/cache.ts
+
+COMMIT df5262e Merge pull request #204 from ShekMate/codex/move-settings-to-dedicated-settings-tab-m82t4j
+COMMIT 2144639 Merge branch 'dev' into codex/move-settings-to-dedicated-settings-tab-m82t4j
+COMMIT d2ee1c3 Allow settings access from private networks
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+M	src/api/__tests__/plex.test.ts
+M	src/api/jellyseerr.ts
+M	src/api/plex.ts
+M	src/api/radarr.ts
+M	src/core/config.ts
+M	src/core/i18n.ts
+A	src/core/settings.ts
+M	src/features/catalog/discover.ts
+M	src/features/catalog/enrich.ts
+M	src/features/media/poster-validation.ts
+M	src/features/session/session.ts
+M	src/index.ts
+M	src/integrations/plex/cache.ts
+
+COMMIT 27d8041 Merge pull request #203 from ShekMate/codex/move-settings-to-dedicated-settings-tab
+COMMIT 865fd28 Add UI settings screen and persisted config
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+M	src/api/__tests__/plex.test.ts
+M	src/api/jellyseerr.ts
+M	src/api/plex.ts
+M	src/api/radarr.ts
+M	src/core/config.ts
+M	src/core/i18n.ts
+A	src/core/settings.ts
+M	src/features/catalog/discover.ts
+M	src/features/catalog/enrich.ts
+M	src/features/media/poster-validation.ts
+M	src/features/session/session.ts
+M	src/index.ts
+M	src/integrations/plex/cache.ts
+
+COMMIT 79126bd Merge pull request #201 from ShekMate/codex/comment-out-comparr-rating-code-and-document
+COMMIT acc969a Comment out Comparr rating average logic
+A	docs/comparr-rating-reimplementation.md
+M	src/features/catalog/enrich.ts
+M	src/features/session/session.ts
+
+COMMIT 08c3ca6 Merge pull request #200 from ShekMate/codex/find-current-movie-poster-sizes
+COMMIT 2588408 Update watch list poster sizes
+M	public/style.css
+
+COMMIT 721c685 Merge pull request #199 from ShekMate/codex/reduce-poster-size-by-25%-94jpuk
+COMMIT 930a751 Restore mobile watch poster size
+M	public/style.css
+
+COMMIT c479331 Merge pull request #198 from ShekMate/codex/reduce-poster-size-by-25%-np8pve
+COMMIT e38deaf Merge branch 'dev' into codex/reduce-poster-size-by-25%-np8pve
+COMMIT 997bab8 Restore mobile watch poster size
+M	public/style.css
+
+COMMIT 1ed2157 Merge pull request #197 from ShekMate/codex/reduce-poster-size-by-25%
+COMMIT edb4141 Merge branch 'dev' into codex/reduce-poster-size-by-25%
+COMMIT 5cc51be Reduce watch list poster sizes further
+M	public/style.css
+
+COMMIT 1c500c8 Merge pull request #196 from ShekMate/codex/reduce-poster-size-by-25%
+COMMIT 17dfad0 Reduce watch list poster sizes
+M	public/style.css
+
+COMMIT 893ca57 Merge pull request #195 from ShekMate/claude/fix-match-display-wzaam
+COMMIT 16b6d4a Fix match display to exclude current user's name
+M	public/js/MatchesView.js
+
+COMMIT 4500727 Merge pull request #194 from ShekMate/claude/fix-matches-logic-AEEQZ
+COMMIT 8412789 Fix matches not triggering: likedMovies Map key identity bug
+M	src/features/session/session.ts
+
+COMMIT 0e7960b Update package-lock.json from npm install
+M	package-lock.json
+
+COMMIT daabe2a Fix matches logic: zombie matches, dead code, and debug logs
+M	public/js/MatchesView.js
+M	src/features/session/session.ts
+M	src/index.ts
+
+COMMIT e9bb03f Merge pull request #193 from ShekMate/codex/fix-matches-list-update-and-notifications-dvkqog
+COMMIT d45dfc7 Merge branch 'dev' into codex/fix-matches-list-update-and-notifications-dvkqog
+COMMIT 1009a8e Fix match tracking refresh
+M	public/js/ComparrAPI.js
+M	public/js/MatchesView.js
+M	public/js/main.js
+M	src/features/session/session.ts
+M	src/index.ts
+
+COMMIT e3daf49 Merge pull request #192 from ShekMate/codex/fix-matches-list-update-and-notifications
+COMMIT 6ee3610 Refresh matches on open and show match popups
+M	public/js/ComparrAPI.js
+M	public/js/MatchesView.js
+M	public/js/main.js
+M	src/features/session/session.ts
+M	src/index.ts
+
+COMMIT f590e16 Merge pull request #191 from ShekMate/codex/prioritize-watched-movies-for-matches
+COMMIT fbbb8e5 Prioritize liked movies for room users
+M	src/features/session/session.ts
+
+COMMIT f3660f8 Merge pull request #190 from ShekMate/claude/fix-list-widths-NpgPM
+COMMIT 77a25d2 Fix list width inconsistency by setting flex: 1 on tab panels
+M	public/style.css
+
+COMMIT d787c07 Merge pull request #189 from ShekMate/codex/set-full-width-for-collapsed-lists
+COMMIT b8dd97c Fix collapsed seen/pass cards to use full list width
+M	public/style.css
+
+COMMIT a07719b Merge pull request #188 from ShekMate/codex/expand-lists-to-full-width
+COMMIT d369cbf Make watch/pass/seen and matches lists full width on desktop
+M	public/style.css
+
+COMMIT c15a5d4 Merge pull request #187 from ShekMate/codex/match-seen-list-width-to-watch-list
+COMMIT 77a767f Fix seen list container width to match watch list
+M	public/style.css
+
+COMMIT b2ffaa9 Merge pull request #186 from ShekMate/codex/fix-duplicate-imdb-sync-buttons
+COMMIT d6b8e2b Fix duplicate IMDb sync button in Seen watch list
+M	public/index.html
+
+COMMIT 36e01c7 Merge pull request #185 from ShekMate/codex/fix-seen-list-width-4hrh1c
+COMMIT 83583ba Merge branch 'dev' into codex/fix-seen-list-width-4hrh1c
+COMMIT 97c5ef2 Fix seen header merge outcome and remove duplicate sync placement
+M	public/style.css
+
+COMMIT 3313d9e Merge pull request #184 from ShekMate/codex/fix-seen-list-width-u24i6f
+COMMIT c822d1c Merge branch 'dev' into codex/fix-seen-list-width-u24i6f
+COMMIT a82c91e Move seen sync control outside list layout container
+M	public/index.html
+M	public/style.css
+
+COMMIT 4171967 Merge pull request #183 from ShekMate/codex/fix-seen-list-width-02pcxh
+COMMIT bc86c45 Merge branch 'dev' into codex/fix-seen-list-width-02pcxh
+COMMIT 3494a17 Decouple seen list sync button from header width
+M	public/index.html
+M	public/style.css
+
+COMMIT 403da3a Merge pull request #182 from ShekMate/codex/fix-seen-list-width
+COMMIT f0422db Fix seen list header width alignment with watch list
+M	public/style.css
+
+COMMIT 2ecbd49 Replace comparr.svg
+M	public/assets/logos/comparr.svg
+
+COMMIT 4889481 Replace flavicon.ico
+M	public/assets/icons/favicon.ico
+
+COMMIT d517b41 Replace favicon 512
+M	public/assets/icons/favicon-512x512.png
+
+COMMIT 23916ef Merge pull request #180 from ShekMate/codex/reduce-font-size-for-movie-titles-41ve62
+COMMIT ec423c7 Align watch list layout widths
+M	public/index.html
+M	public/style.css
+
+COMMIT ed7636f Merge pull request #179 from ShekMate/codex/reduce-font-size-for-movie-titles
+COMMIT f1e6085 Unify watch list widths and refine title sizing
+M	public/style.css
+
+COMMIT 1971548 Merge pull request #178 from ShekMate/codex/reduce-font-size-for-movie-titles
+COMMIT b666b33 Adjust watch list title sizing on desktop
+M	public/style.css
+
+COMMIT fb4e235 Merge pull request #177 from ShekMate/codex/remove-ratings-header-from-side-menu
+COMMIT 3a3fcfe Remove ratings header from sidebar
+M	public/index.html
+
+COMMIT 148a74b Merge pull request #176 from ShekMate/codex/fix-dropdown-background-transparency
+COMMIT ec74fdf Fix dropdown menu background
+M	public/style.css
+
+COMMIT cf24cd7 Merge pull request #175 from ShekMate/codex/fix-sidebar-menu-display-on-mobile-aroex7
+COMMIT 8aa6c97 Convert rating controls to pill buttons
+M	public/js/CardView.js
+M	public/style.css
+
+COMMIT b88ae19 Merge pull request #174 from ShekMate/codex/fix-sidebar-menu-display-on-mobile
+COMMIT 29a886d Fix sidebar visibility for mobile
+M	public/style.css
+
+COMMIT 09f9e8b Merge pull request #173 from ShekMate/claude/fix-list-filter-layout-Bl03O
+COMMIT 8e08a06 Force hide sidebar on mobile with high-specificity CSS
+M	public/index.html
+M	public/style.css
+
+COMMIT 25bbb39 Merge pull request #172 from ShekMate/claude/fix-list-filter-layout-Bl03O
+COMMIT 85330ec Revert sidebar CSS to original state
+M	public/index.html
+M	public/style.css
+
+COMMIT 8d73eae Strengthen mobile sidebar hide rule with multiple selectors
+M	public/index.html
+M	public/style.css
+
+COMMIT 422ac62 Bump CSS version for cache busting
+M	public/index.html
+
+COMMIT 63cbc4d Merge pull request #170 from ShekMate/claude/fix-list-filter-layout-Bl03O
+COMMIT 1636b75 Fix sidebar showing on mobile - use mobile-first approach
+M	public/style.css
+
+COMMIT 223b043 Merge pull request #169 from ShekMate/claude/fix-list-filter-layout-Bl03O
+COMMIT 0246792 Enable IMDb rating filter for swipe screen
+M	public/js/ComparrAPI.js
+
+COMMIT be6645c Merge pull request #168 from ShekMate/claude/fix-list-filter-layout-Bl03O
+COMMIT ea50263 Fix watch list card width and move swipe filters to modal
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT e790abc Merge pull request #167 from ShekMate/claude/fix-seen-header-layout-4giYW
+COMMIT 3374b2c Fix Seen header centering and add desktop sidebar navigation
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT 35b12e2 Merge pull request #166 from ShekMate/claude/debug-issue-XqzaD
+COMMIT 2889b81 Fix duplicate imdbImportProgress variable declaration
+M	public/js/main.js
+
+COMMIT 4703533 Merge pull request #165 from ShekMate/claude/debug-issue-XqzaD
+COMMIT c8365d2 Fix 404 error when accessing root URL with query parameters
+M	src/infra/http/staticFileServer.ts
+
+COMMIT 775c0d2 Merge pull request #164 from ShekMate/claude/imdb-sync-feature-BbnpI
+COMMIT b10a4e1 Improve IMDb import UX for background processing
+M	public/js/main.js
+
+COMMIT 69382cf Add debug logging for IMDb CSV response content
+M	src/index.ts
+
+COMMIT 15144ca Merge pull request #162 from ShekMate/claude/imdb-sync-feature-BbnpI
+COMMIT e451f67 Fix IMDb URL parsing to be more lenient
+M	src/index.ts
+
+COMMIT 5d6144f Refactor IMDb sync to background processing with rate limiting
+M	public/js/main.js
+A	src/core/rate-limiter.ts
+M	src/features/session/session.ts
+M	src/index.ts
+
+COMMIT 8b4df97 Merge pull request #161 from ShekMate/claude/imdb-sync-feature-BbnpI
+COMMIT 93d0ab0 Add URL-based IMDb sync alongside CSV upload
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+M	src/index.ts
+
+COMMIT 570074f Add IMDb CSV import to sync watched movies with Seen list
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+A	src/features/session/imdb-import.ts
+M	src/features/session/session.ts
+M	src/index.ts
+
+COMMIT ece4650 Merge pull request #160 from ShekMate/claude/enlarge-watch-list-posters-01D1DtCMzjJ87VK1PbZPV4SJ
+COMMIT 2680859 Fix expand/collapse functionality for watch list cards on desktop
+M	public/index.html
+M	public/style.css
+
+COMMIT 2d0fa8e Merge pull request #159 from ShekMate/claude/enlarge-watch-list-posters-01D1DtCMzjJ87VK1PbZPV4SJ
+COMMIT d0a215d Reorganize watch list header and action buttons layout on desktop
+M	public/index.html
+M	public/style.css
+
+COMMIT ccf2176 Merge pull request #158 from ShekMate/claude/enlarge-watch-list-posters-01D1DtCMzjJ87VK1PbZPV4SJ
+COMMIT c8297a7 Fix metadata badge icon size and center watch list header on desktop
+M	public/index.html
+M	public/style.css
+
+COMMIT db60ef1 Merge pull request #157 from ShekMate/claude/enlarge-watch-list-posters-01D1DtCMzjJ87VK1PbZPV4SJ
+COMMIT 8c3bf74 Keep streaming/action buttons horizontal with proper spacing
+M	public/index.html
+M	public/style.css
+
+COMMIT 49281a5 Merge pull request #156 from ShekMate/claude/enlarge-watch-list-posters-01D1DtCMzjJ87VK1PbZPV4SJ
+COMMIT 5938914 Adjust font sizes and layout for watch list cards on desktop
+M	public/index.html
+M	public/js/MatchesView.js
+M	public/style.css
+
+COMMIT 8967335 Merge pull request #155 from ShekMate/claude/enlarge-watch-list-posters-01D1DtCMzjJ87VK1PbZPV4SJ
+COMMIT 81dc11a Fix expand/collapse functionality for watch list cards on desktop
+M	public/index.html
+M	public/style.css
+
+COMMIT d016760 Merge pull request #154 from ShekMate/claude/enlarge-watch-list-posters-01D1DtCMzjJ87VK1PbZPV4SJ
+COMMIT 3a1cfa2 Enlarge posters and consolidate layout for Watch/Pass/Seen lists on desktop
+M	public/index.html
+M	public/js/CardView.js
+M	public/style.css
+
+COMMIT 3acb65b Add files via upload
+A	testing/watchscreen2.png
+
+COMMIT d5b0903 Add files via upload
+A	testing/watchscreen.png
+
+COMMIT 326cb65 Merge pull request #153 from ShekMate/claude/check-poster-sizes-01D1DtCMzjJ87VK1PbZPV4SJ
+COMMIT fc0423d Update CSS cache-busting version to force browser refresh
+M	public/index.html
+
+COMMIT 98b2e6b Merge pull request #152 from ShekMate/claude/check-poster-sizes-01D1DtCMzjJ87VK1PbZPV4SJ
+COMMIT cdb5e7a Increase poster size and consolidate desktop card layout
+M	public/js/CardView.js
+M	public/style.css
+
+COMMIT 14a4e3e Merge pull request #151 from ShekMate/claude/enlarge-movie-card-fonts-01A7DnZ8Ga85fckeQGBFz3og
+COMMIT 98bd164 Allow crew info text to wrap on desktop instead of truncating
+M	public/style.css
+
+COMMIT facaecc Merge pull request #150 from ShekMate/claude/enlarge-movie-card-fonts-01A7DnZ8Ga85fckeQGBFz3og
+COMMIT f313afd Increase crew info font size to 1.05rem for desktop to match plot font size
+M	public/style.css
+
+COMMIT 5b38e73 Merge pull request #149 from ShekMate/claude/increase-details-spacing-01YVHgHTeanszPMmRrQ7fCsN
+COMMIT 3fc9307 Increase spacing between cast/plot and plot/ratings on desktop
+M	public/style.css
+
+COMMIT 3dde805 Merge pull request #148 from ShekMate/claude/increase-desktop-spacing-01BSvYhb8apk39Po5LDJRicW
+COMMIT 47ccc81 Merge branch 'dev' into claude/increase-desktop-spacing-01BSvYhb8apk39Po5LDJRicW
+COMMIT 7e07fd4 Double desktop spacing between cast/plot and plot/ratings
+M	public/style.css
+
+COMMIT f202999 Merge pull request #147 from ShekMate/claude/plan-swipe-gestures-01CF87gSbUcmd9EgEa7jz4aN
+COMMIT 196fa72 Disable swipe gestures on desktop, keep for mobile only
+M	public/js/CardView.js
+
+COMMIT 17d0ece Merge pull request #146 from ShekMate/claude/reorganize-filters-layout-01BXsRZjneDA9dxUqnL1TTew
+COMMIT f691a5c Use explicit grid positioning with !important flags
+M	public/style.css
+
+COMMIT 06ad39f Merge pull request #145 from ShekMate/claude/reorganize-filters-layout-01BXsRZjneDA9dxUqnL1TTew
+COMMIT ff64180 Override position and margin rules causing layout issues
+M	public/style.css
+
+COMMIT 15f0331 Merge pull request #144 from ShekMate/claude/reorganize-filters-layout-01BXsRZjneDA9dxUqnL1TTew
+COMMIT 505a097 Fix header overlap and spacing above vote count filter
+M	public/style.css
+
+COMMIT d515d6f Merge pull request #143 from ShekMate/claude/reorganize-filters-layout-01BXsRZjneDA9dxUqnL1TTew
+COMMIT 0b13334 Fix grid-area selectors with proper scoping
+M	public/style.css
+
+COMMIT 0dbb4e2 Merge pull request #142 from ShekMate/claude/reorganize-filters-layout-01BXsRZjneDA9dxUqnL1TTew
+COMMIT ec15f86 Fix desktop grid layout z-index and spacing issues
+M	public/style.css
+
+COMMIT 8306117 Merge pull request #141 from ShekMate/claude/reorganize-filters-layout-01BXsRZjneDA9dxUqnL1TTew
+COMMIT 9abc110 Fix grid layout to properly position header and buttons
+M	public/style.css
+
+COMMIT 40376fb Merge pull request #140 from ShekMate/claude/reorganize-filters-layout-01BXsRZjneDA9dxUqnL1TTew
+COMMIT d5e7f63 Reorganize filters layout into 2-column desktop grid
+M	public/index.html
+M	public/style.css
+
+COMMIT c4e06ed Merge pull request #139 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT ed7e53b Desktop: Fine-tune button gap to 9.75rem
+M	public/style.css
+
+COMMIT d4f3589 Merge pull request #138 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT 4ee6631 Desktop: Reduce button gap to 10rem for better alignment
+M	public/style.css
+
+COMMIT d7ca6ce Merge pull request #137 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT 1f6b2ae Desktop: Increase button gap to 12rem
+M	public/style.css
+
+COMMIT 068e6bb Merge pull request #136 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT 18c5881 Desktop: Increase button gap to 8rem
+M	public/style.css
+
+COMMIT d9f27a4 Merge pull request #135 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT 5187b51 Desktop: Increase button gap to 4rem for better alignment
+M	public/style.css
+
+COMMIT 97c11ec Desktop: Restore button gap to 2rem
+M	public/style.css
+
+COMMIT b7c3aa8 Desktop: Restore button gap to original 1rem
+M	public/style.css
+
+COMMIT 5060033 Merge pull request #134 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT 604b389 Desktop: Reduce card width and tighten button spacing
+M	public/style.css
+
+COMMIT 03afba4 Merge pull request #133 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT 7311f3b Desktop: Reduce card max-width to 1100px
+M	public/style.css
+
+COMMIT 6e69408 Merge pull request #132 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT 7af251d Desktop: Increase card max-width to prevent cutoff
+M	public/style.css
+
+COMMIT 4f9a38d Merge pull request #131 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT 471f958 Desktop: Fix poster aspect ratio with explicit 50vh width
+M	public/style.css
+
+COMMIT eb72b35 Merge pull request #130 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT c2f5e0c Desktop: Make poster fill full 75vh height
+M	public/style.css
+
+COMMIT 40bce18 Merge pull request #129 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT ef40dac Desktop: Fix poster aspect ratio with explicit constraints
+M	public/style.css
+
+COMMIT 053d15a Merge pull request #128 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT 839a3f4 Desktop: Add borders and backgrounds to filter groups
+M	public/style.css
+
+COMMIT 60c62a9 Merge pull request #127 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT 299cc8e Desktop: Two-column grid layout for filters
+M	public/style.css
+
+COMMIT 5349a98 Merge pull request #126 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT 613a508 Desktop: Fix poster aspect ratio by removing width constraints
+M	public/style.css
+
+COMMIT 9587361 Merge pull request #125 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT 0359763 Desktop: Make rating logos and values slightly bigger
+M	public/style.css
+
+COMMIT 38359b6 Merge pull request #124 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT 23de5c4 Desktop: Bigger title, less spacing, smaller buttons
+M	public/style.css
+
+COMMIT 5a20249 Merge pull request #123 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT 589e88f Desktop: Bigger title, reduced spacing, full plot display
+M	public/style.css
+
+COMMIT 61b7d42 Merge pull request #122 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT 138c162 Desktop: Increase poster wrapper width for full 75vh height
+M	public/style.css
+
+COMMIT 8f89c72 Merge pull request #121 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT 9bc338a Desktop: Make poster fill full 75vh height seamlessly
+M	public/style.css
+
+COMMIT f9d0702 Merge pull request #120 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT d130439 Desktop: Center buttons and add border for alignment visibility
+M	public/style.css
+
+COMMIT 3a9427e Merge pull request #119 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT 08b3293 Desktop: Align button labels with left-aligned icons
+M	public/style.css
+
+COMMIT 883c88e Merge pull request #118 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT 262cfcb Desktop: Bigger plot text and left-aligned button icons
+M	public/style.css
+
+COMMIT 29de412 Merge pull request #117 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT bf61c25 Desktop: Double spacing and align buttons left
+M	public/style.css
+
+COMMIT 4657df4 Merge pull request #116 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT 7792361 Desktop: Increase button icon size to match larger buttons
+M	public/style.css
+
+COMMIT d289a9d Merge pull request #115 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT 3eedbd7 Desktop: Add spacing and bigger buttons
+M	public/style.css
+
+COMMIT 3e41b35 Merge pull request #114 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT 9c47bea Desktop: Increase metadata spacing and rating size
+M	public/style.css
+
+COMMIT 48ab8fe Merge pull request #113 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT 70093e5 Fix desktop layout: proper poster ratio, smaller text, solid backgrounds
+M	public/style.css
+
+COMMIT 9758fff Merge pull request #112 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT 86db671 Desktop only: Fill poster height, bigger metadata, solid backgrounds
+M	public/style.css
+
+COMMIT e632aed Merge pull request #111 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT e53bc7b Increase card height and fix background coverage
+M	public/style.css
+
+COMMIT 66b91a0 Merge pull request #110 from ShekMate/claude/improve-desktop-layout-01BQ74zoqBS5jgzB6y4Uhwiw
+COMMIT f045238 Improve desktop layout: side-by-side poster and metadata
+M	public/style.css
+
+COMMIT 9e045cd Merge pull request #109 from ShekMate/dev
+COMMIT 71cacd3 Merge pull request #108 from ShekMate/claude/adjust-filter-layout-01HkpkqDqATGFhc4PdUev2Kb
+COMMIT 38b4d7d Adjust filter layout: narrow desktop container and reduce mobile spacing
+M	public/style.css
+
+COMMIT 63e072c Merge pull request #107 from ShekMate/claude/restore-filter-borders-01CHY7R9VKN6Gcu1bTmxdgHG
+COMMIT db9b06c Restore borders to Filter tab dropdown and input fields
+M	public/style.css
+
+COMMIT e056f14 Merge pull request #106 from ShekMate/claude/add-ratings-dropdown-background-01LWCfm3RVpzUxHzPLcBH2Gd
+COMMIT 41a455b Add background to ratings dropdown menu
+M	public/style.css
+
+COMMIT f760fed Merge pull request #105 from ShekMate/claude/space-ratings-desktop-01TFFFpASkzLix7KvMYJHXs7
+COMMIT f14a204 Increase spacing between ratings on movie cards - DESKTOP ONLY
+M	public/style.css
+
+COMMIT 0c953ab Merge pull request #104 from ShekMate/claude/movie-card-tabbar-width-01G9yMJVDSPQ9gw2MjRQQz7h
+COMMIT ab3ee00 Extend rate-controls background full width with padding
+M	public/style.css
+
+COMMIT 4dbdd07 Merge pull request #103 from ShekMate/claude/movie-card-tabbar-width-01G9yMJVDSPQ9gw2MjRQQz7h
+COMMIT 11f70af Make poster-wrapper full width for solid background across card
+M	public/style.css
+
+COMMIT 8db7ec4 Merge pull request #102 from ShekMate/claude/movie-card-tabbar-width-01G9yMJVDSPQ9gw2MjRQQz7h
+COMMIT 05f6072 Remove poster-wrapper background on desktop to fix borders
+M	public/style.css
+
+COMMIT 4705328 Merge pull request #101 from ShekMate/claude/movie-card-tabbar-width-01G9yMJVDSPQ9gw2MjRQQz7h
+COMMIT eb5ba58 Fix poster-wrapper to eliminate side borders on desktop
+M	public/style.css
+
+COMMIT 4649f6a Merge pull request #100 from ShekMate/claude/movie-card-tabbar-width-01G9yMJVDSPQ9gw2MjRQQz7h
+COMMIT a0802f5 Fix button alignment to match poster width (80%)
+M	public/style.css
+
+COMMIT 2428b2c Merge pull request #99 from ShekMate/claude/movie-card-tabbar-width-01G9yMJVDSPQ9gw2MjRQQz7h
+COMMIT 2558152 Align rating buttons with poster edges and tighten label spacing
+M	public/style.css
+
+COMMIT 7b6806b Merge pull request #98 from ShekMate/claude/movie-card-tabbar-width-01G9yMJVDSPQ9gw2MjRQQz7h
+COMMIT 7a42c6f Space rating buttons across full card width on desktop
+M	public/style.css
+
+COMMIT 7be8e05 Merge pull request #97 from ShekMate/claude/movie-card-tabbar-width-01G9yMJVDSPQ9gw2MjRQQz7h
+COMMIT 4c3674d Fix poster-wrapper width to match new card width on desktop
+M	public/style.css
+
+COMMIT b599dd0 Merge pull request #96 from ShekMate/claude/movie-card-tabbar-width-01G9yMJVDSPQ9gw2MjRQQz7h
+COMMIT 75c8727 Increase movie card width to match tabbar on desktop
+M	public/style.css
+
+COMMIT 1bd840a Merge pull request #95 from ShekMate/claude/fix-swipe-screen-background-01QNZGRHfAA2f8bbZ5uTpPk8
+COMMIT 651bf39 Fix swipe screen poster background color
+M	public/style.css
+
+COMMIT 87e3e7e Merge pull request #94 from ShekMate/claude/fix-background-styling-01CKQGpufrLn4ZueoHNh6zmZ
+COMMIT fa675eb Fix background blending - prevent card stack bleed-through
+M	public/style.css
+
+COMMIT d3dad28 Merge pull request #93 from ShekMate/dev
+COMMIT 7df6a11 Merge pull request #92 from ShekMate/claude/style-password-submit-01J8w6Zr2joh7bJY9rTh81AE
+COMMIT a9e50dd Reduce spacing above submit button on login form - DESKTOP ONLY
+M	public/style.css
+
+COMMIT 82b10b5 Merge pull request #91 from ShekMate/claude/style-password-submit-01J8w6Zr2joh7bJY9rTh81AE
+COMMIT 8422a75 Merge branch 'dev' into claude/style-password-submit-01J8w6Zr2joh7bJY9rTh81AE
+COMMIT 50112c8 Force remove all spacing from login instructions on desktop
+M	public/style.css
+
+COMMIT ffe94ae Remove spacing and match width for login instructions - DESKTOP ONLY
+M	public/style.css
+
+COMMIT edb6fce Merge pull request #90 from ShekMate/claude/style-password-submit-01J8w6Zr2joh7bJY9rTh81AE
+COMMIT a29b9a9 Add desktop-only styling for login instructions
+M	public/style.css
+
+COMMIT c28867c Merge pull request #89 from ShekMate/claude/style-password-submit-01J8w6Zr2joh7bJY9rTh81AE
+COMMIT 54c35e5 Apply enhanced styling to login form inputs and submit button
+M	public/style.css
+
+COMMIT 66ec147 Merge pull request #88 from ShekMate/claude/style-password-submit-01J8w6Zr2joh7bJY9rTh81AE
+COMMIT 966759e Add visible blue border to password input inactive state
+M	public/style.css
+
+COMMIT 502a710 Merge pull request #87 from ShekMate/claude/style-password-submit-01J8w6Zr2joh7bJY9rTh81AE
+COMMIT cf164aa Merge branch 'dev' into claude/style-password-submit-01J8w6Zr2joh7bJY9rTh81AE
+COMMIT 5049bcc Restore enhanced password input and submit button styling
+M	public/style.css
+
+COMMIT 9129d23 Merge pull request #86 from ShekMate/claude/remove-ui-borders-01QZdsmERw5MiAwuX6j6JjaM
+COMMIT 5a87146 Remove all colors from password form elements
+M	public/style.css
+
+COMMIT 4d741d8 Merge pull request #85 from ShekMate/claude/remove-ui-borders-01QZdsmERw5MiAwuX6j6JjaM
+COMMIT 463bb72 Make UI elements transparent - remove colored backgrounds and borders
+M	public/index.html
+M	public/style.css
+
+COMMIT ec4f4c7 Merge pull request #84 from ShekMate/claude/troll-keeper-transparency-01KVU2MVq5TDuzDyypFCFkER
+COMMIT 26bf760 Remove conditional blocking Docker workflow
+M	.github/workflows/docker.yml
+
+COMMIT b103bb2 Merge pull request #83 from ShekMate/claude/troll-keeper-transparency-01KVU2MVq5TDuzDyypFCFkER
+COMMIT 3045a09 Bump version to trigger dev workflows
+M	package.json
+
+COMMIT 278a6f6 Merge pull request #82 from ShekMate/claude/troll-keeper-transparency-01KVU2MVq5TDuzDyypFCFkER
+COMMIT af1cbc4 Add manual trigger option to Docker workflow
+M	.github/workflows/docker.yml
+
+COMMIT 7834747 Update README.md
+M	README.md
+
+COMMIT 8229e6c Merge pull request #81 from ShekMate/claude/troll-keeper-transparency-01KVU2MVq5TDuzDyypFCFkER
+COMMIT f7be43a Add dev branch to test workflow triggers
+M	.github/workflows/test.yml
+
+COMMIT 1b7121c Add Docker build support for dev branch
+M	.github/workflows/docker.yml
+
+COMMIT b54e774 Merge pull request #80 from ShekMate/claude/troll-keeper-transparency-01KVU2MVq5TDuzDyypFCFkER
+COMMIT 4b2b8bf Remove border-radius from Troll bridge keeper image
+M	public/index.html
+
+COMMIT 075740b Update package.json
+M	package.json
+
+COMMIT 7583fd8 Merge pull request #79 from ShekMate/claude/fix-merge-conflict-revert-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT 463a54b ACTUALLY restore files to 11/15 state - fix merge conflict resolution
+M	public/index.html
+M	public/style.css
+
+COMMIT 7d86bd8 Merge pull request #78 from ShekMate/claude/revert-everything-11-16-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT f2b5e5a Merge branch 'main' into claude/revert-everything-11-16-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT 52087ee Revert ALL changes from 11/16/2025 - restore to 11/15 state
+M	README.md
+D	SECURITY.md
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+D	public/style.css.backup
+D	public/style.css.before-cleanup
+D	testing/index.html
+D	testing/nameroombroken.png
+D	testing/passwordscreendesktop.png
+D	testing/style.css
+
+COMMIT d26931d Merge pull request #77 from ShekMate/claude/revert-all-11-16-changes-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT 4d01baf Revert "Merge pull request #76 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt"
+M	public/index.html
+M	public/style.css
+
+COMMIT 8e81bdd Merge pull request #76 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT 43f3fd1 Use WORKING CSS and HTML from testing folder plus add desktop support
+M	public/index.html
+M	public/style.css
+A	testing/index.html
+A	testing/style.css
+
+COMMIT 5b7e1ca Add files via upload
+A	testing/index.html
+A	testing/style.css
+
+COMMIT c51055e Merge pull request #75 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT 8b4b58e Isolate mobile and desktop CSS - remove all base style conflicts
+M	public/style.css
+
+COMMIT ff9fecb Fix mobile login form layout - add display: grid !important
+M	public/style.css
+A	testing/nameroombroken.png
+
+COMMIT 4e28252 Add files via upload
+A	testing/nameroombroken.png
+
+COMMIT 1f55eed Merge pull request #74 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT 719a432 Complete revert to clean mobile state plus minimal desktop support
+M	public/style.css
+
+COMMIT 77487b0 Merge pull request #73 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT e1dda5d Restore working CSS and add only tabbar styles
+M	public/style.css
+
+COMMIT 9cfac8f Merge pull request #72 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT 96d77b1 Restore compressed mobile tabbar styling and add desktop tabbar styles
+M	public/style.css
+
+COMMIT 218d9b9 Merge pull request #71 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT ba8bdb8 Add complete desktop styling to match mobile view
+M	public/style.css
+
+COMMIT 5bd1300 Merge pull request #70 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT 4e037e6 Replace test colors with proper gradient and full styling
+M	public/style.css
+
+COMMIT 9035b7a Merge pull request #69 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT a4f8da1 Fix both forms showing simultaneously by adding display property
+M	public/style.css
+
+COMMIT b12179a TEST: Add bright colors to verify desktop login form CSS applies
+M	public/index.html
+M	public/style.css
+
+COMMIT 18e82cd Merge pull request #68 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT 76912a6 Add desktop styling for login form and fix display mode
+M	public/index.html
+M	public/js/main.js
+M	public/style.css
+
+COMMIT dc64e55 Merge pull request #67 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT c731826 Replace test colors with proper gradient and full styling
+M	public/index.html
+M	public/style.css
+
+COMMIT c0d247d Merge pull request #66 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT a6e7779 FIX: Close unclosed mobile media query that was blocking desktop CSS
+M	public/style.css
+
+COMMIT 774d7b3 Merge pull request #65 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT ee724f4 TEST: Add bright colors to verify desktop CSS applies
+M	public/index.html
+M	public/style.css
+
+COMMIT f4a43b1 Merge pull request #64 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT 2a976e1 Remove inline style blocking desktop CSS from working
+M	public/index.html
+M	public/js/main.js
+
+COMMIT 75c3351 Merge pull request #63 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT 2fbf431 COMPLETE REWRITE: Minimal desktop CSS that MUST work
+M	public/index.html
+M	public/style.css
+
+COMMIT 9bb53ea Merge pull request #62 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT 9d88d27 Update CSS version to 20251116b for cache busting
+M	public/index.html
+
+COMMIT cab9e69 Simplify desktop selectors and add !important to force override
+M	public/style.css
+
+COMMIT ac6a1fb Update CSS cache-busting version to force browser reload
+M	public/index.html
+
+COMMIT e1d9bf8 Merge pull request #61 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT 530ffa8 Add complete desktop password screen layout and styling
+M	public/style.css
+
+COMMIT 5f38b8f Merge pull request #60 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT e328ab5 Wrap universal login/password styles in mobile-only media query
+M	public/style.css
+
+COMMIT b28ca01 Merge pull request #59 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT a384420 Use hardcoded gradients and more specific selectors for desktop
+M	public/style.css
+
+COMMIT b61be35 Merge pull request #58 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT 41a6ba8 Fix desktop password screen to have full gradient background
+M	public/style.css
+
+COMMIT d258124 Add files via upload
+A	testing/passwordscreendesktop.png
+
+COMMIT 9788648 Merge pull request #57 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT 187e143 Remove white space around password screen on desktop
+M	public/style.css
+
+COMMIT e5d1a52 Merge pull request #56 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT 2ca7280 Apply full gradient background to desktop password screen
+M	public/style.css
+
+COMMIT f8e4783 Merge pull request #55 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT 143fadf Fix tab display on password screen for desktop view
+M	public/style.css
+
+COMMIT 0dd1aa4 Merge pull request #54 from ShekMate/claude/fix-tab-display-012dUqsAaqEfpFz7PfYdQ9tt
+COMMIT 43c91c3 Fix tab display issue on password screen in mobile view
+M	public/style.css
+
+COMMIT 3c383c3 Merge pull request #53 from ShekMate/claude/mobile-design-optimization-011scZk9sHic9Ypw5sJmp21w
+COMMIT 584aef3 Add backup of CSS before cleanup
+A	public/style.css.before-cleanup
+
+COMMIT 59fe2dd Clean up CSS: remove duplicates and fix critical issues
+M	public/style.css
+
+COMMIT 009d714 Merge pull request #52 from ShekMate/claude/security-data-privacy-01LnEFkZv45gsgRsKyEDyHGE
+COMMIT 4a9619c Add backup of original CSS before reorganization
+A	public/style.css.backup
+
+COMMIT 3d92a23 Reorganize CSS into mobile and desktop sections
+M	public/style.css
+
+COMMIT 8b70bdf Add comprehensive security and privacy documentation
+M	README.md
+A	SECURITY.md
+
+COMMIT b92f371 Merge pull request #51 from ShekMate/claude/docker-access-setup-012oLTN7Cuwogy5JXNGAe3zP
+COMMIT d42e440 Rename template to comparr.xml for consistency
+R099	unraid-template.xml	comparr.xml
+
+COMMIT ba421d5 Add Unraid template for easy installation
+A	unraid-template.xml
+
+COMMIT 42c4c29 Merge pull request #50 from ShekMate/claude/fix-plex-filter-imdb-ratings-01BbjKTYRaiEFqC15bomkWJE
+COMMIT 86dcd14 Fix missing IMDB ratings when Plex-only filter is enabled
+M	src/features/session/session.ts
+
+COMMIT b4feed1 Merge pull request #49 from ShekMate/claude/review-loading-image-layout-015TJtzWzRQA7Md1XFCgGdgw
+COMMIT 5ef74e0 Allow loading message to use full 90vw width on mobile
+M	public/style.css
+
+COMMIT 9da396c Merge pull request #48 from ShekMate/claude/review-loading-image-layout-015TJtzWzRQA7Md1XFCgGdgw
+COMMIT c698786 Increase loading message width on mobile to reduce line wrapping
+M	public/style.css
+
+COMMIT 81ac170 Fix loading spinner and message layout - prevent overlap and center properly
+M	public/style.css
+
+COMMIT 75cd3de Add files via upload
+A	testing/loadingmessage1.png
+
+COMMIT d3f55f2 Merge pull request #47 from ShekMate/claude/fix-loading-spinner-issues-012no6tWuL32Zj2cDzC4Ytgu
+COMMIT ba72fc5 Fix mobile layout by stacking spinner and message vertically
+M	public/style.css
+
+COMMIT d8977e5 Merge pull request #46 from ShekMate/claude/fix-loading-spinner-issues-012no6tWuL32Zj2cDzC4Ytgu
+COMMIT 5e0e5f3 Add mobile optimization for loading spinner and messages
+M	public/style.css
+
+COMMIT b326f3f Merge pull request #45 from ShekMate/claude/fix-loading-spinner-issues-012no6tWuL32Zj2cDzC4Ytgu
+COMMIT e7413fd Fix spinner bouncing by using fixed horizontal positioning
+M	public/style.css
+
+COMMIT b9b7f3c Merge pull request #44 from ShekMate/claude/fix-loading-spinner-issues-012no6tWuL32Zj2cDzC4Ytgu
+COMMIT 0e88eaf Make loading spinner centering responsive for mobile
+M	public/style.css
+
+COMMIT 56fbe30 Merge pull request #43 from ShekMate/claude/fix-loading-spinner-issues-012no6tWuL32Zj2cDzC4Ytgu
+COMMIT fcc011f Fix spinner centering and eliminate bouncing effect
+M	public/style.css
+
+COMMIT 729f60f Merge pull request #42 from ShekMate/claude/fix-loading-spinner-issues-012no6tWuL32Zj2cDzC4Ytgu
+COMMIT 58fde6e Fix loading spinner rotation and message display
+M	public/style.css
+
+COMMIT a402d04 Merge pull request #41 from ShekMate/claude/fix-loading-spinner-issues-012no6tWuL32Zj2cDzC4Ytgu
+COMMIT 31b719c Fix loading spinner display issues
+M	public/js/main.js
+M	public/style.css
+
+COMMIT 29be333 Merge pull request #40 from ShekMate/claude/add-funny-loading-messages-01QeUahGDY4GFNhepQKM2Nc5
+COMMIT f605bcd Add funny loading messages to swipe screen
+M	public/js/main.js
+M	public/style.css
+
+COMMIT 4339daf Merge pull request #39 from ShekMate/claude/debug-initial-filter-message-01VYrf5CAqcq6G11vWHh1Ssn
+COMMIT d7740cb Fix "no movies found with filters" message showing on initial load
+M	public/js/main.js
+
+COMMIT 8732aab Merge pull request #38 from ShekMate/claude/fix-my-plex-filter-018Lqyrpxg5cSuZreN2X9tHF
+COMMIT 822d51b Fix My Plex Only filter initial state mismatch
+M	public/index.html
+
+COMMIT 72a1986 Merge pull request #37 from ShekMate/claude/fix-initial-message-error-01SdjgcxjMJCpvAqCYoRh7Dx
+COMMIT 1b09f74 Fix incorrect "no movies available" message on initial load
+M	public/js/main.js
+
+COMMIT 1f6c5ae Merge pull request #36 from ShekMate/claude/review-readme-01EGGy5ioUnR8rW9J27aYA5Z
+COMMIT 4c86719 Add missing features: personal lists, seen marking, and undo support
+M	README.md
+
+COMMIT d0be748 Clarify multi-language feature is UI-only, not entire app
+M	README.md
+
+COMMIT ed1f7f9 Merge pull request #35 from ShekMate/claude/review-readme-01EGGy5ioUnR8rW9J27aYA5Z
+COMMIT 3ceef58 Enhance README with comprehensive professional documentation
+M	README.md
+
+COMMIT d749689 Merge pull request #34 from ShekMate/claude/fix-movie-ratings-layout-01FwXJ3a77tASggjiZfVC1oK
+COMMIT 8821e9d Fix movie card ratings layout to display all 4 ratings on one line
+M	public/style.css
+
+COMMIT 05d0744 Add files via upload
+M	public/assets/logos/comparr.svg
+
+COMMIT 9e03ff8 Merge pull request #33 from ShekMate/claude/add-rating-score-01HU9FF3L9ZLBNLwHZA7Uq91
+COMMIT 867f6e1 Use proper Inkscape-generated Comparr logo from main branch
+M	public/assets/logos/comparr.svg
+
+COMMIT 15f4edd Add files via upload
+M	public/assets/logos/comparr.svg
+
+COMMIT 72b4cb7 Reduce rating spacing to fit all 4 ratings on same line
+M	public/assets/logos/comparr.svg
+M	public/style.css
+
+COMMIT 64b97da Merge pull request #32 from ShekMate/claude/add-rating-score-01HU9FF3L9ZLBNLwHZA7Uq91
+COMMIT 6220dde Improve ensureComparrScore safety with better type checks and error handling
+M	src/features/session/session.ts
+
+COMMIT bf2ad33 Merge pull request #31 from ShekMate/claude/add-rating-score-01HU9FF3L9ZLBNLwHZA7Uq91
+COMMIT 83c69d8 Fix missing tmdbId in enrich fallback path and add safety checks
+M	src/features/catalog/enrich.ts
+M	src/features/session/session.ts
+
+COMMIT 96fd264 Merge pull request #30 from ShekMate/claude/add-rating-score-01HU9FF3L9ZLBNLwHZA7Uq91
+COMMIT 7ba4c63 Reduce rating spacing to fit all 4 ratings on same line
+M	public/style.css
+
+COMMIT e62fa95 Add files via upload
+M	public/assets/logos/comparr.svg
+
+COMMIT 23c40cf Merge pull request #29 from ShekMate/claude/add-rating-score-01HU9FF3L9ZLBNLwHZA7Uq91
+COMMIT 2224619 Add Comparr score backfill for existing movies in watch/pass/seen lists
+M	src/features/session/session.ts
+
+COMMIT ff7047a Add Comparr rating score to movie cards
+A	public/assets/logos/comparr.svg
+M	public/js/main.js
+M	src/features/catalog/enrich.ts
+M	src/features/session/session.ts
+M	src/index.ts
+
+COMMIT 78441e2 Merge pull request #28 from ShekMate/claude/source-implementation-01MzYNQSPkaFRqVSu8F1MNVD
+COMMIT 91319c6 Add IMDb dataset integration for local ratings lookup
+M	.gitignore
+M	src/features/catalog/enrich.ts
+A	src/features/catalog/imdb-datasets.ts
+M	src/index.ts
+
+COMMIT ab955b4 Merge pull request #27 from ShekMate/claude/resend-message-new-chat-01R2nJHn5S83HMYQgGqmNaNj
+COMMIT 18a205d Fix undo button to only allow undoing most recent swipe
+M	public/js/main.js
+
+COMMIT 1d763a0 Merge pull request #25 from ShekMate/claude/resend-message-new-chat-01R2nJHn5S83HMYQgGqmNaNj
+COMMIT db55eb2 Add undo button to swipe cards for rating changes
+M	public/js/CardView.js
+M	public/js/main.js
+M	public/style.css
+
+COMMIT 4488392 Merge pull request #24 from ShekMate/claude/fix-imdb-sort-filter-bug-01WoeymD5kc92rYng9gyxCYz
+COMMIT 7220286 Remove IMDb/RT sort from filters, add IMDb rating filter
+M	public/index.html
+M	public/js/main.js
+M	src/features/catalog/discover.ts
+M	src/features/session/session.ts
+
+COMMIT d47b21d Fix IMDb sort filter causing "no more movies" error
+M	src/features/catalog/discover.ts
+
+COMMIT eb7b200 Merge pull request #23 from ShekMate/claude/fix-swipe-screen-loading-01WVMyAa7yLEcghWy1dfszm5
+COMMIT 0c6f995 Update vote count filter: Lower default to 25, change intervals to 25
+M	public/index.html
+M	public/js/main.js
+
+COMMIT d7a7d5b Fix swipe screen prematurely running out of movies
+M	src/features/catalog/discover.ts
+M	src/features/session/session.ts
+
+COMMIT 968f8ce Merge pull request #22 from ShekMate/claude/add-full-testing-016KVuf596w62m6nwLas8gpG
+COMMIT 5ac8918 Fix all 7 failing frontend tests
+M	public/js/__tests__/ComparrAPI.test.js
+
+COMMIT 3567ba8 Merge pull request #21 from ShekMate/claude/testing-mhy8rl9s9vkqnzdz-011gwDUFydUGHNFZcspTXRug
+COMMIT 764b7b1 Fix CI workflow: Add environment variables for tests
+M	.github/workflows/test.yml
+
+COMMIT cae6103 Add comprehensive professional-level testing infrastructure
+M	.github/workflows/docker.yml
+A	.github/workflows/test.yml
+A	TESTING.md
+A	TEST_SUMMARY.md
+A	deno.json
+A	import_map.json
+M	package-lock.json
+M	package.json
+A	public/js/__tests__/ComparrAPI.test.js
+A	src/__tests__/mocks/omdb-mocks.ts
+A	src/__tests__/mocks/plex-mocks.ts
+A	src/__tests__/mocks/tmdb-mocks.ts
+A	src/__tests__/utils/test-helpers.ts
+A	src/api/__tests__/plex.test.ts
+A	src/features/catalog/__tests__/enrich.test.ts
+A	src/features/session/__tests__/session-matching.test.ts
+A	test-setup.js
+A	vitest.config.js
+
+COMMIT a6feb03 Merge pull request #20 from ShekMate/claude/github-repo-collaboration-01Ayt2QrH5KzYhvSHcrUNMZu
+COMMIT 999c338 Fix watch list sort direction button not toggling
+M	public/index.html
+M	public/js/main.js
+
+COMMIT 88a8977 Merge pull request #19 from ShekMate/codex/fix-duplicate-movies-in-watch-list
+COMMIT e437b50 Deduplicate watch list movies and improve sorting controls
+M	public/index.html
+M	public/js/main.js
+M	src/features/session/session.ts
+
+COMMIT 74ec830 Merge pull request #18 from ShekMate/codex/fix-movie-repetition-in-swipe-screen
+COMMIT 6bbc8db Fix swipe buffer deduplication and exhaustion handling
+M	public/js/main.js
+
+COMMIT 9096143 Merge pull request #17 from ShekMate/codex/lower-default-filter-thresholds
+COMMIT 46d18c7 Lower default discover thresholds
+M	src/features/catalog/discover.ts
+M	src/features/session/session.ts
+
+COMMIT 0d61640 Merge pull request #16 from ShekMate/codex/fix-loading-movies-issue-after-password-screen
+COMMIT 322af84 Fallback to Plex movies when TMDb is missing
+M	src/features/session/session.ts
+
+COMMIT e354380 Merge pull request #15 from ShekMate/codex/delete-old-logo-files-and-update-references
+COMMIT d770b8c Remove legacy rating logo assets
+D	public/assets/imdb_logo.svg
+D	public/assets/rt_logo.svg
+D	public/assets/tmdb_logo.svg
+M	public/js/main.js
+
+COMMIT f0cdd9c Merge pull request #14 from ShekMate/codex/fix-movie-repetition-on-swipe-screen
+COMMIT c982135 Prevent duplicate movies in swipe stack
+M	public/js/main.js
+
+COMMIT 0629ab5 Merge pull request #13 from ShekMate/codex/fix-watchlist-badge-display-issue
+COMMIT d1019b5 Ensure watch list waits for warmed Plex cache
+M	src/features/session/session.ts
+M	src/index.ts
+M	src/integrations/plex/cache.ts
+
+COMMIT f0c01a6 Merge pull request #12 from ShekMate/codex/restore-logic-to-filter-rated-movies
+COMMIT f5ea333 Merge branch 'main' into codex/restore-logic-to-filter-rated-movies
+COMMIT fbaff91 Handle TMDb IDs embedded in Plex-style GUIDs
+M	src/features/session/session.ts
+
+COMMIT 7095957 Merge pull request #11 from ShekMate/codex/restore-logic-to-filter-rated-movies
+COMMIT f7dec31 Merge branch 'main' into codex/restore-logic-to-filter-rated-movies
+COMMIT 98ae3a6 Backfill per-user TMDb IDs when recording responses
+M	src/features/session/session.ts
+
+COMMIT 13e9dc1 Merge pull request #10 from ShekMate/codex/restore-logic-to-filter-rated-movies
+COMMIT f2afeeb Respect room-specific swipe filtering
+M	src/features/session/session.ts
+
+COMMIT 11e1e37 Merge pull request #9 from ShekMate/codex/update-default-filters-for-swipe-screen
+COMMIT 982a2f7 Adjust TMDb defaults for swipe filters
+M	public/js/main.js
+M	src/features/catalog/discover.ts
+M	src/features/session/session.ts
+
+COMMIT 537b325 Merge pull request #8 from ShekMate/codex/investigate-movie-card-loading-performance
+COMMIT 6bc7691 Improve initial swipe warm-up
+M	public/js/main.js
+M	src/features/session/session.ts
+M	src/services/cache/poster-cache.ts
+
+COMMIT 23ae286 Merge pull request #7 from ShekMate/codex/optimize-movie-loading-procedure
+COMMIT ff222ef Merge branch 'main' into codex/optimize-movie-loading-procedure
+COMMIT bb1af14 Restore matches list on Session
+A	docs/swipe-discover-conflict-guide.md
+M	src/features/session/session.ts
+
+COMMIT 3d2cce4 Merge pull request #6 from ShekMate/codex/optimize-movie-loading-procedure
+COMMIT 71587b6 Merge branch 'main' into codex/optimize-movie-loading-procedure
+COMMIT 0cdc36c Document resolving session queue conflicts
+A	docs/swipe-discover-conflict-guide.md
+
+COMMIT 8aedada Align discover queue promise types
+M	src/features/session/session.ts
+
+COMMIT 7dba7a3 Warm discovery cache for swipe batches
+M	src/features/session/session.ts
+
+COMMIT e979293 Merge pull request #5 from ShekMate/codex/optimize-movie-loading-procedure
+COMMIT 3ac4102 Streamline TMDb discovery and caching
+M	src/features/session/session.ts
+
+COMMIT 0b33837 Merge pull request #4 from ShekMate/codex/evaluate-load-time-effects-of-movie-filters
+COMMIT 1462602 Revert temporary Swipe filter tweaks
+M	package.json
+A	scripts/run-deno-lint.js
+
+COMMIT f72f2e3 Create docker.yml
+A	.github/workflows/docker.yml
+
+COMMIT 4ea2437 Merge pull request #3 from ShekMate/codex/optimize-movie-swipe-screen-loading-speed
+COMMIT 24a77bc Optimize watch list refresh concurrency
+M	public/js/main.js
+
+COMMIT 8024c1d Merge pull request #2 from ShekMate/fix/fix-plex-filter
+COMMIT 6e85bbc fix: fix-plex-filter
+M	public/js/main.js
+
+COMMIT da9fbab Merge pull request #1 from ShekMate/fix/poster-404
+COMMIT 571932e fix: <what changed>
+M	public/js/main.js
+
+COMMIT 7664be1 chore: ignore and untrack .txt reference files
+M	.gitignore
+D	comparr-file-folder-structure.txt
+D	console log.txt
+D	index.ts.txt
+D	session.ts.txt
+
+COMMIT 5f04033 Initial commit - Comparr private repo
+A	.dockerignore
+A	.env.example
+A	.github/ISSUE_TEMPLATE/bug-report.md
+A	.github/ISSUE_TEMPLATE/feature_request.md
+A	.gitignore
+A	Dockerfile
+A	LICENSE
+A	README.md
+A	comparr-file-folder-structure.txt
+A	console log.txt
+A	docker-entrypoint.sh
+A	docs/docker-compose.md
+A	docs/reverse-proxy.md
+A	i18n/de.json
+A	i18n/en.json
+A	i18n/es.json
+A	i18n/fr.json
+A	i18n/it.json
+A	i18n/ja.json
+A	i18n/ko.json
+A	i18n/nl.json
+A	i18n/pt-BR.json
+A	i18n/ru.json
+A	i18n/zh-CN.json
+A	index.ts.txt
+A	package-lock.json
+A	package.json
+A	public/assets/icons/android-icon-144x144.png
+A	public/assets/icons/android-icon-192x192.png
+A	public/assets/icons/android-icon-36x36.png
+A	public/assets/icons/android-icon-48x48.png
+A	public/assets/icons/android-icon-72x72.png
+A	public/assets/icons/android-icon-96x96.png
+A	public/assets/icons/apple-icon-114x114.png
+A	public/assets/icons/apple-icon-120x120.png
+A	public/assets/icons/apple-icon-144x144.png
+A	public/assets/icons/apple-icon-152x152.png
+A	public/assets/icons/apple-icon-180x180.png
+A	public/assets/icons/apple-icon-57x57.png
+A	public/assets/icons/apple-icon-60x60.png
+A	public/assets/icons/apple-icon-72x72.png
+A	public/assets/icons/apple-icon-76x76.png
+A	public/assets/icons/apple-icon-precomposed.png
+A	public/assets/icons/apple-icon.png
+A	public/assets/icons/favicon-16x16.png
+A	public/assets/icons/favicon-192x192.png
+A	public/assets/icons/favicon-32x32.png
+A	public/assets/icons/favicon-512x512.png
+A	public/assets/icons/favicon-96x96.png
+A	public/assets/icons/favicon.ico
+A	public/assets/icons/ms-icon-144x144.png
+A	public/assets/icons/ms-icon-150x150.png
+A	public/assets/icons/ms-icon-310x310.png
+A	public/assets/icons/ms-icon-70x70.png
+A	public/assets/imdb_logo.svg
+A	public/assets/logos/allvids.svg
+A	public/assets/logos/appletv.svg
+A	public/assets/logos/comparrlogo.png
+A	public/assets/logos/disney.svg
+A	public/assets/logos/hulu.svg
+A	public/assets/logos/imdb.svg
+A	public/assets/logos/justwatch.svg
+A	public/assets/logos/max.svg
+A	public/assets/logos/netflix.svg
+A	public/assets/logos/paramount.svg
+A	public/assets/logos/peacock.svg
+A	public/assets/logos/prime.svg
+A	public/assets/logos/rottentomatoes.svg
+A	public/assets/logos/tmdb.svg
+A	public/assets/rt_logo.svg
+A	public/assets/tmdb_logo.svg
+A	public/assets/troll_bridge_keeper.png
+A	public/index.html
+A	public/js/CardView.js
+A	public/js/ComparrAPI.js
+A	public/js/MatchesView.js
+A	public/js/main.js
+A	public/style.css
+A	session.ts.txt
+A	src/api/jellyseerr.ts
+A	src/api/plex.ts
+A	src/api/plex.types.ts
+A	src/api/radarr.ts
+A	src/core/config.ts
+A	src/core/i18n.ts
+A	src/core/persistence.ts
+A	src/features/catalog/discover.ts
+A	src/features/catalog/enrich.ts
+A	src/features/media/poster-validation.ts
+A	src/features/session/session.ts
+A	src/index.ts
+A	src/infra/constants/streamingProvidersMapping.ts
+A	src/infra/http/staticFileServer.ts
+A	src/infra/ws/websocketServer.ts
+A	src/integrations/plex/cache.ts
+A	src/services/cache/poster-cache.ts

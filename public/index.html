@@ -21,6 +21,7 @@
       type="image/x-icon"
       href="${ROOT_PATH}/assets/icons/favicon.ico"
     />
+    <link rel="manifest" href="${ROOT_PATH}/manifest.json" />
   </head>
 
   <body
@@ -252,6 +253,14 @@
               <i class="fas fa-eye"></i>
               ${NAV_SEEN}
             </button>
+            <button type="button" class="dropdown-item" data-tab="tab-recommendations">
+              <i class="fas fa-magic"></i>
+              Recommended
+            </button>
+            <button type="button" class="dropdown-item" data-tab="tab-stats">
+              <i class="fas fa-chart-bar"></i>
+              Stats
+            </button>
           </div>
         </div>
         <div class="dropdown mobile-settings-dropdown">
@@ -347,6 +356,14 @@
             <i class="fas fa-eye"></i>
             <span>${NAV_SEEN}</span>
           </button>
+          <button class="sidebar-item" data-tab="tab-recommendations">
+            <i class="fas fa-magic"></i>
+            <span>Recommended</span>
+          </button>
+          <button class="sidebar-item" data-tab="tab-stats">
+            <i class="fas fa-chart-bar"></i>
+            <span>Stats</span>
+          </button>
           <div class="sidebar-settings">
             <button
               class="sidebar-item sidebar-settings-toggle"
@@ -420,6 +437,10 @@
           >
             <i class="fas fa-filter"></i>
           </button>
+          <div class="room-members-widget js-room-members-widget" hidden>
+            <i class="fas fa-users"></i>
+            <span class="room-members-list js-room-members-list"></span>
+          </div>
           <button
             id="swipe-home-btn"
             class="swipe-filter-btn swipe-home-btn js-home-btn"
@@ -2162,6 +2183,99 @@
             <div class="watch-list seen-list">
               <!-- Movies will be inserted here as cards -->
             </div>
+            <div id="seen-load-more-wrap" class="seen-load-more-wrap" hidden>
+              <button id="seen-load-more-btn" class="seen-load-more-btn" type="button">
+                Load more
+              </button>
+              <span id="seen-load-more-count" class="seen-load-more-count"></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Recommendations panel ===== -->
+      <section class="tab-panel" id="tab-recommendations" hidden>
+        <div class="watch-list-layout">
+          <div class="watch-list-header">
+            <h3>
+              <i class="fas fa-magic u-icon-accent-primary"></i>
+              Recommended
+            </h3>
+            <div class="sort-controls">
+              <button
+                id="recommendations-refresh-btn"
+                class="watch-list-icon-btn refresh-watch-btn"
+                title="Refresh Recommendations"
+              >
+                <i class="fas fa-sync-alt"></i>
+              </button>
+              <button
+                id="recommendations-home-btn"
+                class="watch-list-icon-btn js-home-btn"
+                title="Back to Mode Selection"
+                type="button"
+              >
+                <i class="fas fa-house"></i>
+              </button>
+            </div>
+          </div>
+          <p class="recommendations-hint js-recommendations-hint">
+            Rate some movies as <strong>Watch</strong> to get personalised recommendations.
+          </p>
+          <div class="watch-list-container">
+            <div class="watch-list recommendations-list js-recommendations-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Stats panel ===== -->
+      <section class="tab-panel" id="tab-stats" hidden>
+        <div class="stats-layout">
+          <div class="watch-list-header">
+            <h3>
+              <i class="fas fa-chart-bar u-icon-accent-primary"></i>
+              Stats
+            </h3>
+            <div class="sort-controls">
+              <button
+                id="stats-home-btn"
+                class="watch-list-icon-btn js-home-btn"
+                title="Back to Mode Selection"
+                type="button"
+              >
+                <i class="fas fa-house"></i>
+              </button>
+            </div>
+          </div>
+          <div class="stats-grid js-stats-grid">
+            <div class="stat-card">
+              <div class="stat-card-value js-stat-total-rated">—</div>
+              <div class="stat-card-label">Movies Rated</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-value js-stat-watch-count">—</div>
+              <div class="stat-card-label">Watch List</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-value js-stat-pass-count">—</div>
+              <div class="stat-card-label">Passed</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-value js-stat-seen-count">—</div>
+              <div class="stat-card-label">Already Seen</div>
+            </div>
+          </div>
+          <div class="stats-section">
+            <h4 class="stats-section-title">Top Genres in Watch List</h4>
+            <div class="stats-genre-bars js-stats-genre-bars">
+              <p class="stats-empty">Rate some movies to see your genre breakdown.</p>
+            </div>
+          </div>
+          <div class="stats-section">
+            <h4 class="stats-section-title">Average Ratings in Watch List</h4>
+            <div class="stats-avg-ratings js-stats-avg-ratings">
+              <p class="stats-empty">No watch list data yet.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -2830,13 +2944,21 @@
                 <div
                   id="imdb-import-progress"
                   class="imdb-import-progress u-display-none"
-
                 >
-                  <div class="imdb-import-progress-text">
+                  <div class="imdb-import-progress-header">
                     <span id="imdb-import-status">Importing...</span>
+                    <button id="imdb-import-cancel-btn" class="imdb-import-cancel-btn" type="button">Cancel</button>
                   </div>
                   <div class="imdb-import-progress-bar">
                     <div id="imdb-import-bar" class="imdb-import-bar"></div>
+                  </div>
+                  <div id="imdb-import-progress-detail" class="imdb-import-progress-detail"></div>
+                  <div id="imdb-import-cancel-actions" class="imdb-import-cancel-actions u-display-none">
+                    <span id="imdb-import-cancel-msg" class="imdb-import-cancel-msg"></span>
+                    <div class="imdb-import-cancel-btns">
+                      <button id="imdb-import-keep-btn" class="imdb-import-keep-btn" type="button">Keep movies</button>
+                      <button id="imdb-import-remove-btn" class="imdb-import-remove-btn" type="button">Remove movies</button>
+                    </div>
                   </div>
                 </div>
                 <details class="imdb-import-history" id="imdb-import-history">
