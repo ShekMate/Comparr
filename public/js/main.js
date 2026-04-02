@@ -6069,12 +6069,14 @@ const main = async () => {
   }
 
   // ALSO track rated TMDb IDs for cross-format matching (Plex GUID vs TMDb GUID)
+  // Seen items are now slim (no .movie) — fall back to the tmdbId field.
   const ratedTmdbIds = new Set()
   for (const r of rated) {
     const normalizedGuid = normalizeGuid(r.movie?.guid ?? r.guid)
     if (normalizedGuid) ratedGuids.add(normalizedGuid)
 
-    const normalized = getNormalizedTmdbId(r.movie)
+    let normalized = getNormalizedTmdbId(r.movie)
+    if (!normalized && r.tmdbId != null) normalized = String(r.tmdbId)
     if (normalized) ratedTmdbIds.add(normalized)
   }
   console.log(
@@ -7440,47 +7442,66 @@ const main = async () => {
     }
 
     if (deferredSeenItems.length > 0) {
-      // Render Seen items in pages via a "Load more" button so the browser
-      // never has to process more than PAGE_SIZE DOM insertions at once.
+      // Seen items in the loginResponse are now slim (guid+tmdbId only).
+      // Fetch full movie data from /api/seen-movies when the user opens
+      // the Seen tab, then paginate with a Load More button.
       const PAGE_SIZE = 50
-      let seenRenderIdx = 0
-
       const loadMoreWrap = document.getElementById('seen-load-more-wrap')
       const loadMoreBtn = document.getElementById('seen-load-more-btn')
       const loadMoreCount = document.getElementById('seen-load-more-count')
 
-      const updateLoadMore = () => {
-        const remaining = deferredSeenItems.length - seenRenderIdx
-        if (remaining > 0 && loadMoreWrap) {
-          loadMoreWrap.hidden = false
-          if (loadMoreCount) loadMoreCount.textContent = `${remaining} remaining`
-        } else if (loadMoreWrap) {
-          loadMoreWrap.hidden = true
-        }
-      }
+      window._renderDeferredSeen = async () => {
+        window._renderDeferredSeen = null // prevent re-entry
 
-      const renderPage = () => {
-        const end = Math.min(seenRenderIdx + PAGE_SIZE, deferredSeenItems.length)
-        for (; seenRenderIdx < end; seenRenderIdx++) {
-          const item = deferredSeenItems[seenRenderIdx]
-          appendRatedRow(
-            { basePath, likesList, dislikesList, seenList },
-            item.movie,
-            item.wantsToWatch
+        if (loadMoreWrap) loadMoreWrap.hidden = false
+        if (loadMoreBtn) loadMoreBtn.disabled = true
+        if (loadMoreCount)
+          loadMoreCount.textContent = `Loading ${deferredSeenItems.length} movies...`
+
+        try {
+          const apiBase = document.body.dataset.basePath || ''
+          const resp = await fetch(
+            `${apiBase}/api/seen-movies?roomCode=${encodeURIComponent(roomCode)}&userName=${encodeURIComponent(userName)}`
           )
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+          const { movies: seenMovies } = await resp.json()
+
+          let renderIdx = 0
+
+          const updateLoadMore = () => {
+            const remaining = seenMovies.length - renderIdx
+            if (remaining > 0 && loadMoreWrap) {
+              loadMoreWrap.hidden = false
+              if (loadMoreBtn) loadMoreBtn.disabled = false
+              if (loadMoreCount) loadMoreCount.textContent = `${remaining} remaining`
+            } else if (loadMoreWrap) {
+              loadMoreWrap.hidden = true
+            }
+          }
+
+          const renderPage = () => {
+            const end = Math.min(renderIdx + PAGE_SIZE, seenMovies.length)
+            for (; renderIdx < end; renderIdx++) {
+              const movie = seenMovies[renderIdx]
+              if (movie) {
+                appendRatedRow(
+                  { basePath, likesList, dislikesList, seenList },
+                  movie,
+                  null
+                )
+              }
+            }
+            updateLoadMore()
+            applyCurrentSeenListSort()
+          }
+
+          if (loadMoreBtn) loadMoreBtn.addEventListener('click', renderPage)
+          renderPage()
+        } catch (err) {
+          console.error('Failed to load seen movies:', err)
+          if (loadMoreCount) loadMoreCount.textContent = 'Failed to load — try refreshing'
+          if (loadMoreBtn) loadMoreBtn.disabled = false
         }
-        updateLoadMore()
-        applyCurrentSeenListSort()
-      }
-
-      if (loadMoreBtn) {
-        loadMoreBtn.addEventListener('click', renderPage)
-      }
-
-      // Expose so the tab-switch handler can trigger the first page
-      window._renderDeferredSeen = () => {
-        if (seenRenderIdx === 0) renderPage()
-        else updateLoadMore()
       }
     }
   }

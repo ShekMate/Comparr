@@ -11,6 +11,7 @@ import {
   getImdbImportHistory,
   cancelImdbImport,
   rollbackImdbImport,
+  getUserSeenMovies,
 } from '../../../features/session/session.ts'
 import { parseImdbCsv } from '../../../features/session/imdb-import.ts'
 
@@ -46,6 +47,31 @@ export async function handleImdbImportRoutes(
   maxBodySize: number
 ): Promise<Response | null> {
   const url = new URL(req.url, 'http://local')
+
+  if (path === '/api/seen-movies' && req.method === 'GET') {
+    try {
+      const roomCode = url.searchParams.get('roomCode')?.trim() || ''
+      const userName = url.searchParams.get('userName')?.trim() || ''
+      const validationError = validateRoomCodeAndUserName(roomCode, userName)
+      if (validationError) {
+        return new Response(JSON.stringify({ error: validationError }), {
+          status: 400,
+          headers: makeHeaders(req, 'application/json'),
+        })
+      }
+      const movies = getUserSeenMovies(roomCode, userName)
+      return new Response(JSON.stringify({ movies }), {
+        status: 200,
+        headers: makeHeaders(req, 'application/json'),
+      })
+    } catch (err) {
+      log.error(`seen-movies fetch failed: ${err?.message || err}`)
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch seen movies' }),
+        { status: 500, headers: makeHeaders(req, 'application/json') }
+      )
+    }
+  }
 
   if (path === '/api/imdb-import-history' && req.method === 'GET') {
     try {
