@@ -533,7 +533,8 @@ interface WebSocketNextBatchMessage {
 interface RatedPayloadItem {
   guid: string
   wantsToWatch: boolean | null // true = like, false = dislike, null = seen
-  movie: MediaItem
+  tmdbId?: number | null
+  movie?: MediaItem // omitted for Seen items to keep loginResponse payload small
 }
 
 type WebSocketMessage =
@@ -3308,14 +3309,25 @@ export const handleLogin = (
               tmdbIdsInItems.add(tmdbId)
             }
 
-            // Ensure movie has Comparr score calculated (backfill for existing movies)
-            ensureComparrScore(movie)
-
-            ratedItems.push({
-              guid: effectiveGuid,
-              wantsToWatch: responseItem.wantsToWatch,
-              movie,
-            })
+            if (responseItem.wantsToWatch === null) {
+              // Seen items: send only identifiers — full movie data is fetched
+              // lazily via /api/seen-movies when the user opens the Seen tab.
+              // This keeps the loginResponse payload small even with 1000s of
+              // seen movies.
+              ratedItems.push({
+                guid: effectiveGuid,
+                wantsToWatch: null,
+                tmdbId: tmdbId ?? null,
+              })
+            } else {
+              // Watch / Pass items: send full movie data (these lists stay small).
+              ensureComparrScore(movie)
+              ratedItems.push({
+                guid: effectiveGuid,
+                wantsToWatch: responseItem.wantsToWatch,
+                movie,
+              })
+            }
           }
 
           // Persist (make sure this user is in the room set)
@@ -3553,6 +3565,39 @@ export async function rollbackImdbImport(
   )
 
   return { removed }
+}
+
+/**
+ * Return full movie objects for a user's Seen list.
+ * Used by GET /api/seen-movies so the client can lazily load Seen list data
+ * without it bloating the initial loginResponse payload.
+ */
+export function getUserSeenMovies(
+  roomCode: string,
+  userName: string
+): MediaItem[] {
+  const room = persistedState.rooms[roomCode]
+  if (!room) return []
+
+  const userEntry = room.users.find(u => u.name === userName)
+  if (!userEntry) return []
+
+  const movies: MediaItem[] = []
+  const seen = new Set<string>()
+
+  for (const r of userEntry.responses) {
+    if (r.wantsToWatch !== null) continue
+    if (seen.has(r.guid)) continue
+    seen.add(r.guid)
+
+    const movie = persistedState.movieIndex[r.guid]
+    if (!movie) continue
+
+    ensureComparrScore(movie)
+    movies.push(movie)
+  }
+
+  return movies
 }
 
 /**
