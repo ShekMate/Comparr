@@ -665,7 +665,11 @@ function initTabs() {
     } else if (tabId === 'tab-dislikes') {
       applyCurrentPassListSort()
     } else if (tabId === 'tab-seen') {
-      applyCurrentSeenListSort()
+      if (typeof window._renderDeferredSeen === 'function') {
+        window._renderDeferredSeen()
+      } else {
+        applyCurrentSeenListSort()
+      }
     } else if (tabId === 'tab-matches') {
       if (typeof window.refreshMatchesList === 'function') {
         window.refreshMatchesList()
@@ -7415,13 +7419,68 @@ const main = async () => {
   })
 
   if (rated && rated.length > 0) {
+    // Separate Seen items from Watch/Pass items.
+    // Watch and Pass lists are small — render immediately.
+    // Seen can have thousands of entries after an import; defer those to avoid
+    // hanging the browser renderer on initial page load.
+    const deferredSeenItems = []
+
     for (const item of rated) {
       if (item.movie) {
-        appendRatedRow(
-          { basePath, likesList, dislikesList, seenList },
-          item.movie,
-          item.wantsToWatch
-        )
+        if (item.wantsToWatch === null) {
+          deferredSeenItems.push(item)
+        } else {
+          appendRatedRow(
+            { basePath, likesList, dislikesList, seenList },
+            item.movie,
+            item.wantsToWatch
+          )
+        }
+      }
+    }
+
+    if (deferredSeenItems.length > 0) {
+      // Render Seen items in pages via a "Load more" button so the browser
+      // never has to process more than PAGE_SIZE DOM insertions at once.
+      const PAGE_SIZE = 50
+      let seenRenderIdx = 0
+
+      const loadMoreWrap = document.getElementById('seen-load-more-wrap')
+      const loadMoreBtn = document.getElementById('seen-load-more-btn')
+      const loadMoreCount = document.getElementById('seen-load-more-count')
+
+      const updateLoadMore = () => {
+        const remaining = deferredSeenItems.length - seenRenderIdx
+        if (remaining > 0 && loadMoreWrap) {
+          loadMoreWrap.hidden = false
+          if (loadMoreCount) loadMoreCount.textContent = `${remaining} remaining`
+        } else if (loadMoreWrap) {
+          loadMoreWrap.hidden = true
+        }
+      }
+
+      const renderPage = () => {
+        const end = Math.min(seenRenderIdx + PAGE_SIZE, deferredSeenItems.length)
+        for (; seenRenderIdx < end; seenRenderIdx++) {
+          const item = deferredSeenItems[seenRenderIdx]
+          appendRatedRow(
+            { basePath, likesList, dislikesList, seenList },
+            item.movie,
+            item.wantsToWatch
+          )
+        }
+        updateLoadMore()
+        applyCurrentSeenListSort()
+      }
+
+      if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', renderPage)
+      }
+
+      // Expose so the tab-switch handler can trigger the first page
+      window._renderDeferredSeen = () => {
+        if (seenRenderIdx === 0) renderPage()
+        else updateLoadMore()
       }
     }
   }

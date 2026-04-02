@@ -2843,6 +2843,35 @@ body:not(.is-logged-in) .card-stack:empty::after {
   width: 100%;
 }
 
+.seen-load-more-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 0.5rem;
+}
+
+.seen-load-more-btn {
+  padding: 0.4rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: rgba(51, 65, 85, 0.5);
+  color: var(--color-text-secondary);
+  border: 1px solid rgba(51, 65, 85, 0.5);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.seen-load-more-btn:hover {
+  background: rgba(51, 65, 85, 0.8);
+  color: var(--color-text-primary);
+}
+
+.seen-load-more-count {
+  font-size: 0.78rem;
+  color: rgba(148, 163, 184, 0.5);
+}
+
 .watch-list-header {
   max-width: none;
   margin-left: auto;
