@@ -205,7 +205,12 @@ export class ComparrAPI extends EventTarget {
 
   handleMessage(e) {
     const data = JSON.parse(e.data)
-    console.log('📨 WebSocket message received:', data.type)
+    const debugWs =
+      typeof window !== 'undefined' &&
+      window.localStorage?.getItem('comparrDebugWs') === '1'
+    if (debugWs) {
+      console.log('📨 WebSocket message received:', data.type)
+    }
 
     switch (data.type) {
       case 'batch': {
@@ -329,7 +334,9 @@ export class ComparrAPI extends EventTarget {
 
   async getRecommendations(tmdbId) {
     const base = this._getBasePath()
-    const url = `${base}/api/recommendations?tmdbId=${encodeURIComponent(tmdbId)}`
+    const url = `${base}/api/recommendations?tmdbId=${encodeURIComponent(
+      tmdbId
+    )}`
     const res = await fetch(url)
     if (!res.ok) throw new Error(`GET ${url} failed: ${res.status}`)
     return res.json()

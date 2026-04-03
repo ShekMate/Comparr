@@ -3640,6 +3640,24 @@ function sendToUser(roomCode: string, userName: string, message: any): boolean {
   }
 }
 
+export function sendImdbImportProgressUpdate(
+  roomCode: string,
+  userName: string,
+  payload: {
+    status: 'started' | 'processing' | 'completed' | 'cancelled'
+    total: number
+    processed: number
+    imported: number
+    skipped: number
+    stage?: string
+  }
+): boolean {
+  return sendToUser(roomCode, userName, {
+    type: 'imdbImportProgress',
+    payload,
+  })
+}
+
 /**
  * Process IMDb import in background with rate limiting and full enrichment.
  * Sends each movie to the user via WebSocket as it's processed.
@@ -3653,18 +3671,6 @@ export async function processImdbImportBackground(
   log.info(
     `[IMDb Import] Starting background import of ${total} movies for ${userName} in ${roomCode}`
   )
-
-  // Send start message
-  sendToUser(roomCode, userName, {
-    type: 'imdbImportProgress',
-    payload: {
-      status: 'started',
-      total,
-      processed: 0,
-      imported: 0,
-      skipped: 0,
-    },
-  })
 
   // Build existing response sets for dedup
   const room = persistedState.rooms[roomCode] ?? { users: [] }
@@ -3687,6 +3693,15 @@ export async function processImdbImportBackground(
   let processed = 0
   let imported = 0
   let skipped = 0
+
+  const emitProcessingProgress = () =>
+    sendImdbImportProgressUpdate(roomCode, userName, {
+      status: 'processing',
+      total,
+      processed,
+      imported,
+      skipped,
+    })
 
   const TMDB_KEY = getTmdbApiKey()
   const cancelKey = `${roomCode}:${userName}`
@@ -3716,6 +3731,17 @@ export async function processImdbImportBackground(
 
     processed++
 
+    // Emit an immediate heartbeat before waiting on rate limits / network so
+    // long first-lookups still show visible movement in the UI.
+    sendImdbImportProgressUpdate(roomCode, userName, {
+      status: 'processing',
+      total,
+      processed,
+      imported,
+      skipped,
+      stage: 'looking_up_tmdb',
+    })
+
     // Rate limit: wait for token before making API calls
     await tmdbRateLimiter.acquire()
 
@@ -3730,6 +3756,7 @@ export async function processImdbImportBackground(
           `[IMDb Import] TMDb find failed for ${row.imdbId}: HTTP ${findResp.status}`
         )
         skipped++
+        emitProcessingProgress()
         continue
       }
 
@@ -3741,6 +3768,7 @@ export async function processImdbImportBackground(
           `[IMDb Import] No TMDb result for ${row.imdbId} (${row.title})`
         )
         skipped++
+        emitProcessingProgress()
         continue
       }
 
@@ -3750,19 +3778,7 @@ export async function processImdbImportBackground(
       // Check for duplicates
       if (existingGuids.has(guid) || existingTmdbIds.has(tmdbId)) {
         skipped++
-        // Send progress update periodically
-        if (processed % 10 === 0) {
-          sendToUser(roomCode, userName, {
-            type: 'imdbImportProgress',
-            payload: {
-              status: 'processing',
-              total,
-              processed,
-              imported,
-              skipped,
-            },
-          })
-        }
+        emitProcessingProgress()
         continue
       }
 
@@ -3874,13 +3890,8 @@ export async function processImdbImportBackground(
       skipped++
     }
 
-    // Send progress update every 10 movies
-    if (processed % 10 === 0) {
-      sendToUser(roomCode, userName, {
-        type: 'imdbImportProgress',
-        payload: { status: 'processing', total, processed, imported, skipped },
-      })
-    }
+    // Send progress update after each processed movie.
+    emitProcessingProgress()
 
     // Yield to the event loop so WebSocket handlers and other requests
     // (e.g. swipe screen discovery) are not starved during long imports.
