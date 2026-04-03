@@ -12,6 +12,7 @@ import {
   cancelImdbImport,
   rollbackImdbImport,
   getUserSeenMovies,
+  sendImdbImportProgressUpdate,
 } from '../../../features/session/session.ts'
 import { parseImdbCsv } from '../../../features/session/imdb-import.ts'
 
@@ -172,6 +173,15 @@ export async function handleImdbImportRoutes(
         year: r.year,
       }))
 
+      // Kick off visible progress immediately after upload parsing succeeds.
+      sendImdbImportProgressUpdate(roomCode, userName, {
+        status: 'started',
+        total: rows.length,
+        processed: 0,
+        imported: 0,
+        skipped: 0,
+      })
+
       processImdbImportBackground({
         roomCode,
         userName,
@@ -213,23 +223,33 @@ export async function handleImdbImportRoutes(
         })
       }
       if (!Array.isArray(guids) || guids.some(g => typeof g !== 'string')) {
-        return new Response(JSON.stringify({ error: 'guids must be a string array' }), {
-          status: 400,
-          headers: makeHeaders(req, 'application/json'),
-        })
+        return new Response(
+          JSON.stringify({ error: 'guids must be a string array' }),
+          {
+            status: 400,
+            headers: makeHeaders(req, 'application/json'),
+          }
+        )
       }
       const { removed } = await rollbackImdbImport(roomCode, userName, guids)
-      log.info(`IMDb import rollback: removed ${removed} movies for ${sanitizeForLog(userName)}`)
+      log.info(
+        `IMDb import rollback: removed ${removed} movies for ${sanitizeForLog(
+          userName
+        )}`
+      )
       return new Response(JSON.stringify({ status: 'ok', removed }), {
         status: 200,
         headers: makeHeaders(req, 'application/json'),
       })
     } catch (err) {
       log.error(`IMDb import rollback failed: ${err?.message || err}`)
-      return new Response(JSON.stringify({ error: 'Failed to rollback import' }), {
-        status: 500,
-        headers: makeHeaders(req, 'application/json'),
-      })
+      return new Response(
+        JSON.stringify({ error: 'Failed to rollback import' }),
+        {
+          status: 500,
+          headers: makeHeaders(req, 'application/json'),
+        }
+      )
     }
   }
 
@@ -251,10 +271,13 @@ export async function handleImdbImportRoutes(
       })
     } catch (err) {
       log.error(`IMDb import cancel failed: ${err?.message || err}`)
-      return new Response(JSON.stringify({ error: 'Failed to cancel import' }), {
-        status: 500,
-        headers: makeHeaders(req, 'application/json'),
-      })
+      return new Response(
+        JSON.stringify({ error: 'Failed to cancel import' }),
+        {
+          status: 500,
+          headers: makeHeaders(req, 'application/json'),
+        }
+      )
     }
   }
 
