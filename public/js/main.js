@@ -6578,7 +6578,7 @@ const main = async () => {
 
   function setImdbImportProgressText(
     headline,
-    { total = 0, processed = 0, imported = 0, skipped = 0 } = {}
+    { total = 0, processed = 0, imported = 0, skipped = 0, stage = '' } = {}
   ) {
     const safeTotal = Number.isFinite(total) ? total : 0
     const safeProcessed = Number.isFinite(processed) ? processed : 0
@@ -6589,7 +6589,10 @@ const main = async () => {
 
     if (imdbImportStatus) imdbImportStatus.textContent = headline
     if (imdbImportDetail) {
+      const stageText =
+        stage === 'looking_up_tmdb' ? 'Looking up TMDb match...' : ''
       imdbImportDetail.textContent =
+        `${stageText ? `${stageText} · ` : ''}` +
         `Processed ${safeProcessed}/${safeTotal} rows (${pct}%) · ` +
         `Imported ${safeImported} movies · Skipped ${safeSkipped} rows`
     }
@@ -6684,7 +6687,14 @@ const main = async () => {
 
     // Handle import progress updates
     if (data.type === 'imdbImportProgress') {
-      const { status, total, processed, imported, skipped } = data.payload
+      const {
+        status,
+        total,
+        processed,
+        imported,
+        skipped,
+        stage,
+      } = data.payload
 
       if (
         !['started', 'processing', 'completed', 'cancelled'].includes(status)
@@ -6718,7 +6728,7 @@ const main = async () => {
         const pct = total > 0 ? Math.round((processed / total) * 100) : 0
         setImdbImportProgressText(
           `Processing rows ${processed}/${total} (${pct}%)...`,
-          { total, processed, imported, skipped }
+          { total, processed, imported, skipped, stage }
         )
       } else if (status === 'completed') {
         if (!isImdbImportActive) return

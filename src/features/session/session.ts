@@ -3649,6 +3649,7 @@ export function sendImdbImportProgressUpdate(
     processed: number
     imported: number
     skipped: number
+    stage?: string
   }
 ): boolean {
   return sendToUser(roomCode, userName, {
@@ -3729,6 +3730,17 @@ export async function processImdbImportBackground(
     }
 
     processed++
+
+    // Emit an immediate heartbeat before waiting on rate limits / network so
+    // long first-lookups still show visible movement in the UI.
+    sendImdbImportProgressUpdate(roomCode, userName, {
+      status: 'processing',
+      total,
+      processed,
+      imported,
+      skipped,
+      stage: 'looking_up_tmdb',
+    })
 
     // Rate limit: wait for token before making API calls
     await tmdbRateLimiter.acquire()
