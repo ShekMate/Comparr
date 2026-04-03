@@ -6176,22 +6176,42 @@ const main = async () => {
 
     // Build the same metadata badges as the Watch list
     const genres = movie.genres || []
-    const genreDisplay = genres.length > 0 ? genres.slice(0, 2).join(', ') : null
+    const genreDisplay =
+      genres.length > 0 ? genres.slice(0, 2).join(', ') : null
     const contentRating = movie.contentRating || null
     const runtimeMin = (() => {
-      const candidates = [Number(movie.runtime), Number(movie.runtimeMinutes)].filter(v => Number.isFinite(v) && v > 0)
-      return candidates.length && candidates[0] < 1000 ? Math.round(candidates[0]) : null
+      const candidates = [
+        Number(movie.runtime),
+        Number(movie.runtimeMinutes),
+      ].filter(v => Number.isFinite(v) && v > 0)
+      return candidates.length && candidates[0] < 1000
+        ? Math.round(candidates[0])
+        : null
     })()
     const runtimeDisplay = runtimeMin ? formatRuntime(runtimeMin) : null
 
     const metadataBadges = []
-    if (contentRating) metadataBadges.push(`<span class="metadata-badge badge-rating"><i class="fas fa-tag"></i> ${contentRating}</span>`)
-    if (genreDisplay) metadataBadges.push(`<span class="metadata-badge badge-genre"><i class="fas fa-film"></i> ${genreDisplay}</span>`)
-    if (runtimeDisplay) metadataBadges.push(`<span class="metadata-badge badge-runtime"><i class="fas fa-clock"></i> ${runtimeDisplay}</span>`)
-    const metadataBadgesHTML = metadataBadges.length > 0 ? `<div class="watch-card-metadata">${metadataBadges.join('')}</div>` : ''
+    if (contentRating)
+      metadataBadges.push(
+        `<span class="metadata-badge badge-rating"><i class="fas fa-tag"></i> ${contentRating}</span>`
+      )
+    if (genreDisplay)
+      metadataBadges.push(
+        `<span class="metadata-badge badge-genre"><i class="fas fa-film"></i> ${genreDisplay}</span>`
+      )
+    if (runtimeDisplay)
+      metadataBadges.push(
+        `<span class="metadata-badge badge-runtime"><i class="fas fa-clock"></i> ${runtimeDisplay}</span>`
+      )
+    const metadataBadgesHTML =
+      metadataBadges.length > 0
+        ? `<div class="watch-card-metadata">${metadataBadges.join('')}</div>`
+        : ''
 
     const ratingHtml = buildRatingHtml(movie, basePath)
-    const ratingSection = ratingHtml ? `<div class="watch-card-ratings">${ratingHtml}</div>` : ''
+    const ratingSection = ratingHtml
+      ? `<div class="watch-card-ratings">${ratingHtml}</div>`
+      : ''
 
     const watchProviders = getWatchProviders(movie)
     const providerPillsHtml = watchProviders
@@ -6202,7 +6222,11 @@ const main = async () => {
             : `https://image.tmdb.org/t/p/w92${provider.logo_path}`
           : null
         return `<span class="provider-pill">
-          ${logoUrl ? `<img src="${logoUrl}" alt="${provider.name}" class="provider-pill-logo">` : ''}
+          ${
+            logoUrl
+              ? `<img src="${logoUrl}" alt="${provider.name}" class="provider-pill-logo">`
+              : ''
+          }
           <span class="provider-pill-name">${provider.name}</span>
         </span>`
       })
@@ -6228,30 +6252,46 @@ const main = async () => {
       <div class="watch-card-collapsed">
         <div class="watch-card-header-compact">
           <div class="watch-card-title-compact">
-            ${movie.title} <span class="watch-card-year">(${movie.year || 'N/A'})</span>
+            ${movie.title} <span class="watch-card-year">(${
+      movie.year || 'N/A'
+    })</span>
           </div>
           <div class="expand-icon"><i class="fas fa-chevron-down"></i></div>
         </div>
       </div>
       <div class="watch-card-details">
         <div class="watch-card-poster">
-          ${posterUrl ? `<img src="${posterUrl}" alt="${movie.title}" loading="lazy" decoding="async">` : ''}
+          ${
+            posterUrl
+              ? `<img src="${posterUrl}" alt="${movie.title}" loading="lazy" decoding="async">`
+              : ''
+          }
         </div>
         <div class="watch-card-content">
-          ${movie.summary ? `<p class="watch-card-summary">${movie.summary}</p>` : ''}
+          ${
+            movie.summary
+              ? `<p class="watch-card-summary">${movie.summary}</p>`
+              : ''
+          }
           ${metadataBadgesHTML}
           ${ratingSection}
           ${whereToWatchHtml}
           <div class="list-actions">
-            <button class="list-action-btn move-to-seen rec-action-seen" data-guid="${movie.guid}" title="Mark as Seen">
+            <button class="list-action-btn move-to-seen rec-action-seen" data-guid="${
+              movie.guid
+            }" title="Mark as Seen">
               <i class="fas fa-eye"></i>
               <span class="list-action-label">Seen</span>
             </button>
-            <button class="list-action-btn move-to-watch rec-action-watch" data-guid="${movie.guid}" title="Add to Watch list">
+            <button class="list-action-btn move-to-watch rec-action-watch" data-guid="${
+              movie.guid
+            }" title="Add to Watch list">
               <i class="fas fa-thumbs-up"></i>
               <span class="list-action-label">Watch</span>
             </button>
-            <button class="list-action-btn move-to-pass rec-action-pass" data-guid="${movie.guid}" title="Pass">
+            <button class="list-action-btn move-to-pass rec-action-pass" data-guid="${
+              movie.guid
+            }" title="Pass">
               <i class="fas fa-thumbs-down"></i>
               <span class="list-action-label">Pass</span>
             </button>
@@ -6260,29 +6300,49 @@ const main = async () => {
       </div>
     `
 
-    card.querySelector('.watch-card-collapsed').addEventListener('click', () => {
-      card.classList.toggle('expanded')
-    })
+    card
+      .querySelector('.watch-card-collapsed')
+      .addEventListener('click', () => {
+        card.classList.toggle('expanded')
+      })
 
-    card.querySelector('.rec-action-watch').addEventListener('click', async e => {
-      e.stopPropagation()
-      await api.respond({ guid: movie.guid, wantsToWatch: true })
-      await appendRatedRow({ basePath, likesList, dislikesList, seenList }, movie, true)
-      card.remove()
-    })
+    card
+      .querySelector('.rec-action-watch')
+      .addEventListener('click', async e => {
+        e.stopPropagation()
+        await api.respond({ guid: movie.guid, wantsToWatch: true })
+        await appendRatedRow(
+          { basePath, likesList, dislikesList, seenList },
+          movie,
+          true
+        )
+        card.remove()
+      })
 
-    card.querySelector('.rec-action-pass').addEventListener('click', async e => {
-      e.stopPropagation()
-      await api.respond({ guid: movie.guid, wantsToWatch: false })
-      await appendRatedRow({ basePath, likesList, dislikesList, seenList }, movie, false)
-      card.remove()
-    })
+    card
+      .querySelector('.rec-action-pass')
+      .addEventListener('click', async e => {
+        e.stopPropagation()
+        await api.respond({ guid: movie.guid, wantsToWatch: false })
+        await appendRatedRow(
+          { basePath, likesList, dislikesList, seenList },
+          movie,
+          false
+        )
+        card.remove()
+      })
 
-    card.querySelector('.rec-action-seen').addEventListener('click', async e => {
-      e.stopPropagation()
-      await appendRatedRow({ basePath, likesList, dislikesList, seenList }, movie, null)
-      card.remove()
-    })
+    card
+      .querySelector('.rec-action-seen')
+      .addEventListener('click', async e => {
+        e.stopPropagation()
+        await appendRatedRow(
+          { basePath, likesList, dislikesList, seenList },
+          movie,
+          null
+        )
+        card.remove()
+      })
 
     return card
   }
@@ -6293,7 +6353,9 @@ const main = async () => {
     if (!list) return
 
     // Pick up to 3 recently watched movies to seed recommendations
-    const watchCards = Array.from(document.querySelectorAll('.likes-list .watch-card'))
+    const watchCards = Array.from(
+      document.querySelectorAll('.likes-list .watch-card')
+    )
     const seedIds = watchCards
       .slice(0, 3)
       .map(c => c.dataset.tmdbId)
@@ -6308,15 +6370,27 @@ const main = async () => {
     list.innerHTML = '<p class="stats-empty">Loading recommendations…</p>'
 
     const seenGuids = new Set([
-      ...Array.from(document.querySelectorAll('.likes-list .watch-card')).map(c => c.dataset.guid),
-      ...Array.from(document.querySelectorAll('.dislikes-list .watch-card')).map(c => c.dataset.guid),
-      ...Array.from(document.querySelectorAll('.seen-list .watch-card')).map(c => c.dataset.guid),
+      ...Array.from(document.querySelectorAll('.likes-list .watch-card')).map(
+        c => c.dataset.guid
+      ),
+      ...Array.from(
+        document.querySelectorAll('.dislikes-list .watch-card')
+      ).map(c => c.dataset.guid),
+      ...Array.from(document.querySelectorAll('.seen-list .watch-card')).map(
+        c => c.dataset.guid
+      ),
     ])
 
     const seenTmdbIds = new Set([
-      ...Array.from(document.querySelectorAll('.likes-list .watch-card')).map(c => c.dataset.tmdbId),
-      ...Array.from(document.querySelectorAll('.dislikes-list .watch-card')).map(c => c.dataset.tmdbId),
-      ...Array.from(document.querySelectorAll('.seen-list .watch-card')).map(c => c.dataset.tmdbId),
+      ...Array.from(document.querySelectorAll('.likes-list .watch-card')).map(
+        c => c.dataset.tmdbId
+      ),
+      ...Array.from(
+        document.querySelectorAll('.dislikes-list .watch-card')
+      ).map(c => c.dataset.tmdbId),
+      ...Array.from(document.querySelectorAll('.seen-list .watch-card')).map(
+        c => c.dataset.tmdbId
+      ),
     ])
 
     const allMovies = new Map()
@@ -6325,7 +6399,11 @@ const main = async () => {
         try {
           const { movies } = await api.getRecommendations(tmdbId)
           for (const m of movies) {
-            if (!allMovies.has(m.tmdbId) && !seenGuids.has(m.guid) && !seenTmdbIds.has(String(m.tmdbId))) {
+            if (
+              !allMovies.has(m.tmdbId) &&
+              !seenGuids.has(m.guid) &&
+              !seenTmdbIds.has(String(m.tmdbId))
+            ) {
               allMovies.set(m.tmdbId, m)
             }
           }
@@ -6337,7 +6415,8 @@ const main = async () => {
 
     list.innerHTML = ''
     if (allMovies.size === 0) {
-      list.innerHTML = '<p class="stats-empty">No new recommendations found. Rate more movies to improve suggestions.</p>'
+      list.innerHTML =
+        '<p class="stats-empty">No new recommendations found. Rate more movies to improve suggestions.</p>'
       return
     }
 
@@ -6347,10 +6426,12 @@ const main = async () => {
     recommendationsLoaded = true
   }
 
-  document.getElementById('recommendations-refresh-btn')?.addEventListener('click', () => {
-    recommendationsLoaded = false
-    loadRecommendations()
-  })
+  document
+    .getElementById('recommendations-refresh-btn')
+    ?.addEventListener('click', () => {
+      recommendationsLoaded = false
+      loadRecommendations()
+    })
 
   window.refreshRecommendationsTab = () => {
     if (!recommendationsLoaded) loadRecommendations()
@@ -6381,7 +6462,8 @@ const main = async () => {
     if (genreBar) {
       const genreCounts = {}
       watchCards.forEach(card => {
-        const genreText = card.querySelector('.watch-card-genres')?.textContent || ''
+        const genreText =
+          card.querySelector('.watch-card-genres')?.textContent || ''
         genreText.split(',').forEach(g => {
           const genre = g.trim()
           if (genre) genreCounts[genre] = (genreCounts[genre] || 0) + 1
@@ -6393,18 +6475,25 @@ const main = async () => {
         .slice(0, 8)
 
       if (sortedGenres.length === 0) {
-        genreBar.innerHTML = '<p class="stats-empty">Rate some movies to see your genre breakdown.</p>'
+        genreBar.innerHTML =
+          '<p class="stats-empty">Rate some movies to see your genre breakdown.</p>'
       } else {
         const max = sortedGenres[0][1]
-        genreBar.innerHTML = sortedGenres.map(([genre, count]) => `
+        genreBar.innerHTML = sortedGenres
+          .map(
+            ([genre, count]) => `
           <div class="stats-genre-row">
             <span class="stats-genre-name">${genre}</span>
             <div class="stats-genre-bar-track">
-              <div class="stats-genre-bar-fill" style="width:${Math.round((count / max) * 100)}%"></div>
+              <div class="stats-genre-bar-fill" style="width:${Math.round(
+                (count / max) * 100
+              )}%"></div>
             </div>
             <span class="stats-genre-count">${count}</span>
           </div>
-        `).join('')
+        `
+          )
+          .join('')
       }
     }
 
@@ -6416,16 +6505,20 @@ const main = async () => {
 
       watchCards.forEach(card => {
         const html = card.innerHTML
-        const imdbMatch = html.match(/imdb\.svg[^>]*>[\s\S]*?<\/img>\s*([\d.]+)/) ||
+        const imdbMatch =
+          html.match(/imdb\.svg[^>]*>[\s\S]*?<\/img>\s*([\d.]+)/) ||
           html.match(/imdb[^>]*>\s*([\d.]+)/)
-        const tmdbMatch = html.match(/tmdb\.svg[^>]*>[\s\S]*?<\/img>\s*([\d.]+)/) ||
+        const tmdbMatch =
+          html.match(/tmdb\.svg[^>]*>[\s\S]*?<\/img>\s*([\d.]+)/) ||
           html.match(/tmdb[^>]*>\s*([\d.]+)/)
         if (imdbMatch) imdbScores.push(parseFloat(imdbMatch[1]))
         if (tmdbMatch) tmdbScores.push(parseFloat(tmdbMatch[1]))
       })
 
       const avg = arr =>
-        arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1) : null
+        arr.length
+          ? (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1)
+          : null
 
       const avgImdb = avg(imdbScores)
       const avgTmdb = avg(tmdbScores)
@@ -6434,8 +6527,12 @@ const main = async () => {
         avgEl.innerHTML = '<p class="stats-empty">No rating data available.</p>'
       } else {
         avgEl.innerHTML = [
-          avgImdb ? `<div class="stats-avg-row"><span>IMDb avg</span><strong>${avgImdb}</strong></div>` : '',
-          avgTmdb ? `<div class="stats-avg-row"><span>TMDb avg</span><strong>${avgTmdb}</strong></div>` : '',
+          avgImdb
+            ? `<div class="stats-avg-row"><span>IMDb avg</span><strong>${avgImdb}</strong></div>`
+            : '',
+          avgTmdb
+            ? `<div class="stats-avg-row"><span>TMDb avg</span><strong>${avgTmdb}</strong></div>`
+            : '',
         ].join('')
       }
     } else if (avgEl) {
@@ -6463,9 +6560,13 @@ const main = async () => {
   const imdbImportProgress = document.getElementById('imdb-import-progress')
   const imdbImportStatus = document.getElementById('imdb-import-status')
   const imdbImportBar = document.getElementById('imdb-import-bar')
-  const imdbImportDetail = document.getElementById('imdb-import-progress-detail')
+  const imdbImportDetail = document.getElementById(
+    'imdb-import-progress-detail'
+  )
   const imdbImportCancelBtn = document.getElementById('imdb-import-cancel-btn')
-  const imdbImportCancelActions = document.getElementById('imdb-import-cancel-actions')
+  const imdbImportCancelActions = document.getElementById(
+    'imdb-import-cancel-actions'
+  )
   const imdbImportCancelMsg = document.getElementById('imdb-import-cancel-msg')
   const imdbImportKeepBtn = document.getElementById('imdb-import-keep-btn')
   const imdbImportRemoveBtn = document.getElementById('imdb-import-remove-btn')
@@ -6474,6 +6575,26 @@ const main = async () => {
   let currentImportUserName = null
   // Track GUIDs added during the current import session for optional rollback
   let sessionImportedGuids = []
+
+  function setImdbImportProgressText(
+    headline,
+    { total = 0, processed = 0, imported = 0, skipped = 0 } = {}
+  ) {
+    const safeTotal = Number.isFinite(total) ? total : 0
+    const safeProcessed = Number.isFinite(processed) ? processed : 0
+    const safeImported = Number.isFinite(imported) ? imported : 0
+    const safeSkipped = Number.isFinite(skipped) ? skipped : 0
+    const pct =
+      safeTotal > 0 ? Math.round((safeProcessed / safeTotal) * 100) : 0
+
+    if (imdbImportStatus) imdbImportStatus.textContent = headline
+    if (imdbImportDetail) {
+      imdbImportDetail.textContent =
+        `Processed ${safeProcessed}/${safeTotal} rows (${pct}%) · ` +
+        `Imported ${safeImported} movies · Skipped ${safeSkipped} rows`
+    }
+    if (imdbImportBar) imdbImportBar.style.width = `${pct}%`
+  }
 
   function resetImdbImportProgress() {
     if (imdbImportProgress) imdbImportProgress.style.display = 'none'
@@ -6565,7 +6686,9 @@ const main = async () => {
     if (data.type === 'imdbImportProgress') {
       const { status, total, processed, imported, skipped } = data.payload
 
-      if (!['started', 'processing', 'completed', 'cancelled'].includes(status)) {
+      if (
+        !['started', 'processing', 'completed', 'cancelled'].includes(status)
+      ) {
         return
       }
 
@@ -6573,33 +6696,37 @@ const main = async () => {
         isImdbImportActive = true
         sessionImportedGuids = []
         if (imdbImportProgress) imdbImportProgress.style.display = 'block'
-        if (imdbImportStatus)
-          imdbImportStatus.textContent = `Starting import of ${total} movies...`
-        if (imdbImportDetail) imdbImportDetail.textContent = ''
         if (imdbImportBar) {
           imdbImportBar.style.width = '5%'
           imdbImportBar.classList.remove('error')
         }
+        setImdbImportProgressText(`Queued ${total} rows. Starting import...`, {
+          total,
+          processed: 0,
+          imported: 0,
+          skipped: 0,
+        })
         if (imdbImportCancelBtn) {
           imdbImportCancelBtn.disabled = false
           imdbImportCancelBtn.style.display = ''
         }
-        if (imdbImportCancelActions) imdbImportCancelActions.style.display = 'none'
+        if (imdbImportCancelActions)
+          imdbImportCancelActions.style.display = 'none'
       } else if (status === 'processing') {
         isImdbImportActive = true
         if (imdbImportProgress) imdbImportProgress.style.display = 'block'
         const pct = total > 0 ? Math.round((processed / total) * 100) : 0
-        if (imdbImportStatus)
-          imdbImportStatus.textContent = `Importing movie ${processed} of ${total}...`
-        if (imdbImportDetail)
-          imdbImportDetail.textContent = `${imported} added · ${skipped} skipped`
-        if (imdbImportBar) imdbImportBar.style.width = `${pct}%`
+        setImdbImportProgressText(
+          `Processing rows ${processed}/${total} (${pct}%)...`,
+          { total, processed, imported, skipped }
+        )
       } else if (status === 'completed') {
         if (!isImdbImportActive) return
 
         isImdbImportActive = false
         if (imdbImportCancelBtn) imdbImportCancelBtn.style.display = 'none'
-        if (imdbImportCancelActions) imdbImportCancelActions.style.display = 'none'
+        if (imdbImportCancelActions)
+          imdbImportCancelActions.style.display = 'none'
         if (imdbImportStatus)
           imdbImportStatus.textContent = `Done! ${imported} imported, ${skipped} skipped. Refreshing...`
         if (imdbImportDetail) imdbImportDetail.textContent = ''
@@ -6618,8 +6745,7 @@ const main = async () => {
         if (imdbImportDetail) imdbImportDetail.textContent = ''
 
         const count = sessionImportedGuids.length
-        if (imdbImportStatus)
-          imdbImportStatus.textContent = 'Import cancelled.'
+        if (imdbImportStatus) imdbImportStatus.textContent = 'Import cancelled.'
 
         const imdbCsvUploadBtn = document.getElementById('imdb-csv-upload-btn')
         if (imdbCsvUploadBtn) imdbCsvUploadBtn.disabled = false
@@ -6628,8 +6754,9 @@ const main = async () => {
         if (count > 0 && imdbImportCancelActions && imdbImportCancelMsg) {
           if (imdbImportKeepBtn) imdbImportKeepBtn.disabled = false
           if (imdbImportRemoveBtn) imdbImportRemoveBtn.disabled = false
-          imdbImportCancelMsg.textContent =
-            `${count} movie${count === 1 ? ' was' : 's were'} imported before cancellation. What would you like to do?`
+          imdbImportCancelMsg.textContent = `${count} movie${
+            count === 1 ? ' was' : 's were'
+          } imported before cancellation. What would you like to do?`
           imdbImportCancelActions.style.display = 'block'
         } else {
           // Nothing imported — just clear
@@ -6646,8 +6773,15 @@ const main = async () => {
     // hundreds/thousands of movies hangs the browser renderer. The page
     // reloads when the import completes so the Seen list renders in one pass.
     if (data.type === 'imdbImportMovie') {
-      const { movie } = data.payload
+      const { movie, progress } = data.payload
       if (movie?.guid) sessionImportedGuids.push(movie.guid)
+      if (progress?.total > 0 && isImdbImportActive) {
+        const pct = Math.round((progress.processed / progress.total) * 100)
+        setImdbImportProgressText(
+          `Importing movies ${progress.imported} | Processing rows ${progress.processed}/${progress.total} (${pct}%)...`,
+          progress
+        )
+      }
     }
   })
 
@@ -7461,7 +7595,9 @@ const main = async () => {
         try {
           const apiBase = document.body.dataset.basePath || ''
           const resp = await fetch(
-            `${apiBase}/api/seen-movies?roomCode=${encodeURIComponent(roomCode)}&userName=${encodeURIComponent(userName)}`
+            `${apiBase}/api/seen-movies?roomCode=${encodeURIComponent(
+              roomCode
+            )}&userName=${encodeURIComponent(userName)}`
           )
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
           const { movies: seenMovies } = await resp.json()
@@ -7473,7 +7609,8 @@ const main = async () => {
             if (remaining > 0 && loadMoreWrap) {
               loadMoreWrap.hidden = false
               if (loadMoreBtn) loadMoreBtn.disabled = false
-              if (loadMoreCount) loadMoreCount.textContent = `${remaining} remaining`
+              if (loadMoreCount)
+                loadMoreCount.textContent = `${remaining} remaining`
             } else if (loadMoreWrap) {
               loadMoreWrap.hidden = true
             }
@@ -7502,7 +7639,8 @@ const main = async () => {
           renderPage()
         } catch (err) {
           console.error('Failed to load seen movies:', err)
-          if (loadMoreCount) loadMoreCount.textContent = 'Failed to load — try refreshing'
+          if (loadMoreCount)
+            loadMoreCount.textContent = 'Failed to load — try refreshing'
           if (loadMoreBtn) loadMoreBtn.disabled = false
         }
       }
@@ -7681,7 +7819,11 @@ const main = async () => {
 
       try {
         const csvContent = await file.text()
-        if (imdbImportStatus) imdbImportStatus.textContent = 'Uploading CSV...'
+        if (imdbImportStatus)
+          imdbImportStatus.textContent = 'Uploading and parsing CSV file...'
+        if (imdbImportDetail)
+          imdbImportDetail.textContent =
+            'Validating file and extracting IMDb rows...'
         if (imdbImportBar) imdbImportBar.style.width = '10%'
 
         const apiBase = document.body.dataset.basePath || ''
@@ -7718,15 +7860,31 @@ const main = async () => {
           }, 3000)
         } else if (result.status === 'started') {
           // Background processing started - progress updates will come via WebSocket
-          if (imdbImportStatus)
-            imdbImportStatus.textContent = `Importing movie 0 of ${result.total}...`
-          if (imdbImportBar) imdbImportBar.style.width = '5%'
+          setImdbImportProgressText(
+            `Queued ${result.total} rows. Waiting for first lookup...`,
+            {
+              total: result.total,
+              processed: 0,
+              imported: 0,
+              skipped: 0,
+            }
+          )
 
           // Fallback: if no WebSocket progress after 30s, re-enable the button
           setTimeout(() => {
-            if (isImdbImportActive && imdbImportStatus?.textContent?.includes('Importing movie 0')) {
-              if (imdbImportStatus)
-                imdbImportStatus.textContent = `Processing ${result.total} movies... (check Seen list, refresh if needed)`
+            if (
+              isImdbImportActive &&
+              imdbImportStatus?.textContent?.includes('Queued')
+            ) {
+              setImdbImportProgressText(
+                `Processing ${result.total} rows in background...`,
+                {
+                  total: result.total,
+                  processed: 0,
+                  imported: 0,
+                  skipped: 0,
+                }
+              )
               imdbCsvUploadBtn.disabled = false
             }
           }, 30000)
@@ -8167,7 +8325,11 @@ const main = async () => {
           const guidKey = normalizeGuid(nextMovie.guid) || nextMovie.guid
           if (guidKey) movieByGuid.set(guidKey, nextMovie)
         } catch (err) {
-          console.error('❌ Error creating CardView for movie:', nextMovie?.title, err)
+          console.error(
+            '❌ Error creating CardView for movie:',
+            nextMovie?.title,
+            err
+          )
         }
       } else {
         console.warn('⚠️ No movies available even after refill attempt')
