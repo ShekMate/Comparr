@@ -257,6 +257,9 @@ const getAdminAuthFailureMessage = (
     : 'Admin access is limited to local/private-network requests when ADMIN_PASSWORD is not configured. If you are behind a reverse proxy, forward client IP headers (X-Forwarded-For or X-Real-IP), or set ADMIN_PASSWORD.'
 }
 
+const getSetupModeFailureMessage = () =>
+  'Setup mode changes are limited to local/private-network requests. Complete setup locally, or only use ALLOW_REMOTE_BOOTSTRAP for initial ADMIN_PASSWORD/ACCESS_PASSWORD bootstrap.'
+
 const ADMIN_ONLY_SETTINGS = new Set([
   'PORT',
   'ROOT_PATH',
@@ -465,9 +468,17 @@ export async function handleSettingsRoutes(
     }
 
     const settings = getSettings()
-    // During initial setup the wizard must be able to test connections before
-    // (or while) configuring the admin password — skip auth for both guards.
-    if (!isSetupWizardActive(settings)) {
+    if (isSetupWizardActive(settings)) {
+      if (!isLocalRequest(req)) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            message: getSetupModeFailureMessage(),
+          }),
+          { status: 403, headers: makeJsonHeaders(req) }
+        )
+      }
+    } else {
       if (!hasAdminPasswordConfigured(settings)) {
         return new Response(
           JSON.stringify({
@@ -541,8 +552,9 @@ export async function handleSettingsRoutes(
     }
 
     const currentSettings = getSettings()
+    const setupWizardActive = isSetupWizardActive(currentSettings)
     const isAdmin =
-      isSetupWizardActive(currentSettings) ||
+      (setupWizardActive && isLocalRequest(req)) ||
       (await isAdminAuthorized(req, currentSettings, isLocalRequest))
 
     try {
@@ -568,13 +580,12 @@ export async function handleSettingsRoutes(
           attemptedAdminOnlySettings.length ===
             Object.keys(incomingSettings).length
         ) {
+          const message = setupWizardActive
+            ? getSetupModeFailureMessage()
+            : getAdminAuthFailureMessage(req, currentSettings, isLocalRequest)
           return new Response(
             JSON.stringify({
-              error: getAdminAuthFailureMessage(
-                req,
-                currentSettings,
-                isLocalRequest
-              ),
+              error: message,
             }),
             { status: 403, headers: makeJsonHeaders(req) }
           )
@@ -649,6 +660,15 @@ export async function handleSettingsRoutes(
       )
     }
     const settings = getSettings()
+    if (isSetupWizardActive(settings) && !isLocalRequest(req)) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: getSetupModeFailureMessage(),
+        }),
+        { status: 403, headers: makeJsonHeaders(req) }
+      )
+    }
     if (
       !isSetupWizardActive(settings) &&
       !(await isAdminAuthorized(req, settings, isLocalRequest))
@@ -682,6 +702,15 @@ export async function handleSettingsRoutes(
 
   if (pathname === '/api/admin/user-history' && req.method === 'GET') {
     const settings = getSettings()
+    if (isSetupWizardActive(settings) && !isLocalRequest(req)) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: getSetupModeFailureMessage(),
+        }),
+        { status: 403, headers: makeJsonHeaders(req) }
+      )
+    }
     if (
       !isSetupWizardActive(settings) &&
       !(await isAdminAuthorized(req, settings, isLocalRequest))
@@ -713,6 +742,15 @@ export async function handleSettingsRoutes(
       )
     }
     const settings = getSettings()
+    if (isSetupWizardActive(settings) && !isLocalRequest(req)) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: getSetupModeFailureMessage(),
+        }),
+        { status: 403, headers: makeJsonHeaders(req) }
+      )
+    }
     if (
       !isSetupWizardActive(settings) &&
       !(await isAdminAuthorized(req, settings, isLocalRequest))
