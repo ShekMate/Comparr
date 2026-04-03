@@ -3750,19 +3750,16 @@ export async function processImdbImportBackground(
       // Check for duplicates
       if (existingGuids.has(guid) || existingTmdbIds.has(tmdbId)) {
         skipped++
-        // Send progress update periodically
-        if (processed % 10 === 0) {
-          sendToUser(roomCode, userName, {
-            type: 'imdbImportProgress',
-            payload: {
-              status: 'processing',
-              total,
-              processed,
-              imported,
-              skipped,
-            },
-          })
-        }
+        sendToUser(roomCode, userName, {
+          type: 'imdbImportProgress',
+          payload: {
+            status: 'processing',
+            total,
+            processed,
+            imported,
+            skipped,
+          },
+        })
         continue
       }
 
@@ -3874,13 +3871,11 @@ export async function processImdbImportBackground(
       skipped++
     }
 
-    // Send progress update every 10 movies
-    if (processed % 10 === 0) {
-      sendToUser(roomCode, userName, {
-        type: 'imdbImportProgress',
-        payload: { status: 'processing', total, processed, imported, skipped },
-      })
-    }
+    // Send progress update after each processed movie.
+    sendToUser(roomCode, userName, {
+      type: 'imdbImportProgress',
+      payload: { status: 'processing', total, processed, imported, skipped },
+    })
 
     // Yield to the event loop so WebSocket handlers and other requests
     // (e.g. swipe screen discovery) are not starved during long imports.
