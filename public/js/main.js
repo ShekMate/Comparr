@@ -6578,7 +6578,7 @@ const main = async () => {
 
   function setImdbImportProgressText(
     headline,
-    { total = 0, processed = 0, imported = 0, skipped = 0, stage = '' } = {}
+    { total = 0, processed = 0, imported = 0, skipped = 0, notFoundOnTmdb = 0, duplicates = 0, apiErrors = 0, stage = '' } = {}
   ) {
     const safeTotal = Number.isFinite(total) ? total : 0
     const safeProcessed = Number.isFinite(processed) ? processed : 0
@@ -6590,11 +6590,24 @@ const main = async () => {
     if (imdbImportStatus) imdbImportStatus.textContent = headline
     if (imdbImportDetail) {
       const stageText =
-        stage === 'looking_up_tmdb' ? 'Looking up TMDb match...' : ''
-      imdbImportDetail.textContent =
-        `${stageText ? `${stageText} · ` : ''}` +
-        `Processed ${safeProcessed}/${safeTotal} rows (${pct}%) · ` +
-        `Imported ${safeImported} movies · Skipped ${safeSkipped} rows`
+        stage === 'looking_up_tmdb' ? 'Looking up TMDb...' : ''
+      const parts = [
+        stageText,
+        `Processed ${safeProcessed}/${safeTotal} (${pct}%)`,
+        `Imported ${safeImported}`,
+      ]
+      if (safeSkipped > 0) {
+        const skipParts = []
+        if (Number.isFinite(notFoundOnTmdb) && notFoundOnTmdb > 0)
+          skipParts.push(`${notFoundOnTmdb} not on TMDb`)
+        if (Number.isFinite(duplicates) && duplicates > 0)
+          skipParts.push(`${duplicates} already imported`)
+        if (Number.isFinite(apiErrors) && apiErrors > 0)
+          skipParts.push(`${apiErrors} errors`)
+        const skipDetail = skipParts.length > 0 ? ` (${skipParts.join(', ')})` : ''
+        parts.push(`Skipped ${safeSkipped}${skipDetail}`)
+      }
+      imdbImportDetail.textContent = parts.filter(Boolean).join(' · ')
     }
     if (imdbImportBar) imdbImportBar.style.width = `${pct}%`
   }
@@ -6693,6 +6706,9 @@ const main = async () => {
         processed,
         imported,
         skipped,
+        notFoundOnTmdb = 0,
+        duplicates = 0,
+        apiErrors = 0,
         stage,
       } = data.payload
 
@@ -6727,8 +6743,8 @@ const main = async () => {
         if (imdbImportProgress) imdbImportProgress.style.display = 'block'
         const pct = total > 0 ? Math.round((processed / total) * 100) : 0
         setImdbImportProgressText(
-          `Processing rows ${processed}/${total} (${pct}%)...`,
-          { total, processed, imported, skipped, stage }
+          `Importing... ${processed}/${total} (${pct}%)`,
+          { total, processed, imported, skipped, notFoundOnTmdb, duplicates, apiErrors, stage }
         )
       } else if (status === 'completed') {
         if (!isImdbImportActive) return
@@ -6739,8 +6755,20 @@ const main = async () => {
           imdbImportCancelActions.style.display = 'none'
         if (imdbImportStatus)
           imdbImportStatus.textContent = `Done! ${imported} imported, ${skipped} skipped. Refreshing...`
-        if (imdbImportDetail) imdbImportDetail.textContent = ''
         if (imdbImportBar) imdbImportBar.style.width = '100%'
+
+        // Show final skip breakdown in detail line before page reloads
+        if (imdbImportDetail && skipped > 0) {
+          const skipParts = []
+          if (notFoundOnTmdb > 0) skipParts.push(`${notFoundOnTmdb} not on TMDb`)
+          if (duplicates > 0) skipParts.push(`${duplicates} already imported`)
+          if (apiErrors > 0) skipParts.push(`${apiErrors} errors`)
+          imdbImportDetail.textContent = skipParts.length > 0
+            ? `Skipped breakdown: ${skipParts.join(', ')}`
+            : ''
+        } else if (imdbImportDetail) {
+          imdbImportDetail.textContent = ''
+        }
 
         const imdbCsvUploadBtn = document.getElementById('imdb-csv-upload-btn')
         if (imdbCsvUploadBtn) imdbCsvUploadBtn.disabled = false
@@ -6788,7 +6816,7 @@ const main = async () => {
       if (progress?.total > 0 && isImdbImportActive) {
         const pct = Math.round((progress.processed / progress.total) * 100)
         setImdbImportProgressText(
-          `Importing movies ${progress.imported} | Processing rows ${progress.processed}/${progress.total} (${pct}%)...`,
+          `Importing... ${progress.processed}/${progress.total} (${pct}%)`,
           progress
         )
       }

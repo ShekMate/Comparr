@@ -3649,6 +3649,9 @@ export function sendImdbImportProgressUpdate(
     processed: number
     imported: number
     skipped: number
+    notFoundOnTmdb?: number
+    duplicates?: number
+    apiErrors?: number
     stage?: string
   }
 ): boolean {
@@ -3693,14 +3696,21 @@ export async function processImdbImportBackground(
   let processed = 0
   let imported = 0
   let skipped = 0
+  let notFoundOnTmdb = 0
+  let duplicates = 0
+  let apiErrors = 0
 
-  const emitProcessingProgress = () =>
+  const emitProcessingProgress = (stage?: string) =>
     sendImdbImportProgressUpdate(roomCode, userName, {
       status: 'processing',
       total,
       processed,
       imported,
       skipped,
+      notFoundOnTmdb,
+      duplicates,
+      apiErrors,
+      stage,
     })
 
   const TMDB_KEY = getTmdbApiKey()
@@ -3724,7 +3734,16 @@ export async function processImdbImportBackground(
       }
       sendToUser(roomCode, userName, {
         type: 'imdbImportProgress',
-        payload: { status: 'cancelled', total, processed, imported, skipped },
+        payload: {
+          status: 'cancelled',
+          total,
+          processed,
+          imported,
+          skipped,
+          notFoundOnTmdb,
+          duplicates,
+          apiErrors,
+        },
       })
       return
     }
@@ -3733,14 +3752,7 @@ export async function processImdbImportBackground(
 
     // Emit an immediate heartbeat before waiting on rate limits / network so
     // long first-lookups still show visible movement in the UI.
-    sendImdbImportProgressUpdate(roomCode, userName, {
-      status: 'processing',
-      total,
-      processed,
-      imported,
-      skipped,
-      stage: 'looking_up_tmdb',
-    })
+    emitProcessingProgress('looking_up_tmdb')
 
     // Rate limit: wait for token before making API calls
     await tmdbRateLimiter.acquire()
@@ -3755,6 +3767,7 @@ export async function processImdbImportBackground(
         log.debug(
           `[IMDb Import] TMDb find failed for ${row.imdbId}: HTTP ${findResp.status}`
         )
+        apiErrors++
         skipped++
         emitProcessingProgress()
         continue
@@ -3767,6 +3780,7 @@ export async function processImdbImportBackground(
         log.debug(
           `[IMDb Import] No TMDb result for ${row.imdbId} (${row.title})`
         )
+        notFoundOnTmdb++
         skipped++
         emitProcessingProgress()
         continue
@@ -3777,6 +3791,7 @@ export async function processImdbImportBackground(
 
       // Check for duplicates
       if (existingGuids.has(guid) || existingTmdbIds.has(tmdbId)) {
+        duplicates++
         skipped++
         emitProcessingProgress()
         continue
@@ -3873,7 +3888,7 @@ export async function processImdbImportBackground(
         type: 'imdbImportMovie',
         payload: {
           movie: movieWithExtras,
-          progress: { total, processed, imported, skipped },
+          progress: { total, processed, imported, skipped, notFoundOnTmdb, duplicates, apiErrors },
         },
       })
 
@@ -3887,6 +3902,7 @@ export async function processImdbImportBackground(
       log.warn(
         `[IMDb Import] Failed to process ${row.imdbId}: ${err?.message || err}`
       )
+      apiErrors++
       skipped++
     }
 
@@ -3913,11 +3929,11 @@ export async function processImdbImportBackground(
   // Send completion message
   sendToUser(roomCode, userName, {
     type: 'imdbImportProgress',
-    payload: { status: 'completed', total, processed, imported, skipped },
+    payload: { status: 'completed', total, processed, imported, skipped, notFoundOnTmdb, duplicates, apiErrors },
   })
 
   log.info(
-    `[IMDb Import] Completed: ${imported} imported, ${skipped} skipped for ${userName} in ${roomCode}`
+    `[IMDb Import] Completed: ${imported} imported, ${skipped} skipped (${notFoundOnTmdb} not found, ${duplicates} duplicates, ${apiErrors} errors) for ${userName} in ${roomCode}`
   )
 }
 
