@@ -2,6 +2,7 @@ import type { CompatRequest } from '../compat-request.ts'
 import { SettingsValidationError } from '../../../core/settings.ts'
 import * as log from 'jsr:@std/log'
 import { verifyPassword } from '../../../core/security.ts'
+import { createAccessSession } from '../../../core/access-session-store.ts'
 import { apiRateLimiter, loginRateLimiter } from '../ip-rate-limiter.ts'
 import { addSecurityHeaders } from '../security-headers.ts'
 import { isValidStateChangingOrigin } from '../network-access.ts'
@@ -368,13 +369,12 @@ export async function handleSettingsRoutes(
       const headers = makeJsonHeaders(req)
       const secureFlag = shouldUseSecureCookies(req) ? '; Secure' : ''
       if (isValid && configuredPassword) {
-        // Store the user-entered value in the cookie (not the stored hash),
-        // so subsequent requests can be verified via verifyPassword.
+        // Issue a random session token so the raw password never lives in a
+        // cookie. validateAccessSession() checks this token on subsequent requests.
+        const sessionToken = createAccessSession()
         headers.set(
           'set-cookie',
-          `${ACCESS_PASSWORD_COOKIE_NAME}=${encodeURIComponent(
-            candidatePassword
-          )}; Path=/; SameSite=Strict; HttpOnly${secureFlag}`
+          `${ACCESS_PASSWORD_COOKIE_NAME}=${sessionToken}; Path=/; SameSite=Strict; HttpOnly${secureFlag}`
         )
       } else if (!isValid) {
         headers.set(

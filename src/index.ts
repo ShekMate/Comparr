@@ -24,6 +24,9 @@ import {
 import { getDataDir } from './core/env.ts'
 import { getSettings, updateSettings, resetSettings } from './core/settings.ts'
 import { timingSafeEqual, verifyPassword } from './core/security.ts'
+import {
+  validateAccessSession,
+} from './core/access-session-store.ts'
 import { getLinkTypeForRequest } from './core/i18n.ts'
 import {
   handleLogin,
@@ -117,19 +120,24 @@ const EXEMPT_GLOBAL_ACCESS_PASSWORD_PATHS = new Set([
 ])
 const EXEMPT_CSRF_PATHS = new Set(['/api/csrf-token'])
 
-const parseAccessPassword = (req: CompatRequest) => {
-  const header = req.headers?.get?.('x-access-password')
-  if (typeof header === 'string' && header.trim()) return header.trim()
-
+// Reads the session token stored in the access-password cookie.
+// After login the cookie holds a random token, not the raw password.
+const getAccessTokenFromCookie = (req: CompatRequest): string => {
   const rawCookieHeader = String(req?.headers?.get?.('cookie') || '')
   for (const cookiePair of rawCookieHeader.split(';')) {
     const [rawKey, ...rest] = cookiePair.split('=')
     const key = String(rawKey || '').trim()
     if (key !== ACCESS_PASSWORD_COOKIE_NAME) continue
-    const cookieValue = decodeURIComponent(rest.join('=').trim())
-    if (cookieValue) return cookieValue
+    return decodeURIComponent(rest.join('=').trim())
   }
+  return ''
+}
 
+// Reads a raw password from explicit request headers only.
+// Used as a fallback for API/script clients that don't hold a session cookie.
+const getAccessPasswordFromHeaders = (req: CompatRequest): string => {
+  const header = req.headers?.get?.('x-access-password')
+  if (typeof header === 'string' && header.trim()) return header.trim()
   const auth = req.headers?.get?.('authorization')
   if (typeof auth === 'string' && auth.toLowerCase().startsWith('bearer ')) {
     return auth.slice(7).trim()
@@ -137,10 +145,25 @@ const parseAccessPassword = (req: CompatRequest) => {
   return ''
 }
 
-const isAccessPasswordAuthorized = (req: CompatRequest) => {
+// Used by the WebSocket upgrade path to pass whichever credential is present
+// (session token from cookie, or raw password from a header) to handleLogin,
+// which validates each case appropriately.
+const parseAccessPassword = (req: CompatRequest): string => {
+  const cookieToken = getAccessTokenFromCookie(req)
+  if (cookieToken) return cookieToken
+  return getAccessPasswordFromHeaders(req)
+}
+
+const isAccessPasswordAuthorized = async (req: CompatRequest) => {
   const configuredPassword = getAccessPassword()
   if (!configuredPassword) return true
-  return verifyPassword(parseAccessPassword(req), configuredPassword)
+  // Fast path: valid session token from cookie — no PBKDF2 needed
+  const cookieToken = getAccessTokenFromCookie(req)
+  if (cookieToken && validateAccessSession(cookieToken)) return true
+  // Fallback: raw password from an explicit header (API / script clients)
+  const headerPassword = getAccessPasswordFromHeaders(req)
+  if (headerPassword) return verifyPassword(headerPassword, configuredPassword)
+  return false
 }
 
 const shouldRequireAccessPassword = (path: string) => {

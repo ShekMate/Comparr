@@ -9,7 +9,8 @@ import {
 } from '../../api/plex.ts'
 import { WebSocket } from '../../infra/ws/websocketServer.ts'
 import { loginRateLimiter } from '../../infra/http/ip-rate-limiter.ts'
-import { timingSafeEqual } from '../../core/security.ts'
+import { verifyPassword } from '../../core/security.ts'
+import { validateAccessSession } from '../../core/access-session-store.ts'
 import { enrich } from '../catalog/enrich.ts'
 import { discoverMovies } from '../catalog/discover.ts'
 import { isMovieInRadarr } from '../../api/radarr.ts'
@@ -3129,24 +3130,29 @@ export const handleLogin = (
             return
           }
 
-          // Check access password (accept either WS payload or cookie from upgrade request)
+          // Check access credential — accepts either:
+          //   • a session token from the cookie (browser path, post-login)
+          //   • a raw password from the WS message payload (API/native clients)
           const accessPassword = getAccessPassword()
-          const candidatePassword =
+          const candidateToken =
             data.payload.accessPassword || cookieAccessPassword
-          if (
-            accessPassword &&
-            !timingSafeEqual(candidatePassword, accessPassword)
-          ) {
-            log.warn(`Invalid access password from ${data.payload.name}`)
-            const response: WebSocketLoginResponseMessage = {
-              type: 'loginResponse',
-              payload: {
-                success: false,
-                message: 'Incorrect access password. Please try again.',
-              },
+          if (accessPassword) {
+            const sessionOk = validateAccessSession(candidateToken)
+            const passwordOk =
+              !sessionOk &&
+              (await verifyPassword(candidateToken, accessPassword))
+            if (!sessionOk && !passwordOk) {
+              log.warn(`Invalid access credential from ${data.payload.name}`)
+              const response: WebSocketLoginResponseMessage = {
+                type: 'loginResponse',
+                payload: {
+                  success: false,
+                  message: 'Incorrect access password. Please try again.',
+                },
+              }
+              ws.send(JSON.stringify(response))
+              return
             }
-            ws.send(JSON.stringify(response))
-            return
           }
 
           log.info(`Valid login from ${data.payload.name}`)
