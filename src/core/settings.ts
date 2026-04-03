@@ -4,6 +4,7 @@ import {
 } from './streamingProfileSettings.ts'
 import { getDataDir } from './env.ts'
 import { hashPassword, isHashedPassword } from './security.ts'
+import { clearAccessSessions } from './access-session-store.ts'
 
 export type SettingsKey =
   | 'PLEX_URL'
@@ -212,6 +213,11 @@ export const updateSettings = async (
 
   syncEnv(settingsCache)
   await persistSettings()
+
+  if (touchedKeys.has('ACCESS_PASSWORD')) {
+    clearAccessSessions()
+  }
+
   return getSettings()
 }
 
