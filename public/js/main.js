@@ -6576,6 +6576,26 @@ const main = async () => {
   // Track GUIDs added during the current import session for optional rollback
   let sessionImportedGuids = []
 
+  function setImdbImportProgressText(
+    headline,
+    { total = 0, processed = 0, imported = 0, skipped = 0 } = {}
+  ) {
+    const safeTotal = Number.isFinite(total) ? total : 0
+    const safeProcessed = Number.isFinite(processed) ? processed : 0
+    const safeImported = Number.isFinite(imported) ? imported : 0
+    const safeSkipped = Number.isFinite(skipped) ? skipped : 0
+    const pct =
+      safeTotal > 0 ? Math.round((safeProcessed / safeTotal) * 100) : 0
+
+    if (imdbImportStatus) imdbImportStatus.textContent = headline
+    if (imdbImportDetail) {
+      imdbImportDetail.textContent =
+        `Processed ${safeProcessed}/${safeTotal} rows (${pct}%) · ` +
+        `Imported ${safeImported} movies · Skipped ${safeSkipped} rows`
+    }
+    if (imdbImportBar) imdbImportBar.style.width = `${pct}%`
+  }
+
   function resetImdbImportProgress() {
     if (imdbImportProgress) imdbImportProgress.style.display = 'none'
     if (imdbImportStatus) imdbImportStatus.textContent = 'Importing...'
@@ -6676,13 +6696,16 @@ const main = async () => {
         isImdbImportActive = true
         sessionImportedGuids = []
         if (imdbImportProgress) imdbImportProgress.style.display = 'block'
-        if (imdbImportStatus)
-          imdbImportStatus.textContent = `Starting import of ${total} movies...`
-        if (imdbImportDetail) imdbImportDetail.textContent = ''
         if (imdbImportBar) {
           imdbImportBar.style.width = '5%'
           imdbImportBar.classList.remove('error')
         }
+        setImdbImportProgressText(`Queued ${total} rows. Starting import...`, {
+          total,
+          processed: 0,
+          imported: 0,
+          skipped: 0,
+        })
         if (imdbImportCancelBtn) {
           imdbImportCancelBtn.disabled = false
           imdbImportCancelBtn.style.display = ''
@@ -6693,11 +6716,10 @@ const main = async () => {
         isImdbImportActive = true
         if (imdbImportProgress) imdbImportProgress.style.display = 'block'
         const pct = total > 0 ? Math.round((processed / total) * 100) : 0
-        if (imdbImportStatus)
-          imdbImportStatus.textContent = `Importing movie ${processed} of ${total} (${pct}%)...`
-        if (imdbImportDetail)
-          imdbImportDetail.textContent = `${imported} added · ${skipped} skipped · ${pct}% complete`
-        if (imdbImportBar) imdbImportBar.style.width = `${pct}%`
+        setImdbImportProgressText(
+          `Processing rows ${processed}/${total} (${pct}%)...`,
+          { total, processed, imported, skipped }
+        )
       } else if (status === 'completed') {
         if (!isImdbImportActive) return
 
@@ -6755,11 +6777,10 @@ const main = async () => {
       if (movie?.guid) sessionImportedGuids.push(movie.guid)
       if (progress?.total > 0 && isImdbImportActive) {
         const pct = Math.round((progress.processed / progress.total) * 100)
-        if (imdbImportStatus)
-          imdbImportStatus.textContent = `Importing movie ${progress.processed} of ${progress.total} (${pct}%)...`
-        if (imdbImportDetail)
-          imdbImportDetail.textContent = `${progress.imported} added · ${progress.skipped} skipped · ${pct}% complete`
-        if (imdbImportBar) imdbImportBar.style.width = `${pct}%`
+        setImdbImportProgressText(
+          `Importing movies ${progress.imported} | Processing rows ${progress.processed}/${progress.total} (${pct}%)...`,
+          progress
+        )
       }
     }
   })
@@ -7798,7 +7819,11 @@ const main = async () => {
 
       try {
         const csvContent = await file.text()
-        if (imdbImportStatus) imdbImportStatus.textContent = 'Uploading CSV...'
+        if (imdbImportStatus)
+          imdbImportStatus.textContent = 'Uploading and parsing CSV file...'
+        if (imdbImportDetail)
+          imdbImportDetail.textContent =
+            'Validating file and extracting IMDb rows...'
         if (imdbImportBar) imdbImportBar.style.width = '10%'
 
         const apiBase = document.body.dataset.basePath || ''
@@ -7835,18 +7860,31 @@ const main = async () => {
           }, 3000)
         } else if (result.status === 'started') {
           // Background processing started - progress updates will come via WebSocket
-          if (imdbImportStatus)
-            imdbImportStatus.textContent = `Importing movie 0 of ${result.total}...`
-          if (imdbImportBar) imdbImportBar.style.width = '5%'
+          setImdbImportProgressText(
+            `Queued ${result.total} rows. Waiting for first lookup...`,
+            {
+              total: result.total,
+              processed: 0,
+              imported: 0,
+              skipped: 0,
+            }
+          )
 
           // Fallback: if no WebSocket progress after 30s, re-enable the button
           setTimeout(() => {
             if (
               isImdbImportActive &&
-              imdbImportStatus?.textContent?.includes('Importing movie 0')
+              imdbImportStatus?.textContent?.includes('Queued')
             ) {
-              if (imdbImportStatus)
-                imdbImportStatus.textContent = `Processing ${result.total} movies... (check Seen list, refresh if needed)`
+              setImdbImportProgressText(
+                `Processing ${result.total} rows in background...`,
+                {
+                  total: result.total,
+                  processed: 0,
+                  imported: 0,
+                  skipped: 0,
+                }
+              )
               imdbCsvUploadBtn.disabled = false
             }
           }, 30000)
