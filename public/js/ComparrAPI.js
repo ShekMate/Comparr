@@ -287,6 +287,13 @@ export class ComparrAPI extends EventTarget {
         this.dispatchEvent(new MessageEvent('error', { data: data.payload }))
         break
       }
+      default: {
+        // Forward unrecognised server messages (e.g. imdbImportProgress,
+        // imdbImportMovie) as a generic 'message' event so other modules can
+        // listen via api.addEventListener('message', ...) and inspect data.type.
+        this.dispatchEvent(new MessageEvent('message', { data }))
+        break
+      }
     }
   }
 
