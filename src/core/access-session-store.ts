@@ -41,6 +41,11 @@ export const validateAccessSession = (token: string): boolean => {
   return true
 }
 
+/** Invalidate a single session token (e.g. on logout). */
+export const invalidateAccessSession = (token: string): void => {
+  _sessions.delete(token)
+}
+
 /** Invalidate all active sessions (call when ACCESS_PASSWORD changes). */
 export const clearAccessSessions = (): void => {
   _sessions.clear()

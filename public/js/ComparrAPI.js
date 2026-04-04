@@ -129,6 +129,12 @@ export class ComparrAPI extends EventTarget {
     return data
   }
 
+  async logoutAccessSession() {
+    await fetch(`${this._basePath}/api/access-password/logout`, {
+      method: 'POST',
+    }).catch(() => {})
+  }
+
   async checkRoomExists(roomCode) {
     const normalizedCode = String(roomCode || '')
       .trim()

@@ -6819,9 +6819,12 @@ const main = async () => {
         const imdbCsvUploadBtn = document.getElementById('imdb-csv-upload-btn')
         if (imdbCsvUploadBtn) imdbCsvUploadBtn.disabled = false
 
-        // Reload page so the full Seen list renders in one pass rather than
-        // inserting hundreds/thousands of individual DOM nodes in real-time.
-        setTimeout(() => window.location.reload(), 2500)
+        // Log out the access session so the user is returned to the access
+        // password screen on reload rather than being auto-authenticated.
+        setTimeout(async () => {
+          await api.logoutAccessSession()
+          window.location.reload()
+        }, 2500)
       } else if (status === 'cancelled') {
         isImdbImportActive = false
         if (imdbImportCancelBtn) imdbImportCancelBtn.style.display = 'none'
