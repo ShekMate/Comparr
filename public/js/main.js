@@ -1649,6 +1649,29 @@ function getSelectedHistory() {
   return rooms.length ? { rooms } : null
 }
 
+function isCurrentSessionCleared(selection) {
+  const currentUser =
+    sessionStorage.getItem('userName') ||
+    localStorage.getItem('personalUser') ||
+    localStorage.getItem('user')
+  const currentRoom =
+    sessionStorage.getItem('roomCode') ||
+    localStorage.getItem('personalRoomCode') ||
+    localStorage.getItem('roomCode')
+  if (!currentUser || !currentRoom) return false
+  if (selection.clearAll) return true
+  if (!selection.rooms) return false
+  const matchingRoom = selection.rooms.find(
+    r => r.roomCode?.toUpperCase() === currentRoom.toUpperCase()
+  )
+  if (!matchingRoom) return false
+  // Room-level clear (no specific users listed) covers everyone in the room
+  if (!matchingRoom.users) return true
+  return matchingRoom.users.some(
+    u => u.toLowerCase() === currentUser.toLowerCase()
+  )
+}
+
 async function handleClearUserHistory() {
   const selection = getSelectedHistory()
   if (!selection) {
@@ -1679,6 +1702,15 @@ async function handleClearUserHistory() {
         }
         setSettingsStatus('User history cleared successfully.')
         pulseSettingsStatus('success')
+        if (isCurrentSessionCleared(selection)) {
+          localStorage.removeItem('user')
+          localStorage.removeItem('roomCode')
+          localStorage.removeItem('personalUser')
+          localStorage.removeItem('personalRoomCode')
+          sessionStorage.clear()
+          window.location.reload()
+          return
+        }
         await loadUserHistory()
       } catch (err) {
         const msg = `Failed to clear: ${err?.message || err}`
