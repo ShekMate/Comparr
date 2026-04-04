@@ -6819,10 +6819,17 @@ const main = async () => {
         const imdbCsvUploadBtn = document.getElementById('imdb-csv-upload-btn')
         if (imdbCsvUploadBtn) imdbCsvUploadBtn.disabled = false
 
-        // Log out the access session so the user is returned to the access
-        // password screen on reload rather than being auto-authenticated.
+        // Log out the access session and wipe cached credentials so the user
+        // lands on the access password screen with a blank login form instead
+        // of being auto-authenticated back into the same room/user (which
+        // would cause every movie to be reported as "already imported").
         setTimeout(async () => {
           await api.logoutAccessSession()
+          localStorage.removeItem('user')
+          localStorage.removeItem('roomCode')
+          localStorage.removeItem('personalUser')
+          localStorage.removeItem('personalRoomCode')
+          sessionStorage.clear()
           window.location.reload()
         }, 2500)
       } else if (status === 'cancelled') {
