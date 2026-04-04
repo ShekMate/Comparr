@@ -1313,6 +1313,14 @@ function syncSettingsFooterActions() {
   if (defaultsResetButton) {
     defaultsResetButton.hidden = currentSettingsTarget !== 'settings-defaults'
   }
+
+  // Hide Save Changes on the Reset sub-tab — there are no settings to save there.
+  const saveBtn = document.querySelector('.settings-save-btn')
+  if (saveBtn) {
+    saveBtn.hidden =
+      currentSettingsTarget === 'settings-admin' &&
+      activeAdminSettingsTab === 'settings-reset'
+  }
 }
 
 function applyAdminSettingsTabVisibility() {
@@ -1362,6 +1370,7 @@ function initializeAdminSettingsTabs() {
       clearSettingsStatusAfterDelay()
       activeAdminSettingsTab = target
       applyAdminSettingsTabVisibility()
+      syncSettingsFooterActions()
       if (target === 'settings-reset') {
         initializeResetTab()
         loadUserHistory()
