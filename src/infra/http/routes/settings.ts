@@ -73,6 +73,27 @@ const isValidHttpUrl = (value: string) => {
   }
 }
 
+// Block loopback and link-local ranges from the connection tester.
+// Private LAN ranges (192.168.x.x, 10.x.x.x, 172.16-31.x.x) are intentionally
+// allowed — Plex, Radarr etc. legitimately live there.
+// We only block ranges that have no legitimate target:
+//   127.0.0.0/8  — loopback
+//   169.254.0.0/16 — link-local / cloud IMDS (AWS, GCP, Azure metadata)
+//   ::1           — IPv6 loopback
+//   fe80::/10     — IPv6 link-local
+const isSsrfBlockedHostname = (hostname: string): boolean => {
+  const h = hostname.trim().toLowerCase()
+  if (h === 'localhost' || h === '0.0.0.0') return true
+  // IPv6 loopback / link-local
+  if (h === '::1' || h === '[::1]') return true
+  if (h.startsWith('fe80:') || h.startsWith('[fe80:')) return true
+  // IPv4 loopback
+  if (/^127\./.test(h)) return true
+  // Cloud IMDS link-local (AWS/GCP/Azure/OCI all use 169.254.169.254)
+  if (/^169\.254\./.test(h)) return true
+  return false
+}
+
 const normalizePlexToken = (token: string) =>
   String(token || '')
     .trim()
@@ -122,6 +143,17 @@ const runConnectionCheck = async (
 
   if (normalizedTarget !== 'tmdb' && !isValidHttpUrl(serviceUrl)) {
     return { ok: false, message: 'Invalid URL.' }
+  }
+
+  if (normalizedTarget !== 'tmdb') {
+    try {
+      const { hostname } = new URL(serviceUrl)
+      if (isSsrfBlockedHostname(hostname)) {
+        return { ok: false, message: 'URL targets a blocked address.' }
+      }
+    } catch {
+      return { ok: false, message: 'Invalid URL.' }
+    }
   }
 
   if (!normalizedToken) {
@@ -287,6 +319,9 @@ const ADMIN_ONLY_SETTINGS = new Set([
   'SEERR_API_KEY',
   'ACCESS_PASSWORD',
   'ADMIN_PASSWORD',
+  // Wizard completion state is admin-only: a regular user must not be able to
+  // reopen setup mode by setting this back to 'false'.
+  'SETUP_WIZARD_COMPLETED',
 ])
 
 const sanitizeSettingsForClient = (

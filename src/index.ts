@@ -44,7 +44,6 @@ import {
 } from './infra/http/network-access.ts'
 import { handleSettingsRoutes } from './infra/http/routes/settings.ts'
 import { handleRoutes } from './infra/http/router.ts'
-import { handleConfigDebugRoute } from './infra/http/routes/config.ts'
 import { handleMatchesRoute } from './infra/http/routes/matches.ts'
 import { handleRequestServiceRoutes } from './infra/http/routes/request-service.ts'
 import { handleRoomRoutes } from './infra/http/routes/rooms.ts'
@@ -473,7 +472,6 @@ for await (const req of server) {
     }
 
     const routeResponse = await handleRoutes(req, p, [
-      handleConfigDebugRoute,
       handleRequestServiceRoutes,
       handleRoomRoutes,
       handleMatchesRoute,
@@ -666,6 +664,12 @@ for await (const req of server) {
     // Serve cached posters from DATA_DIR/poster-cache
     if (p.startsWith('/cached-poster/')) {
       const filename = p.slice('/cached-poster/'.length)
+      // Reject path traversal: filenames must be a single path component
+      // with only safe characters. Any '..' or '/' is an attack attempt.
+      if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\0')) {
+        await req.respond({ status: 400, body: 'Bad Request' })
+        continue
+      }
       const served = await serveCachedPoster(filename, req)
       if (served) {
         await req.respondWith(served)

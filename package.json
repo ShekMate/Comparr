@@ -6,7 +6,7 @@
   "scripts": {
     "start": "deno run --allow-net --allow-read --allow-env src/index.ts",
     "test": "run-p test:*",
-    "test:backend": "deno test --allow-all --coverage=coverage/",
+    "test:backend": "deno test --allow-all --frozen --coverage=coverage/",
     "test:frontend": "vitest run",
     "test:watch": "vitest",
     "coverage": "run-p coverage:*",
