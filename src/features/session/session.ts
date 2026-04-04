@@ -3975,15 +3975,13 @@ export function getAllRooms(): Record<
 
 export function clearAllRooms(): void {
   persistedState.rooms = {}
-  // Also wipe live in-memory sessions so cleared data is not restored on
-  // reconnect (active sessions hold user responses independently of the
-  // persisted state and would otherwise shadow the clear).
-  for (const session of activeSessions.values()) {
-    for (const user of session.users.keys()) {
-      user.responses = []
+  // Close all active WebSocket connections and destroy sessions so that a
+  // reconnecting login cannot call upsertRoomUser and re-persist the cleared data.
+  for (const [code, session] of activeSessions.entries()) {
+    for (const ws of session.users.values()) {
+      try { ws?.close(1001, 'Room cleared by admin') } catch { /* no-op */ }
     }
-    session.likedMovies.clear()
-    session.matches = []
+    activeSessions.delete(code)
   }
   saveState(persistedState).catch(err =>
     log.warn(`Failed to save state after clearAllRooms: ${err}`)
@@ -3993,14 +3991,14 @@ export function clearAllRooms(): void {
 export function clearRooms(roomCodes: string[]): void {
   for (const code of roomCodes) {
     delete persistedState.rooms[code]
-    // Mirror the clear into the live session so reconnecting users start fresh.
+    // Close WebSocket connections and remove the session so login cannot
+    // re-persist the room via upsertRoomUser.
     const session = activeSessions.get(code)
     if (session) {
-      for (const user of session.users.keys()) {
-        user.responses = []
+      for (const ws of session.users.values()) {
+        try { ws?.close(1001, 'Room cleared by admin') } catch { /* no-op */ }
       }
-      session.likedMovies.clear()
-      session.matches = []
+      activeSessions.delete(code)
     }
   }
   saveState(persistedState).catch(err =>
@@ -4019,12 +4017,14 @@ export function clearUsersFromRoom(
       delete persistedState.rooms[roomCode]
     }
   }
-  // Mirror the clear into the live session so reconnecting users start fresh.
+  // Close WebSocket connections for cleared users and remove them from the
+  // live session so login cannot re-persist their data via upsertRoomUser.
   const session = activeSessions.get(roomCode)
   if (session) {
-    for (const user of session.users.keys()) {
+    for (const [user, ws] of session.users.entries()) {
       if (userNames.includes(user.name)) {
-        user.responses = []
+        try { ws?.close(1001, 'User history cleared by admin') } catch { /* no-op */ }
+        session.users.delete(user)
       }
     }
     // Remove the cleared users from likedMovies.
