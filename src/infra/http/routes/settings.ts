@@ -2,7 +2,7 @@ import type { CompatRequest } from '../compat-request.ts'
 import { SettingsValidationError } from '../../../core/settings.ts'
 import * as log from 'jsr:@std/log'
 import { verifyPassword } from '../../../core/security.ts'
-import { createAccessSession } from '../../../core/access-session-store.ts'
+import { createAccessSession, invalidateAccessSession } from '../../../core/access-session-store.ts'
 import { apiRateLimiter, loginRateLimiter } from '../ip-rate-limiter.ts'
 import { addSecurityHeaders } from '../security-headers.ts'
 import { isValidStateChangingOrigin } from '../network-access.ts'
@@ -437,6 +437,23 @@ export async function handleSettingsRoutes(
         { status: 400, headers: makeJsonHeaders(req) }
       )
     }
+  }
+
+  if (pathname === '/api/access-password/logout' && req.method === 'POST') {
+    const cookieToken = parseCookies(req).get(ACCESS_PASSWORD_COOKIE_NAME) || ''
+    if (cookieToken) {
+      invalidateAccessSession(cookieToken)
+    }
+    const headers = makeJsonHeaders(req)
+    const secureFlag = shouldUseSecureCookies(req) ? '; Secure' : ''
+    headers.set(
+      'set-cookie',
+      `${ACCESS_PASSWORD_COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Strict; HttpOnly${secureFlag}`
+    )
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers,
+    })
   }
 
   if (pathname === '/api/access-password/status' && req.method === 'GET') {
