@@ -1313,6 +1313,14 @@ function syncSettingsFooterActions() {
   if (defaultsResetButton) {
     defaultsResetButton.hidden = currentSettingsTarget !== 'settings-defaults'
   }
+
+  // Hide Save Changes on the Reset sub-tab — there are no settings to save there.
+  const saveBtn = document.querySelector('.settings-save-btn')
+  if (saveBtn) {
+    saveBtn.hidden =
+      currentSettingsTarget === 'settings-admin' &&
+      activeAdminSettingsTab === 'settings-reset'
+  }
 }
 
 function applyAdminSettingsTabVisibility() {
@@ -1362,6 +1370,7 @@ function initializeAdminSettingsTabs() {
       clearSettingsStatusAfterDelay()
       activeAdminSettingsTab = target
       applyAdminSettingsTabVisibility()
+      syncSettingsFooterActions()
       if (target === 'settings-reset') {
         initializeResetTab()
         loadUserHistory()
@@ -1664,13 +1673,18 @@ async function handleClearUserHistory() {
           headers: { 'Content-Type': 'application/json', ...getAdminHeaders() },
           body: JSON.stringify(selection),
         })
-        if (!res.ok) throw new Error('Request failed')
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data?.message || `Server error ${res.status}`)
+        }
         setSettingsStatus('User history cleared successfully.')
         pulseSettingsStatus('success')
         await loadUserHistory()
       } catch (err) {
-        setSettingsStatus(`Failed to clear: ${err?.message || err}`)
+        const msg = `Failed to clear: ${err?.message || err}`
+        setSettingsStatus(msg)
         pulseSettingsStatus('error')
+        alert(msg)
       }
     },
   })
