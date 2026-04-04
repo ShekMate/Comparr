@@ -802,8 +802,18 @@ rebuildMovieIndexMaps()
 function upsertRoomUser(roomCode: string, user: User) {
   const room = (persistedState.rooms[roomCode] ??= { users: [] })
   const idx = room.users.findIndex(u => u.name === user.name)
-  if (idx >= 0) room.users[idx] = { name: user.name, responses: user.responses }
-  else room.users.push({ name: user.name, responses: user.responses })
+  if (idx >= 0) {
+    // Preserve importHistory — it lives on PersistedRoomUser but not on the
+    // in-memory User object, so we must not lose it when writing back.
+    const existing = room.users[idx]
+    room.users[idx] = {
+      name: user.name,
+      responses: user.responses,
+      importHistory: existing.importHistory,
+    }
+  } else {
+    room.users.push({ name: user.name, responses: user.responses })
+  }
 }
 
 function removeRoomUser(roomCode: string, userName: string) {
@@ -3849,12 +3859,19 @@ export async function processImdbImportBackground(
         rating_comparr: null,
       }
 
-      // 4. Add response to user
-      userEntry.responses.push({
-        guid,
-        wantsToWatch: null, // seen
-        tmdbId,
-      })
+      // 4. Add response to user (persisted layer + live in-memory session user).
+      // The import operates on persistedState directly, so we must also update
+      // the active in-memory Session user to prevent a subsequent swipe from
+      // calling upsertRoomUser with a stale copy that erases these responses.
+      const newResponse = { guid, wantsToWatch: null as null, tmdbId }
+      userEntry.responses.push(newResponse)
+      const activeSession = activeSessions.get(roomCode)
+      const activeSessionUser = activeSession
+        ? [...activeSession.users.keys()].find((u: User) => u.name === userName)
+        : undefined
+      if (activeSessionUser) {
+        activeSessionUser.responses.push(newResponse)
+      }
       existingGuids.add(guid)
       existingTmdbIds.add(tmdbId)
 
