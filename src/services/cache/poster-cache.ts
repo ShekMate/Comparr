@@ -271,6 +271,10 @@ export async function serveCachedPoster(
   filename: string,
   _req: CompatRequest
 ): Promise<Response | null> {
+  // Guard against path traversal regardless of call site
+  if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\0')) {
+    return null
+  }
   const filepath = `${POSTER_CACHE_DIR}/${filename}`
 
   try {
