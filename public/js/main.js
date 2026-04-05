@@ -7656,16 +7656,16 @@ const main = async () => {
     const deferredSeenItems = []
 
     for (const item of rated) {
-      if (item.movie) {
-        if (item.wantsToWatch === null) {
-          deferredSeenItems.push(item)
-        } else {
-          appendRatedRow(
-            { basePath, likesList, dislikesList, seenList },
-            item.movie,
-            item.wantsToWatch
-          )
-        }
+      if (item.wantsToWatch === null) {
+        // Seen items arrive as slim stubs (no movie property) — full data is
+        // fetched lazily from /api/seen-movies when the Seen tab is opened.
+        deferredSeenItems.push(item)
+      } else if (item.movie) {
+        appendRatedRow(
+          { basePath, likesList, dislikesList, seenList },
+          item.movie,
+          item.wantsToWatch
+        )
       }
     }
 
