@@ -218,8 +218,9 @@ export const getRandomMovie = (() => {
     movies: PlexVideo['Metadata']
   ): PlexVideo['Metadata'][number] => {
     assert(movies.length !== 0, 'allMovies was empty')
-    if (drawnGuids.size === movies.length) {
-      throw new NoMoreMoviesError()
+    if (drawnGuids.size >= movies.length) {
+      log.info(`All ${movies.length} Plex movies have been shown — cycling library`)
+      drawnGuids.clear()
     }
 
     const randomIndex = Math.floor(Math.random() * movies.length)
@@ -286,11 +287,16 @@ export const getFilteredRandomMovie = (() => {
       `No movies match the current filters in your Plex library`
     )
 
-    if (drawnGuids.size === filteredMovies.length) {
+    // Check if all filtered movies have already been drawn (correct per-filter check)
+    const allFilteredDrawn = filteredMovies.every(m => drawnGuids.has(m.guid))
+    if (allFilteredDrawn) {
       log.info(
-        `All ${filteredMovies.length} matching Plex movies have been shown`
+        `All ${filteredMovies.length} matching Plex movies have been shown — cycling library`
       )
-      throw new NoMoreMoviesError()
+      // Reset drawn state for these movies so the library can cycle
+      for (const m of filteredMovies) {
+        drawnGuids.delete(m.guid)
+      }
     }
 
     // Pick a random movie from the filtered list that hasn't been drawn yet
@@ -317,8 +323,17 @@ export const getFilteredRandomMovie = (() => {
       attempts++
     }
 
-    // If we get here, all filtered movies have been drawn
-    throw new NoMoreMoviesError()
+    // All filtered movies have been drawn (exhausted by random search) — cycle and pick first available
+    log.info(
+      `Plex draw exhausted after ${maxAttempts} attempts — cycling library`
+    )
+    for (const m of filteredMovies) {
+      drawnGuids.delete(m.guid)
+    }
+    const movie = filteredMovies[Math.floor(Math.random() * filteredMovies.length)]
+    drawnGuids.add(movie.guid)
+    log.debug(`✅ Selected movie ${movie.title} after library cycle`)
+    return movie
   }
 
   return async (filters?: {
