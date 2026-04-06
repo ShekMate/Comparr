@@ -357,12 +357,17 @@
     max-width: 28rem;
     margin: 0 auto;
     gap: 2rem;
-    padding: 2rem;
+    padding: 1rem 0;
     background: transparent;
-    border-radius: var(--radius-2xl);
-    border: 1px solid transparent;
-    box-shadow: var(--shadow-xl);
-    backdrop-filter: blur(20px);
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  #access-password {
+    margin-left: 0;
+    width: 100%;
   }
 
   /* Card Mobile */
