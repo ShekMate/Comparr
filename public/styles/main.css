@@ -1393,6 +1393,24 @@ body:not(.is-logged-in) .card-stack:empty::after {
   justify-self: center;
 }
 
+.login-back-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  justify-self: start;
+  transition: color 0.2s;
+}
+
+.login-back-btn:hover {
+  color: var(--color-text-primary);
+}
+
 .login-intro h1 {
   margin: 0;
   font-size: clamp(1.3rem, 2.2vw, 1.6rem);

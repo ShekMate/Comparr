@@ -2523,6 +2523,7 @@ async function saveSettingsForm() {
       'Settings saved. Caches are refreshing in the background.'
     )
     pulseSettingsStatus('success')
+    clearSettingsStatusAfterDelay(5000)
     setSettingsDirty(false)
   } catch (err) {
     console.error('Failed to save settings:', err)
@@ -3664,6 +3665,7 @@ async function hydrateSettingsUiIfAuthorized() {
         saveDisplaySettingsForm()
         setSettingsStatus('Display settings saved.')
         pulseSettingsStatus('success')
+        clearSettingsStatusAfterDelay(5000)
         setSettingsDirty(false)
         return
       }
@@ -4409,6 +4411,46 @@ async function login(api) {
     }
 
     loginForm.addEventListener('submit', handleSubmit)
+
+    // Back button: return to mode selection without breaking the promise chain.
+    const backBtn = document.querySelector('.js-login-back-btn')
+    const goBackToModeSelection = () => {
+      setRoomCodeError('')
+      setLoginError('')
+      modeForm.style.display = 'grid'
+      loginForm.style.display = 'none'
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+
+      // Re-attach a one-shot mode handler so the user can re-pick a mode.
+      const handleModeReselect = e => {
+        e.preventDefault()
+        modeForm.removeEventListener('submit', handleModeReselect)
+        const submitter = e.submitter
+        selectedMode = submitter?.value === 'group' ? 'group' : 'personal'
+        modeForm.style.display = 'none'
+        loginForm.style.display = 'grid'
+
+        if (selectedMode === 'personal') {
+          setRoomMode('join', selectedMode)
+          const savedPersonalUser = (
+            localStorage.getItem('personalUser') ||
+            localStorage.getItem('user') ||
+            ''
+          ).trim()
+          const savedPersonalCode = normalizeRoomCodeInput(
+            localStorage.getItem('personalRoomCode') || ''
+          )
+          if (savedPersonalUser) loginForm.elements.name.value = savedPersonalUser
+          if (savedPersonalCode && roomCodeInput) roomCodeInput.value = savedPersonalCode
+        } else {
+          setRoomMode('join', selectedMode)
+        }
+
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+      modeForm.addEventListener('submit', handleModeReselect)
+    }
+    backBtn?.addEventListener('click', goBackToModeSelection)
   })
 }
 
@@ -6182,12 +6224,46 @@ const main = async () => {
   })
 
   // ===== BROWSER NOTIFICATIONS (group mode) =====
+  const showNotificationsBlockedWarning = () => {
+    if (document.getElementById('notifications-blocked-banner')) return
+    const banner = document.createElement('div')
+    banner.id = 'notifications-blocked-banner'
+    banner.style.cssText = `
+      background: #78350f;
+      color: #fef3c7;
+      font-size: 0.82rem;
+      padding: 0.5rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    `
+    const msg = document.createElement('span')
+    msg.textContent =
+      'Browser notifications are blocked — you may miss match alerts in this session.'
+    const dismiss = document.createElement('button')
+    dismiss.textContent = '✕'
+    dismiss.setAttribute('aria-label', 'Dismiss')
+    dismiss.style.cssText =
+      'background:none;border:none;color:inherit;cursor:pointer;font-size:1rem;padding:0;flex-shrink:0;'
+    dismiss.addEventListener('click', () => banner.remove())
+    banner.appendChild(msg)
+    banner.appendChild(dismiss)
+    const swipePanel = document.getElementById('tab-swipe')
+    swipePanel?.prepend(banner)
+  }
+
   if (appMode === 'group' && 'Notification' in window) {
     if (Notification.permission === 'granted') {
       window._comparrNotificationsGranted = true
-    } else if (Notification.permission !== 'denied') {
+    } else if (Notification.permission === 'denied') {
+      showNotificationsBlockedWarning()
+    } else {
       Notification.requestPermission().then(permission => {
         window._comparrNotificationsGranted = permission === 'granted'
+        if (permission === 'denied') {
+          showNotificationsBlockedWarning()
+        }
       })
     }
   }
