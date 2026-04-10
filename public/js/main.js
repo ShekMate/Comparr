@@ -8644,6 +8644,33 @@ toggleExpandAllSeenBtn?.addEventListener('click', () => {
   }
 })
 
+// =========================================================
+// Recommendations List Expand/Collapse All Button
+// =========================================================
+const toggleExpandAllRecommendationsBtn = document.getElementById(
+  'toggle-expand-all-recommendations-btn'
+)
+let allRecommendationsExpanded = false
+
+toggleExpandAllRecommendationsBtn?.addEventListener('click', () => {
+  const recommendationsList = document.querySelector('.recommendations-list')
+  if (!recommendationsList) return
+
+  const cards = recommendationsList.querySelectorAll('.watch-card')
+
+  if (allRecommendationsExpanded) {
+    cards.forEach(card => card.classList.remove('expanded'))
+    toggleExpandAllRecommendationsBtn.classList.remove('all-expanded')
+    toggleExpandAllRecommendationsBtn.title = 'Expand All'
+    allRecommendationsExpanded = false
+  } else {
+    cards.forEach(card => card.classList.add('expanded'))
+    toggleExpandAllRecommendationsBtn.classList.add('all-expanded')
+    toggleExpandAllRecommendationsBtn.title = 'Collapse All'
+    allRecommendationsExpanded = true
+  }
+})
+
 watchFilterApply?.addEventListener('click', () => {
   console.log('🧠 Apply button clicked')
 
