@@ -135,6 +135,66 @@ export class ComparrAPI extends EventTarget {
     }).catch(() => {})
   }
 
+  // ── User auth (Plex / Jellyfin / Emby) ──────────────────────────────────
+
+  async getAuthProviders() {
+    const res = await fetch(`${this._basePath}/api/auth/providers`)
+    if (!res.ok) return { providers: [], userAuthEnabled: false }
+    return res.json().catch(() => ({ providers: [], userAuthEnabled: false }))
+  }
+
+  async getAuthUser() {
+    const res = await fetch(`${this._basePath}/api/auth/me`)
+    if (!res.ok) return { user: null }
+    return res.json().catch(() => ({ user: null }))
+  }
+
+  async requestPlexPin() {
+    const res = await fetch(`${this._basePath}/api/auth/plex/pin`, {
+      method: 'POST',
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || 'Could not start Plex login.')
+    return data
+  }
+
+  async pollPlexPin(pinId) {
+    const res = await fetch(
+      `${this._basePath}/api/auth/plex/pin/${encodeURIComponent(pinId)}`
+    )
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || 'Plex login check failed.')
+    return data
+  }
+
+  async loginWithJellyfin(username, password) {
+    const res = await fetch(`${this._basePath}/api/auth/jellyfin`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || 'Jellyfin login failed.')
+    return data
+  }
+
+  async loginWithEmby(username, password) {
+    const res = await fetch(`${this._basePath}/api/auth/emby`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || 'Emby login failed.')
+    return data
+  }
+
+  async logoutUser() {
+    await fetch(`${this._basePath}/api/auth/logout`, {
+      method: 'POST',
+    }).catch(() => {})
+  }
+
   async checkRoomExists(roomCode) {
     const normalizedCode = String(roomCode || '')
       .trim()

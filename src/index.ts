@@ -20,6 +20,7 @@ import {
   getPort,
   getMaxBodySize,
   getAccessPassword,
+  isUserAuthEnabled,
 } from './core/config.ts'
 import { getDataDir } from './core/env.ts'
 import { getSettings, updateSettings, resetSettings } from './core/settings.ts'
@@ -27,6 +28,8 @@ import { timingSafeEqual, verifyPassword } from './core/security.ts'
 import {
   validateAccessSession,
 } from './core/access-session-store.ts'
+import { getUserSession } from './core/user-session-store.ts'
+import { handleAuthRoutes, getUserTokenFromCookie } from './infra/http/routes/auth.ts'
 import { getLinkTypeForRequest } from './core/i18n.ts'
 import {
   handleLogin,
@@ -116,6 +119,23 @@ const EXEMPT_GLOBAL_ACCESS_PASSWORD_PATHS = new Set([
   '/api/settings-access',
   '/api/client-config',
   '/api/health',
+])
+
+// Paths that bypass the user-auth gate entirely (auth endpoints themselves,
+// plus the paths that must work before login).
+const EXEMPT_USER_AUTH_PATHS = new Set([
+  '/api/auth/providers',
+  '/api/auth/me',
+  '/api/auth/logout',
+  '/api/auth/plex/pin',
+  '/api/auth/jellyfin',
+  '/api/auth/emby',
+  '/api/access-password/verify',
+  '/api/access-password/status',
+  '/api/settings-access',
+  '/api/client-config',
+  '/api/health',
+  '/api/csrf-token',
 ])
 const EXEMPT_CSRF_PATHS = new Set(['/api/csrf-token'])
 
@@ -436,6 +456,36 @@ for await (const req of server) {
         headers: makeHeaders(req, 'application/json'),
       })
       continue
+    }
+
+    // User auth gate: if enabled, require a valid user session for API calls.
+    // Auth endpoints and access-password paths are exempt so login can proceed.
+    if (
+      p.startsWith('/api/') &&
+      isUserAuthEnabled() &&
+      !EXEMPT_USER_AUTH_PATHS.has(p) &&
+      // Allow Plex pin polling paths (/api/auth/plex/pin/:id)
+      !p.startsWith('/api/auth/')
+    ) {
+      const userToken = getUserTokenFromCookie(req)
+      if (!userToken || !getUserSession(userToken)) {
+        responseStatus = 401
+        await req.respond({
+          status: responseStatus,
+          body: JSON.stringify({ error: 'Authentication required.', code: 'USER_AUTH_REQUIRED' }),
+          headers: makeHeaders(req, 'application/json'),
+        })
+        continue
+      }
+    }
+
+    // Auth routes (/api/auth/*)
+    if (p.startsWith('/api/auth/')) {
+      const authResponse = await handleAuthRoutes(req, p)
+      if (authResponse) {
+        await req.respondWith(authResponse)
+        continue
+      }
     }
 
     if (p.startsWith('/api/') && isStateChangingMethod(req.method)) {

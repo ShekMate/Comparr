@@ -322,6 +322,10 @@ const ADMIN_ONLY_SETTINGS = new Set([
   // Wizard completion state is admin-only: a regular user must not be able to
   // reopen setup mode by setting this back to 'false'.
   'SETUP_WIZARD_COMPLETED',
+  'USER_AUTH_ENABLED',
+  'PLEX_RESTRICT_TO_SERVER',
+  // PLEX_CLIENT_ID is managed automatically; prevent user modification
+  'PLEX_CLIENT_ID',
 ])
 
 const sanitizeSettingsForClient = (
@@ -495,6 +499,10 @@ export async function handleSettingsRoutes(
           String(settings.ACCESS_PASSWORD ?? '').trim()
         ),
         adminPasswordSet: Boolean(String(settings.ADMIN_PASSWORD ?? '').trim()),
+        userAuthEnabled:
+          String(settings.USER_AUTH_ENABLED || '').toLowerCase() === 'true',
+        plexRestrictToServer:
+          String(settings.PLEX_RESTRICT_TO_SERVER || '').toLowerCase() === 'true',
       }),
       { status: 200, headers: makeJsonHeaders(req) }
     )
