@@ -5,6 +5,7 @@ import { escapeHtml } from './utils.js'
 function openTrailerModal(trailerKey) {
   document.getElementById('trailer-modal')?.remove()
 
+  const origin = encodeURIComponent(location.origin)
   const modal = document.createElement('div')
   modal.id = 'trailer-modal'
   modal.className = 'trailer-modal-overlay'
@@ -16,7 +17,7 @@ function openTrailerModal(trailerKey) {
       <div class="trailer-modal-iframe-wrap">
         <iframe
           class="trailer-modal-iframe"
-          src="https://www.youtube.com/embed/${encodeURIComponent(trailerKey)}?autoplay=1&rel=0"
+          src="https://www.youtube.com/embed/${encodeURIComponent(trailerKey)}?autoplay=1&rel=0&enablejsapi=1&origin=${origin}"
           allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
           allowfullscreen
           referrerpolicy="strict-origin-when-cross-origin"
@@ -25,10 +26,38 @@ function openTrailerModal(trailerKey) {
     </div>
   `
 
+  const showFallback = () => {
+    const wrap = modal.querySelector('.trailer-modal-iframe-wrap')
+    if (!wrap) return
+    wrap.innerHTML = `
+      <div class="trailer-modal-blocked">
+        <i class="fas fa-lock"></i>
+        <p>This trailer can't be embedded because it's age-restricted on YouTube.</p>
+        <a class="trailer-modal-yt-link"
+           href="https://www.youtube.com/watch?v=${encodeURIComponent(trailerKey)}"
+           target="_blank" rel="noopener noreferrer">
+          <i class="fab fa-youtube"></i> Watch on YouTube
+        </a>
+      </div>
+    `
+  }
+
+  const onMessage = e => {
+    if (e.origin !== 'https://www.youtube.com') return
+    try {
+      const data = JSON.parse(e.data)
+      if (data.event === 'onError' && (data.info === 101 || data.info === 150)) {
+        showFallback()
+      }
+    } catch {}
+  }
+
   const close = () => {
-    modal.querySelector('iframe').src = ''
+    const iframe = modal.querySelector('iframe')
+    if (iframe) iframe.src = ''
     modal.remove()
     document.removeEventListener('keydown', onEsc)
+    window.removeEventListener('message', onMessage)
   }
 
   const onEsc = e => { if (e.key === 'Escape') close() }
@@ -36,6 +65,7 @@ function openTrailerModal(trailerKey) {
   modal.addEventListener('click', e => { if (e.target === modal) close() })
   modal.querySelector('.trailer-modal-close').addEventListener('click', close)
   document.addEventListener('keydown', onEsc)
+  window.addEventListener('message', onMessage)
 
   document.body.appendChild(modal)
 }
