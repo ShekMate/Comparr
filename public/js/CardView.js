@@ -485,9 +485,17 @@ export default class CardView {
       lines.push(`<div class="crew-title">${titleWithYear}</div>`)
     }
 
-    // IMDb/TMDb ratings line (above content metadata line)
-    if (rating) {
-      lines.push(`<div class="card-ratings">${rating}</div>`)
+    // IMDb/TMDb ratings + trailer button on same row
+    if (rating || trailerKey) {
+      const trailerBtnHtml = trailerKey
+        ? `<button class="card-trailer-btn" type="button" data-trailer-key="${escapeHtml(trailerKey)}"><i class="fas fa-play"></i> Trailer</button>`
+        : ''
+      lines.push(
+        `<div class="card-ratings-row" onclick="event.stopPropagation()">` +
+        (rating ? `<div class="card-ratings">${rating}</div>` : '') +
+        trailerBtnHtml +
+        `</div>`
+      )
     }
 
     // Content Rating + Genres combined line
@@ -700,14 +708,6 @@ export default class CardView {
           .map(escapeHtml)
           .join(', ')}${hasMore ? ' & more' : ''}</div>`
       )
-    }
-
-    if (trailerKey) {
-      lines.push(`<div class="card-trailer-wrap" onclick="event.stopPropagation()">
-        <button class="card-trailer-btn" type="button" data-trailer-key="${escapeHtml(trailerKey)}">
-          <i class="fab fa-youtube"></i> Watch Trailer
-        </button>
-      </div>`)
     }
 
     console.log('DEBUG lines generated:', lines.length)
