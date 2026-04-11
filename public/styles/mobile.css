@@ -1,5 +1,5 @@
 :root {
-  --swipe-card-width: 325px;
+  --swipe-card-width: min(325px, calc(100vw - 2rem));
   --swipe-rating-font-size: 1.05rem;
   --swipe-rating-logo-height: 16px;
   --swipe-card-title-size: 1rem;
@@ -383,10 +383,53 @@
     max-width: 100%;
   }
 
+  /* Swipe Layout - center card stack and align controls */
+  #tab-swipe {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 1rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .card-stack:empty {
+    width: var(--swipe-card-width);
+    min-height: 60vh;
+  }
+
+  .swipe-rate-controls {
+    width: var(--swipe-card-width);
+    margin-top: 0.75rem;
+  }
+
   /* Card Mobile */
   .card {
     position: relative;
     gap: 0 !important;
+    backdrop-filter: none;
+  }
+
+  /* No desktop hover-lift on touch */
+  .card:hover {
+    transform: none;
+    box-shadow: var(--shadow-xl);
+  }
+
+  /* Poster fills card width — removes the 80% desktop gap */
+  .card .poster {
+    width: 100%;
+  }
+
+  /* Overlay title size — 2rem is too large on narrow cards */
+  .poster-title {
+    font-size: 1.25rem;
+    line-height: 1.2;
+  }
+
+  /* Tighter overlay padding on small screen */
+  .poster-overlay-content {
+    padding: 0.5rem 0.6rem;
   }
 
   .card-meta {
