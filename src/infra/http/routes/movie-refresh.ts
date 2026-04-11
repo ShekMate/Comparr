@@ -218,6 +218,7 @@ export async function handleMovieRefreshRoute(
         imdbId: enriched.imdbId || movieData.imdbId,
         tmdbId: enriched.tmdbId || movieData.tmdbId,
         guid: enriched.guid || movieData.guid,
+        trailerKey: enriched.trailerKey || movieData.trailerKey || null,
       }
 
       try {
@@ -247,6 +248,7 @@ export async function handleMovieRefreshRoute(
           enriched.original_language || movieData.original_language || null,
         originalLanguage:
           enriched.originalLanguage || movieData.originalLanguage || null,
+        trailerKey: enriched.trailerKey || movieData.trailerKey || null,
         rid,
       }),
       { status: 200, headers: makeHeaders(req, 'application/json') }
