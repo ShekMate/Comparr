@@ -411,35 +411,6 @@
     margin-top: 0.75rem;
   }
 
-  /* Swipe direction feedback — visible at any scroll position on expanded cards.
-     box-shadow ring shows at the card edges (outside overflow:hidden bounds).
-     ::after tints the interior, covering card-meta when expanded. */
-  .card.is-swiping-left {
-    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.6), 0 0 24px rgba(239, 68, 68, 0.25);
-  }
-
-  .card.is-swiping-right {
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.6), 0 0 24px rgba(16, 185, 129, 0.25);
-  }
-
-  .card.is-swiping-left::after,
-  .card.is-swiping-right::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    z-index: 50;
-    border-radius: var(--radius-2xl);
-  }
-
-  .card.is-swiping-left::after {
-    background: linear-gradient(to right, rgba(239, 68, 68, 0.18) 0%, transparent 65%);
-  }
-
-  .card.is-swiping-right::after {
-    background: linear-gradient(to left, rgba(16, 185, 129, 0.18) 0%, transparent 65%);
-  }
-
   /* Card Mobile */
   .card {
     position: relative;

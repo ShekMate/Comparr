@@ -359,10 +359,6 @@ export default class CardView {
       )
       this.node.style.transform = `translate3d(${currentOffsetX}px, ${currentOffsetY}px, 0) rotate(${rotateDeg}deg)`
       this.node.style.opacity = `${opacity}`
-
-      // Direction hint classes — drives colored glow/overlay in CSS
-      this.node.classList.toggle('is-swiping-left', currentOffsetX < -20)
-      this.node.classList.toggle('is-swiping-right', currentOffsetX > 20)
     }
 
     this.node.addEventListener('pointermove', handleMove, { passive: false })
@@ -370,7 +366,7 @@ export default class CardView {
       'pointerup',
       async () => {
         this.node.removeEventListener('pointermove', handleMove)
-        this.node.classList.remove('is-dragging', 'is-swiping-left', 'is-swiping-right')
+        this.node.classList.remove('is-dragging')
         this.node.style.willChange = ''
         if (hasMoved) {
           const elapsedMs = Math.max(1, performance.now() - dragStartTime)
@@ -410,7 +406,7 @@ export default class CardView {
       'pointercancel',
       () => {
         this.node.removeEventListener('pointermove', handleMove)
-        this.node.classList.remove('is-dragging', 'is-swiping-left', 'is-swiping-right')
+        this.node.classList.remove('is-dragging')
         this.node.style.willChange = ''
         this.animateSnapBack()
       },
