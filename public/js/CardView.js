@@ -2,6 +2,44 @@ import { escapeHtml } from './utils.js'
 
 // deno-lint-ignore-file
 
+function openTrailerModal(trailerKey) {
+  document.getElementById('trailer-modal')?.remove()
+
+  const modal = document.createElement('div')
+  modal.id = 'trailer-modal'
+  modal.className = 'trailer-modal-overlay'
+  modal.innerHTML = `
+    <div class="trailer-modal-content">
+      <button class="trailer-modal-close" type="button" aria-label="Close trailer">
+        <i class="fas fa-times"></i>
+      </button>
+      <div class="trailer-modal-iframe-wrap">
+        <iframe
+          class="trailer-modal-iframe"
+          src="https://www.youtube.com/embed/${encodeURIComponent(trailerKey)}?autoplay=1&rel=0"
+          allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+          allowfullscreen
+          referrerpolicy="strict-origin-when-cross-origin"
+        ></iframe>
+      </div>
+    </div>
+  `
+
+  const close = () => {
+    modal.querySelector('iframe').src = ''
+    modal.remove()
+    document.removeEventListener('keydown', onEsc)
+  }
+
+  const onEsc = e => { if (e.key === 'Escape') close() }
+
+  modal.addEventListener('click', e => { if (e.target === modal) close() })
+  modal.querySelector('.trailer-modal-close').addEventListener('click', close)
+  document.addEventListener('keydown', onEsc)
+
+  document.body.appendChild(modal)
+}
+
 function getLanguageDisplayName(value) {
   const raw = String(value || '').trim()
   if (!raw) return ''
@@ -175,6 +213,12 @@ export default class CardView {
 
     plotEl?.addEventListener('touchend', handlePlotToggle, { passive: false })
     plotEl?.addEventListener('click', handlePlotToggle)
+
+    const trailerBtn = node.querySelector('.card-trailer-btn[data-trailer-key]')
+    trailerBtn?.addEventListener('click', e => {
+      e.stopPropagation()
+      openTrailerModal(trailerBtn.dataset.trailerKey)
+    })
 
     // Attach swipe handler ONLY to poster to allow scrolling on text/metadata areas
     // Pointer events support touch + mouse, so desktop users can click-and-drag too.
@@ -660,9 +704,9 @@ export default class CardView {
 
     if (trailerKey) {
       lines.push(`<div class="card-trailer-wrap" onclick="event.stopPropagation()">
-        <a class="card-trailer-btn" href="https://www.youtube.com/watch?v=${escapeHtml(trailerKey)}" target="_blank" rel="noopener noreferrer">
+        <button class="card-trailer-btn" type="button" data-trailer-key="${escapeHtml(trailerKey)}">
           <i class="fab fa-youtube"></i> Watch Trailer
-        </a>
+        </button>
       </div>`)
     }
 
