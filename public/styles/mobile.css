@@ -425,8 +425,12 @@
   }
 
   /* Poster fills card width — removes the 80% desktop gap */
+  /* touch-action:none — hand ALL touch events to JS immediately;
+     prevents browser from claiming the gesture as a scroll before
+     setPointerCapture fires, which was the cause of pointercancel glitches */
   .card .poster {
     width: 100%;
+    touch-action: none;
   }
 
   /* Overlay title size — 2rem is too large on narrow cards */

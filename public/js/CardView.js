@@ -314,7 +314,12 @@ export default class CardView {
       return
     }
 
-    // Don't prevent default or capture yet - wait for movement
+    // Cancel any in-flight snap-back animation so it doesn't fight the new drag
+    this.node.getAnimations().forEach(a => a.cancel())
+    this.node.style.transform = ''
+    this.node.style.opacity = ''
+    this.node.style.transition = ''
+
     let hasMoved = false
     let currentOffsetX = 0
     let currentOffsetY = 0
@@ -334,7 +339,8 @@ export default class CardView {
 
         // Check if movement is primarily vertical (scrolling) or horizontal (swiping)
         if (deltaY > deltaX) {
-          // Vertical movement detected - allow scrolling, stop tracking this gesture
+          // Vertical movement — release capture so browser handles the scroll
+          this.node.releasePointerCapture(startEvent.pointerId)
           this.node.removeEventListener('pointermove', handleMove)
           return
         }
@@ -342,8 +348,6 @@ export default class CardView {
         // Now we know it's a horizontal swipe, not a tap or scroll
         hasMoved = true
         this.didDragCard = true
-        startEvent.preventDefault()
-        this.node.setPointerCapture(startEvent.pointerId)
         this.node.classList.add('is-dragging')
         this.node.style.transition = 'none'
         this.node.style.willChange = 'transform, opacity'
@@ -412,6 +416,11 @@ export default class CardView {
       },
       { once: true }
     )
+
+    // Capture after listeners are attached so the node is ready to receive events.
+    // Called here (pointerdown phase) not in pointermove — by pointermove the browser
+    // may have already claimed the gesture as a scroll, triggering pointercancel.
+    this.node.setPointerCapture(startEvent.pointerId)
   }
 
   animateSnapBack() {
