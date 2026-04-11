@@ -175,6 +175,7 @@ interface MediaItem {
   watchProviders?: any[]
   streamingLink?: string | null
   tmdbId?: number | null
+  trailerKey?: string | null
 }
 
 interface DiscoverQueue {
@@ -2400,6 +2401,7 @@ class Session {
               plexMovie.original_language ||
               null,
             production_countries: plexMovie.production_countries || [],
+            trailerKey: extra?.trailerKey || null,
           }
 
           validMovies.push(movie)
@@ -3416,6 +3418,7 @@ export interface ImportedMovie {
   streamingServices?: { subscription: any[]; free: any[] }
   watchProviders?: any[]
   streamingLink?: string | null
+  trailerKey?: string | null
 }
 
 /**
@@ -3497,6 +3500,7 @@ export async function bulkImportSeen(
       },
       watchProviders: movie.watchProviders ?? [],
       streamingLink: movie.streamingLink ?? null,
+      trailerKey: movie.trailerKey ?? null,
     }
 
     // Store imdbId as ad-hoc property (used by enrich/refresh lookups)
