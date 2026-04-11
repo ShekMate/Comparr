@@ -249,6 +249,7 @@
     margin-top: 0.05rem !important;
     padding-top: 0 !important;
     clear: both !important;
+    flex-wrap: wrap;
   }
 
   .rating-separator {
