@@ -245,7 +245,7 @@
 
   /* Rating Logos */
   .card-ratings {
-    gap: 0.05rem;
+    gap: 0.4rem;
     margin-top: 0.05rem !important;
     padding-top: 0 !important;
     clear: both !important;
@@ -253,8 +253,15 @@
   }
 
   .rating-separator {
-    margin: 0 0.08rem;
+    margin: 0 0.15rem;
     font-size: 0.85em;
+  }
+
+  /* Metadata crew line — always wrap on mobile, no truncation */
+  .crew-line {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
   }
 
   /* Section Spacing */
