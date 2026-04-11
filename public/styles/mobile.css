@@ -368,6 +368,11 @@
     backdrop-filter: none;
   }
 
+  /* backdrop-filter on inputs causes webkit caret offset bug on mobile */
+  .password-form input {
+    backdrop-filter: none;
+  }
+
   #access-password {
     margin-left: 0;
     width: 100%;
