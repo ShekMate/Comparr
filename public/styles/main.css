@@ -5791,6 +5791,50 @@ footer {
   border: none;
 }
 
+.trailer-modal-blocked {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: #0f172a;
+  color: var(--color-text-secondary);
+  text-align: center;
+  padding: 2rem;
+}
+
+.trailer-modal-blocked .fas {
+  font-size: 2.25rem;
+  color: var(--color-surface-lighter);
+}
+
+.trailer-modal-blocked p {
+  font-size: 0.9rem;
+  max-width: 300px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.trailer-modal-yt-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1.25rem;
+  background: #ff0000;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.trailer-modal-yt-link:hover {
+  background: #cc0000;
+}
+
 /* =========================================================
    ROOM MEMBERS WIDGET
    ========================================================= */
