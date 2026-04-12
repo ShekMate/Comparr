@@ -1220,6 +1220,12 @@ async function loadClientConfig() {
     if (data?.adminPasswordSet !== undefined) {
       window.ADMIN_PASSWORD_SET = Boolean(data.adminPasswordSet)
     }
+    if (data?.userAuthEnabled !== undefined) {
+      window.USER_AUTH_ENABLED = Boolean(data.userAuthEnabled)
+    }
+    if (data?.plexRestrictToServer !== undefined) {
+      window.PLEX_RESTRICT_TO_SERVER = Boolean(data.plexRestrictToServer)
+    }
     updateHostManagedSubscriptionServiceOptions()
   } catch (err) {
     console.warn('Client config fetch failed:', err)
@@ -2735,7 +2741,7 @@ function createFirstRunGuideModal() {
 
   const updateActionButtons = screen => {
     backButton.hidden = history.length <= 1 || screen.type === 'setup-complete'
-    skipButton.hidden = !['security', 'requests'].includes(screen.type)
+    skipButton.hidden = !['security', 'user-auth', 'requests'].includes(screen.type)
     saveButton.hidden = screen.type !== 'defaults'
     nextButton.disabled = false
     skipButton.disabled = false
@@ -3179,6 +3185,41 @@ function createFirstRunGuideModal() {
       return
     }
 
+    if (screen.type === 'user-auth') {
+      renderRequirementCopy('')
+      title.textContent = 'User Authentication'
+      copy.textContent =
+        'Let users sign in with their Plex, Jellyfin, or Emby account. The first user to sign in automatically becomes the admin.'
+
+      const currentEnabled = window.USER_AUTH_ENABLED === true || window.USER_AUTH_ENABLED === 'true'
+      const currentPlexRestrict = window.PLEX_RESTRICT_TO_SERVER === true || window.PLEX_RESTRICT_TO_SERVER === 'true'
+      const plexConfigured = Boolean(window.PLEX_CONFIGURED)
+      const plexRestrictRow = plexConfigured
+        ? `<label class="first-run-user-auth-row">
+            <input type="checkbox" id="first-run-plex-restrict" ${currentPlexRestrict ? 'checked' : ''} />
+            <div>
+              <strong>Restrict to this Plex server</strong>
+              <p class="first-run-guide-instruction">Only allow users who are members of your Plex server to log in.</p>
+            </div>
+          </label>`
+        : ''
+
+      body.innerHTML = `
+        <label class="first-run-user-auth-row">
+          <input type="checkbox" id="first-run-user-auth-enabled" ${currentEnabled ? 'checked' : ''} />
+          <div>
+            <strong>Enable user authentication</strong>
+            <p class="first-run-guide-instruction">Require users to sign in with their media server account.</p>
+          </div>
+        </label>
+        ${plexRestrictRow}
+        <p id="first-run-user-auth-note" class="first-run-guide-instruction" style="margin-top:0.75rem">
+          You can always change these settings later under Settings → Security &amp; Access.
+        </p>
+      `
+      return
+    }
+
     if (screen.type === 'setup-complete') {
       renderRequirementCopy('')
       title.textContent = 'Setup Complete'
@@ -3253,7 +3294,7 @@ function createFirstRunGuideModal() {
 
       // Nothing actually changed — just advance
       if (Object.keys(settingsToSave).length === 0) {
-        return { type: 'flow' }
+        return { type: 'user-auth' }
       }
 
       try {
@@ -3269,6 +3310,35 @@ function createFirstRunGuideModal() {
       } catch (err) {
         setWizardStatus(
           err?.message || 'Failed to save security settings.',
+          'error'
+        )
+        return null
+      }
+
+      return { type: 'user-auth' }
+    }
+
+    if (current.type === 'user-auth') {
+      const enabledEl = body.querySelector('#first-run-user-auth-enabled')
+      const plexRestrictEl = body.querySelector('#first-run-plex-restrict')
+
+      const enabled = enabledEl?.checked ?? false
+      const plexRestrict = plexRestrictEl?.checked ?? false
+
+      const settingsToSave = {
+        USER_AUTH_ENABLED: enabled ? 'true' : 'false',
+      }
+      if (plexRestrictEl) {
+        settingsToSave.PLEX_RESTRICT_TO_SERVER = plexRestrict ? 'true' : 'false'
+      }
+
+      try {
+        await saveSettingsSubset(settingsToSave)
+        window.USER_AUTH_ENABLED = enabled
+        if (plexRestrictEl) window.PLEX_RESTRICT_TO_SERVER = plexRestrict
+      } catch (err) {
+        setWizardStatus(
+          err?.message || 'Failed to save authentication settings.',
           'error'
         )
         return null
@@ -4431,6 +4501,52 @@ async function login(api) {
       })
     }
   }
+
+  // Update sidebar user indicator when a user identity is available
+  const updateSidebarUser = user => {
+    const sidebarUser = document.querySelector('.js-sidebar-user')
+    if (!sidebarUser) return
+
+    if (!user) {
+      sidebarUser.style.display = 'none'
+      return
+    }
+
+    const avatarEl = sidebarUser.querySelector('.js-sidebar-user-avatar')
+    const nameEl = sidebarUser.querySelector('.js-sidebar-user-name')
+    const logoutBtn = sidebarUser.querySelector('.js-sidebar-user-logout')
+
+    if (nameEl) nameEl.textContent = user.username || ''
+
+    if (avatarEl) {
+      if (user.avatarUrl) {
+        // Use the avatar proxy so images load within CSP
+        const base = location.pathname.replace(/\/(index\.html)?$/, '')
+        avatarEl.src = `${base}/api/auth/avatar?url=${encodeURIComponent(user.avatarUrl)}`
+        avatarEl.alt = user.username || ''
+        avatarEl.style.display = ''
+      } else {
+        avatarEl.style.display = 'none'
+      }
+    }
+
+    if (logoutBtn) {
+      logoutBtn.onclick = async () => {
+        await api.logoutUser()
+        await api.logoutAccessSession()
+        localStorage.removeItem('user')
+        localStorage.removeItem('roomCode')
+        localStorage.removeItem('personalUser')
+        localStorage.removeItem('personalRoomCode')
+        sessionStorage.clear()
+        window.location.reload()
+      }
+    }
+
+    sidebarUser.style.display = 'flex'
+  }
+
+  if (currentUser) updateSidebarUser(currentUser)
 
   // User auth complete (or not required) — show the mode picker
   showModeForm()
@@ -7104,6 +7220,7 @@ const main = async () => {
         // of being auto-authenticated back into the same room/user (which
         // would cause every movie to be reported as "already imported").
         setTimeout(async () => {
+          await api.logoutUser()
           await api.logoutAccessSession()
           localStorage.removeItem('user')
           localStorage.removeItem('roomCode')

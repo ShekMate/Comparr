@@ -450,9 +450,15 @@ export async function handleSettingsRoutes(
     }
     const headers = makeJsonHeaders(req)
     const secureFlag = shouldUseSecureCookies(req) ? '; Secure' : ''
-    headers.set(
+    headers.append(
       'set-cookie',
       `${ACCESS_PASSWORD_COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Strict; HttpOnly${secureFlag}`
+    )
+    // Also clear the per-user auth session cookie so the user identity is
+    // wiped whenever the access-password gate is re-engaged.
+    headers.append(
+      'set-cookie',
+      `comparr_user=; Path=/; Max-Age=0; SameSite=Strict; HttpOnly${secureFlag}`
     )
     return new Response(JSON.stringify({ success: true }), {
       status: 200,

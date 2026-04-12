@@ -474,6 +474,78 @@ export async function handleAuthRoutes(
     }
   }
 
+  // ── GET /api/auth/avatar ─────────────────────────────────────────────────
+  // Proxy an avatar image from an allowed media-server origin so the browser
+  // can load it without CSP violations (img-src 'self' only).
+  // Query param: url (URL-encoded absolute avatar URL from Plex/Jellyfin/Emby)
+  if (pathname === '/api/auth/avatar' && req.method === 'GET') {
+    const rawUrl = new URL(req.url).searchParams.get('url') || ''
+    if (!rawUrl) {
+      return new Response('Missing url parameter', { status: 400 })
+    }
+
+    let targetUrl: URL
+    try {
+      targetUrl = new URL(rawUrl)
+    } catch {
+      return new Response('Invalid url parameter', { status: 400 })
+    }
+
+    // Only proxy from configured media server origins to prevent SSRF abuse.
+    const allowedOrigins: string[] = []
+    const plexUrl = getPlexUrl()
+    const embyUrl = getEmbyUrl()
+    const jellyfinUrl = getJellyfinUrl()
+    if (plexUrl) {
+      try { allowedOrigins.push(new URL(plexUrl).origin) } catch { /* ignore */ }
+      // Plex avatars are served from plex.tv CDN
+      allowedOrigins.push('https://plex.direct')
+      allowedOrigins.push('https://metadata.provider.plex.tv')
+    }
+    if (embyUrl) {
+      try { allowedOrigins.push(new URL(embyUrl).origin) } catch { /* ignore */ }
+    }
+    if (jellyfinUrl) {
+      try { allowedOrigins.push(new URL(jellyfinUrl).origin) } catch { /* ignore */ }
+    }
+
+    const targetOrigin = targetUrl.origin
+    if (!allowedOrigins.some(o => targetOrigin === o || targetOrigin.endsWith(o.replace(/^https?:\/\//, '.')))) {
+      log.warn(`[auth] Avatar proxy blocked disallowed origin: ${targetOrigin}`)
+      return new Response('Disallowed avatar origin', { status: 403 })
+    }
+
+    try {
+      const upstream = await fetch(targetUrl.toString(), {
+        headers: { 'User-Agent': 'Comparr/1.0' },
+        signal: AbortSignal.timeout(8000),
+      })
+
+      if (!upstream.ok) {
+        return new Response('Avatar fetch failed', { status: 502 })
+      }
+
+      const contentType = upstream.headers.get('content-type') || 'image/jpeg'
+      // Only proxy image content types
+      if (!contentType.startsWith('image/')) {
+        return new Response('Not an image', { status: 415 })
+      }
+
+      const body = await upstream.arrayBuffer()
+      return new Response(body, {
+        status: 200,
+        headers: {
+          'content-type': contentType,
+          'cache-control': 'public, max-age=86400',
+          'x-content-type-options': 'nosniff',
+        },
+      })
+    } catch (err) {
+      log.error(`[auth] Avatar proxy error: ${err}`)
+      return new Response('Avatar proxy error', { status: 502 })
+    }
+  }
+
   return null
 }
 

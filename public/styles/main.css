@@ -1977,6 +1977,56 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 /* =========================================================
+   SIDEBAR USER INDICATOR
+   ========================================================= */
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--color-line);
+  margin-top: auto;
+  min-width: 0;
+}
+
+.sidebar-user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--color-line);
+}
+
+.sidebar-user-name {
+  flex: 1;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-user-logout {
+  background: none;
+  border: none;
+  color: var(--color-text-muted, #888);
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  font-size: 0.9rem;
+  transition: color 0.15s;
+}
+
+.sidebar-user-logout:hover {
+  color: var(--color-accent, #e5383b);
+}
+
+/* =========================================================
    USER AUTH SCREEN
    ========================================================= */
 .user-auth-form {
@@ -5359,6 +5409,44 @@ footer {
   width: 100%;
   max-width: 100%;
   margin: 0;
+}
+
+/* ─── Wizard User-Auth Screen ───────────────────────────────── */
+
+.first-run-user-auth-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  cursor: pointer;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-line);
+  margin-bottom: 0.5rem;
+  transition: border-color 0.15s;
+}
+
+.first-run-user-auth-row:hover {
+  border-color: rgba(129, 140, 248, 0.5);
+}
+
+.first-run-user-auth-row input[type='checkbox'] {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  accent-color: var(--color-accent, #6366f1);
+}
+
+.first-run-user-auth-row div > strong {
+  display: block;
+  font-size: 0.9rem;
+  margin-bottom: 0.15rem;
+}
+
+.first-run-user-auth-row .first-run-guide-instruction {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted, #8892a4);
 }
 
 /* ─── Reset Tab ─────────────────────────────────────────────── */
