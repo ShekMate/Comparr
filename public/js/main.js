@@ -1220,6 +1220,12 @@ async function loadClientConfig() {
     if (data?.adminPasswordSet !== undefined) {
       window.ADMIN_PASSWORD_SET = Boolean(data.adminPasswordSet)
     }
+    if (data?.userAuthEnabled !== undefined) {
+      window.USER_AUTH_ENABLED = Boolean(data.userAuthEnabled)
+    }
+    if (data?.plexRestrictToServer !== undefined) {
+      window.PLEX_RESTRICT_TO_SERVER = Boolean(data.plexRestrictToServer)
+    }
     updateHostManagedSubscriptionServiceOptions()
   } catch (err) {
     console.warn('Client config fetch failed:', err)
@@ -2735,7 +2741,7 @@ function createFirstRunGuideModal() {
 
   const updateActionButtons = screen => {
     backButton.hidden = history.length <= 1 || screen.type === 'setup-complete'
-    skipButton.hidden = !['security', 'requests'].includes(screen.type)
+    skipButton.hidden = !['security', 'user-auth', 'requests'].includes(screen.type)
     saveButton.hidden = screen.type !== 'defaults'
     nextButton.disabled = false
     skipButton.disabled = false
@@ -3179,6 +3185,41 @@ function createFirstRunGuideModal() {
       return
     }
 
+    if (screen.type === 'user-auth') {
+      renderRequirementCopy('')
+      title.textContent = 'User Authentication'
+      copy.textContent =
+        'Let users sign in with their Plex, Jellyfin, or Emby account. The first user to sign in automatically becomes the admin.'
+
+      const currentEnabled = window.USER_AUTH_ENABLED === true || window.USER_AUTH_ENABLED === 'true'
+      const currentPlexRestrict = window.PLEX_RESTRICT_TO_SERVER === true || window.PLEX_RESTRICT_TO_SERVER === 'true'
+      const plexConfigured = Boolean(window.PLEX_CONFIGURED)
+      const plexRestrictRow = plexConfigured
+        ? `<label class="first-run-user-auth-row">
+            <input type="checkbox" id="first-run-plex-restrict" ${currentPlexRestrict ? 'checked' : ''} />
+            <div>
+              <strong>Restrict to this Plex server</strong>
+              <p class="first-run-guide-instruction">Only allow users who are members of your Plex server to log in.</p>
+            </div>
+          </label>`
+        : ''
+
+      body.innerHTML = `
+        <label class="first-run-user-auth-row">
+          <input type="checkbox" id="first-run-user-auth-enabled" ${currentEnabled ? 'checked' : ''} />
+          <div>
+            <strong>Enable user authentication</strong>
+            <p class="first-run-guide-instruction">Require users to sign in with their media server account.</p>
+          </div>
+        </label>
+        ${plexRestrictRow}
+        <p id="first-run-user-auth-note" class="first-run-guide-instruction" style="margin-top:0.75rem">
+          You can always change these settings later under Settings → Security &amp; Access.
+        </p>
+      `
+      return
+    }
+
     if (screen.type === 'setup-complete') {
       renderRequirementCopy('')
       title.textContent = 'Setup Complete'
@@ -3253,7 +3294,7 @@ function createFirstRunGuideModal() {
 
       // Nothing actually changed — just advance
       if (Object.keys(settingsToSave).length === 0) {
-        return { type: 'flow' }
+        return { type: 'user-auth' }
       }
 
       try {
@@ -3269,6 +3310,35 @@ function createFirstRunGuideModal() {
       } catch (err) {
         setWizardStatus(
           err?.message || 'Failed to save security settings.',
+          'error'
+        )
+        return null
+      }
+
+      return { type: 'user-auth' }
+    }
+
+    if (current.type === 'user-auth') {
+      const enabledEl = body.querySelector('#first-run-user-auth-enabled')
+      const plexRestrictEl = body.querySelector('#first-run-plex-restrict')
+
+      const enabled = enabledEl?.checked ?? false
+      const plexRestrict = plexRestrictEl?.checked ?? false
+
+      const settingsToSave = {
+        USER_AUTH_ENABLED: enabled ? 'true' : 'false',
+      }
+      if (plexRestrictEl) {
+        settingsToSave.PLEX_RESTRICT_TO_SERVER = plexRestrict ? 'true' : 'false'
+      }
+
+      try {
+        await saveSettingsSubset(settingsToSave)
+        window.USER_AUTH_ENABLED = enabled
+        if (plexRestrictEl) window.PLEX_RESTRICT_TO_SERVER = plexRestrict
+      } catch (err) {
+        setWizardStatus(
+          err?.message || 'Failed to save authentication settings.',
           'error'
         )
         return null
@@ -4169,18 +4239,13 @@ async function login(api) {
 
   let verifiedPassword = null
 
-  const handleVerifiedPassword = accessPassword => {
-    setPasswordError('')
-    setLoginError('')
-    verifiedPassword = accessPassword
-    passwordForm.style.display = 'none'
+  const showModeForm = () => {
+    if (userAuthForm) userAuthForm.style.display = 'none'
     modeForm.style.display = 'grid'
-
-    // Scroll to top of page
     window.scrollTo({ top: 0, behavior: 'smooth' })
 
-    // restore cached values
-    const savedUser = localStorage.getItem('user')
+    // Restore cached group credentials (skip if we have identity from auth)
+    const savedUser = currentUser?.username || localStorage.getItem('user')
     const savedCode = localStorage.getItem('roomCode')
     const normalizedSavedCode = normalizeRoomCodeInput(savedCode)
     const hasMeaningfulSavedGroupCredentials =
@@ -4195,10 +4260,34 @@ async function login(api) {
     setRoomMode('join', selectedMode)
   }
 
+  const handleVerifiedPassword = accessPassword => {
+    setPasswordError('')
+    setLoginError('')
+    verifiedPassword = accessPassword
+    passwordForm.style.display = 'none'
+    // User auth step will show mode form when done; if auth not needed,
+    // showModeForm() is called directly after this.
+  }
+
+  const userAuthForm = document.querySelector('.js-user-auth-form')
+  const userAuthPlex = document.querySelector('.js-user-auth-plex')
+  const userAuthJellyfin = document.querySelector('.js-user-auth-jellyfin')
+  const userAuthEmby = document.querySelector('.js-user-auth-emby')
+  const plexSigninBtn = document.querySelector('.js-plex-signin-btn')
+  const plexStatus = document.querySelector('.js-plex-status')
+  const jellyfinLoginForm = document.querySelector('.js-jellyfin-login-form')
+  const jellyfinStatus = document.querySelector('.js-jellyfin-status')
+  const embyLoginForm = document.querySelector('.js-emby-login-form')
+  const embyStatus = document.querySelector('.js-emby-status')
+
+  // Track currently logged-in user identity (populated after user auth)
+  let currentUser = null
+
   if (passwordForm && loginForm && modeForm) {
     passwordForm.style.display = 'flex'
     modeForm.style.display = 'none'
     loginForm.style.display = 'none'
+    if (userAuthForm) userAuthForm.style.display = 'none'
   }
 
   let skipPasswordPrompt = false
@@ -4244,6 +4333,225 @@ async function login(api) {
     })
   }
 
+  // ── User auth step ────────────────────────────────────────────────────────
+  // Fetch provider config and current user. If user auth is enabled and the
+  // user is not yet signed in, show the auth screen and wait for them to log in.
+  let authConfig = { providers: [], userAuthEnabled: false }
+  try {
+    authConfig = await api.getAuthProviders()
+  } catch {
+    // ignore — fall through without user auth
+  }
+
+  if (authConfig.userAuthEnabled) {
+    // Check if user already has a valid session
+    try {
+      const { user } = await api.getAuthUser()
+      if (user) {
+        currentUser = user
+        window.COMPARR_USER = user
+      }
+    } catch {
+      // no session
+    }
+
+    if (!currentUser) {
+      // Show user auth screen and wire up providers
+      if (userAuthForm) userAuthForm.style.display = 'flex'
+
+      const providers = authConfig.providers || []
+      const hasPlex = providers.some(p => p.id === 'plex')
+      const hasJellyfin = providers.some(p => p.id === 'jellyfin')
+      const hasEmby = providers.some(p => p.id === 'emby')
+
+      if (userAuthPlex && hasPlex) userAuthPlex.style.display = 'flex'
+      if (userAuthJellyfin && hasJellyfin) userAuthJellyfin.style.display = 'flex'
+      if (userAuthEmby && hasEmby) userAuthEmby.style.display = 'flex'
+
+      // Wait for the user to successfully authenticate with any provider
+      await new Promise(resolve => {
+        const handleUserLoggedIn = user => {
+          currentUser = user
+          window.COMPARR_USER = user
+          resolve()
+        }
+
+        // ── Plex PIN flow ──────────────────────────────────────────────────
+        if (plexSigninBtn && hasPlex) {
+          plexSigninBtn.addEventListener('click', async () => {
+            plexSigninBtn.disabled = true
+            if (plexStatus) {
+              plexStatus.textContent = 'Opening Plex login…'
+              plexStatus.hidden = false
+            }
+
+            let pinId = null
+            let popup = null
+            let pollTimer = null
+
+            const cleanupPoll = () => {
+              if (pollTimer) clearInterval(pollTimer)
+              pollTimer = null
+              if (popup && !popup.closed) popup.close()
+            }
+
+            try {
+              const { pinId: id, authUrl } = await api.requestPlexPin()
+              pinId = id
+              popup = window.open(authUrl, 'plex-auth', 'width=800,height=700,left=100,top=100')
+
+              if (!popup) {
+                if (plexStatus) {
+                  plexStatus.textContent = 'Popup blocked. Please allow popups and try again.'
+                }
+                plexSigninBtn.disabled = false
+                return
+              }
+
+              if (plexStatus) plexStatus.textContent = 'Waiting for Plex approval…'
+
+              pollTimer = setInterval(async () => {
+                try {
+                  const result = await api.pollPlexPin(pinId)
+                  if (result.status === 'success') {
+                    cleanupPoll()
+                    if (plexStatus) plexStatus.hidden = true
+                    handleUserLoggedIn(result.user)
+                  } else if (result.status === 'expired' || result.status === 'denied') {
+                    cleanupPoll()
+                    plexSigninBtn.disabled = false
+                    if (plexStatus) {
+                      plexStatus.textContent =
+                        result.status === 'denied'
+                          ? (result.error || 'Access denied.')
+                          : 'Plex login expired. Please try again.'
+                    }
+                  } else if (popup.closed) {
+                    cleanupPoll()
+                    plexSigninBtn.disabled = false
+                    if (plexStatus) {
+                      plexStatus.textContent = 'Login cancelled.'
+                    }
+                  }
+                } catch {
+                  // ignore transient poll errors
+                }
+              }, 2000)
+            } catch (err) {
+              cleanupPoll()
+              plexSigninBtn.disabled = false
+              if (plexStatus) {
+                plexStatus.textContent = err.message || 'Could not start Plex login.'
+              }
+            }
+          })
+        }
+
+        // ── Jellyfin username/password ─────────────────────────────────────
+        if (jellyfinLoginForm && hasJellyfin) {
+          jellyfinLoginForm.addEventListener('submit', async e => {
+            e.preventDefault()
+            const fd = new FormData(jellyfinLoginForm)
+            const username = String(fd.get('username') || '').trim()
+            const password = String(fd.get('password') || '')
+            if (!username) return
+
+            const btn = jellyfinLoginForm.querySelector('button[type="submit"]')
+            if (btn) btn.disabled = true
+            if (jellyfinStatus) jellyfinStatus.hidden = true
+
+            try {
+              const { user } = await api.loginWithJellyfin(username, password)
+              handleUserLoggedIn(user)
+            } catch (err) {
+              if (jellyfinStatus) {
+                jellyfinStatus.textContent = err.message || 'Login failed.'
+                jellyfinStatus.hidden = false
+              }
+              if (btn) btn.disabled = false
+            }
+          })
+        }
+
+        // ── Emby username/password ─────────────────────────────────────────
+        if (embyLoginForm && hasEmby) {
+          embyLoginForm.addEventListener('submit', async e => {
+            e.preventDefault()
+            const fd = new FormData(embyLoginForm)
+            const username = String(fd.get('username') || '').trim()
+            const password = String(fd.get('password') || '')
+            if (!username) return
+
+            const btn = embyLoginForm.querySelector('button[type="submit"]')
+            if (btn) btn.disabled = true
+            if (embyStatus) embyStatus.hidden = true
+
+            try {
+              const { user } = await api.loginWithEmby(username, password)
+              handleUserLoggedIn(user)
+            } catch (err) {
+              if (embyStatus) {
+                embyStatus.textContent = err.message || 'Login failed.'
+                embyStatus.hidden = false
+              }
+              if (btn) btn.disabled = false
+            }
+          })
+        }
+      })
+    }
+  }
+
+  // Update sidebar user indicator when a user identity is available
+  const updateSidebarUser = user => {
+    const sidebarUser = document.querySelector('.js-sidebar-user')
+    if (!sidebarUser) return
+
+    if (!user) {
+      sidebarUser.style.display = 'none'
+      return
+    }
+
+    const avatarEl = sidebarUser.querySelector('.js-sidebar-user-avatar')
+    const nameEl = sidebarUser.querySelector('.js-sidebar-user-name')
+    const logoutBtn = sidebarUser.querySelector('.js-sidebar-user-logout')
+
+    if (nameEl) nameEl.textContent = user.username || ''
+
+    if (avatarEl) {
+      if (user.avatarUrl) {
+        // Use the avatar proxy so images load within CSP
+        const base = location.pathname.replace(/\/(index\.html)?$/, '')
+        avatarEl.src = `${base}/api/auth/avatar?url=${encodeURIComponent(user.avatarUrl)}`
+        avatarEl.alt = user.username || ''
+        avatarEl.style.display = ''
+      } else {
+        avatarEl.style.display = 'none'
+      }
+    }
+
+    if (logoutBtn) {
+      logoutBtn.onclick = async () => {
+        await api.logoutUser()
+        await api.logoutAccessSession()
+        localStorage.removeItem('user')
+        localStorage.removeItem('roomCode')
+        localStorage.removeItem('personalUser')
+        localStorage.removeItem('personalRoomCode')
+        sessionStorage.clear()
+        window.location.reload()
+      }
+    }
+
+    sidebarUser.style.display = 'flex'
+  }
+
+  if (currentUser) updateSidebarUser(currentUser)
+
+  // User auth complete (or not required) — show the mode picker
+  showModeForm()
+  // ── End user auth step ────────────────────────────────────────────────────
+
   selectedMode = await new Promise(resolve => {
     const handleModeSubmit = e => {
       e.preventDefault()
@@ -4258,10 +4566,14 @@ async function login(api) {
   modeForm.style.display = 'none'
   loginForm.style.display = 'grid'
 
+  // Prefer authenticated user's name; fall back to saved local value
+  const authedName = currentUser?.username || ''
+
   if (selectedMode === 'personal') {
     setRoomMode('join', selectedMode)
 
     const savedPersonalUser = (
+      authedName ||
       localStorage.getItem('personalUser') ||
       localStorage.getItem('user') ||
       ''
@@ -4280,6 +4592,10 @@ async function login(api) {
 
   if (selectedMode !== 'personal') {
     setRoomMode('join', selectedMode)
+    // Pre-fill name from authenticated identity if available
+    if (authedName && loginForm.elements.name) {
+      loginForm.elements.name.value = authedName
+    }
   }
 
   // Generate unique code
@@ -4433,6 +4749,7 @@ async function login(api) {
         if (selectedMode === 'personal') {
           setRoomMode('join', selectedMode)
           const savedPersonalUser = (
+            authedName ||
             localStorage.getItem('personalUser') ||
             localStorage.getItem('user') ||
             ''
@@ -4444,6 +4761,9 @@ async function login(api) {
           if (savedPersonalCode && roomCodeInput) roomCodeInput.value = savedPersonalCode
         } else {
           setRoomMode('join', selectedMode)
+          if (authedName && loginForm.elements.name) {
+            loginForm.elements.name.value = authedName
+          }
         }
 
         window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -6900,6 +7220,7 @@ const main = async () => {
         // of being auto-authenticated back into the same room/user (which
         // would cause every movie to be reported as "already imported").
         setTimeout(async () => {
+          await api.logoutUser()
           await api.logoutAccessSession()
           localStorage.removeItem('user')
           localStorage.removeItem('roomCode')

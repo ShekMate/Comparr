@@ -36,6 +36,9 @@ export type SettingsKey =
   | 'PAID_STREAMING_SERVICES'
   | 'PERSONAL_MEDIA_SOURCES'
   | 'SETUP_WIZARD_COMPLETED'
+  | 'USER_AUTH_ENABLED'
+  | 'PLEX_RESTRICT_TO_SERVER'
+  | 'PLEX_CLIENT_ID'
 
 export type Settings = Record<SettingsKey, string>
 
@@ -71,6 +74,9 @@ const SETTINGS_KEYS: SettingsKey[] = [
   'PAID_STREAMING_SERVICES',
   'PERSONAL_MEDIA_SOURCES',
   'SETUP_WIZARD_COMPLETED',
+  'USER_AUTH_ENABLED',
+  'PLEX_RESTRICT_TO_SERVER',
+  'PLEX_CLIENT_ID',
 ]
 
 const ENV_ONLY_KEYS = new Set<SettingsKey>(['PORT'])
@@ -94,6 +100,9 @@ const DEFAULTS: Partial<Settings> = {
   PAID_STREAMING_SERVICES: '[]',
   PERSONAL_MEDIA_SOURCES: '[]',
   SETUP_WIZARD_COMPLETED: 'false',
+  USER_AUTH_ENABLED: 'false',
+  PLEX_RESTRICT_TO_SERVER: 'false',
+  PLEX_CLIENT_ID: '',
 }
 
 const SETTINGS_FILE = `${getDataDir()}/settings.json`

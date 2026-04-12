@@ -5,6 +5,7 @@ import {
   initIMDbDatabase,
   startBackgroundUpdateJob,
 } from '../features/catalog/imdb-datasets.ts'
+import { initUserDatabase } from '../features/auth/user-db.ts'
 import { ensurePlexHydrationReady } from '../features/session/session.ts'
 import { initPlexCache } from '../integrations/plex/cache.ts'
 import { initEmbyCache } from '../integrations/emby/cache.ts'
@@ -12,6 +13,14 @@ import { initJellyfinCache } from '../integrations/jellyfin/cache.ts'
 import { initPosterCache } from '../services/cache/poster-cache.ts'
 
 export const bootstrapApplication = () => {
+  // Initialize user database (for media-server auth)
+  try {
+    initUserDatabase()
+    log.info('[startup] User database ready')
+  } catch (err) {
+    log.error(`[startup] User database init FAILED: ${err}`)
+  }
+
   // Initialize Radarr cache in background
   initializeRadarrCache().catch(err =>
     log.error(`Failed to initialize Radarr cache: ${err}`)

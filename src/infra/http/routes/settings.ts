@@ -322,6 +322,10 @@ const ADMIN_ONLY_SETTINGS = new Set([
   // Wizard completion state is admin-only: a regular user must not be able to
   // reopen setup mode by setting this back to 'false'.
   'SETUP_WIZARD_COMPLETED',
+  'USER_AUTH_ENABLED',
+  'PLEX_RESTRICT_TO_SERVER',
+  // PLEX_CLIENT_ID is managed automatically; prevent user modification
+  'PLEX_CLIENT_ID',
 ])
 
 const sanitizeSettingsForClient = (
@@ -446,9 +450,15 @@ export async function handleSettingsRoutes(
     }
     const headers = makeJsonHeaders(req)
     const secureFlag = shouldUseSecureCookies(req) ? '; Secure' : ''
-    headers.set(
+    headers.append(
       'set-cookie',
       `${ACCESS_PASSWORD_COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Strict; HttpOnly${secureFlag}`
+    )
+    // Also clear the per-user auth session cookie so the user identity is
+    // wiped whenever the access-password gate is re-engaged.
+    headers.append(
+      'set-cookie',
+      `comparr_user=; Path=/; Max-Age=0; SameSite=Strict; HttpOnly${secureFlag}`
     )
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
@@ -495,6 +505,10 @@ export async function handleSettingsRoutes(
           String(settings.ACCESS_PASSWORD ?? '').trim()
         ),
         adminPasswordSet: Boolean(String(settings.ADMIN_PASSWORD ?? '').trim()),
+        userAuthEnabled:
+          String(settings.USER_AUTH_ENABLED || '').toLowerCase() === 'true',
+        plexRestrictToServer:
+          String(settings.PLEX_RESTRICT_TO_SERVER || '').toLowerCase() === 'true',
       }),
       { status: 200, headers: makeJsonHeaders(req) }
     )

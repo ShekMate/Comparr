@@ -1977,6 +1977,196 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 /* =========================================================
+   SIDEBAR USER INDICATOR
+   ========================================================= */
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--color-line);
+  margin-top: auto;
+  min-width: 0;
+}
+
+.sidebar-user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--color-line);
+}
+
+.sidebar-user-name {
+  flex: 1;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-user-logout {
+  background: none;
+  border: none;
+  color: var(--color-text-muted, #888);
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  font-size: 0.9rem;
+  transition: color 0.15s;
+}
+
+.sidebar-user-logout:hover {
+  color: var(--color-accent, #e5383b);
+}
+
+/* =========================================================
+   USER AUTH SCREEN
+   ========================================================= */
+.user-auth-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.user-auth-plex,
+.user-auth-server {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.plex-signin-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.85rem 1.5rem;
+  background: #e5a00d;
+  color: #000;
+  font-weight: 700;
+  font-size: 1rem;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.plex-signin-btn:hover {
+  background: #f0b429;
+}
+
+.plex-signin-btn:active {
+  transform: scale(0.98);
+}
+
+.plex-signin-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.plex-logo-icon {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+
+.server-login-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin: 0;
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.server-login-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.server-login-fields {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.server-login-fields input {
+  flex: 1;
+  padding: 0.7rem 1rem;
+  border-radius: 8px;
+  border: 1.5px solid var(--color-border, rgba(255,255,255,0.15));
+  background: var(--color-input-bg, rgba(255,255,255,0.08));
+  color: var(--color-text-primary);
+  font-size: 0.95rem;
+  min-width: 0;
+}
+
+.server-login-fields input:focus {
+  outline: none;
+  border-color: var(--color-accent, #6366f1);
+}
+
+.server-login-fields .submit-button {
+  padding: 0.7rem 1rem;
+  background: var(--color-accent, #6366f1);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.server-login-fields .submit-button:hover {
+  background: var(--color-accent-hover, #4f46e5);
+}
+
+.user-auth-divider {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+}
+
+.user-auth-divider::before,
+.user-auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border, rgba(255,255,255,0.15));
+}
+
+.user-auth-status {
+  font-size: 0.85rem;
+  color: var(--color-error, #f87171);
+  margin: 0;
+  text-align: center;
+}
+
+/* =========================================================
    9) FILTERS SECTION - Enhanced
    ========================================================= */
 .filters-container {
@@ -5219,6 +5409,44 @@ footer {
   width: 100%;
   max-width: 100%;
   margin: 0;
+}
+
+/* ─── Wizard User-Auth Screen ───────────────────────────────── */
+
+.first-run-user-auth-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  cursor: pointer;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-line);
+  margin-bottom: 0.5rem;
+  transition: border-color 0.15s;
+}
+
+.first-run-user-auth-row:hover {
+  border-color: rgba(129, 140, 248, 0.5);
+}
+
+.first-run-user-auth-row input[type='checkbox'] {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  accent-color: var(--color-accent, #6366f1);
+}
+
+.first-run-user-auth-row div > strong {
+  display: block;
+  font-size: 0.9rem;
+  margin-bottom: 0.15rem;
+}
+
+.first-run-user-auth-row .first-run-guide-instruction {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted, #8892a4);
 }
 
 /* ─── Reset Tab ─────────────────────────────────────────────── */
