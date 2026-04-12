@@ -1,5 +1,7 @@
 import type { CompatRequest } from '../compat-request.ts'
 import { addSecurityHeaders } from '../security-headers.ts'
+import { getUserTokenFromCookie } from './auth.ts'
+import { getUserSession } from '../../../core/user-session-store.ts'
 import {
   getOrCreateUserCode,
   addConnection,
@@ -10,10 +12,28 @@ import {
   USER_CODE_LENGTH,
 } from '../../../features/session/user-codes.ts'
 
+// Matches the deterministic room code formula used on the frontend:
+//   const userRoomCode = id => `U${String(id).padStart(3, '0')}`
+// Each authenticated user owns a stable personal room keyed to their DB id.
+function roomCodeForUser(userId: number): string {
+  return `U${String(userId).padStart(3, '0')}`
+}
+
 const makeJson = (req: CompatRequest) => {
   const h = new Headers({ 'content-type': 'application/json' })
   addSecurityHeaders(h, req)
   return h
+}
+
+/** Read the caller's identity from their auth session cookie. */
+function getCallerIdentity(req: CompatRequest): { name: string; roomCode: string } | null {
+  const token = getUserTokenFromCookie(req)
+  const session = getUserSession(token)
+  if (!session) return null
+  return {
+    name: session.username,
+    roomCode: roomCodeForUser(session.userId),
+  }
 }
 
 export async function handleCompareRoutes(
@@ -21,91 +41,71 @@ export async function handleCompareRoutes(
   path: string
 ): Promise<Response | null> {
 
-  // ── GET /api/user/code?user=NAME&roomCode=XXX ───────────────────────────
-  // roomCode is passed so match computation uses the right session data,
-  // but it is NOT the identity key — the code is stable across room changes.
+  // ── GET /api/user/code ──────────────────────────────────────────────────
   if (path === '/api/user/code' && req.method === 'GET') {
-    const url = new URL(req.url, 'http://local')
-    const name = (url.searchParams.get('user') || '').trim().slice(0, 64)
-    const roomCode = (url.searchParams.get('roomCode') || '').trim().toUpperCase().slice(0, 10)
-
-    if (!name) {
-      return new Response(
-        JSON.stringify({ error: 'user is required' }),
-        { status: 400, headers: makeJson(req) }
-      )
+    const caller = getCallerIdentity(req)
+    if (!caller) {
+      return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
+        status: 401, headers: makeJson(req),
+      })
     }
-
-    const code = await getOrCreateUserCode(name, roomCode)
+    const code = await getOrCreateUserCode(caller.name, caller.roomCode)
     return new Response(JSON.stringify({ code }), {
-      status: 200,
-      headers: makeJson(req),
+      status: 200, headers: makeJson(req),
     })
   }
 
   // ── POST /api/user/refresh ──────────────────────────────────────────────
-  // Body: { name, roomCode }
   // Returns: { code } — brand-new code, all connections cleared
   if (path === '/api/user/refresh' && req.method === 'POST') {
-    let body: { name?: string; roomCode?: string } = {}
-    try {
-      body = await req.json()
-    } catch { /* empty body ok */ }
-
-    const name = String(body.name || '').trim().slice(0, 64)
-    const roomCode = String(body.roomCode || '').trim().toUpperCase().slice(0, 10)
-
-    if (!name) {
-      return new Response(
-        JSON.stringify({ error: 'name is required' }),
-        { status: 400, headers: makeJson(req) }
-      )
+    const caller = getCallerIdentity(req)
+    if (!caller) {
+      return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
+        status: 401, headers: makeJson(req),
+      })
     }
-
-    const code = await refreshUserCode(name, roomCode)
+    const code = await refreshUserCode(caller.name, caller.roomCode)
     return new Response(JSON.stringify({ code }), {
-      status: 200,
-      headers: makeJson(req),
+      status: 200, headers: makeJson(req),
     })
   }
 
   // ── POST /api/matches/add ───────────────────────────────────────────────
-  // Body: { name, roomCode, friendCode }
+  // Body: { friendCode }
   // Returns: { success, friendName }
   if (path === '/api/matches/add' && req.method === 'POST') {
-    let body: { name?: string; roomCode?: string; friendCode?: string } = {}
-    try {
-      body = await req.json()
-    } catch { /* empty body ok */ }
+    const caller = getCallerIdentity(req)
+    if (!caller) {
+      return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
+        status: 401, headers: makeJson(req),
+      })
+    }
 
-    const name = String(body.name || '').trim().slice(0, 64)
-    const roomCode = String(body.roomCode || '').trim().toUpperCase().slice(0, 10)
+    let body: { friendCode?: string } = {}
+    try { body = await req.json() } catch { /* empty body ok */ }
+
     const friendCode = String(body.friendCode || '')
       .trim()
       .toUpperCase()
       .slice(0, USER_CODE_LENGTH)
 
-    if (!name || !friendCode) {
-      return new Response(
-        JSON.stringify({ error: 'name and friendCode are required' }),
-        { status: 400, headers: makeJson(req) }
-      )
+    if (!friendCode) {
+      return new Response(JSON.stringify({ error: 'friendCode is required' }), {
+        status: 400, headers: makeJson(req),
+      })
     }
 
     if (!isValidUserCode(friendCode)) {
       return new Response(
-        JSON.stringify({
-          error: `Friend code must be exactly ${USER_CODE_LENGTH} characters (A-Z or 0-9).`,
-        }),
+        JSON.stringify({ error: `Friend code must be ${USER_CODE_LENGTH} characters (A-Z or 0-9).` }),
         { status: 400, headers: makeJson(req) }
       )
     }
 
-    const result = await addConnection(name, roomCode, friendCode)
+    const result = await addConnection(caller.name, caller.roomCode, friendCode)
     if (!result.success) {
       return new Response(JSON.stringify({ error: result.error }), {
-        status: 404,
-        headers: makeJson(req),
+        status: 404, headers: makeJson(req),
       })
     }
 
@@ -116,47 +116,43 @@ export async function handleCompareRoutes(
   }
 
   // ── DELETE /api/matches/remove-user ────────────────────────────────────
-  // Body: { name, friendCode }
+  // Body: { friendCode }
   if (path === '/api/matches/remove-user' && req.method === 'DELETE') {
-    let body: { name?: string; friendCode?: string } = {}
-    try {
-      body = await req.json()
-    } catch { /* empty body ok */ }
-
-    const name = String(body.name || '').trim().slice(0, 64)
-    const friendCode = String(body.friendCode || '').trim().toUpperCase()
-
-    if (!name || !friendCode) {
-      return new Response(
-        JSON.stringify({ error: 'name and friendCode are required' }),
-        { status: 400, headers: makeJson(req) }
-      )
+    const caller = getCallerIdentity(req)
+    if (!caller) {
+      return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
+        status: 401, headers: makeJson(req),
+      })
     }
 
-    await removeConnection(name, friendCode)
+    let body: { friendCode?: string } = {}
+    try { body = await req.json() } catch { /* empty body ok */ }
+
+    const friendCode = String(body.friendCode || '').trim().toUpperCase()
+    if (!friendCode) {
+      return new Response(JSON.stringify({ error: 'friendCode is required' }), {
+        status: 400, headers: makeJson(req),
+      })
+    }
+
+    await removeConnection(caller.name, friendCode)
     return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: makeJson(req),
+      status: 200, headers: makeJson(req),
     })
   }
 
-  // ── GET /api/matches/connections?user=NAME&roomCode=XXX ─────────────────
+  // ── GET /api/matches/connections ────────────────────────────────────────
   if (path === '/api/matches/connections' && req.method === 'GET') {
-    const url = new URL(req.url, 'http://local')
-    const name = (url.searchParams.get('user') || '').trim().slice(0, 64)
-    const roomCode = (url.searchParams.get('roomCode') || '').trim().toUpperCase().slice(0, 10)
-
-    if (!name) {
-      return new Response(
-        JSON.stringify({ error: 'user is required' }),
-        { status: 400, headers: makeJson(req) }
-      )
+    const caller = getCallerIdentity(req)
+    if (!caller) {
+      return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
+        status: 401, headers: makeJson(req),
+      })
     }
 
-    const connections = await getConnections(name, roomCode)
+    const connections = await getConnections(caller.name, caller.roomCode)
     return new Response(JSON.stringify({ connections }), {
-      status: 200,
-      headers: makeJson(req),
+      status: 200, headers: makeJson(req),
     })
   }
 

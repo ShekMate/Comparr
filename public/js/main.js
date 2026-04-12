@@ -6842,7 +6842,7 @@ const main = async () => {
           await fetch(`${basePath}/api/matches/remove-user`, {
             method: 'DELETE',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ roomCode, name: userName, friendCode: fCode }),
+            body: JSON.stringify({ friendCode: fCode }),
           })
           await loadMatchesData()
         } catch {
@@ -6868,16 +6868,12 @@ const main = async () => {
   const loadMatchesData = async () => {
     try {
       // Fetch user code
-      const codeRes = await fetch(
-        `${basePath}/api/user/code?roomCode=${encodeURIComponent(roomCode)}&user=${encodeURIComponent(userName)}`
-      )
+      const codeRes = await fetch(`${basePath}/api/user/code`)
       const codeData = await codeRes.json().catch(() => ({}))
       if (matchesMyCodeEl) matchesMyCodeEl.textContent = codeData.code || '——'
 
       // Fetch connections + matches
-      const connRes = await fetch(
-        `${basePath}/api/matches/connections?roomCode=${encodeURIComponent(roomCode)}&user=${encodeURIComponent(userName)}`
-      )
+      const connRes = await fetch(`${basePath}/api/matches/connections`)
       const connData = await connRes.json().catch(() => ({}))
       renderFriends(connData.connections || [])
     } catch (err) {
@@ -6916,7 +6912,7 @@ const main = async () => {
         const res = await fetch(`${basePath}/api/user/refresh`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ roomCode, name: userName }),
+          body: '{}',
         })
         const data = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(data.error || 'Could not refresh code.')
@@ -6942,7 +6938,7 @@ const main = async () => {
         const res = await fetch(`${basePath}/api/matches/add`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ roomCode, name: userName, friendCode }),
+          body: JSON.stringify({ friendCode }),
         })
         const data = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(data.error || 'Could not add friend.')
