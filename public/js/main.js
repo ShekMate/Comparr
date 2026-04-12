@@ -4283,10 +4283,15 @@ async function login(api) {
   const userAuthEmby = document.querySelector('.js-user-auth-emby')
   const plexSigninBtn = document.querySelector('.js-plex-signin-btn')
   const plexStatus = document.querySelector('.js-plex-status')
-  const jellyfinLoginForm = document.querySelector('.js-jellyfin-login-form')
+  const jellyfinSigninBtn = document.querySelector('.js-jellyfin-signin-btn')
   const jellyfinStatus = document.querySelector('.js-jellyfin-status')
-  const embyLoginForm = document.querySelector('.js-emby-login-form')
+  const embySigninBtn = document.querySelector('.js-emby-signin-btn')
   const embyStatus = document.querySelector('.js-emby-status')
+  const credentialModal = document.querySelector('.js-user-auth-modal')
+  const credentialModalClose = document.querySelector('.js-user-auth-modal-close')
+  const credentialModalProvider = document.querySelector('.js-user-auth-modal-provider')
+  const credentialModalForm = document.querySelector('.js-user-auth-modal-form')
+  const credentialModalStatus = document.querySelector('.js-user-auth-modal-status')
 
   // Track currently logged-in user identity (populated after user auth)
   let currentUser = null
@@ -4455,54 +4460,96 @@ async function login(api) {
           })
         }
 
-        // ── Jellyfin username/password ─────────────────────────────────────
-        if (jellyfinLoginForm && hasJellyfin) {
-          jellyfinLoginForm.addEventListener('submit', async e => {
-            e.preventDefault()
-            const fd = new FormData(jellyfinLoginForm)
-            const username = String(fd.get('username') || '').trim()
-            const password = String(fd.get('password') || '')
-            if (!username) return
+        // ── Jellyfin / Emby — shared credential modal ─────────────────────
+        let activeProvider = null // 'jellyfin' | 'emby'
 
-            const btn = jellyfinLoginForm.querySelector('button[type="submit"]')
-            if (btn) btn.disabled = true
-            if (jellyfinStatus) jellyfinStatus.hidden = true
+        const openCredentialModal = provider => {
+          activeProvider = provider
+          const label = provider === 'jellyfin' ? 'Jellyfin' : 'Emby'
+          if (credentialModalProvider) credentialModalProvider.textContent = `Sign in with ${label}`
+          if (credentialModalStatus) credentialModalStatus.hidden = true
+          if (credentialModalForm) credentialModalForm.reset()
+          if (credentialModal) credentialModal.hidden = false
+          // Focus username field
+          credentialModalForm?.querySelector('input[name="username"]')?.focus()
+        }
 
-            try {
-              const { user } = await api.loginWithJellyfin(username, password)
-              handleUserLoggedIn(user)
-            } catch (err) {
-              if (jellyfinStatus) {
-                jellyfinStatus.textContent = err.message || 'Login failed.'
-                jellyfinStatus.hidden = false
-              }
-              if (btn) btn.disabled = false
-            }
+        const closeCredentialModal = () => {
+          if (credentialModal) credentialModal.hidden = true
+          activeProvider = null
+          if (jellyfinSigninBtn) jellyfinSigninBtn.disabled = false
+          if (embySigninBtn) embySigninBtn.disabled = false
+        }
+
+        if (credentialModalClose) {
+          credentialModalClose.addEventListener('click', closeCredentialModal)
+        }
+
+        // Close on backdrop click
+        if (credentialModal) {
+          credentialModal.addEventListener('click', e => {
+            if (e.target === credentialModal) closeCredentialModal()
           })
         }
 
-        // ── Emby username/password ─────────────────────────────────────────
-        if (embyLoginForm && hasEmby) {
-          embyLoginForm.addEventListener('submit', async e => {
+        // Close on Escape
+        document.addEventListener('keydown', e => {
+          if (e.key === 'Escape' && credentialModal && !credentialModal.hidden) {
+            closeCredentialModal()
+          }
+        }, { once: false })
+
+        if (jellyfinSigninBtn && hasJellyfin) {
+          jellyfinSigninBtn.addEventListener('click', () => {
+            jellyfinSigninBtn.disabled = true
+            openCredentialModal('jellyfin')
+          })
+        }
+
+        if (embySigninBtn && hasEmby) {
+          embySigninBtn.addEventListener('click', () => {
+            embySigninBtn.disabled = true
+            openCredentialModal('emby')
+          })
+        }
+
+        if (credentialModalForm) {
+          credentialModalForm.addEventListener('submit', async e => {
             e.preventDefault()
-            const fd = new FormData(embyLoginForm)
+            const fd = new FormData(credentialModalForm)
             const username = String(fd.get('username') || '').trim()
             const password = String(fd.get('password') || '')
-            if (!username) return
+            if (!username) {
+              credentialModalForm.querySelector('input[name="username"]')?.focus()
+              return
+            }
 
-            const btn = embyLoginForm.querySelector('button[type="submit"]')
-            if (btn) btn.disabled = true
-            if (embyStatus) embyStatus.hidden = true
+            const submitBtn = credentialModalForm.querySelector('button[type="submit"]')
+            if (submitBtn) submitBtn.disabled = true
+            if (credentialModalStatus) credentialModalStatus.hidden = true
 
             try {
-              const { user } = await api.loginWithEmby(username, password)
+              let user
+              if (activeProvider === 'jellyfin') {
+                ;({ user } = await api.loginWithJellyfin(username, password))
+              } else {
+                ;({ user } = await api.loginWithEmby(username, password))
+              }
+              closeCredentialModal()
               handleUserLoggedIn(user)
             } catch (err) {
-              if (embyStatus) {
-                embyStatus.textContent = err.message || 'Login failed.'
-                embyStatus.hidden = false
+              if (credentialModalStatus) {
+                credentialModalStatus.textContent = err.message || 'Login failed.'
+                credentialModalStatus.hidden = false
               }
-              if (btn) btn.disabled = false
+              if (submitBtn) submitBtn.disabled = false
+
+              // Also surface error on the provider's status element
+              const providerStatus = activeProvider === 'jellyfin' ? jellyfinStatus : embyStatus
+              if (providerStatus) {
+                providerStatus.textContent = err.message || 'Login failed.'
+                providerStatus.hidden = false
+              }
             }
           })
         }
