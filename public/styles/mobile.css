@@ -201,19 +201,19 @@
 
   /* Tabbar Mobile */
   .tabbar {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     margin: 0.25rem auto 0rem !important;
-    padding: 0.1rem 0.1rem !important;
+    padding: 0.15rem 0.2rem !important;
     gap: 0.1rem;
     overflow: visible;
-    width: 325px !important;
-    max-width: 325px !important;
-    justify-content: space-between !important;
+    width: fit-content !important;
+    max-width: calc(100vw - 1rem) !important;
+    justify-content: center !important;
   }
 
   .tabbar button {
-    padding: 0.15rem 0.5rem !important;
-    font-size: 0.45rem;
+    padding: 0.35rem 0.7rem !important;
+    font-size: 0.8rem;
     font-weight: 500;
   }
 
@@ -241,6 +241,10 @@
 
   .dropdown-item i {
     margin-right: 0.5rem !important;
+  }
+
+  .mobile-menu-dropdown .dropdown-menu {
+    min-width: min(88vw, 260px) !important;
   }
 
   /* Rating Logos */
@@ -682,9 +686,11 @@
   .tabbar {
     gap: 0.25rem;
     padding: 0.5rem;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     margin: 0.75rem auto 0.75rem;
     overflow: visible;
+    width: fit-content;
+    justify-content: center;
   }
 
   .tabbar button {

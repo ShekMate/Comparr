@@ -321,105 +321,151 @@
 
       <!-- ===== Mobile Tabbar (visible on mobile only) ===== -->
       <div class="tabbar">
-        <button class="tab-button is-active" data-tab="tab-swipe">
-          <i class="fas fa-arrows-h"></i>
-          ${NAV_SWIPE}
-        </button>
-        <div class="dropdown">
-          <button class="tab-button dropdown-toggle" type="button">
-            <i class="fas fa-star"></i>
-            ${NAV_RATINGS}
-          </button>
-          <div class="dropdown-menu">
-            <button type="button" class="dropdown-item" data-tab="tab-matches">
-              <i class="fas fa-heart"></i>
-              ${NAV_MATCHES}
-            </button>
-            <button type="button" class="dropdown-item" data-tab="tab-likes">
-              <i class="fas fa-thumbs-up"></i>
-              ${NAV_WATCH}
-            </button>
-            <button type="button" class="dropdown-item" data-tab="tab-dislikes">
-              <i class="fas fa-thumbs-down"></i>
-              ${NAV_PASS}
-            </button>
-            <button type="button" class="dropdown-item" data-tab="tab-seen">
-              <i class="fas fa-eye"></i>
-              ${NAV_SEEN}
-            </button>
-            <button
-              type="button"
-              class="dropdown-item"
-              data-tab="tab-recommendations"
-            >
-              <i class="fas fa-magic"></i>
-              Recommended
-            </button>
-            <button type="button" class="dropdown-item" data-tab="tab-stats">
-              <i class="fas fa-chart-bar"></i>
-              Stats
-            </button>
-          </div>
-        </div>
-        <div class="dropdown mobile-settings-dropdown">
+        <div class="dropdown mobile-menu-dropdown">
           <button
-            class="tab-button dropdown-toggle mobile-settings-toggle"
+            class="tab-button dropdown-toggle mobile-menu-toggle"
             type="button"
           >
-            <i class="fas fa-cog"></i>
-            ${NAV_SETTINGS}
+            <i class="fas fa-bars"></i>
+            Menu
           </button>
           <div class="dropdown-menu">
             <button
               type="button"
-              class="dropdown-item mobile-settings-item"
-              data-tab="tab-settings"
-              data-settings-target="settings-availability"
-              data-settings-title="Streaming"
+              class="dropdown-item mobile-menu-item"
+              data-tab="tab-swipe"
             >
-              <i class="fas fa-tv"></i>
-              Streaming
+              <i class="fas fa-arrows-h"></i>
+              ${NAV_SWIPE}
             </button>
-            <button
-              type="button"
-              class="dropdown-item mobile-settings-item"
-              data-tab="tab-settings"
-              data-settings-target="settings-display"
-              data-settings-title="Display"
-            >
-              <i class="fas fa-desktop"></i>
-              Display
-            </button>
-            <button
-              type="button"
-              class="dropdown-item mobile-settings-item"
-              data-tab="tab-settings"
-              data-settings-target="settings-defaults"
-              data-settings-title="Defaults"
-            >
-              <i class="fas fa-sliders-h"></i>
-              Defaults
-            </button>
-            <button
-              type="button"
-              class="dropdown-item mobile-settings-item"
-              data-tab="tab-settings"
-              data-settings-target="settings-imports"
-              data-settings-title="Imports"
-            >
-              <i class="fas fa-file-import"></i>
-              Imports
-            </button>
-            <button
-              type="button"
-              class="dropdown-item mobile-settings-item"
-              data-tab="tab-settings"
-              data-settings-target="settings-admin"
-              data-settings-title="Admin"
-            >
-              <i class="fas fa-user-shield"></i>
-              Admin
-            </button>
+
+            <div class="dropdown-submenu">
+              <button
+                type="button"
+                class="dropdown-item dropdown-submenu-toggle"
+              >
+                <span>
+                  <i class="fas fa-star"></i>
+                  ${NAV_RATINGS}
+                </span>
+                <i class="fas fa-chevron-right" aria-hidden="true"></i>
+              </button>
+              <div class="dropdown-submenu-menu">
+                <button
+                  type="button"
+                  class="dropdown-item mobile-menu-item"
+                  data-tab="tab-matches"
+                >
+                  <i class="fas fa-heart"></i>
+                  ${NAV_MATCHES}
+                </button>
+                <button
+                  type="button"
+                  class="dropdown-item mobile-menu-item"
+                  data-tab="tab-likes"
+                >
+                  <i class="fas fa-thumbs-up"></i>
+                  ${NAV_WATCH}
+                </button>
+                <button
+                  type="button"
+                  class="dropdown-item mobile-menu-item"
+                  data-tab="tab-recommendations"
+                >
+                  <i class="fas fa-magic"></i>
+                  Recommended
+                </button>
+                <button
+                  type="button"
+                  class="dropdown-item mobile-menu-item"
+                  data-tab="tab-stats"
+                >
+                  <i class="fas fa-chart-bar"></i>
+                  Stats
+                </button>
+                <button
+                  type="button"
+                  class="dropdown-item mobile-menu-item"
+                  data-tab="tab-dislikes"
+                >
+                  <i class="fas fa-thumbs-down"></i>
+                  ${NAV_PASS}
+                </button>
+                <button
+                  type="button"
+                  class="dropdown-item mobile-menu-item"
+                  data-tab="tab-seen"
+                >
+                  <i class="fas fa-eye"></i>
+                  ${NAV_SEEN}
+                </button>
+              </div>
+            </div>
+
+            <div class="dropdown-submenu">
+              <button
+                type="button"
+                class="dropdown-item dropdown-submenu-toggle"
+              >
+                <span>
+                  <i class="fas fa-cog"></i>
+                  ${NAV_SETTINGS}
+                </span>
+                <i class="fas fa-chevron-right" aria-hidden="true"></i>
+              </button>
+              <div class="dropdown-submenu-menu">
+                <button
+                  type="button"
+                  class="dropdown-item mobile-menu-item mobile-settings-item"
+                  data-tab="tab-settings"
+                  data-settings-target="settings-availability"
+                  data-settings-title="Streaming"
+                >
+                  <i class="fas fa-tv"></i>
+                  Streaming
+                </button>
+                <button
+                  type="button"
+                  class="dropdown-item mobile-menu-item mobile-settings-item"
+                  data-tab="tab-settings"
+                  data-settings-target="settings-display"
+                  data-settings-title="Display"
+                >
+                  <i class="fas fa-desktop"></i>
+                  Display
+                </button>
+                <button
+                  type="button"
+                  class="dropdown-item mobile-menu-item mobile-settings-item"
+                  data-tab="tab-settings"
+                  data-settings-target="settings-defaults"
+                  data-settings-title="Defaults"
+                >
+                  <i class="fas fa-sliders-h"></i>
+                  Defaults
+                </button>
+                <button
+                  type="button"
+                  class="dropdown-item mobile-menu-item mobile-settings-item"
+                  data-tab="tab-settings"
+                  data-settings-target="settings-imports"
+                  data-settings-title="Imports"
+                >
+                  <i class="fas fa-file-import"></i>
+                  Imports
+                </button>
+                <button
+                  type="button"
+                  class="dropdown-item mobile-menu-item mobile-settings-item"
+                  data-tab="tab-settings"
+                  data-settings-target="settings-admin"
+                  data-settings-title="Admin"
+                >
+                  <i class="fas fa-user-shield"></i>
+                  Admin
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1132,11 +1178,13 @@
       >
         <!-- Main UI: shown for all logged-in users -->
         <div class="matches-ui js-matches-ui">
-
           <!-- Your code -->
           <div class="matches-your-code-section">
             <h3 class="matches-section-heading">Your Code</h3>
-            <p class="matches-code-hint">Share this with a friend so they can add you — or enter theirs below.</p>
+            <p class="matches-code-hint">
+              Share this with a friend so they can add you — or enter theirs
+              below.
+            </p>
             <div class="matches-code-row">
               <code class="matches-my-code js-matches-my-code">······</code>
               <button
@@ -1177,10 +1225,14 @@
 
           <!-- Connected friends + their matches -->
           <div class="matches-friends-section js-matches-friends-section">
-            <h3 class="matches-section-heading js-matches-friends-heading" hidden>Friends</h3>
+            <h3
+              class="matches-section-heading js-matches-friends-heading"
+              hidden
+            >
+              Friends
+            </h3>
             <div class="matches-friends-list js-matches-friends-list"></div>
           </div>
-
         </div>
       </section>
 
