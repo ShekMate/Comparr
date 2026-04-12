@@ -556,7 +556,6 @@ function initTabs() {
     ? tabbar.querySelectorAll('[data-tab]:not(.mobile-settings-item)')
     : []
   const allButtons = [...sidebarButtons, ...tabbarButtons]
-  const isPersonalMode = document.body.dataset.appMode === 'personal'
 
   applyDisplayPreferencesToNavigation(loadDisplayPreferences())
 
@@ -6742,219 +6741,222 @@ const main = async () => {
     updateRoomMembers(e.data?.members ?? [])
   })
 
-  // ===== MATCHES / COMPARE TAB =====
-  // For auth users: invite-based async matching across any two room codes.
-  // For guests: the compare UI is hidden; tab is also hidden in initTabs().
-  const compareUi = document.querySelector('.js-compare-ui')
-  const compareHome = document.querySelector('.js-compare-home')
-  const compareLinkCard = document.querySelector('.js-compare-link-card')
-  const compareResults = document.querySelector('.js-compare-results')
-  const compareStatus = document.querySelector('.js-compare-status')
-  const compareGenerateBtn = document.querySelector('.js-compare-generate-btn')
-  const compareJoinForm = document.querySelector('.js-compare-join-form')
-  const compareTokenInput = document.querySelector('.js-compare-token-input')
-  const compareLinkUrl = document.querySelector('.js-compare-link-url')
-  const compareCopyBtn = document.querySelector('.js-compare-copy-btn')
-  const compareNewInviteBtn = document.querySelector(
-    '.js-compare-new-invite-btn'
-  )
-  const compareBackBtn = document.querySelector('.js-compare-back-btn')
-  const compareResultsTitle = document.querySelector(
-    '.js-compare-results-title'
-  )
-  const compareResultsSubtitle = document.querySelector(
-    '.js-compare-results-subtitle'
-  )
-  const compareResultsList = document.querySelector('.js-compare-results-list')
-  // basePath is already declared earlier in main()
+  // ===== MATCHES TAB =====
+  // Each user has a static personal code. Share it or enter a friend's code
+  // to link up. Either side adding the other's code connects both users.
+  // Refresh generates a new code and clears all connections.
 
-  const showCompareState = state => {
-    if (compareHome) compareHome.hidden = state !== 'home'
-    if (compareLinkCard) compareLinkCard.hidden = state !== 'link'
-    if (compareResults) compareResults.hidden = state !== 'results'
-  }
+  const matchesMyCodeEl = document.querySelector('.js-matches-my-code')
+  const matchesCopyBtn = document.querySelector('.js-matches-copy-btn')
+  const matchesRefreshBtn = document.querySelector('.js-matches-refresh-btn')
+  const matchesAddForm = document.querySelector('.js-matches-add-form')
+  const matchesFriendInput = document.querySelector('.js-matches-friend-input')
+  const matchesStatus = document.querySelector('.js-matches-status')
+  const matchesFriendsList = document.querySelector('.js-matches-friends-list')
+  const matchesFriendsHeading = document.querySelector('.js-matches-friends-heading')
 
-  const setCompareStatus = (msg, isError = false) => {
-    if (!compareStatus) return
-    compareStatus.textContent = msg
-    compareStatus.hidden = !msg
-    compareStatus.style.color = isError
+  const setMatchesStatus = (msg, isError = false) => {
+    if (!matchesStatus) return
+    matchesStatus.textContent = msg
+    matchesStatus.hidden = !msg
+    matchesStatus.style.color = isError
       ? 'var(--color-accent-danger, #f87171)'
-      : ''
+      : 'var(--color-text-muted, inherit)'
   }
 
-  const renderCompareMatches = (matches, initiatorName) => {
-    if (!compareResultsList) return
-    if (!matches.length) {
-      compareResultsList.innerHTML =
-        '<li class="compare-no-matches">No matches yet — keep swiping!</li>'
+  const renderMatchMovie = (movie, friendName) => {
+    const posterUrl = movie.art || movie.thumb || ''
+    const imgHtml = posterUrl
+      ? `<div class="watch-card-poster"><img src="${
+          posterUrl.startsWith('http') ? posterUrl : basePath + posterUrl
+        }" alt="${movie.title} poster" loading="lazy" /></div>`
+      : ''
+    return `
+      <div class="watch-card" data-guid="${movie.guid}">
+        <div class="watch-card-collapsed">
+          <div class="watch-card-header-compact">
+            <div class="watch-card-title-compact">
+              ${movie.title}${movie.year ? ` <span class="watch-card-year">(${movie.year})</span>` : ''}
+            </div>
+            <div class="expand-icon"><i class="fas fa-chevron-down"></i></div>
+          </div>
+        </div>
+        <div class="watch-card-details">
+          ${imgHtml}
+          <div class="watch-card-content">
+            ${movie.summary ? `<p class="watch-card-summary">${movie.summary}</p>` : ''}
+            <div class="watch-card-metadata">
+              <i class="fas fa-heart"></i>
+              You and ${friendName} both want to watch this
+            </div>
+          </div>
+        </div>
+      </div>`
+  }
+
+  const renderFriends = connections => {
+    if (!matchesFriendsList || !matchesFriendsHeading) return
+    if (!connections.length) {
+      matchesFriendsHeading.hidden = true
+      matchesFriendsList.innerHTML = ''
       return
     }
-    compareResultsList.innerHTML = matches
-      .map(movie => {
-        const posterUrl = movie.art || movie.thumb || ''
+    matchesFriendsHeading.hidden = false
+    matchesFriendsList.innerHTML = connections
+      .map(({ code, name: friendName, matches }) => {
+        const matchCount = matches ? matches.length : 0
+        const matchLabel =
+          matchCount === 0
+            ? 'No matches yet — keep swiping!'
+            : matchCount === 1
+            ? '1 match'
+            : `${matchCount} matches`
+        const moviesHtml = matchCount
+          ? matches.map(m => renderMatchMovie(m, friendName)).join('')
+          : `<p class="matches-empty-note">No matches yet — keep swiping!</p>`
         return `
-        <div class="watch-card" data-guid="${movie.guid}">
-          <div class="watch-card-collapsed">
-            <div class="watch-card-header-compact">
-              <div class="watch-card-title-compact">
-                ${movie.title}${
-          movie.year
-            ? ` <span class="watch-card-year">(${movie.year})</span>`
-            : ''
-        }
-              </div>
-              <div class="expand-icon"><i class="fas fa-chevron-down"></i></div>
+          <div class="matches-friend-card" data-friend-code="${code}">
+            <div class="matches-friend-header">
+              <span class="matches-friend-name">${friendName}</span>
+              <span class="matches-friend-count">${matchLabel}</span>
+              <button
+                class="matches-remove-btn"
+                type="button"
+                data-friend-code="${code}"
+                title="Remove ${friendName}"
+                aria-label="Remove ${friendName}"
+              ><i class="fas fa-times"></i></button>
             </div>
-          </div>
-          <div class="watch-card-details">
-            ${
-              posterUrl
-                ? `<div class="watch-card-poster"><img src="${
-                    posterUrl.startsWith('http')
-                      ? posterUrl
-                      : basePath + posterUrl
-                  }" alt="${movie.title} poster" /></div>`
-                : ''
-            }
-            <div class="watch-card-content">
-              ${
-                movie.summary
-                  ? `<p class="watch-card-summary">${movie.summary}</p>`
-                  : ''
-              }
-              <div class="watch-card-metadata">
-                <i class="fas fa-heart"></i>
-                You and ${initiatorName} both want to watch this
-              </div>
-            </div>
-          </div>
-        </div>`
+            <div class="matches-friend-movies">${moviesHtml}</div>
+          </div>`
       })
       .join('')
-  }
 
-  const setMyInviteCode = token => {
-    if (compareLinkUrl) compareLinkUrl.textContent = token || ''
-  }
-
-  // Generate or load my invite code
-  if (compareGenerateBtn) {
-    compareGenerateBtn.addEventListener('click', async () => {
-      compareGenerateBtn.disabled = true
-      setCompareStatus('Loading your code…')
-      try {
-        const res = await fetch(`${basePath}/api/compare/invite`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ roomCode, name: userName }),
-        })
-        const data = await res.json().catch(() => ({}))
-        if (!res.ok) throw new Error(data.error || 'Could not generate invite.')
-
-        const token = data.token
-        setMyInviteCode(token)
-
-        setCompareStatus('')
-        showCompareState('link')
-      } catch (err) {
-        setCompareStatus(err.message, true)
-      } finally {
-        compareGenerateBtn.disabled = false
-      }
-    })
-  }
-
-  // Copy invite code
-  if (compareCopyBtn) {
-    compareCopyBtn.addEventListener('click', () => {
-      const token = compareLinkUrl?.textContent || ''
-      if (token) {
-        navigator.clipboard
-          .writeText(token)
-          .then(() => {
-            compareCopyBtn.innerHTML = '<i class="fas fa-check"></i>'
-            setTimeout(() => {
-              compareCopyBtn.innerHTML = '<i class="fas fa-copy"></i>'
-            }, 2000)
+    // Wire up remove buttons
+    matchesFriendsList.querySelectorAll('.matches-remove-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const fCode = btn.dataset.friendCode
+        if (!fCode) return
+        btn.disabled = true
+        try {
+          await fetch(`${basePath}/api/matches/remove-user`, {
+            method: 'DELETE',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ friendCode: fCode }),
           })
-          .catch(() => {})
-      }
+          await loadMatchesData()
+        } catch {
+          btn.disabled = false
+        }
+      })
+    })
+
+    // Wire up watch-card expand/collapse
+    matchesFriendsList.querySelectorAll('.watch-card').forEach(card => {
+      const collapsed = card.querySelector('.watch-card-collapsed')
+      const details = card.querySelector('.watch-card-details')
+      if (!collapsed || !details) return
+      collapsed.addEventListener('click', () => {
+        const isOpen = card.classList.contains('is-expanded')
+        card.classList.toggle('is-expanded', !isOpen)
+        details.hidden = isOpen
+      })
+      details.hidden = true
     })
   }
 
-  // Refresh invite code
-  if (compareNewInviteBtn) {
-    compareNewInviteBtn.addEventListener('click', async () => {
-      compareNewInviteBtn.disabled = true
-      setCompareStatus('Refreshing code…')
+  const loadMatchesData = async () => {
+    try {
+      // Fetch user code
+      const codeRes = await fetch(`${basePath}/api/user/code`)
+      const codeData = await codeRes.json().catch(() => ({}))
+      if (matchesMyCodeEl) matchesMyCodeEl.textContent = codeData.code || '——'
+
+      // Fetch connections + matches
+      const connRes = await fetch(`${basePath}/api/matches/connections`)
+      const connData = await connRes.json().catch(() => ({}))
+      renderFriends(connData.connections || [])
+    } catch (err) {
+      console.warn('[matches] Failed to load matches data:', err)
+    }
+  }
+
+  // Copy my code
+  if (matchesCopyBtn) {
+    matchesCopyBtn.addEventListener('click', () => {
+      const code = matchesMyCodeEl?.textContent?.trim() || ''
+      if (!code || code === '——' || code === '······') return
+      navigator.clipboard
+        .writeText(code)
+        .then(() => {
+          matchesCopyBtn.innerHTML = '<i class="fas fa-check"></i>'
+          setTimeout(() => {
+            matchesCopyBtn.innerHTML = '<i class="fas fa-copy"></i>'
+          }, 2000)
+        })
+        .catch(() => {})
+    })
+  }
+
+  // Refresh code
+  if (matchesRefreshBtn) {
+    matchesRefreshBtn.addEventListener('click', async () => {
+      if (
+        !confirm(
+          'Refresh your code? This will remove all your current friend connections and generate a new code.'
+        )
+      )
+        return
+      matchesRefreshBtn.disabled = true
       try {
-        const res = await fetch(`${basePath}/api/compare/invite/refresh`, {
+        const res = await fetch(`${basePath}/api/user/refresh`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ roomCode, name: userName }),
+          body: '{}',
         })
         const data = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(data.error || 'Could not refresh code.')
-        setMyInviteCode(data.token)
-        setCompareStatus('')
-        showCompareState('link')
+        if (matchesMyCodeEl) matchesMyCodeEl.textContent = data.code || '——'
+        renderFriends([])
+        setMatchesStatus('New code generated — share it with your friends.')
       } catch (err) {
-        setCompareStatus(err.message, true)
+        setMatchesStatus(err.message, true)
       } finally {
-        compareNewInviteBtn.disabled = false
+        matchesRefreshBtn.disabled = false
       }
     })
   }
 
-  // Join with code
-  if (compareJoinForm) {
-    compareJoinForm.addEventListener('submit', async e => {
+  // Add friend
+  if (matchesAddForm) {
+    matchesAddForm.addEventListener('submit', async e => {
       e.preventDefault()
-      const token = (compareTokenInput?.value || '').trim().toUpperCase()
-      if (!token) return
-      setCompareStatus('Finding matches…')
+      const friendCode = (matchesFriendInput?.value || '').trim().toUpperCase()
+      if (!friendCode) return
+      setMatchesStatus('Adding friend…')
       try {
-        const res = await fetch(
-          `${basePath}/api/compare/join/${encodeURIComponent(token)}`,
-          {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ roomCode, name: userName }),
-          }
-        )
+        const res = await fetch(`${basePath}/api/matches/add`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ friendCode }),
+        })
         const data = await res.json().catch(() => ({}))
-        if (!res.ok) throw new Error(data.error || 'Could not join.')
-
-        const { initiator, matches } = data
-        if (compareResultsTitle)
-          compareResultsTitle.textContent = `Matches with ${initiator.name}`
-        if (compareResultsSubtitle) {
-          compareResultsSubtitle.textContent =
-            matches.length === 1
-              ? '1 movie you both want to watch'
-              : `${matches.length} movies you both want to watch`
-        }
-        renderCompareMatches(matches, initiator.name)
-        setCompareStatus('')
-        showCompareState('results')
+        if (!res.ok) throw new Error(data.error || 'Could not add friend.')
+        if (matchesFriendInput) matchesFriendInput.value = ''
+        setMatchesStatus(`Added ${data.friendName}!`)
+        setTimeout(() => setMatchesStatus(''), 3000)
+        await loadMatchesData()
       } catch (err) {
-        setCompareStatus(err.message, true)
+        setMatchesStatus(err.message, true)
       }
     })
   }
 
-  // Back from results to home
-  if (compareBackBtn) {
-    compareBackBtn.addEventListener('click', () => showCompareState('home'))
-  }
-
-  // Expose init hook (called by initTabs when matches tab activates)
+  // Load data when matches tab becomes active
   window.initCompareTab = () => {
-    // Only init once per session
-    if (window._compareTabInitialized) return
-    window._compareTabInitialized = true
-    showCompareState('home')
+    if (window._matchesTabInitialized) return
+    window._matchesTabInitialized = true
+    loadMatchesData()
   }
 
   // ===== RECOMMENDATIONS TAB =====

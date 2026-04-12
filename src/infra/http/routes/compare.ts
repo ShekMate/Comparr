@@ -1,60 +1,22 @@
 import type { CompatRequest } from '../compat-request.ts'
 import { addSecurityHeaders } from '../security-headers.ts'
-import { getCompareMatches } from '../../../features/session/session.ts'
-import { getDataDir } from '../../../core/config.ts'
+import { getUserTokenFromCookie } from './auth.ts'
+import { getUserSession } from '../../../core/user-session-store.ts'
+import {
+  getOrCreateUserCode,
+  addConnection,
+  removeConnection,
+  refreshUserCode,
+  getConnections,
+  isValidUserCode,
+  USER_CODE_LENGTH,
+} from '../../../features/session/user-codes.ts'
 
-type CompareInvite = { roomCode: string; name: string; createdAt: number }
-
-// Invite store (in-memory with file persistence).
-// Tokens are 8 uppercase hex chars; each stores the initiator's room code + name.
-const invites = new Map<string, CompareInvite>()
-const TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
-const INVITES_FILE = `${getDataDir()}/compare-invites.json`
-
-let invitesLoaded = false
-
-async function ensureInvitesLoaded() {
-  if (invitesLoaded) return
-
-  invitesLoaded = true
-  try {
-    const raw = await Deno.readTextFile(INVITES_FILE)
-    const parsed = JSON.parse(raw)
-    if (!parsed || typeof parsed !== 'object') return
-
-    for (const [token, invite] of Object.entries(parsed)) {
-      if (
-        typeof token !== 'string' ||
-        !/^[A-F0-9]{8}$/.test(token) ||
-        !invite ||
-        typeof invite !== 'object'
-      ) {
-        continue
-      }
-
-      const roomCode = String((invite as any).roomCode || '')
-      const name = String((invite as any).name || '')
-      const createdAt = Number((invite as any).createdAt || 0)
-
-      if (!roomCode || !name || !Number.isFinite(createdAt) || createdAt <= 0) {
-        continue
-      }
-
-      invites.set(token, { roomCode, name, createdAt })
-    }
-  } catch {
-    // no persisted invites yet
-  }
-}
-
-async function persistInvites() {
-  await Deno.mkdir(getDataDir(), { recursive: true }).catch(() => {})
-  const out: Record<string, CompareInvite> = {}
-  for (const [token, invite] of invites.entries()) out[token] = invite
-
-  const tmp = `${INVITES_FILE}.tmp.${Date.now()}`
-  await Deno.writeTextFile(tmp, JSON.stringify(out, null, 2))
-  await Deno.rename(tmp, INVITES_FILE)
+// Matches the deterministic room code formula used on the frontend:
+//   const userRoomCode = id => `U${String(id).padStart(3, '0')}`
+// Each authenticated user owns a stable personal room keyed to their DB id.
+function roomCodeForUser(userId: number): string {
+  return `U${String(userId).padStart(3, '0')}`
 }
 
 const makeJson = (req: CompatRequest) => {
@@ -63,216 +25,135 @@ const makeJson = (req: CompatRequest) => {
   return h
 }
 
-function pruneExpired() {
-  const now = Date.now()
-  let changed = false
-  for (const [k, v] of invites) {
-    if (now - v.createdAt > TTL_MS) {
-      invites.delete(k)
-      changed = true
-    }
+/** Read the caller's identity from their auth session cookie. */
+function getCallerIdentity(req: CompatRequest): { name: string; roomCode: string } | null {
+  const token = getUserTokenFromCookie(req)
+  const session = getUserSession(token)
+  if (!session) return null
+  return {
+    name: session.username,
+    roomCode: roomCodeForUser(session.userId),
   }
-  return changed
-}
-
-function findInviteToken(roomCode: string, name: string): string | null {
-  for (const [token, invite] of invites.entries()) {
-    if (invite.roomCode === roomCode && invite.name === name) {
-      return token
-    }
-  }
-  return null
-}
-
-function deleteInvitesForUser(roomCode: string, name: string): boolean {
-  let changed = false
-  for (const [token, invite] of invites.entries()) {
-    if (invite.roomCode === roomCode && invite.name === name) {
-      invites.delete(token)
-      changed = true
-    }
-  }
-  return changed
 }
 
 export async function handleCompareRoutes(
   req: CompatRequest,
   path: string
 ): Promise<Response | null> {
-  await ensureInvitesLoaded()
 
-  // ── POST /api/compare/invite ─────────────────────────────────────────────
-  // Body: { roomCode, name }
-  // Returns: { token }  — stable personal invite code for the current user
-  if (path === '/api/compare/invite' && req.method === 'POST') {
-    let body: { roomCode?: string; name?: string } = {}
-    try {
-      body = await req.json()
-    } catch {
-      /* empty body ok */
-    }
-
-    const roomCode = String(body.roomCode || '')
-      .trim()
-      .toUpperCase()
-      .slice(0, 10)
-    const name = String(body.name || '')
-      .trim()
-      .slice(0, 64)
-
-    if (!roomCode || !name) {
-      return new Response(
-        JSON.stringify({ error: 'roomCode and name are required' }),
-        { status: 400, headers: makeJson(req) }
-      )
-    }
-
-    if (pruneExpired()) await persistInvites()
-
-    const existing = findInviteToken(roomCode, name)
-    let token = existing
-    if (!token) {
-      // 8 uppercase hex chars
-      const bytes = new Uint8Array(4)
-      crypto.getRandomValues(bytes)
-      token = Array.from(bytes, b => b.toString(16).padStart(2, '0'))
-        .join('')
-        .toUpperCase()
-
-      invites.set(token, { roomCode, name, createdAt: Date.now() })
-      await persistInvites()
-    }
-
-    return new Response(JSON.stringify({ token }), {
-      status: 200,
-      headers: makeJson(req),
-    })
-  }
-
-  // ── POST /api/compare/invite/refresh ─────────────────────────────────────
-  // Body: { roomCode, name }
-  // Returns: { token } — replaces any previous personal invite code.
-  if (path === '/api/compare/invite/refresh' && req.method === 'POST') {
-    let body: { roomCode?: string; name?: string } = {}
-    try {
-      body = await req.json()
-    } catch {
-      /* empty body ok */
-    }
-
-    const roomCode = String(body.roomCode || '')
-      .trim()
-      .toUpperCase()
-      .slice(0, 10)
-    const name = String(body.name || '')
-      .trim()
-      .slice(0, 64)
-
-    if (!roomCode || !name) {
-      return new Response(
-        JSON.stringify({ error: 'roomCode and name are required' }),
-        { status: 400, headers: makeJson(req) }
-      )
-    }
-
-    let changed = pruneExpired()
-    if (deleteInvitesForUser(roomCode, name)) changed = true
-
-    // 8 uppercase hex chars
-    const bytes = new Uint8Array(4)
-    crypto.getRandomValues(bytes)
-    const token = Array.from(bytes, b => b.toString(16).padStart(2, '0'))
-      .join('')
-      .toUpperCase()
-
-    invites.set(token, { roomCode, name, createdAt: Date.now() })
-    changed = true
-
-    if (changed) await persistInvites()
-
-    return new Response(JSON.stringify({ token }), {
-      status: 200,
-      headers: makeJson(req),
-    })
-  }
-
-  // ── GET /api/compare/invite/:token ───────────────────────────────────────
-  // Returns initiator name so User B can see who's waiting before joining.
-  if (path.startsWith('/api/compare/invite/') && req.method === 'GET') {
-    const token = path.slice('/api/compare/invite/'.length).toUpperCase()
-    if (!/^[A-F0-9]{8}$/.test(token)) {
-      return new Response(JSON.stringify({ error: 'Invalid invite token' }), {
-        status: 400,
-        headers: makeJson(req),
+  // ── GET /api/user/code ──────────────────────────────────────────────────
+  if (path === '/api/user/code' && req.method === 'GET') {
+    const caller = getCallerIdentity(req)
+    if (!caller) {
+      return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
+        status: 401, headers: makeJson(req),
       })
     }
-    if (pruneExpired()) await persistInvites()
-    const invite = invites.get(token)
-    if (!invite) {
-      return new Response(
-        JSON.stringify({ error: 'Invite not found or expired' }),
-        { status: 404, headers: makeJson(req) }
-      )
-    }
-    return new Response(JSON.stringify({ name: invite.name, token }), {
-      status: 200,
-      headers: makeJson(req),
+    const code = await getOrCreateUserCode(caller.name, caller.roomCode)
+    return new Response(JSON.stringify({ code }), {
+      status: 200, headers: makeJson(req),
     })
   }
 
-  // ── POST /api/compare/join/:token ────────────────────────────────────────
-  // Body: { roomCode, name }
-  // Returns: { initiator: { name }, matches: MediaItem[] }
-  if (path.startsWith('/api/compare/join/') && req.method === 'POST') {
-    const token = path.slice('/api/compare/join/'.length).toUpperCase()
-    if (!/^[A-F0-9]{8}$/.test(token)) {
-      return new Response(JSON.stringify({ error: 'Invalid invite token' }), {
-        status: 400,
-        headers: makeJson(req),
+  // ── POST /api/user/refresh ──────────────────────────────────────────────
+  // Returns: { code } — brand-new code, all connections cleared
+  if (path === '/api/user/refresh' && req.method === 'POST') {
+    const caller = getCallerIdentity(req)
+    if (!caller) {
+      return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
+        status: 401, headers: makeJson(req),
       })
     }
-    if (pruneExpired()) await persistInvites()
-    const invite = invites.get(token)
-    if (!invite) {
-      return new Response(
-        JSON.stringify({ error: 'Invite not found or expired' }),
-        { status: 404, headers: makeJson(req) }
-      )
+    const code = await refreshUserCode(caller.name, caller.roomCode)
+    return new Response(JSON.stringify({ code }), {
+      status: 200, headers: makeJson(req),
+    })
+  }
+
+  // ── POST /api/matches/add ───────────────────────────────────────────────
+  // Body: { friendCode }
+  // Returns: { success, friendName }
+  if (path === '/api/matches/add' && req.method === 'POST') {
+    const caller = getCallerIdentity(req)
+    if (!caller) {
+      return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
+        status: 401, headers: makeJson(req),
+      })
     }
 
-    let body: { roomCode?: string; name?: string } = {}
-    try {
-      body = await req.json()
-    } catch {
-      /* empty body ok */
-    }
+    let body: { friendCode?: string } = {}
+    try { body = await req.json() } catch { /* empty body ok */ }
 
-    const roomCode = String(body.roomCode || '')
+    const friendCode = String(body.friendCode || '')
       .trim()
       .toUpperCase()
-      .slice(0, 10)
-    const name = String(body.name || '')
-      .trim()
-      .slice(0, 64)
+      .slice(0, USER_CODE_LENGTH)
 
-    if (!roomCode || !name) {
+    if (!friendCode) {
+      return new Response(JSON.stringify({ error: 'friendCode is required' }), {
+        status: 400, headers: makeJson(req),
+      })
+    }
+
+    if (!isValidUserCode(friendCode)) {
       return new Response(
-        JSON.stringify({ error: 'roomCode and name are required' }),
+        JSON.stringify({ error: `Friend code must be ${USER_CODE_LENGTH} characters (A-Z or 0-9).` }),
         { status: 400, headers: makeJson(req) }
       )
     }
 
-    const matches = getCompareMatches(
-      invite.roomCode,
-      invite.name,
-      roomCode,
-      name
-    )
+    const result = await addConnection(caller.name, caller.roomCode, friendCode)
+    if (!result.success) {
+      return new Response(JSON.stringify({ error: result.error }), {
+        status: 404, headers: makeJson(req),
+      })
+    }
 
     return new Response(
-      JSON.stringify({ initiator: { name: invite.name }, matches }),
+      JSON.stringify({ success: true, friendName: result.friendName }),
       { status: 200, headers: makeJson(req) }
     )
+  }
+
+  // ── DELETE /api/matches/remove-user ────────────────────────────────────
+  // Body: { friendCode }
+  if (path === '/api/matches/remove-user' && req.method === 'DELETE') {
+    const caller = getCallerIdentity(req)
+    if (!caller) {
+      return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
+        status: 401, headers: makeJson(req),
+      })
+    }
+
+    let body: { friendCode?: string } = {}
+    try { body = await req.json() } catch { /* empty body ok */ }
+
+    const friendCode = String(body.friendCode || '').trim().toUpperCase()
+    if (!friendCode) {
+      return new Response(JSON.stringify({ error: 'friendCode is required' }), {
+        status: 400, headers: makeJson(req),
+      })
+    }
+
+    await removeConnection(caller.name, friendCode)
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200, headers: makeJson(req),
+    })
+  }
+
+  // ── GET /api/matches/connections ────────────────────────────────────────
+  if (path === '/api/matches/connections' && req.method === 'GET') {
+    const caller = getCallerIdentity(req)
+    if (!caller) {
+      return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
+        status: 401, headers: makeJson(req),
+      })
+    }
+
+    const connections = await getConnections(caller.name, caller.roomCode)
+    return new Response(JSON.stringify({ connections }), {
+      status: 200, headers: makeJson(req),
+    })
   }
 
   return null
