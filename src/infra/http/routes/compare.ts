@@ -75,6 +75,26 @@ function pruneExpired() {
   return changed
 }
 
+function findInviteToken(roomCode: string, name: string): string | null {
+  for (const [token, invite] of invites.entries()) {
+    if (invite.roomCode === roomCode && invite.name === name) {
+      return token
+    }
+  }
+  return null
+}
+
+function deleteInvitesForUser(roomCode: string, name: string): boolean {
+  let changed = false
+  for (const [token, invite] of invites.entries()) {
+    if (invite.roomCode === roomCode && invite.name === name) {
+      invites.delete(token)
+      changed = true
+    }
+  }
+  return changed
+}
+
 export async function handleCompareRoutes(
   req: CompatRequest,
   path: string
@@ -83,7 +103,7 @@ export async function handleCompareRoutes(
 
   // ── POST /api/compare/invite ─────────────────────────────────────────────
   // Body: { roomCode, name }
-  // Returns: { token }  — client builds share URL as /?compare=TOKEN
+  // Returns: { token }  — stable personal invite code for the current user
   if (path === '/api/compare/invite' && req.method === 'POST') {
     let body: { roomCode?: string; name?: string } = {}
     try {
@@ -109,6 +129,55 @@ export async function handleCompareRoutes(
 
     if (pruneExpired()) await persistInvites()
 
+    const existing = findInviteToken(roomCode, name)
+    let token = existing
+    if (!token) {
+      // 8 uppercase hex chars
+      const bytes = new Uint8Array(4)
+      crypto.getRandomValues(bytes)
+      token = Array.from(bytes, b => b.toString(16).padStart(2, '0'))
+        .join('')
+        .toUpperCase()
+
+      invites.set(token, { roomCode, name, createdAt: Date.now() })
+      await persistInvites()
+    }
+
+    return new Response(JSON.stringify({ token }), {
+      status: 200,
+      headers: makeJson(req),
+    })
+  }
+
+  // ── POST /api/compare/invite/refresh ─────────────────────────────────────
+  // Body: { roomCode, name }
+  // Returns: { token } — replaces any previous personal invite code.
+  if (path === '/api/compare/invite/refresh' && req.method === 'POST') {
+    let body: { roomCode?: string; name?: string } = {}
+    try {
+      body = await req.json()
+    } catch {
+      /* empty body ok */
+    }
+
+    const roomCode = String(body.roomCode || '')
+      .trim()
+      .toUpperCase()
+      .slice(0, 10)
+    const name = String(body.name || '')
+      .trim()
+      .slice(0, 64)
+
+    if (!roomCode || !name) {
+      return new Response(
+        JSON.stringify({ error: 'roomCode and name are required' }),
+        { status: 400, headers: makeJson(req) }
+      )
+    }
+
+    let changed = pruneExpired()
+    if (deleteInvitesForUser(roomCode, name)) changed = true
+
     // 8 uppercase hex chars
     const bytes = new Uint8Array(4)
     crypto.getRandomValues(bytes)
@@ -117,7 +186,9 @@ export async function handleCompareRoutes(
       .toUpperCase()
 
     invites.set(token, { roomCode, name, createdAt: Date.now() })
-    await persistInvites()
+    changed = true
+
+    if (changed) await persistInvites()
 
     return new Response(JSON.stringify({ token }), {
       status: 200,

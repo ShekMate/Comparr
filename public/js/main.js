@@ -2752,7 +2752,9 @@ function createFirstRunGuideModal() {
 
   const updateActionButtons = screen => {
     backButton.hidden = history.length <= 1 || screen.type === 'setup-complete'
-    skipButton.hidden = !['security', 'user-auth', 'requests'].includes(screen.type)
+    skipButton.hidden = !['security', 'user-auth', 'requests'].includes(
+      screen.type
+    )
     saveButton.hidden = screen.type !== 'defaults'
     nextButton.disabled = false
     skipButton.disabled = false
@@ -3202,12 +3204,17 @@ function createFirstRunGuideModal() {
       copy.textContent =
         'Let users sign in with their Plex, Jellyfin, or Emby account. The first user to sign in automatically becomes the admin.'
 
-      const currentEnabled = window.USER_AUTH_ENABLED === true || window.USER_AUTH_ENABLED === 'true'
-      const currentPlexRestrict = window.PLEX_RESTRICT_TO_SERVER === true || window.PLEX_RESTRICT_TO_SERVER === 'true'
+      const currentEnabled =
+        window.USER_AUTH_ENABLED === true || window.USER_AUTH_ENABLED === 'true'
+      const currentPlexRestrict =
+        window.PLEX_RESTRICT_TO_SERVER === true ||
+        window.PLEX_RESTRICT_TO_SERVER === 'true'
       const plexConfigured = Boolean(window.PLEX_CONFIGURED)
       const plexRestrictRow = plexConfigured
         ? `<label class="first-run-user-auth-row">
-            <input type="checkbox" id="first-run-plex-restrict" ${currentPlexRestrict ? 'checked' : ''} />
+            <input type="checkbox" id="first-run-plex-restrict" ${
+              currentPlexRestrict ? 'checked' : ''
+            } />
             <div>
               <strong>Restrict to this Plex server</strong>
               <p class="first-run-guide-instruction">Only allow users who are members of your Plex server to log in.</p>
@@ -3217,7 +3224,9 @@ function createFirstRunGuideModal() {
 
       body.innerHTML = `
         <label class="first-run-user-auth-row">
-          <input type="checkbox" id="first-run-user-auth-enabled" ${currentEnabled ? 'checked' : ''} />
+          <input type="checkbox" id="first-run-user-auth-enabled" ${
+            currentEnabled ? 'checked' : ''
+          } />
           <div>
             <strong>Enable user authentication</strong>
             <p class="first-run-guide-instruction">Require users to sign in with their media server account.</p>
@@ -4291,10 +4300,16 @@ async function login(api) {
   const embySigninBtn = document.querySelector('.js-emby-signin-btn')
   const embyStatus = document.querySelector('.js-emby-status')
   const credentialModal = document.querySelector('.js-user-auth-modal')
-  const credentialModalClose = document.querySelector('.js-user-auth-modal-close')
-  const credentialModalProvider = document.querySelector('.js-user-auth-modal-provider')
+  const credentialModalClose = document.querySelector(
+    '.js-user-auth-modal-close'
+  )
+  const credentialModalProvider = document.querySelector(
+    '.js-user-auth-modal-provider'
+  )
   const credentialModalForm = document.querySelector('.js-user-auth-modal-form')
-  const credentialModalStatus = document.querySelector('.js-user-auth-modal-status')
+  const credentialModalStatus = document.querySelector(
+    '.js-user-auth-modal-status'
+  )
 
   // Track currently logged-in user identity (populated after user auth)
   let currentUser = null
@@ -4382,7 +4397,8 @@ async function login(api) {
       const hasEmby = providers.some(p => p.id === 'emby')
 
       if (userAuthPlex && hasPlex) userAuthPlex.style.display = 'flex'
-      if (userAuthJellyfin && hasJellyfin) userAuthJellyfin.style.display = 'flex'
+      if (userAuthJellyfin && hasJellyfin)
+        userAuthJellyfin.style.display = 'flex'
       if (userAuthEmby && hasEmby) userAuthEmby.style.display = 'flex'
 
       // Wait for the user to authenticate OR choose to continue as guest
@@ -4396,7 +4412,14 @@ async function login(api) {
         // Guest bypass — skip media server login entirely
         const guestBtn = document.querySelector('.js-user-auth-guest-btn')
         if (guestBtn) {
-          guestBtn.addEventListener('click', () => { isGuest = true; resolve() }, { once: true })
+          guestBtn.addEventListener(
+            'click',
+            () => {
+              isGuest = true
+              resolve()
+            },
+            { once: true }
+          )
         }
 
         // ── Plex PIN flow ──────────────────────────────────────────────────
@@ -4421,17 +4444,23 @@ async function login(api) {
             try {
               const { pinId: id, authUrl } = await api.requestPlexPin()
               pinId = id
-              popup = window.open(authUrl, 'plex-auth', 'width=800,height=700,left=100,top=100')
+              popup = window.open(
+                authUrl,
+                'plex-auth',
+                'width=800,height=700,left=100,top=100'
+              )
 
               if (!popup) {
                 if (plexStatus) {
-                  plexStatus.textContent = 'Popup blocked. Please allow popups and try again.'
+                  plexStatus.textContent =
+                    'Popup blocked. Please allow popups and try again.'
                 }
                 plexSigninBtn.disabled = false
                 return
               }
 
-              if (plexStatus) plexStatus.textContent = 'Waiting for Plex approval…'
+              if (plexStatus)
+                plexStatus.textContent = 'Waiting for Plex approval…'
 
               pollTimer = setInterval(async () => {
                 try {
@@ -4440,13 +4469,16 @@ async function login(api) {
                     cleanupPoll()
                     if (plexStatus) plexStatus.hidden = true
                     handleUserLoggedIn(result.user)
-                  } else if (result.status === 'expired' || result.status === 'denied') {
+                  } else if (
+                    result.status === 'expired' ||
+                    result.status === 'denied'
+                  ) {
                     cleanupPoll()
                     plexSigninBtn.disabled = false
                     if (plexStatus) {
                       plexStatus.textContent =
                         result.status === 'denied'
-                          ? (result.error || 'Access denied.')
+                          ? result.error || 'Access denied.'
                           : 'Plex login expired. Please try again.'
                     }
                   } else if (popup.closed) {
@@ -4464,7 +4496,8 @@ async function login(api) {
               cleanupPoll()
               plexSigninBtn.disabled = false
               if (plexStatus) {
-                plexStatus.textContent = err.message || 'Could not start Plex login.'
+                plexStatus.textContent =
+                  err.message || 'Could not start Plex login.'
               }
             }
           })
@@ -4476,7 +4509,8 @@ async function login(api) {
         const openCredentialModal = provider => {
           activeProvider = provider
           const label = provider === 'jellyfin' ? 'Jellyfin' : 'Emby'
-          if (credentialModalProvider) credentialModalProvider.textContent = `Sign in with ${label}`
+          if (credentialModalProvider)
+            credentialModalProvider.textContent = `Sign in with ${label}`
           if (credentialModalStatus) credentialModalStatus.hidden = true
           if (credentialModalForm) credentialModalForm.reset()
           if (credentialModal) credentialModal.hidden = false
@@ -4503,11 +4537,19 @@ async function login(api) {
         }
 
         // Close on Escape
-        document.addEventListener('keydown', e => {
-          if (e.key === 'Escape' && credentialModal && !credentialModal.hidden) {
-            closeCredentialModal()
-          }
-        }, { once: false })
+        document.addEventListener(
+          'keydown',
+          e => {
+            if (
+              e.key === 'Escape' &&
+              credentialModal &&
+              !credentialModal.hidden
+            ) {
+              closeCredentialModal()
+            }
+          },
+          { once: false }
+        )
 
         if (jellyfinSigninBtn && hasJellyfin) {
           jellyfinSigninBtn.addEventListener('click', () => {
@@ -4530,11 +4572,15 @@ async function login(api) {
             const username = String(fd.get('username') || '').trim()
             const password = String(fd.get('password') || '')
             if (!username) {
-              credentialModalForm.querySelector('input[name="username"]')?.focus()
+              credentialModalForm
+                .querySelector('input[name="username"]')
+                ?.focus()
               return
             }
 
-            const submitBtn = credentialModalForm.querySelector('button[type="submit"]')
+            const submitBtn = credentialModalForm.querySelector(
+              'button[type="submit"]'
+            )
             if (submitBtn) submitBtn.disabled = true
             if (credentialModalStatus) credentialModalStatus.hidden = true
 
@@ -4549,13 +4595,15 @@ async function login(api) {
               handleUserLoggedIn(user)
             } catch (err) {
               if (credentialModalStatus) {
-                credentialModalStatus.textContent = err.message || 'Login failed.'
+                credentialModalStatus.textContent =
+                  err.message || 'Login failed.'
                 credentialModalStatus.hidden = false
               }
               if (submitBtn) submitBtn.disabled = false
 
               // Also surface error on the provider's status element
-              const providerStatus = activeProvider === 'jellyfin' ? jellyfinStatus : embyStatus
+              const providerStatus =
+                activeProvider === 'jellyfin' ? jellyfinStatus : embyStatus
               if (providerStatus) {
                 providerStatus.textContent = err.message || 'Login failed.'
                 providerStatus.hidden = false
@@ -4587,10 +4635,14 @@ async function login(api) {
       if (user.avatarUrl) {
         // Use the avatar proxy so images load within CSP
         const base = location.pathname.replace(/\/(index\.html)?$/, '')
-        avatarEl.src = `${base}/api/auth/avatar?url=${encodeURIComponent(user.avatarUrl)}`
+        avatarEl.src = `${base}/api/auth/avatar?url=${encodeURIComponent(
+          user.avatarUrl
+        )}`
         avatarEl.alt = user.username || ''
         avatarEl.style.display = ''
-        avatarEl.onerror = () => { avatarEl.style.display = 'none' }
+        avatarEl.onerror = () => {
+          avatarEl.style.display = 'none'
+        }
       } else {
         avatarEl.style.display = 'none'
       }
@@ -4669,7 +4721,10 @@ async function login(api) {
       return await revealApp(name, code, data)
     } catch (err) {
       // If auto-login fails, fall through to manual mode form
-      console.warn('[auth] Auto-login failed, falling back to manual flow:', err.message)
+      console.warn(
+        '[auth] Auto-login failed, falling back to manual flow:',
+        err.message
+      )
     }
   }
 
@@ -4677,7 +4732,9 @@ async function login(api) {
   if (isGuest) {
     try {
       const storedToken = localStorage.getItem('comparr_guest_token') || ''
-      const { guestToken, roomCode: code, name } = await api.createGuestSession(storedToken)
+      const { guestToken, roomCode: code, name } = await api.createGuestSession(
+        storedToken
+      )
       localStorage.setItem('comparr_guest_token', guestToken)
 
       let data
@@ -4689,7 +4746,10 @@ async function login(api) {
       }
       return await revealApp(name, code, data)
     } catch (err) {
-      console.warn('[auth] Guest auto-login failed, falling back to manual flow:', err.message)
+      console.warn(
+        '[auth] Guest auto-login failed, falling back to manual flow:',
+        err.message
+      )
     }
   }
 
@@ -6694,12 +6754,17 @@ const main = async () => {
   const compareJoinForm = document.querySelector('.js-compare-join-form')
   const compareTokenInput = document.querySelector('.js-compare-token-input')
   const compareLinkUrl = document.querySelector('.js-compare-link-url')
-  const compareLinkCode = document.querySelector('.js-compare-link-code')
   const compareCopyBtn = document.querySelector('.js-compare-copy-btn')
-  const compareNewInviteBtn = document.querySelector('.js-compare-new-invite-btn')
+  const compareNewInviteBtn = document.querySelector(
+    '.js-compare-new-invite-btn'
+  )
   const compareBackBtn = document.querySelector('.js-compare-back-btn')
-  const compareResultsTitle = document.querySelector('.js-compare-results-title')
-  const compareResultsSubtitle = document.querySelector('.js-compare-results-subtitle')
+  const compareResultsTitle = document.querySelector(
+    '.js-compare-results-title'
+  )
+  const compareResultsSubtitle = document.querySelector(
+    '.js-compare-results-subtitle'
+  )
   const compareResultsList = document.querySelector('.js-compare-results-list')
   // basePath is already declared earlier in main()
 
@@ -6713,7 +6778,9 @@ const main = async () => {
     if (!compareStatus) return
     compareStatus.textContent = msg
     compareStatus.hidden = !msg
-    compareStatus.style.color = isError ? 'var(--color-accent-danger, #f87171)' : ''
+    compareStatus.style.color = isError
+      ? 'var(--color-accent-danger, #f87171)'
+      : ''
   }
 
   const renderCompareMatches = (matches, initiatorName) => {
@@ -6731,15 +6798,31 @@ const main = async () => {
           <div class="watch-card-collapsed">
             <div class="watch-card-header-compact">
               <div class="watch-card-title-compact">
-                ${movie.title}${movie.year ? ` <span class="watch-card-year">(${movie.year})</span>` : ''}
+                ${movie.title}${
+          movie.year
+            ? ` <span class="watch-card-year">(${movie.year})</span>`
+            : ''
+        }
               </div>
               <div class="expand-icon"><i class="fas fa-chevron-down"></i></div>
             </div>
           </div>
           <div class="watch-card-details">
-            ${posterUrl ? `<div class="watch-card-poster"><img src="${posterUrl.startsWith('http') ? posterUrl : basePath + posterUrl}" alt="${movie.title} poster" /></div>` : ''}
+            ${
+              posterUrl
+                ? `<div class="watch-card-poster"><img src="${
+                    posterUrl.startsWith('http')
+                      ? posterUrl
+                      : basePath + posterUrl
+                  }" alt="${movie.title} poster" /></div>`
+                : ''
+            }
             <div class="watch-card-content">
-              ${movie.summary ? `<p class="watch-card-summary">${movie.summary}</p>` : ''}
+              ${
+                movie.summary
+                  ? `<p class="watch-card-summary">${movie.summary}</p>`
+                  : ''
+              }
               <div class="watch-card-metadata">
                 <i class="fas fa-heart"></i>
                 You and ${initiatorName} both want to watch this
@@ -6751,11 +6834,15 @@ const main = async () => {
       .join('')
   }
 
-  // Generate invite link
+  const setMyInviteCode = token => {
+    if (compareLinkUrl) compareLinkUrl.textContent = token || ''
+  }
+
+  // Generate or load my invite code
   if (compareGenerateBtn) {
     compareGenerateBtn.addEventListener('click', async () => {
       compareGenerateBtn.disabled = true
-      setCompareStatus('Generating…')
+      setCompareStatus('Loading your code…')
       try {
         const res = await fetch(`${basePath}/api/compare/invite`, {
           method: 'POST',
@@ -6766,9 +6853,7 @@ const main = async () => {
         if (!res.ok) throw new Error(data.error || 'Could not generate invite.')
 
         const token = data.token
-        const shareUrl = `${location.origin}${basePath || '/'}?compare=${token}`
-        if (compareLinkUrl) compareLinkUrl.textContent = shareUrl
-        if (compareLinkCode) compareLinkCode.textContent = token
+        setMyInviteCode(token)
 
         setCompareStatus('')
         showCompareState('link')
@@ -6780,24 +6865,46 @@ const main = async () => {
     })
   }
 
-  // Copy invite link
+  // Copy invite code
   if (compareCopyBtn) {
     compareCopyBtn.addEventListener('click', () => {
-      const url = compareLinkUrl?.textContent || ''
-      if (url) {
-        navigator.clipboard.writeText(url).then(() => {
-          compareCopyBtn.innerHTML = '<i class="fas fa-check"></i>'
-          setTimeout(() => {
-            compareCopyBtn.innerHTML = '<i class="fas fa-copy"></i>'
-          }, 2000)
-        }).catch(() => {})
+      const token = compareLinkUrl?.textContent || ''
+      if (token) {
+        navigator.clipboard
+          .writeText(token)
+          .then(() => {
+            compareCopyBtn.innerHTML = '<i class="fas fa-check"></i>'
+            setTimeout(() => {
+              compareCopyBtn.innerHTML = '<i class="fas fa-copy"></i>'
+            }, 2000)
+          })
+          .catch(() => {})
       }
     })
   }
 
-  // Generate new invite (back to home from link card)
+  // Refresh invite code
   if (compareNewInviteBtn) {
-    compareNewInviteBtn.addEventListener('click', () => showCompareState('home'))
+    compareNewInviteBtn.addEventListener('click', async () => {
+      compareNewInviteBtn.disabled = true
+      setCompareStatus('Refreshing code…')
+      try {
+        const res = await fetch(`${basePath}/api/compare/invite/refresh`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ roomCode, name: userName }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data.error || 'Could not refresh code.')
+        setMyInviteCode(data.token)
+        setCompareStatus('')
+        showCompareState('link')
+      } catch (err) {
+        setCompareStatus(err.message, true)
+      } finally {
+        compareNewInviteBtn.disabled = false
+      }
+    })
   }
 
   // Join with code
@@ -6808,16 +6915,20 @@ const main = async () => {
       if (!token) return
       setCompareStatus('Finding matches…')
       try {
-        const res = await fetch(`${basePath}/api/compare/join/${encodeURIComponent(token)}`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ roomCode, name: userName }),
-        })
+        const res = await fetch(
+          `${basePath}/api/compare/join/${encodeURIComponent(token)}`,
+          {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ roomCode, name: userName }),
+          }
+        )
         const data = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(data.error || 'Could not join.')
 
         const { initiator, matches } = data
-        if (compareResultsTitle) compareResultsTitle.textContent = `Matches with ${initiator.name}`
+        if (compareResultsTitle)
+          compareResultsTitle.textContent = `Matches with ${initiator.name}`
         if (compareResultsSubtitle) {
           compareResultsSubtitle.textContent =
             matches.length === 1
@@ -6838,26 +6949,12 @@ const main = async () => {
     compareBackBtn.addEventListener('click', () => showCompareState('home'))
   }
 
-  // Handle ?compare=TOKEN URL param: pre-fill the code field on tab open
-  const compareTokenFromUrl = new URLSearchParams(location.search).get('compare')
-  if (compareTokenFromUrl && compareTokenInput) {
-    compareTokenInput.value = compareTokenFromUrl.toUpperCase()
-    // Clean the URL without reloading
-    const url = new URL(location.href)
-    url.searchParams.delete('compare')
-    history.replaceState(null, '', url.toString())
-  }
-
   // Expose init hook (called by initTabs when matches tab activates)
   window.initCompareTab = () => {
     // Only init once per session
     if (window._compareTabInitialized) return
     window._compareTabInitialized = true
     showCompareState('home')
-    // Auto-submit if a token was pre-filled from URL
-    if (compareTokenFromUrl && compareJoinForm) {
-      compareJoinForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
-    }
   }
 
   // ===== RECOMMENDATIONS TAB =====
@@ -7273,7 +7370,16 @@ const main = async () => {
 
   function setImdbImportProgressText(
     headline,
-    { total = 0, processed = 0, imported = 0, skipped = 0, notFoundOnTmdb = 0, duplicates = 0, apiErrors = 0, stage = '' } = {}
+    {
+      total = 0,
+      processed = 0,
+      imported = 0,
+      skipped = 0,
+      notFoundOnTmdb = 0,
+      duplicates = 0,
+      apiErrors = 0,
+      stage = '',
+    } = {}
   ) {
     const safeTotal = Number.isFinite(total) ? total : 0
     const safeProcessed = Number.isFinite(processed) ? processed : 0
@@ -7284,8 +7390,7 @@ const main = async () => {
 
     if (imdbImportStatus) imdbImportStatus.textContent = headline
     if (imdbImportDetail) {
-      const stageText =
-        stage === 'looking_up_tmdb' ? 'Looking up TMDb...' : ''
+      const stageText = stage === 'looking_up_tmdb' ? 'Looking up TMDb...' : ''
       const parts = [
         stageText,
         `Processed ${safeProcessed}/${safeTotal} (${pct}%)`,
@@ -7299,7 +7404,8 @@ const main = async () => {
           skipParts.push(`${duplicates} already imported`)
         if (Number.isFinite(apiErrors) && apiErrors > 0)
           skipParts.push(`${apiErrors} errors`)
-        const skipDetail = skipParts.length > 0 ? ` (${skipParts.join(', ')})` : ''
+        const skipDetail =
+          skipParts.length > 0 ? ` (${skipParts.join(', ')})` : ''
         parts.push(`Skipped ${safeSkipped}${skipDetail}`)
       }
       imdbImportDetail.textContent = parts.filter(Boolean).join(' · ')
@@ -7439,7 +7545,16 @@ const main = async () => {
         const pct = total > 0 ? Math.round((processed / total) * 100) : 0
         setImdbImportProgressText(
           `Importing... ${processed}/${total} (${pct}%)`,
-          { total, processed, imported, skipped, notFoundOnTmdb, duplicates, apiErrors, stage }
+          {
+            total,
+            processed,
+            imported,
+            skipped,
+            notFoundOnTmdb,
+            duplicates,
+            apiErrors,
+            stage,
+          }
         )
       } else if (status === 'completed') {
         if (!isImdbImportActive) return
@@ -7455,12 +7570,14 @@ const main = async () => {
         // Show final skip breakdown in detail line before page reloads
         if (imdbImportDetail && skipped > 0) {
           const skipParts = []
-          if (notFoundOnTmdb > 0) skipParts.push(`${notFoundOnTmdb} not on TMDb`)
+          if (notFoundOnTmdb > 0)
+            skipParts.push(`${notFoundOnTmdb} not on TMDb`)
           if (duplicates > 0) skipParts.push(`${duplicates} already imported`)
           if (apiErrors > 0) skipParts.push(`${apiErrors} errors`)
-          imdbImportDetail.textContent = skipParts.length > 0
-            ? `Skipped breakdown: ${skipParts.join(', ')}`
-            : ''
+          imdbImportDetail.textContent =
+            skipParts.length > 0
+              ? `Skipped breakdown: ${skipParts.join(', ')}`
+              : ''
         } else if (imdbImportDetail) {
           imdbImportDetail.textContent = ''
         }
