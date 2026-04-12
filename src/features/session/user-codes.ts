@@ -10,12 +10,15 @@ export const USER_CODE_LENGTH = 6
 // ── Types ──────────────────────────────────────────────────────────────────
 interface UserConnection {
   code: string
+  // roomCode is stored so we can compute match intersections per friend
   roomCode: string
   name: string
 }
 
 interface UserCodeRecord {
   code: string
+  // roomCode is the user's *current* session room — updated on each request
+  // so match computation always uses the latest data. It is NOT an identity key.
   roomCode: string
   name: string
   connections: UserConnection[]
@@ -27,7 +30,9 @@ type PersistedUserCodes = Record<
 >
 
 // ── In-memory store ────────────────────────────────────────────────────────
-const codeByUser = new Map<string, string>() // `${roomCode}:${name}` → code
+// Keyed by authenticated user name only — room codes are ephemeral session
+// details and must not be part of the user's stable identity.
+const codeByName = new Map<string, string>()           // name → code
 const recordByCode = new Map<string, UserCodeRecord>() // code → record
 
 // ── Persistence ────────────────────────────────────────────────────────────
@@ -42,20 +47,23 @@ async function ensureLoaded() {
     const raw = await Deno.readTextFile(USER_CODES_FILE)
     const parsed: PersistedUserCodes = JSON.parse(raw)
     for (const [code, entry] of Object.entries(parsed)) {
-      if (!entry?.roomCode || !entry?.name) continue
+      if (!entry?.name) continue
       if (!/^[A-Z0-9]{6}$/.test(code)) continue
       const record: UserCodeRecord = {
         code,
-        roomCode: String(entry.roomCode),
+        roomCode: String(entry.roomCode || ''),
         name: String(entry.name),
         connections: Array.isArray(entry.connections)
           ? entry.connections.filter(
-              c => c && typeof c.code === 'string' && typeof c.roomCode === 'string' && typeof c.name === 'string'
+              c =>
+                c &&
+                typeof c.code === 'string' &&
+                typeof c.name === 'string'
             )
           : [],
       }
       recordByCode.set(code, record)
-      codeByUser.set(`${record.roomCode}:${record.name}`, code)
+      codeByName.set(record.name, code)
     }
     log.info(`[user-codes] Loaded ${recordByCode.size} user code(s)`)
   } catch {
@@ -95,16 +103,26 @@ export function isValidUserCode(code: string): boolean {
 // ── Public API ─────────────────────────────────────────────────────────────
 
 /**
- * Get the current user code for (roomCode, name), creating one if missing.
+ * Get (or create) the user's static code.
+ * roomCode is stored/updated so match computation works, but it is NOT
+ * part of the identity key — the code persists across room changes.
  */
 export async function getOrCreateUserCode(
-  roomCode: string,
-  name: string
+  name: string,
+  roomCode: string
 ): Promise<string> {
   await ensureLoaded()
-  const key = `${roomCode}:${name}`
-  const existing = codeByUser.get(key)
-  if (existing && recordByCode.has(existing)) return existing
+
+  const existing = codeByName.get(name)
+  if (existing && recordByCode.has(existing)) {
+    // Keep the stored roomCode current so matches compute correctly
+    const record = recordByCode.get(existing)!
+    if (record.roomCode !== roomCode) {
+      record.roomCode = roomCode
+      await persist()
+    }
+    return existing
+  }
 
   let code: string
   do {
@@ -113,19 +131,19 @@ export async function getOrCreateUserCode(
 
   const record: UserCodeRecord = { code, roomCode, name, connections: [] }
   recordByCode.set(code, record)
-  codeByUser.set(key, code)
+  codeByName.set(name, code)
   await persist()
-  log.info(`[user-codes] Created code ${code} for ${name} in room ${roomCode}`)
+  log.info(`[user-codes] Created code ${code} for ${name}`)
   return code
 }
 
 /**
- * Add a connection between the caller and the user identified by friendCode.
- * Both sides are linked automatically.
+ * Link the caller and the user identified by friendCode.
+ * Both sides are connected automatically — either user adding the other is enough.
  */
 export async function addConnection(
-  myRoomCode: string,
   myName: string,
+  myRoomCode: string,
   friendCode: string
 ): Promise<{ success: boolean; friendName?: string; error?: string }> {
   await ensureLoaded()
@@ -139,15 +157,14 @@ export async function addConnection(
     }
   }
 
-  // Don't let a user add themselves
-  const myCodeStr = await getOrCreateUserCode(myRoomCode, myName)
+  const myCodeStr = await getOrCreateUserCode(myName, myRoomCode)
   if (myCodeStr === normalizedFriendCode) {
     return { success: false, error: 'That is your own code.' }
   }
 
   const myRecord = recordByCode.get(myCodeStr)!
 
-  // Add friend to my list (idempotent)
+  // Idempotent — add only if not already connected
   if (!myRecord.connections.some(c => c.code === normalizedFriendCode)) {
     myRecord.connections.push({
       code: normalizedFriendCode,
@@ -156,7 +173,6 @@ export async function addConnection(
     })
   }
 
-  // Add me to friend's list (idempotent)
   if (!friend.connections.some(c => c.code === myCodeStr)) {
     friend.connections.push({
       code: myCodeStr,
@@ -166,21 +182,22 @@ export async function addConnection(
   }
 
   await persist()
-  log.info(`[user-codes] ${myName} (${myCodeStr}) connected to ${friend.name} (${normalizedFriendCode})`)
+  log.info(
+    `[user-codes] ${myName} (${myCodeStr}) connected to ${friend.name} (${normalizedFriendCode})`
+  )
   return { success: true, friendName: friend.name }
 }
 
 /**
- * Remove a connection between the caller and friendCode (both sides).
+ * Remove a specific connection (both sides).
  */
 export async function removeConnection(
-  myRoomCode: string,
   myName: string,
   friendCode: string
 ): Promise<boolean> {
   await ensureLoaded()
-  const key = `${myRoomCode}:${myName}`
-  const myCode = codeByUser.get(key)
+
+  const myCode = codeByName.get(myName)
   if (!myCode) return false
 
   const myRecord = recordByCode.get(myCode)
@@ -191,7 +208,6 @@ export async function removeConnection(
     c => c.code !== normalizedFriendCode
   )
 
-  // Remove reverse link
   const friendRecord = recordByCode.get(normalizedFriendCode)
   if (friendRecord) {
     friendRecord.connections = friendRecord.connections.filter(
@@ -200,26 +216,24 @@ export async function removeConnection(
   }
 
   await persist()
-  log.info(`[user-codes] ${myName} removed connection to ${normalizedFriendCode}`)
+  log.info(`[user-codes] ${myName} removed connection ${normalizedFriendCode}`)
   return true
 }
 
 /**
- * Generate a brand-new code for the user, clearing all their connections.
- * Also removes them from every connected user's list.
+ * Generate a brand-new code for the user, clearing all connections.
+ * Removes the user from every connected friend's list too.
  */
 export async function refreshUserCode(
-  roomCode: string,
-  name: string
+  name: string,
+  roomCode: string
 ): Promise<string> {
   await ensureLoaded()
-  const key = `${roomCode}:${name}`
-  const oldCode = codeByUser.get(key)
 
+  const oldCode = codeByName.get(name)
   if (oldCode) {
     const oldRecord = recordByCode.get(oldCode)
     if (oldRecord) {
-      // Remove me from all my connections' lists
       for (const conn of oldRecord.connections) {
         const connRecord = recordByCode.get(conn.code)
         if (connRecord) {
@@ -231,39 +245,43 @@ export async function refreshUserCode(
     }
     recordByCode.delete(oldCode)
   }
-  codeByUser.delete(key)
+  codeByName.delete(name)
 
   let newCode: string
   do {
     newCode = generateCode()
   } while (recordByCode.has(newCode))
 
-  const record: UserCodeRecord = {
-    code: newCode,
-    roomCode,
-    name,
-    connections: [],
-  }
+  const record: UserCodeRecord = { code: newCode, roomCode, name, connections: [] }
   recordByCode.set(newCode, record)
-  codeByUser.set(key, newCode)
+  codeByName.set(name, newCode)
   await persist()
-  log.info(`[user-codes] Refreshed code for ${name} in room ${roomCode} → ${newCode}`)
+  log.info(`[user-codes] Refreshed code for ${name} → ${newCode}`)
   return newCode
 }
 
 /**
- * Return all connections for a user along with their matched movies.
+ * Return all connections for a user with their matched movies.
  */
 export async function getConnections(
-  roomCode: string,
-  name: string
+  name: string,
+  roomCode: string
 ): Promise<
   Array<{ code: string; name: string; matches: ReturnType<typeof getCompareMatches> }>
 > {
   await ensureLoaded()
-  const myCode = codeByUser.get(`${roomCode}:${name}`)
-  if (!myCode) return []
 
+  // Keep roomCode current
+  const myCode = codeByName.get(name)
+  if (myCode) {
+    const rec = recordByCode.get(myCode)
+    if (rec && rec.roomCode !== roomCode) {
+      rec.roomCode = roomCode
+      // No need to persist just for a roomCode update — will persist on next write
+    }
+  }
+
+  if (!myCode) return []
   const myRecord = recordByCode.get(myCode)
   if (!myRecord) return []
 
