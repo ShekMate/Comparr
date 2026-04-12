@@ -673,6 +673,20 @@ export async function handleSettingsRoutes(
           currentSettings.ADMIN_PASSWORD ?? ''
         )
       }
+      // Same preservation logic for ACCESS_PASSWORD: a blank submission means
+      // "keep existing" — the client never receives the hash, so an empty field
+      // simply means the user didn't type a new password.
+      if (
+        Object.prototype.hasOwnProperty.call(
+          incomingSettings,
+          'ACCESS_PASSWORD'
+        ) &&
+        String(incomingSettings.ACCESS_PASSWORD ?? '').trim() === ''
+      ) {
+        incomingSettings.ACCESS_PASSWORD = String(
+          currentSettings.ACCESS_PASSWORD ?? ''
+        )
+      }
 
       const hasUpdates = Object.keys(incomingSettings).length > 0
       const updated = hasUpdates
