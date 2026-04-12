@@ -332,7 +332,7 @@ const sanitizeSettingsForClient = (
   settings: Record<string, unknown>,
   isAdmin: boolean
 ) => {
-  const sanitized = { ...settings, ADMIN_PASSWORD: '' }
+  const sanitized = { ...settings, ADMIN_PASSWORD: '', ACCESS_PASSWORD: '' }
 
   if (!isAdmin) {
     for (const key of ADMIN_ONLY_SETTINGS) {
