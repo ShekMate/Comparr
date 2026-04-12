@@ -195,6 +195,17 @@ export class ComparrAPI extends EventTarget {
     }).catch(() => {})
   }
 
+  async createGuestSession(guestToken) {
+    const res = await fetch(`${this._basePath}/api/auth/guest`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ guestToken: guestToken || '' }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || 'Could not start guest session.')
+    return data // { guestToken, roomCode, name }
+  }
+
   async checkRoomExists(roomCode) {
     const normalizedCode = String(roomCode || '')
       .trim()
