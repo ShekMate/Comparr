@@ -4381,12 +4381,18 @@ async function login(api) {
       if (userAuthJellyfin && hasJellyfin) userAuthJellyfin.style.display = 'flex'
       if (userAuthEmby && hasEmby) userAuthEmby.style.display = 'flex'
 
-      // Wait for the user to successfully authenticate with any provider
+      // Wait for the user to authenticate OR choose to continue as guest
       await new Promise(resolve => {
         const handleUserLoggedIn = user => {
           currentUser = user
           window.COMPARR_USER = user
           resolve()
+        }
+
+        // Guest bypass — skip media server login entirely
+        const guestBtn = document.querySelector('.js-user-auth-guest-btn')
+        if (guestBtn) {
+          guestBtn.addEventListener('click', () => resolve(), { once: true })
         }
 
         // ── Plex PIN flow ──────────────────────────────────────────────────
