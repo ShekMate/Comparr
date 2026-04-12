@@ -48,6 +48,7 @@ import {
 import { handleSettingsRoutes } from './infra/http/routes/settings.ts'
 import { handleRoutes } from './infra/http/router.ts'
 import { handleMatchesRoute } from './infra/http/routes/matches.ts'
+import { handleCompareRoutes } from './infra/http/routes/compare.ts'
 import { handleRequestServiceRoutes } from './infra/http/routes/request-service.ts'
 import { handleRoomRoutes } from './infra/http/routes/rooms.ts'
 import { handleRequestMovieRoute } from './infra/http/routes/request-movie.ts'
@@ -524,6 +525,7 @@ for await (const req of server) {
     const routeResponse = await handleRoutes(req, p, [
       handleRequestServiceRoutes,
       handleRoomRoutes,
+      handleCompareRoutes,
       handleMatchesRoute,
       handleRecommendationsRoute,
     ])

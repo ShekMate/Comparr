@@ -4049,3 +4049,32 @@ export function clearUsersFromRoom(
     log.warn(`Failed to save state after clearUsersFromRoom: ${err}`)
   )
 }
+
+/**
+ * Cross-reference two users' liked movies and return the shared subset.
+ * Used by the Compare feature — works across any two room codes so users
+ * from different rooms (or different auth providers) can compare picks.
+ */
+export function getCompareMatches(
+  roomCodeA: string,
+  nameA: string,
+  roomCodeB: string,
+  nameB: string
+): MediaItem[] {
+  const roomA = persistedState.rooms[roomCodeA]
+  const roomB = persistedState.rooms[roomCodeB]
+
+  const userA = roomA?.users.find(u => u.name === nameA)
+  const userB = roomB?.users.find(u => u.name === nameB)
+
+  if (!userA || !userB) return []
+
+  const likedByA = new Set(
+    userA.responses.filter(r => r.wantsToWatch === true).map(r => r.guid)
+  )
+
+  return userB.responses
+    .filter(r => r.wantsToWatch === true && likedByA.has(r.guid))
+    .map(r => persistedState.movieIndex[r.guid])
+    .filter((m): m is MediaItem => Boolean(m))
+}
