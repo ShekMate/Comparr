@@ -392,7 +392,7 @@
   }
 
   /* Swipe Layout - center card stack and align controls */
-  #tab-swipe {
+  #tab-swipe:not([hidden]) {
     position: relative;
     display: flex;
     flex-direction: column;
