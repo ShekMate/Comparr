@@ -474,6 +474,30 @@ export async function handleAuthRoutes(
     }
   }
 
+  // ── POST /api/auth/guest ─────────────────────────────────────────────────
+  // Create or resume an anonymous guest session.
+  // Body: { guestToken?: string }
+  // Returns: { guestToken, roomCode, name }
+  // Guest sessions are ephemeral — no DB record is created.
+  // The client stores guestToken in localStorage; clearing it loses the session.
+  if (pathname === '/api/auth/guest' && req.method === 'POST') {
+    let body: { guestToken?: string } = {}
+    try { body = await req.json() } catch { /* ignore — empty body is fine */ }
+
+    const provided = String(body?.guestToken || '').replace(/[^a-f0-9]/gi, '')
+    // Require at least 8 hex chars to accept as a valid existing token
+    const token = provided.length >= 8 ? provided : crypto.randomUUID().replace(/-/g, '')
+
+    // Derive a deterministic 4-char room code from the token.
+    // Uses the first 4 hex chars (uppercase), guaranteed [0-9A-F] ⊂ [0-9A-Z].
+    const roomCode = token.slice(0, 4).toUpperCase()
+
+    return new Response(
+      JSON.stringify({ guestToken: token, roomCode, name: 'Guest' }),
+      { status: 200, headers: makeJson(req) }
+    )
+  }
+
   // ── GET /api/auth/avatar ─────────────────────────────────────────────────
   // Proxy an avatar image from an allowed media-server origin so the browser
   // can load it without CSP violations (img-src 'self' only).

@@ -2248,6 +2248,23 @@ body:not(.is-logged-in) .card-stack:empty::after {
   text-align: center;
 }
 
+.user-auth-guest-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-muted, #8892a4);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.15s;
+  align-self: center;
+}
+
+.user-auth-guest-btn:hover {
+  color: var(--color-text);
+}
+
 /* =========================================================
    9) FILTERS SECTION - Enhanced
    ========================================================= */

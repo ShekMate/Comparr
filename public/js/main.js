@@ -4295,6 +4295,7 @@ async function login(api) {
 
   // Track currently logged-in user identity (populated after user auth)
   let currentUser = null
+  let isGuest = false
 
   if (passwordForm && loginForm && modeForm) {
     passwordForm.style.display = 'flex'
@@ -4381,12 +4382,18 @@ async function login(api) {
       if (userAuthJellyfin && hasJellyfin) userAuthJellyfin.style.display = 'flex'
       if (userAuthEmby && hasEmby) userAuthEmby.style.display = 'flex'
 
-      // Wait for the user to successfully authenticate with any provider
+      // Wait for the user to authenticate OR choose to continue as guest
       await new Promise(resolve => {
         const handleUserLoggedIn = user => {
           currentUser = user
           window.COMPARR_USER = user
           resolve()
+        }
+
+        // Guest bypass — skip media server login entirely
+        const guestBtn = document.querySelector('.js-user-auth-guest-btn')
+        if (guestBtn) {
+          guestBtn.addEventListener('click', () => { isGuest = true; resolve() }, { once: true })
         }
 
         // ── Plex PIN flow ──────────────────────────────────────────────────
@@ -4604,6 +4611,86 @@ async function login(api) {
 
   if (currentUser) updateSidebarUser(currentUser)
 
+  // ── Helper: compute a deterministic 4-char room code for an authenticated user.
+  // Prefixed with 'U' so it never conflicts with guest hex codes (0-9,A-F only).
+  const userRoomCode = id => `U${String(id).padStart(3, '0')}`
+
+  // ── Helper: reveal the main app after a successful login, bypassing the
+  // mode picker and login form entirely.
+  const revealApp = async (name, code, loginApiData) => {
+    if (userAuthForm) userAuthForm.style.display = 'none'
+    if (modeForm) modeForm.style.display = 'none'
+    if (loginForm) loginForm.style.display = 'none'
+
+    await loginSection.animate(
+      { opacity: ['1', '0'] },
+      { duration: 250, easing: 'ease-in-out', fill: 'both' }
+    ).finished
+    loginSection.hidden = true
+
+    localStorage.setItem('personalUser', name)
+    localStorage.setItem('personalRoomCode', code)
+    document.body.dataset.appMode = 'personal'
+
+    if (roomCodeLine) roomCodeLine.dataset.roomCode = code
+    document.body.scrollIntoView()
+
+    await Promise.all(
+      [...document.querySelectorAll('.rate-section')].map(node => {
+        node.hidden = false
+        return node.animate(
+          { opacity: ['0', '1'] },
+          { duration: 250, easing: 'ease-in-out', fill: 'both' }
+        ).finished
+      })
+    )
+
+    initTabs()
+    return { ...loginApiData, user: name, roomCode: code, appMode: 'personal' }
+  }
+
+  // ── Auto-login path for authenticated users (Plex / Jellyfin / Emby) ──────
+  if (currentUser && authConfig.userAuthEnabled) {
+    const name = currentUser.username
+    const code = userRoomCode(currentUser.id)
+
+    try {
+      let data
+      try {
+        data = await api.login(name, code, verifiedPassword)
+      } catch (err) {
+        if (err.code !== 'ACTIVE_SESSION_EXISTS') throw err
+        // Auto-takeover own session (same user, same browser or new tab)
+        data = await api.login(name, code, verifiedPassword, true)
+      }
+      return await revealApp(name, code, data)
+    } catch (err) {
+      // If auto-login fails, fall through to manual mode form
+      console.warn('[auth] Auto-login failed, falling back to manual flow:', err.message)
+    }
+  }
+
+  // ── Auto-login path for guests ────────────────────────────────────────────
+  if (isGuest) {
+    try {
+      const storedToken = localStorage.getItem('comparr_guest_token') || ''
+      const { guestToken, roomCode: code, name } = await api.createGuestSession(storedToken)
+      localStorage.setItem('comparr_guest_token', guestToken)
+
+      let data
+      try {
+        data = await api.login(name, code, verifiedPassword)
+      } catch (err) {
+        if (err.code !== 'ACTIVE_SESSION_EXISTS') throw err
+        data = await api.login(name, code, verifiedPassword, true)
+      }
+      return await revealApp(name, code, data)
+    } catch (err) {
+      console.warn('[auth] Guest auto-login failed, falling back to manual flow:', err.message)
+    }
+  }
+
+  // ── Manual flow (auth disabled, or auto-login failed) ────────────────────
   // User auth complete (or not required) — show the mode picker
   showModeForm()
   // ── End user auth step ────────────────────────────────────────────────────
