@@ -138,45 +138,6 @@
           </div>
         </div>
 
-        <!-- Mode picker (hidden until password is verified) -->
-        <form class="mode-form js-mode-form u-display-none" name="mode">
-          <div class="login-intro">
-            <h1>Choose your experience</h1>
-            <p>How do you want to discover movies today?</p>
-          </div>
-          <div class="mode-card-grid">
-            <button
-              type="submit"
-              class="mode-card"
-              name="appMode"
-              value="personal"
-            >
-              <span class="mode-card-icon"><i class="fas fa-film" aria-hidden="true"></i></span>
-              <span class="mode-card-title">Personal Discovery</span>
-              <span class="mode-card-copy"
-                >Discover movies from your libraries, streaming services, free
-                providers, or the full catalog. Swipe to rate, filter results,
-                build your watchlist, and request movies through built-in
-                automation.</span
-              >
-            </button>
-            <button
-              type="submit"
-              class="mode-card"
-              name="appMode"
-              value="group"
-            >
-              <span class="mode-card-icon"><i class="fas fa-user-friends" aria-hidden="true"></i></span>
-              <span class="mode-card-title">Group Match</span>
-              <span class="mode-card-copy"
-                >Join a room with friends and rate movies independently. When
-                multiple users swipe Watch, it’s a match. Review matches, check
-                streaming availability, or request the movie be added to the
-                host’s library.</span
-              >
-            </button>
-          </div>
-        </form>
 
         <!-- Login form (hidden initially) -->
         <form
@@ -1100,12 +1061,75 @@
         hidden
         data-target-type="${CONFIG_MATCHES_TARGET_TYPE}"
       >
-        <hr class="js-room-code-line" />
-        <p class="matches-title">
+        <!-- Invite UI: shown for authenticated users to find matches with someone -->
+        <div class="compare-ui js-compare-ui">
+
+          <!-- Home state: generate invite or enter a code -->
+          <div class="compare-home js-compare-home">
+            <div class="compare-hero">
+              <i class="fas fa-heart compare-hero-icon" aria-hidden="true"></i>
+              <h3>Find Matches</h3>
+              <p>Invite a friend and see which movies you both want to watch.</p>
+            </div>
+            <button class="compare-generate-btn js-compare-generate-btn" type="button">
+              <i class="fas fa-link" aria-hidden="true"></i> Generate Invite Link
+            </button>
+            <div class="compare-or"><span>or enter their code</span></div>
+            <form class="compare-join-form js-compare-join-form">
+              <input
+                type="text"
+                class="compare-token-input js-compare-token-input"
+                placeholder="XXXXXXXX"
+                maxlength="8"
+                autocomplete="off"
+                spellcheck="false"
+              />
+              <button type="submit" class="compare-join-submit">Find Matches</button>
+            </form>
+            <p class="compare-status js-compare-status" hidden></p>
+          </div>
+
+          <!-- Link card: shown after generating an invite -->
+          <div class="compare-link-card js-compare-link-card" hidden>
+            <h3>Share this link</h3>
+            <p class="compare-link-copy">Anyone with this link can match picks with you. Expires in 24 hours.</p>
+            <div class="compare-link-row">
+              <code class="compare-link-url js-compare-link-url"></code>
+              <button class="compare-copy-btn js-compare-copy-btn" type="button" title="Copy link">
+                <i class="fas fa-copy" aria-hidden="true"></i>
+              </button>
+            </div>
+            <p class="compare-code-hint">Code only: <strong class="js-compare-link-code"></strong></p>
+            <button class="compare-new-invite-btn js-compare-new-invite-btn" type="button">Generate new link</button>
+          </div>
+
+          <!-- Results: shown after a match comparison completes -->
+          <div class="compare-results js-compare-results" hidden>
+            <button class="compare-back-btn js-compare-back-btn" type="button">
+              <i class="fas fa-arrow-left" aria-hidden="true"></i> Back
+            </button>
+            <h3 class="compare-results-title js-compare-results-title">Matches</h3>
+            <p class="compare-results-subtitle js-compare-results-subtitle"></p>
+            <ul class="matches-list js-compare-results-list"></ul>
+          </div>
+
+        </div>
+
+        <!-- Guest placeholder: shown when body[data-user-type="guest"] -->
+        <div class="compare-guest js-compare-guest">
+          <div class="compare-hero">
+            <i class="fas fa-heart compare-hero-icon" aria-hidden="true"></i>
+            <h3>Matches</h3>
+            <p>Sign in with a media server to find movies that match a friend's picks.</p>
+          </div>
+        </div>
+
+        <!-- Legacy group-mode matches (hidden; kept for backward-compat with MatchesView) -->
+        <p class="matches-title" style="display:none">
           <span class="matches-count js-matches-count" data-count="0"></span>
           ${MATCHES_SECTION_TITLE}
         </p>
-        <ul class="matches-list js-matches-list"></ul>
+        <ul class="matches-list js-matches-list" style="display:none"></ul>
       </section>
 
       <!-- ===== Liked panel ===== -->

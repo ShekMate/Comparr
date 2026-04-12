@@ -560,14 +560,14 @@ function initTabs() {
 
   applyDisplayPreferencesToNavigation(loadDisplayPreferences())
 
-  if (isPersonalMode) {
+  // Hide Compare tab for guests (no cross-user comparison available).
+  // Auth users always see it, even in personal mode.
+  if (document.body.dataset.userType === 'guest') {
     document.querySelectorAll('[data-tab="tab-matches"]').forEach(node => {
       node.style.display = 'none'
     })
-    const matchesPanel = document.getElementById('tab-matches')
-    if (matchesPanel) {
-      matchesPanel.hidden = true
-    }
+    const comparePanel = document.getElementById('tab-matches')
+    if (comparePanel) comparePanel.hidden = true
   }
 
   // Dropdown support (for mobile tabbar)
@@ -673,6 +673,9 @@ function initTabs() {
     } else if (tabId === 'tab-matches') {
       if (typeof window.refreshMatchesList === 'function') {
         window.refreshMatchesList()
+      }
+      if (typeof window.initCompareTab === 'function') {
+        window.initCompareTab()
       }
     } else if (tabId === 'tab-stats') {
       if (typeof window.refreshStatsTab === 'function') {
@@ -4114,7 +4117,7 @@ async function login(api) {
       const onCancel = () => {
         cleanup()
         closePrompt()
-        modeForm.style.display = 'grid'
+        if (modeForm) modeForm.style.display = 'grid'
         loginForm.style.display = 'none'
         setLoginError('')
         window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -4249,7 +4252,7 @@ async function login(api) {
 
   const showModeForm = () => {
     if (userAuthForm) userAuthForm.style.display = 'none'
-    modeForm.style.display = 'grid'
+    if (modeForm) modeForm.style.display = 'grid'
     window.scrollTo({ top: 0, behavior: 'smooth' })
 
     // Restore cached group credentials (skip if we have identity from auth)
@@ -4631,8 +4634,8 @@ async function login(api) {
     localStorage.setItem('personalUser', name)
     localStorage.setItem('personalRoomCode', code)
     document.body.dataset.appMode = 'personal'
+    document.body.dataset.userType = isGuest ? 'guest' : 'auth'
 
-    if (roomCodeLine) roomCodeLine.dataset.roomCode = code
     document.body.scrollIntoView()
 
     await Promise.all(
@@ -4691,63 +4694,37 @@ async function login(api) {
   }
 
   // ── Manual flow (auth disabled, or auto-login failed) ────────────────────
-  // User auth complete (or not required) — show the mode picker
-  showModeForm()
-  // ── End user auth step ────────────────────────────────────────────────────
-
-  selectedMode = await new Promise(resolve => {
-    const handleModeSubmit = e => {
-      e.preventDefault()
-      const submitter = e.submitter
-      const mode = submitter?.value === 'group' ? 'group' : 'personal'
-      modeForm.removeEventListener('submit', handleModeSubmit)
-      resolve(mode)
-    }
-    modeForm.addEventListener('submit', handleModeSubmit)
-  })
-
-  modeForm.style.display = 'none'
+  // Mode picker removed: always personal mode.
+  selectedMode = 'personal'
   loginForm.style.display = 'grid'
 
   // Prefer authenticated user's name; fall back to saved local value
   const authedName = currentUser?.username || ''
 
-  if (selectedMode === 'personal') {
-    setRoomMode('join', selectedMode)
-
-    const savedPersonalUser = (
-      authedName ||
-      localStorage.getItem('personalUser') ||
-      localStorage.getItem('user') ||
-      ''
-    ).trim()
-    const savedPersonalCode = normalizeRoomCodeInput(
-      localStorage.getItem('personalRoomCode') || ''
-    )
-
-    if (savedPersonalUser) {
-      loginForm.elements.name.value = savedPersonalUser
-    }
-    if (savedPersonalCode && roomCodeInput) {
-      roomCodeInput.value = savedPersonalCode
-    }
+  setRoomMode('join', 'personal')
+  const savedPersonalUser = (
+    authedName ||
+    localStorage.getItem('personalUser') ||
+    localStorage.getItem('user') ||
+    ''
+  ).trim()
+  const savedPersonalCode = normalizeRoomCodeInput(
+    localStorage.getItem('personalRoomCode') || ''
+  )
+  if (savedPersonalUser && loginForm.elements.name) {
+    loginForm.elements.name.value = savedPersonalUser
+  }
+  if (savedPersonalCode && roomCodeInput) {
+    roomCodeInput.value = savedPersonalCode
   }
 
-  if (selectedMode !== 'personal') {
-    setRoomMode('join', selectedMode)
-    // Pre-fill name from authenticated identity if available
-    if (authedName && loginForm.elements.name) {
-      loginForm.elements.name.value = authedName
-    }
-  }
-
-  // Generate unique code
+  // Generate unique code button
   generateBtn?.addEventListener('click', async () => {
     setRoomCodeError('')
     setLoginError('')
     try {
       const code = await api.generateRoomCode()
-      setRoomMode('create', selectedMode)
+      setRoomMode('create', 'personal')
       setActiveRoomCode(code)
       syncRoomCodeInputs()
     } catch (err) {
@@ -4758,11 +4735,11 @@ async function login(api) {
         const val = crypto.getRandomValues(new Uint32Array(1))[0]
         fallbackCode += map[val % map.length]
       }
-      setRoomMode('create', selectedMode)
+      setRoomMode('create', 'personal')
       setActiveRoomCode(fallbackCode)
       syncRoomCodeInputs()
       try {
-        localStorage.setItem('roomCode', fallbackCode)
+        localStorage.setItem('personalRoomCode', fallbackCode)
       } catch (_) {}
     }
   })
@@ -4819,36 +4796,23 @@ async function login(api) {
         }
         loginForm.removeEventListener('submit', handleSubmit)
 
-        const isPersonalMode = selectedMode === 'personal'
-
-        // hide login
+        // Hide login section
         await loginSection.animate(
           { opacity: ['1', '0'] },
           { duration: 250, easing: 'ease-in-out', fill: 'both' }
         ).finished
         loginSection.hidden = true
 
-        if (isPersonalMode) {
-          localStorage.setItem('personalUser', name)
-          localStorage.setItem('personalRoomCode', code)
-          document.body.dataset.appMode = 'personal'
-        } else {
-          localStorage.setItem('user', name)
-          localStorage.setItem('roomCode', code)
-        }
-
-        roomCodeLine.dataset.roomCode = code
+        localStorage.setItem('personalUser', name)
+        localStorage.setItem('personalRoomCode', code)
+        document.body.dataset.appMode = 'personal'
+        // Manual-flow users are not authenticated through a media server
+        document.body.dataset.userType = 'auth'
         document.body.scrollIntoView()
 
-        // reveal app sections
+        // Reveal swipe section
         await Promise.all(
-          [
-            ...document.querySelectorAll(
-              isPersonalMode
-                ? '.rate-section'
-                : '.rate-section, .matches-section'
-            ),
-          ].map(node => {
+          [...document.querySelectorAll('.rate-section')].map(node => {
             node.hidden = false
             return node.animate(
               { opacity: ['0', '1'] },
@@ -4862,7 +4826,7 @@ async function login(api) {
           ...data,
           user: name,
           roomCode: code,
-          appMode: isPersonalMode ? 'personal' : 'group',
+          appMode: 'personal',
         })
       } catch (err) {
         setLoginError(err.message)
@@ -4871,49 +4835,17 @@ async function login(api) {
 
     loginForm.addEventListener('submit', handleSubmit)
 
-    // Back button: return to mode selection without breaking the promise chain.
+    // Back button: return to user auth form (or just reload if none exists).
     const backBtn = document.querySelector('.js-login-back-btn')
-    const goBackToModeSelection = () => {
+    backBtn?.addEventListener('click', () => {
       setRoomCodeError('')
       setLoginError('')
-      modeForm.style.display = 'grid'
       loginForm.style.display = 'none'
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-
-      // Re-attach a one-shot mode handler so the user can re-pick a mode.
-      const handleModeReselect = e => {
-        e.preventDefault()
-        modeForm.removeEventListener('submit', handleModeReselect)
-        const submitter = e.submitter
-        selectedMode = submitter?.value === 'group' ? 'group' : 'personal'
-        modeForm.style.display = 'none'
-        loginForm.style.display = 'grid'
-
-        if (selectedMode === 'personal') {
-          setRoomMode('join', selectedMode)
-          const savedPersonalUser = (
-            authedName ||
-            localStorage.getItem('personalUser') ||
-            localStorage.getItem('user') ||
-            ''
-          ).trim()
-          const savedPersonalCode = normalizeRoomCodeInput(
-            localStorage.getItem('personalRoomCode') || ''
-          )
-          if (savedPersonalUser) loginForm.elements.name.value = savedPersonalUser
-          if (savedPersonalCode && roomCodeInput) roomCodeInput.value = savedPersonalCode
-        } else {
-          setRoomMode('join', selectedMode)
-          if (authedName && loginForm.elements.name) {
-            loginForm.elements.name.value = authedName
-          }
-        }
-
-        window.scrollTo({ top: 0, behavior: 'smooth' })
+      if (userAuthForm) {
+        userAuthForm.style.display = 'flex'
       }
-      modeForm.addEventListener('submit', handleModeReselect)
-    }
-    backBtn?.addEventListener('click', goBackToModeSelection)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    })
   })
 }
 
@@ -6749,6 +6681,185 @@ const main = async () => {
   api.addEventListener('roomMembers', e => {
     updateRoomMembers(e.data?.members ?? [])
   })
+
+  // ===== MATCHES / COMPARE TAB =====
+  // For auth users: invite-based async matching across any two room codes.
+  // For guests: the compare UI is hidden; tab is also hidden in initTabs().
+  const compareUi = document.querySelector('.js-compare-ui')
+  const compareHome = document.querySelector('.js-compare-home')
+  const compareLinkCard = document.querySelector('.js-compare-link-card')
+  const compareResults = document.querySelector('.js-compare-results')
+  const compareStatus = document.querySelector('.js-compare-status')
+  const compareGenerateBtn = document.querySelector('.js-compare-generate-btn')
+  const compareJoinForm = document.querySelector('.js-compare-join-form')
+  const compareTokenInput = document.querySelector('.js-compare-token-input')
+  const compareLinkUrl = document.querySelector('.js-compare-link-url')
+  const compareLinkCode = document.querySelector('.js-compare-link-code')
+  const compareCopyBtn = document.querySelector('.js-compare-copy-btn')
+  const compareNewInviteBtn = document.querySelector('.js-compare-new-invite-btn')
+  const compareBackBtn = document.querySelector('.js-compare-back-btn')
+  const compareResultsTitle = document.querySelector('.js-compare-results-title')
+  const compareResultsSubtitle = document.querySelector('.js-compare-results-subtitle')
+  const compareResultsList = document.querySelector('.js-compare-results-list')
+
+  const basePath = document.body.dataset.basePath || ''
+
+  const showCompareState = state => {
+    if (compareHome) compareHome.hidden = state !== 'home'
+    if (compareLinkCard) compareLinkCard.hidden = state !== 'link'
+    if (compareResults) compareResults.hidden = state !== 'results'
+  }
+
+  const setCompareStatus = (msg, isError = false) => {
+    if (!compareStatus) return
+    compareStatus.textContent = msg
+    compareStatus.hidden = !msg
+    compareStatus.style.color = isError ? 'var(--color-accent-danger, #f87171)' : ''
+  }
+
+  const renderCompareMatches = (matches, initiatorName) => {
+    if (!compareResultsList) return
+    if (!matches.length) {
+      compareResultsList.innerHTML =
+        '<li class="compare-no-matches">No matches yet — keep swiping!</li>'
+      return
+    }
+    compareResultsList.innerHTML = matches
+      .map(movie => {
+        const posterUrl = movie.art || movie.thumb || ''
+        return `
+        <div class="watch-card" data-guid="${movie.guid}">
+          <div class="watch-card-collapsed">
+            <div class="watch-card-header-compact">
+              <div class="watch-card-title-compact">
+                ${movie.title}${movie.year ? ` <span class="watch-card-year">(${movie.year})</span>` : ''}
+              </div>
+              <div class="expand-icon"><i class="fas fa-chevron-down"></i></div>
+            </div>
+          </div>
+          <div class="watch-card-details">
+            ${posterUrl ? `<div class="watch-card-poster"><img src="${posterUrl.startsWith('http') ? posterUrl : basePath + posterUrl}" alt="${movie.title} poster" /></div>` : ''}
+            <div class="watch-card-content">
+              ${movie.summary ? `<p class="watch-card-summary">${movie.summary}</p>` : ''}
+              <div class="watch-card-metadata">
+                <i class="fas fa-heart"></i>
+                You and ${initiatorName} both want to watch this
+              </div>
+            </div>
+          </div>
+        </div>`
+      })
+      .join('')
+  }
+
+  // Generate invite link
+  if (compareGenerateBtn) {
+    compareGenerateBtn.addEventListener('click', async () => {
+      compareGenerateBtn.disabled = true
+      setCompareStatus('Generating…')
+      try {
+        const res = await fetch(`${basePath}/api/compare/invite`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ roomCode, name: userName }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data.error || 'Could not generate invite.')
+
+        const token = data.token
+        const shareUrl = `${location.origin}${basePath || '/'}?compare=${token}`
+        if (compareLinkUrl) compareLinkUrl.textContent = shareUrl
+        if (compareLinkCode) compareLinkCode.textContent = token
+
+        setCompareStatus('')
+        showCompareState('link')
+      } catch (err) {
+        setCompareStatus(err.message, true)
+      } finally {
+        compareGenerateBtn.disabled = false
+      }
+    })
+  }
+
+  // Copy invite link
+  if (compareCopyBtn) {
+    compareCopyBtn.addEventListener('click', () => {
+      const url = compareLinkUrl?.textContent || ''
+      if (url) {
+        navigator.clipboard.writeText(url).then(() => {
+          compareCopyBtn.innerHTML = '<i class="fas fa-check"></i>'
+          setTimeout(() => {
+            compareCopyBtn.innerHTML = '<i class="fas fa-copy"></i>'
+          }, 2000)
+        }).catch(() => {})
+      }
+    })
+  }
+
+  // Generate new invite (back to home from link card)
+  if (compareNewInviteBtn) {
+    compareNewInviteBtn.addEventListener('click', () => showCompareState('home'))
+  }
+
+  // Join with code
+  if (compareJoinForm) {
+    compareJoinForm.addEventListener('submit', async e => {
+      e.preventDefault()
+      const token = (compareTokenInput?.value || '').trim().toUpperCase()
+      if (!token) return
+      setCompareStatus('Finding matches…')
+      try {
+        const res = await fetch(`${basePath}/api/compare/join/${encodeURIComponent(token)}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ roomCode, name: userName }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data.error || 'Could not join.')
+
+        const { initiator, matches } = data
+        if (compareResultsTitle) compareResultsTitle.textContent = `Matches with ${initiator.name}`
+        if (compareResultsSubtitle) {
+          compareResultsSubtitle.textContent =
+            matches.length === 1
+              ? '1 movie you both want to watch'
+              : `${matches.length} movies you both want to watch`
+        }
+        renderCompareMatches(matches, initiator.name)
+        setCompareStatus('')
+        showCompareState('results')
+      } catch (err) {
+        setCompareStatus(err.message, true)
+      }
+    })
+  }
+
+  // Back from results to home
+  if (compareBackBtn) {
+    compareBackBtn.addEventListener('click', () => showCompareState('home'))
+  }
+
+  // Handle ?compare=TOKEN URL param: pre-fill the code field on tab open
+  const compareTokenFromUrl = new URLSearchParams(location.search).get('compare')
+  if (compareTokenFromUrl && compareTokenInput) {
+    compareTokenInput.value = compareTokenFromUrl.toUpperCase()
+    // Clean the URL without reloading
+    const url = new URL(location.href)
+    url.searchParams.delete('compare')
+    history.replaceState(null, '', url.toString())
+  }
+
+  // Expose init hook (called by initTabs when matches tab activates)
+  window.initCompareTab = () => {
+    // Only init once per session
+    if (window._compareTabInitialized) return
+    window._compareTabInitialized = true
+    showCompareState('home')
+    // Auto-submit if a token was pre-filled from URL
+    if (compareTokenFromUrl && compareJoinForm) {
+      compareJoinForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    }
+  }
 
   // ===== RECOMMENDATIONS TAB =====
   let recommendationsLoaded = false

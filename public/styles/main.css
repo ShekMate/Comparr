@@ -1353,6 +1353,255 @@ body:not(.is-logged-in) .card-stack:empty::after {
 }
 
 /* =========================================================
+   7b) COMPARE / INVITE UI (within Matches tab)
+   ========================================================= */
+
+/* Guest placeholder: hidden by default, shown for guest user type */
+.compare-guest { display: none; }
+body[data-user-type="guest"] .compare-guest { display: block; }
+
+/* Compare UI: hidden for guests */
+body[data-user-type="guest"] .compare-ui { display: none; }
+
+.compare-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2rem 1rem 1.5rem;
+  text-align: center;
+}
+
+.compare-hero-icon {
+  font-size: 2.5rem;
+  color: var(--color-accent-primary, #e5534b);
+  opacity: 0.85;
+}
+
+.compare-hero h3 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.compare-hero p {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  max-width: 28rem;
+  margin: 0;
+}
+
+.compare-home {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding-bottom: 2rem;
+}
+
+.compare-generate-btn {
+  background: var(--color-accent-primary, #e5534b);
+  color: #fff;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.65rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: opacity 0.15s;
+}
+
+.compare-generate-btn:hover { opacity: 0.88; }
+.compare-generate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.compare-or {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: min(20rem, 90%);
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.compare-or::before,
+.compare-or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border, rgba(255,255,255,0.12));
+}
+
+.compare-join-form {
+  display: flex;
+  gap: 0.5rem;
+  width: min(20rem, 90%);
+}
+
+.compare-token-input {
+  flex: 1;
+  background: var(--color-surface-dark, #1e1e2e);
+  border: 1px solid var(--color-border, rgba(255,255,255,0.15));
+  border-radius: 0.4rem;
+  color: var(--color-text, #e0e0e0);
+  font-size: 0.9rem;
+  padding: 0.55rem 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.compare-token-input::placeholder { letter-spacing: 0.05em; text-transform: none; }
+
+.compare-join-submit {
+  background: var(--color-surface-light, #2a2a3e);
+  border: 1px solid var(--color-border, rgba(255,255,255,0.15));
+  border-radius: 0.4rem;
+  color: var(--color-text, #e0e0e0);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.compare-join-submit:hover { background: var(--color-surface-hover, #333350); }
+
+.compare-status {
+  font-size: 0.85rem;
+  padding: 0.4rem 0;
+  color: var(--color-text-muted);
+}
+
+/* Link card */
+.compare-link-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem 1rem 2rem;
+  text-align: center;
+}
+
+.compare-link-card h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.compare-link-copy {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  max-width: 26rem;
+  margin: 0;
+}
+
+.compare-link-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--color-surface-dark, #1e1e2e);
+  border: 1px solid var(--color-border, rgba(255,255,255,0.12));
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  width: min(28rem, 90%);
+}
+
+.compare-link-url {
+  flex: 1;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  word-break: break-all;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.compare-copy-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.2rem 0.4rem;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+
+.compare-copy-btn:hover { color: var(--color-text); }
+
+.compare-code-hint {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.compare-code-hint strong {
+  color: var(--color-text);
+  letter-spacing: 0.12em;
+}
+
+.compare-new-invite-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.compare-new-invite-btn:hover { color: var(--color-text); }
+
+/* Results */
+.compare-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 0;
+}
+
+.compare-back-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 1rem;
+  transition: color 0.15s;
+}
+
+.compare-back-btn:hover { color: var(--color-text); }
+
+.compare-results-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+  padding: 0 1rem;
+}
+
+.compare-results-subtitle {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  margin: 0;
+  padding: 0 1rem;
+}
+
+.compare-no-matches {
+  list-style: none;
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 2rem 1rem;
+  font-size: 0.9rem;
+}
+
+/* =========================================================
    8) LOGIN SECTION - Enhanced
    ========================================================= */
 .login-section:not([hidden]) {
