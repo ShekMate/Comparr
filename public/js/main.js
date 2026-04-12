@@ -6701,8 +6701,7 @@ const main = async () => {
   const compareResultsTitle = document.querySelector('.js-compare-results-title')
   const compareResultsSubtitle = document.querySelector('.js-compare-results-subtitle')
   const compareResultsList = document.querySelector('.js-compare-results-list')
-
-  const basePath = document.body.dataset.basePath || ''
+  // basePath is already declared earlier in main()
 
   const showCompareState = state => {
     if (compareHome) compareHome.hidden = state !== 'home'
