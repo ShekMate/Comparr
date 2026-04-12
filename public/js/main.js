@@ -2430,6 +2430,14 @@ async function hydrateSettingsForm({ _retryCount = 0 } = {}) {
         } else {
           el.value = value
         }
+        // ACCESS_PASSWORD is redacted to '' by the server (the hash is never
+        // sent to the client). When a password is already set, show a helpful
+        // placeholder so the field doesn't appear empty/unconfigured.
+        if (key === 'ACCESS_PASSWORD' && !String(value).trim()) {
+          el.placeholder = window.ACCESS_PASSWORD_SET
+            ? '(configured — enter new password to change)'
+            : '(optional)'
+        }
       }
     })
 
