@@ -2557,24 +2557,15 @@ body[data-user-type='guest'] .compare-ui {
 }
 
 .plex-signin-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  width: 100%;
-  padding: 0.85rem 1.5rem;
-  background: #e5a00d;
-  color: #000;
-  font-weight: 700;
-  font-size: 1rem;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
+  color: var(--signin-btn-text, #fff6e8);
 }
 
 .plex-signin-btn:hover {
-  background: #f0b429;
+  background: linear-gradient(
+    90deg,
+    var(--signin-btn-hover-start, #c07b22),
+    var(--signin-btn-hover-end, #ce8a2e)
+  );
 }
 
 .plex-signin-btn:active {
@@ -2601,18 +2592,34 @@ body[data-user-type='guest'] .compare-ui {
   justify-content: center;
   gap: 0.75rem;
   width: 100%;
-  padding: 0.85rem 1.5rem;
-  color: #fff;
+  padding: 0.9rem 1.5rem;
+  color: var(--signin-btn-text, #f8fafc);
   font-weight: 700;
   font-size: 1rem;
-  border: none;
+  border: 1px solid var(--signin-btn-border, rgba(255, 255, 255, 0.25));
   border-radius: 10px;
   cursor: pointer;
-  transition: filter 0.15s, transform 0.1s;
+  background: linear-gradient(
+    90deg,
+    var(--signin-btn-start, #334155),
+    var(--signin-btn-end, #475569)
+  );
+  box-shadow: 0 8px 24px rgba(2, 6, 23, 0.35);
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    transform 0.1s ease,
+    box-shadow 0.16s ease;
 }
 
 .server-signin-btn:hover {
-  filter: brightness(1.12);
+  background: linear-gradient(
+    90deg,
+    var(--signin-btn-hover-start, #475569),
+    var(--signin-btn-hover-end, #64748b)
+  );
+  border-color: var(--signin-btn-hover-border, rgba(255, 255, 255, 0.35));
+  box-shadow: 0 10px 26px rgba(2, 6, 23, 0.45);
 }
 
 .server-signin-btn:active {
@@ -2622,14 +2629,37 @@ body[data-user-type='guest'] .compare-ui {
 .server-signin-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  box-shadow: none;
+}
+
+.server-signin-btn--plex {
+  --signin-btn-start: #996121;
+  --signin-btn-end: #b97724;
+  --signin-btn-hover-start: #ad6c24;
+  --signin-btn-hover-end: #c9842b;
+  --signin-btn-border: #d1913d;
+  --signin-btn-hover-border: #e4ad5f;
+  --signin-btn-text: #fffaf0;
 }
 
 .server-signin-btn--jellyfin {
-  background: #00a4dc;
+  --signin-btn-start: #0f6f9a;
+  --signin-btn-end: #1282b7;
+  --signin-btn-hover-start: #1780ae;
+  --signin-btn-hover-end: #2496c8;
+  --signin-btn-border: #3aa6d2;
+  --signin-btn-hover-border: #66bee2;
+  --signin-btn-text: #effbff;
 }
 
 .server-signin-btn--emby {
-  background: #52b54b;
+  --signin-btn-start: #2f8f4d;
+  --signin-btn-end: #39a45a;
+  --signin-btn-hover-start: #3da763;
+  --signin-btn-hover-end: #46b96d;
+  --signin-btn-border: #63bf81;
+  --signin-btn-hover-border: #86d2a0;
+  --signin-btn-text: #f1fff5;
 }
 
 .server-signin-icon {
