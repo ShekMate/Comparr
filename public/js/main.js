@@ -4533,6 +4533,7 @@ async function login(api) {
         avatarEl.src = `${base}/api/auth/avatar?url=${encodeURIComponent(user.avatarUrl)}`
         avatarEl.alt = user.username || ''
         avatarEl.style.display = ''
+        avatarEl.onerror = () => { avatarEl.style.display = 'none' }
       } else {
         avatarEl.style.display = 'none'
       }

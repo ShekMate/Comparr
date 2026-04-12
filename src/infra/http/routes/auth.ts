@@ -498,8 +498,9 @@ export async function handleAuthRoutes(
     const jellyfinUrl = getJellyfinUrl()
     if (plexUrl) {
       try { allowedOrigins.push(new URL(plexUrl).origin) } catch { /* ignore */ }
-      // Plex avatars are served from plex.tv CDN
-      allowedOrigins.push('https://plex.direct')
+      // Plex user avatars are hosted on plex.tv and its CDN subdomains
+      allowedOrigins.push('https://plex.tv')
+      allowedOrigins.push('https://www.gravatar.com')
       allowedOrigins.push('https://metadata.provider.plex.tv')
     }
     if (embyUrl) {
@@ -510,7 +511,13 @@ export async function handleAuthRoutes(
     }
 
     const targetOrigin = targetUrl.origin
-    if (!allowedOrigins.some(o => targetOrigin === o || targetOrigin.endsWith(o.replace(/^https?:\/\//, '.')))) {
+    // Allow exact origin match OR any subdomain of an allowed origin
+    const originAllowed = allowedOrigins.some(o => {
+      if (targetOrigin === o) return true
+      const domain = o.replace(/^https?:\/\//, '')
+      return targetOrigin.endsWith(`.${domain}`)
+    })
+    if (!originAllowed) {
       log.warn(`[auth] Avatar proxy blocked disallowed origin: ${targetOrigin}`)
       return new Response('Disallowed avatar origin', { status: 403 })
     }
