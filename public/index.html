@@ -1129,98 +1129,59 @@
         class="tab-panel matches-section js-matches-section"
         id="tab-matches"
         hidden
-        data-target-type="${CONFIG_MATCHES_TARGET_TYPE}"
       >
-        <!-- Invite UI: shown for authenticated users to find matches with someone -->
-        <div class="compare-ui js-compare-ui">
-          <!-- Home state: generate invite or enter a code -->
-          <div class="compare-home js-compare-home">
-            <div class="compare-hero">
-              <i class="fas fa-heart compare-hero-icon" aria-hidden="true"></i>
-              <h3>Find Matches</h3>
-              <p>
-                Invite a friend and see which movies you both want to watch.
-              </p>
-            </div>
-            <button
-              class="compare-generate-btn js-compare-generate-btn"
-              type="button"
-            >
-              <i class="fas fa-link" aria-hidden="true"></i> Show My Code
-            </button>
-            <div class="compare-or"><span>or enter their code</span></div>
-            <form class="compare-join-form js-compare-join-form">
-              <input
-                type="text"
-                class="compare-token-input js-compare-token-input"
-                placeholder="XXXXXXXX"
-                maxlength="8"
-                autocomplete="off"
-                spellcheck="false"
-              />
-              <button type="submit" class="compare-join-submit">
-                Find Matches
-              </button>
-            </form>
-            <p class="compare-status js-compare-status" hidden></p>
-          </div>
+        <!-- Main UI: shown for all logged-in users -->
+        <div class="matches-ui js-matches-ui">
 
-          <!-- Code card: shown after generating/loading your invite code -->
-          <div class="compare-link-card js-compare-link-card" hidden>
-            <h3>Your Invite Code</h3>
-            <p class="compare-link-copy">
-              Share this code with a friend so they can compare matches with
-              you.
-            </p>
-            <div class="compare-link-row">
-              <code class="compare-link-url js-compare-link-url"></code>
+          <!-- Your code -->
+          <div class="matches-your-code-section">
+            <h3 class="matches-section-heading">Your Code</h3>
+            <p class="matches-code-hint">Share this with a friend so they can add you — or enter theirs below.</p>
+            <div class="matches-code-row">
+              <code class="matches-my-code js-matches-my-code">······</code>
               <button
-                class="compare-copy-btn js-compare-copy-btn"
+                class="matches-icon-btn js-matches-copy-btn"
                 type="button"
                 title="Copy code"
+                aria-label="Copy your code"
               >
                 <i class="fas fa-copy" aria-hidden="true"></i>
               </button>
+              <button
+                class="matches-icon-btn matches-refresh-btn js-matches-refresh-btn"
+                type="button"
+                title="Get a new code (removes all connections)"
+                aria-label="Refresh your code"
+              >
+                <i class="fas fa-sync-alt" aria-hidden="true"></i>
+              </button>
             </div>
-            <button
-              class="compare-new-invite-btn js-compare-new-invite-btn"
-              type="button"
-            >
-              Refresh code
-            </button>
           </div>
 
-          <!-- Results: shown after a match comparison completes -->
-          <div class="compare-results js-compare-results" hidden>
-            <button class="compare-back-btn js-compare-back-btn" type="button">
-              <i class="fas fa-arrow-left" aria-hidden="true"></i> Back
-            </button>
-            <h3 class="compare-results-title js-compare-results-title">
-              Matches
-            </h3>
-            <p class="compare-results-subtitle js-compare-results-subtitle"></p>
-            <ul class="matches-list js-compare-results-list"></ul>
+          <!-- Add a friend -->
+          <div class="matches-add-section">
+            <h3 class="matches-section-heading">Add Friend</h3>
+            <form class="matches-add-form js-matches-add-form">
+              <input
+                type="text"
+                class="matches-friend-input js-matches-friend-input"
+                placeholder="Friend's code"
+                maxlength="6"
+                autocomplete="off"
+                spellcheck="false"
+              />
+              <button type="submit" class="matches-add-submit">Add</button>
+            </form>
+            <p class="matches-status js-matches-status" hidden></p>
           </div>
+
+          <!-- Connected friends + their matches -->
+          <div class="matches-friends-section js-matches-friends-section">
+            <h3 class="matches-section-heading js-matches-friends-heading" hidden>Friends</h3>
+            <div class="matches-friends-list js-matches-friends-list"></div>
+          </div>
+
         </div>
-
-        <!-- Guest placeholder: shown when body[data-user-type="guest"] -->
-        <div class="compare-guest js-compare-guest">
-          <div class="compare-hero">
-            <i class="fas fa-heart compare-hero-icon" aria-hidden="true"></i>
-            <h3>Matches</h3>
-            <p>
-              Sign in with a media server to find movies that match a friend's
-              picks.
-            </p>
-          </div>
-        </div>
-
-        <!-- Legacy group-mode matches (hidden; kept for backward-compat with MatchesView) -->
-        <p class="matches-title u-display-none">
-          <span class="matches-count js-matches-count" data-count="0"></span>
-          ${MATCHES_SECTION_TITLE}
-        </p>
-        <ul class="matches-list js-matches-list u-display-none"></ul>
       </section>
 
       <!-- ===== Liked panel ===== -->

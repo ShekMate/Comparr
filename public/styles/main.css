@@ -1602,6 +1602,179 @@ body[data-user-type="guest"] .compare-ui { display: none; }
 }
 
 /* =========================================================
+   NEW MATCHES UI
+   ========================================================= */
+
+.matches-ui {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1rem;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.matches-section-heading {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  color: var(--color-text);
+}
+
+.matches-your-code-section {
+  background: var(--color-surface, #1e1e2e);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+}
+
+.matches-code-hint {
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  margin: 0 0 0.75rem;
+}
+
+.matches-code-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.matches-my-code {
+  flex: 1;
+  font-family: monospace;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  color: var(--color-accent-primary, #e5534b);
+  background: var(--color-surface-light, #2a2a3e);
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+}
+
+.matches-icon-btn {
+  background: none;
+  border: 1px solid var(--color-border, #333);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0.45rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  transition: color 0.15s, border-color 0.15s;
+}
+.matches-icon-btn:hover { color: var(--color-text); border-color: var(--color-text-muted); }
+.matches-icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.matches-refresh-btn { font-size: 0.8rem; }
+
+.matches-add-section {
+  background: var(--color-surface, #1e1e2e);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+}
+
+.matches-add-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.matches-friend-input {
+  flex: 1;
+  background: var(--color-surface-light, #2a2a3e);
+  border: 1px solid var(--color-border, #333);
+  color: var(--color-text);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  font-family: monospace;
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  outline: none;
+}
+.matches-friend-input:focus { border-color: var(--color-accent-primary, #e5534b); }
+.matches-friend-input::placeholder { text-transform: none; letter-spacing: 0; color: var(--color-text-muted); }
+
+.matches-add-submit {
+  background: var(--color-accent-primary, #e5534b);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+.matches-add-submit:hover { opacity: 0.88; }
+
+.matches-status {
+  font-size: 0.82rem;
+  margin: 0.5rem 0 0;
+  color: var(--color-text-muted);
+}
+
+.matches-friends-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.matches-friends-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.matches-friend-card {
+  background: var(--color-surface, #1e1e2e);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.matches-friend-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border, #333);
+}
+
+.matches-friend-name {
+  font-weight: 600;
+  flex: 1;
+}
+
+.matches-friend-count {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.matches-remove-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  transition: color 0.15s;
+}
+.matches-remove-btn:hover { color: var(--color-accent-danger, #f87171); }
+.matches-remove-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.matches-friend-movies {
+  display: flex;
+  flex-direction: column;
+}
+
+.matches-empty-note {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 1rem;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+/* =========================================================
    8) LOGIN SECTION - Enhanced
    ========================================================= */
 .login-section:not([hidden]) {
