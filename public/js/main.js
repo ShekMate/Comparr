@@ -6532,6 +6532,21 @@ const main = async () => {
   const CARD_STACK_SIZE = 4
 
   api = new ComparrAPI()
+
+  // Load startup config before login so fresh installs can run the setup wizard
+  // before showing room-code/name prompts.
+  window.PLEX_LIBRARY_NAME = 'My Plex Library'
+  window.EMBY_LIBRARY_NAME = 'My Emby Library'
+  window.JELLYFIN_LIBRARY_NAME = 'My Jellyfin Library'
+  window.PLEX_CONFIGURED = false
+  window.EMBY_CONFIGURED = false
+  window.JELLYFIN_CONFIGURED = false
+  window.TMDB_CONFIGURED = false
+  window.SETUP_WIZARD_COMPLETED = false
+  await loadClientConfig()
+  await setupSettingsUI()
+  await ensureInitialSourceSetup()
+
   console.log('⏳ Waiting for login...')
   const loginData = await login(api)
   console.log('✅ Login successful:', loginData)
@@ -6606,19 +6621,6 @@ const main = async () => {
   console.log(
     `🎬 Tracking ${ratedTmdbIds.size} unique TMDb IDs from rated movies`
   )
-
-  // Get library names from server config (fallback to defaults)
-  window.PLEX_LIBRARY_NAME = 'My Plex Library'
-  window.EMBY_LIBRARY_NAME = 'My Emby Library'
-  window.JELLYFIN_LIBRARY_NAME = 'My Jellyfin Library'
-  window.PLEX_CONFIGURED = false
-  window.EMBY_CONFIGURED = false
-  window.JELLYFIN_CONFIGURED = false
-  window.TMDB_CONFIGURED = false
-  window.SETUP_WIZARD_COMPLETED = false
-  await loadClientConfig()
-  await setupSettingsUI()
-  await ensureInitialSourceSetup()
 
   const matchesView = new MatchesView(matches)
   const shownMatchGuids = new Set()
