@@ -569,20 +569,18 @@ function initTabs() {
     if (comparePanel) comparePanel.hidden = true
   }
 
-  // Dropdown support (for mobile tabbar)
-  const dropdown = document.querySelector(
-    '.tabbar .dropdown:not(.mobile-settings-dropdown)'
+  // Mobile menu dropdown support
+  const mobileMenuDropdown = document.querySelector('.mobile-menu-dropdown')
+  const mobileMenuToggle = document.querySelector('.mobile-menu-toggle')
+  const mobileMenuItems = document.querySelectorAll(
+    '.mobile-menu-dropdown .mobile-menu-item[data-tab]'
   )
-  const dropdownToggle = document.querySelector(
-    '.tabbar .dropdown:not(.mobile-settings-dropdown) .dropdown-toggle'
+  const mobileSubmenuToggles = document.querySelectorAll(
+    '.mobile-menu-dropdown .dropdown-submenu-toggle'
   )
-  const dropdownItems = document.querySelectorAll(
-    '.tabbar .dropdown:not(.mobile-settings-dropdown) .dropdown-item'
+  const mobileSubmenus = document.querySelectorAll(
+    '.mobile-menu-dropdown .dropdown-submenu'
   )
-  const mobileSettingsDropdown = document.querySelector(
-    '.mobile-settings-dropdown'
-  )
-  const mobileSettingsToggle = document.querySelector('.mobile-settings-toggle')
   const mobileSettingsItems = document.querySelectorAll('.mobile-settings-item')
   const settingsToggle = document.querySelector('.sidebar-settings-toggle')
   const settingsWrapper = document.querySelector('.sidebar-settings')
@@ -599,54 +597,47 @@ function initTabs() {
     allButtons.forEach(b =>
       b.classList.toggle('is-active', b.dataset.tab === id)
     )
-    if (dropdownItems) {
-      dropdownItems.forEach(item =>
-        item.classList.toggle('active', item.dataset.tab === id)
-      )
-    }
+    mobileMenuItems.forEach(item =>
+      item.classList.toggle('active', item.dataset.tab === id)
+    )
     panels.forEach(p => {
       p.hidden = p.id !== id
     })
 
-    // Update dropdown toggle text if a dropdown item is active
-    if (dropdownToggle && dropdownItems) {
-      const activeDropdownItem = Array.from(dropdownItems).find(
-        item => item.dataset.tab === id
-      )
-      if (activeDropdownItem) {
-        dropdownToggle.innerHTML = `<i class="fas fa-star"></i> ${activeDropdownItem.textContent}`
-        dropdownToggle.classList.add('is-active')
-      } else {
-        dropdownToggle.innerHTML = '<i class="fas fa-star"></i> Ratings'
-        dropdownToggle.classList.remove('is-active')
-      }
-    }
-
-    if (mobileSettingsToggle) {
-      mobileSettingsToggle.classList.toggle('is-active', id === 'tab-settings')
+    if (mobileMenuToggle) {
+      mobileMenuToggle.classList.toggle('is-active', id === 'tab-settings')
     }
   }
 
-  // Handle dropdown toggle
-  dropdownToggle?.addEventListener('click', e => {
+  const closeMobileMenu = () => {
+    mobileMenuDropdown?.classList.remove('show')
+    mobileSubmenus.forEach(submenu => submenu.classList.remove('show'))
+  }
+
+  mobileMenuToggle?.addEventListener('click', e => {
     e.stopPropagation()
-    dropdown.classList.toggle('show')
-    mobileSettingsDropdown?.classList.remove('show')
+    mobileMenuDropdown?.classList.toggle('show')
   })
 
-  mobileSettingsToggle?.addEventListener('click', e => {
-    e.stopPropagation()
-    mobileSettingsDropdown?.classList.toggle('show')
-    dropdown?.classList.remove('show')
-  })
-
-  // Close dropdown when clicking outside
-  if (dropdown) {
-    document.addEventListener('click', () => {
-      dropdown.classList.remove('show')
-      mobileSettingsDropdown?.classList.remove('show')
+  mobileSubmenuToggles.forEach(toggle => {
+    toggle.addEventListener('click', e => {
+      e.stopPropagation()
+      const submenu = toggle.closest('.dropdown-submenu')
+      if (!submenu) return
+      mobileSubmenus.forEach(other => {
+        if (other !== submenu) other.classList.remove('show')
+      })
+      submenu.classList.toggle('show')
     })
-  }
+  })
+
+  mobileMenuDropdown
+    ?.querySelector('.dropdown-menu')
+    ?.addEventListener('click', e => {
+      e.stopPropagation()
+    })
+
+  document.addEventListener('click', closeMobileMenu)
 
   // Tab switching handler
   const handleTabClick = tabId => {
@@ -762,7 +753,7 @@ function initTabs() {
       mobileSettingsItems.forEach(el =>
         el.classList.toggle('active', el.dataset.settingsTarget === targetId)
       )
-      mobileSettingsDropdown?.classList.remove('show')
+      closeMobileMenu()
     })
   })
 
@@ -777,18 +768,9 @@ function initTabs() {
         settingsWrapper?.classList.remove('is-open')
         settingsToggle?.setAttribute('aria-expanded', 'false')
       }
+      closeMobileMenu()
     })
   )
-
-  // Dropdown item switching
-  if (dropdownItems) {
-    dropdownItems.forEach(item => {
-      item.addEventListener('click', () => {
-        handleTabClick(item.dataset.tab)
-        dropdown?.classList.remove('show')
-      })
-    })
-  }
 
   // Mark as initialized
   initMarker.dataset.initialized = 'true'
@@ -6753,7 +6735,9 @@ const main = async () => {
   const matchesFriendInput = document.querySelector('.js-matches-friend-input')
   const matchesStatus = document.querySelector('.js-matches-status')
   const matchesFriendsList = document.querySelector('.js-matches-friends-list')
-  const matchesFriendsHeading = document.querySelector('.js-matches-friends-heading')
+  const matchesFriendsHeading = document.querySelector(
+    '.js-matches-friends-heading'
+  )
 
   const setMatchesStatus = (msg, isError = false) => {
     if (!matchesStatus) return
@@ -6776,7 +6760,9 @@ const main = async () => {
         <div class="watch-card-collapsed">
           <div class="watch-card-header-compact">
             <div class="watch-card-title-compact">
-              ${movie.title}${movie.year ? ` <span class="watch-card-year">(${movie.year})</span>` : ''}
+              ${movie.title}${
+      movie.year ? ` <span class="watch-card-year">(${movie.year})</span>` : ''
+    }
             </div>
             <div class="expand-icon"><i class="fas fa-chevron-down"></i></div>
           </div>
@@ -6784,7 +6770,11 @@ const main = async () => {
         <div class="watch-card-details">
           ${imgHtml}
           <div class="watch-card-content">
-            ${movie.summary ? `<p class="watch-card-summary">${movie.summary}</p>` : ''}
+            ${
+              movie.summary
+                ? `<p class="watch-card-summary">${movie.summary}</p>`
+                : ''
+            }
             <div class="watch-card-metadata">
               <i class="fas fa-heart"></i>
               You and ${friendName} both want to watch this
