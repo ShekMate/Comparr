@@ -2120,13 +2120,17 @@ body[data-user-type="guest"] .compare-ui { display: none; }
   height: 3rem;
   border: none;
   border-radius: var(--radius-md);
-  background: rgba(99, 102, 241, 1);
+  background-color: var(--color-primary);
   color: #fff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: background-color 0.2s ease;
+  opacity: 1;
+  box-shadow: 0 0 0 1px rgb(79 70 229 / 85%);
+  position: relative;
+  z-index: 3;
 }
 
 .password-form .submit-button:hover {
