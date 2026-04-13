@@ -2584,6 +2584,20 @@ body[data-user-type='guest'] .compare-ui {
   flex-shrink: 0;
 }
 
+.media-wordmark {
+  height: 22px;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.plex-wordmark {
+  width: auto;
+}
+
+.emby-wordmark {
+  width: auto;
+}
+
 /* ── Server sign-in buttons (Jellyfin / Emby) ── */
 
 .server-signin-btn {

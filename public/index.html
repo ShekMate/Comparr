@@ -84,8 +84,7 @@
         <!-- User auth screen (shown after password when user auth is enabled) -->
         <div class="user-auth-form js-user-auth-form u-display-none">
           <div class="login-intro">
-            <h1>Sign in</h1>
-            <p>Sign in with your media server account to continue.</p>
+            <p>Sign in to continue.</p>
           </div>
 
           <!-- Plex sign-in button (shown when Plex is configured) -->
@@ -94,17 +93,20 @@
               type="button"
               class="plex-signin-btn server-signin-btn server-signin-btn--plex js-plex-signin-btn"
             >
+              Sign in with
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                class="plex-logo-icon"
-                aria-hidden="true"
+                viewBox="0 0 88 24"
+                class="media-wordmark plex-wordmark"
+                aria-label="Plex"
+                role="img"
               >
                 <path
+                  fill="currentColor"
                   d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm-.37 16.5L7.5 12l4.13-4.5V16.5zm1.24 0V7.5L17 12l-4.13 4.5z"
                 />
+                <text x="28" y="17" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="13" fill="currentColor" letter-spacing="1.5">PLEX</text>
               </svg>
-              Sign in with Plex
             </button>
             <p class="user-auth-status js-plex-status" hidden></p>
           </div>
@@ -137,18 +139,20 @@
               type="button"
               class="server-signin-btn server-signin-btn--emby js-emby-signin-btn"
             >
+              Sign in with
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                class="server-signin-icon"
-                aria-hidden="true"
-                fill="currentColor"
+                viewBox="0 0 80 24"
+                class="media-wordmark emby-wordmark"
+                aria-label="Emby"
+                role="img"
               >
                 <path
+                  fill="currentColor"
                   d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm-1.5 7h3v2.5H13V11h1.5v2H13v1.5h1.5V17h-4v-2.5H12V13h-1.5v-2H12V9.5h-1.5V7z"
                 />
+                <text x="28" y="17" font-family="Arial,sans-serif" font-weight="700" font-size="13" fill="currentColor" letter-spacing="0.5">emby</text>
               </svg>
-              Sign in with Emby
             </button>
             <p class="user-auth-status js-emby-status" hidden></p>
           </div>
