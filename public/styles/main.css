@@ -2585,7 +2585,7 @@ body[data-user-type='guest'] .compare-ui {
 }
 
 .media-logo-img {
-  height: 26px;
+  height: 20px;
   width: auto;
   flex-shrink: 0;
 }
@@ -2596,7 +2596,7 @@ body[data-user-type='guest'] .compare-ui {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
+  gap: 0.4rem;
   width: 100%;
   padding: 0.9rem 1.5rem;
   color: var(--signin-btn-text, #f8fafc);
@@ -2639,18 +2639,18 @@ body[data-user-type='guest'] .compare-ui {
 }
 
 .server-signin-btn--plex {
-  --signin-btn-start: #ffffff;
-  --signin-btn-end: #ffffff;
-  --signin-btn-hover-start: #fff9ee;
-  --signin-btn-hover-end: #fffcf4;
-  --signin-btn-border: rgba(229, 160, 13, 0.4);
-  --signin-btn-hover-border: rgba(229, 160, 13, 0.7);
+  --signin-btn-start: rgba(229, 160, 13, 0.5);
+  --signin-btn-end: rgba(229, 160, 13, 0.5);
+  --signin-btn-hover-start: rgba(229, 160, 13, 0.65);
+  --signin-btn-hover-end: rgba(229, 160, 13, 0.65);
+  --signin-btn-border: rgba(229, 160, 13, 0.6);
+  --signin-btn-hover-border: rgba(229, 160, 13, 0.85);
   --signin-btn-text: #1a1a1a;
-  box-shadow: 0 4px 14px rgba(229, 160, 13, 0.15);
+  box-shadow: 0 4px 14px rgba(229, 160, 13, 0.2);
 }
 
 .server-signin-btn--plex:hover {
-  box-shadow: 0 6px 18px rgba(229, 160, 13, 0.25);
+  box-shadow: 0 6px 18px rgba(229, 160, 13, 0.35);
 }
 
 .server-signin-btn--jellyfin {
@@ -2669,18 +2669,18 @@ body[data-user-type='guest'] .compare-ui {
 }
 
 .server-signin-btn--emby {
-  --signin-btn-start: #ffffff;
-  --signin-btn-end: #ffffff;
-  --signin-btn-hover-start: #f5fff4;
-  --signin-btn-hover-end: #f8fff8;
-  --signin-btn-border: rgba(84, 181, 75, 0.4);
-  --signin-btn-hover-border: rgba(84, 181, 75, 0.7);
+  --signin-btn-start: rgba(84, 181, 75, 0.5);
+  --signin-btn-end: rgba(84, 181, 75, 0.5);
+  --signin-btn-hover-start: rgba(84, 181, 75, 0.65);
+  --signin-btn-hover-end: rgba(84, 181, 75, 0.65);
+  --signin-btn-border: rgba(84, 181, 75, 0.6);
+  --signin-btn-hover-border: rgba(84, 181, 75, 0.85);
   --signin-btn-text: #1a1a1a;
-  box-shadow: 0 4px 14px rgba(84, 181, 75, 0.15);
+  box-shadow: 0 4px 14px rgba(84, 181, 75, 0.2);
 }
 
 .server-signin-btn--emby:hover {
-  box-shadow: 0 6px 18px rgba(84, 181, 75, 0.25);
+  box-shadow: 0 6px 18px rgba(84, 181, 75, 0.35);
 }
 
 .server-signin-icon {
