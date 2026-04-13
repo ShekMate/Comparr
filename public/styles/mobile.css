@@ -556,6 +556,7 @@
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+    flex: 1 !important;
     gap: 0 !important;
     min-width: auto !important;
     position: relative !important;
@@ -564,19 +565,23 @@
   }
 
   .rate-controls button {
-    width: auto !important;
+    width: 100% !important;
     height: auto !important;
-    font-size: 0.9rem !important;
+    font-size: 1rem !important;
     min-width: auto !important;
     min-height: auto !important;
-    padding: 0.5rem 0.95rem !important;
+    padding: 0.65rem 0.5rem !important;
     margin: 0 !important;
     position: relative !important;
     z-index: 999 !important;
   }
 
+  .rate-controls button i {
+    font-size: 1.1rem !important;
+  }
+
   .rate-controls .button-label {
-    font-size: 0.8rem !important;
+    font-size: 0.85rem !important;
     color: inherit !important;
     display: inline-flex !important;
     visibility: visible !important;
