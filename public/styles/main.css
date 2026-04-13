@@ -2654,13 +2654,18 @@ body[data-user-type='guest'] .compare-ui {
 }
 
 .server-signin-btn--jellyfin {
-  --signin-btn-start: #0f6f9a;
-  --signin-btn-end: #1282b7;
-  --signin-btn-hover-start: #1780ae;
-  --signin-btn-hover-end: #2496c8;
-  --signin-btn-border: #3aa6d2;
-  --signin-btn-hover-border: #66bee2;
-  --signin-btn-text: #effbff;
+  --signin-btn-start: #ffffff;
+  --signin-btn-end: #ffffff;
+  --signin-btn-hover-start: #f0f8ff;
+  --signin-btn-hover-end: #f5fbff;
+  --signin-btn-border: rgba(58, 166, 210, 0.4);
+  --signin-btn-hover-border: rgba(58, 166, 210, 0.7);
+  --signin-btn-text: #1a1a1a;
+  box-shadow: 0 4px 14px rgba(58, 166, 210, 0.15);
+}
+
+.server-signin-btn--jellyfin:hover {
+  box-shadow: 0 6px 18px rgba(58, 166, 210, 0.25);
 }
 
 .server-signin-btn--emby {
