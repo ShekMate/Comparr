@@ -506,9 +506,17 @@
     margin-top: 1rem;
   }
 
+  .cast-header {
+    margin-bottom: 0.3rem;
+  }
+
   .cast-scroll {
     gap: 0.275rem;
-    padding-bottom: 0.35rem;
+    padding: 0 0.05rem 0.35rem;
+  }
+
+  .cast-card-body {
+    padding-top: 0;
   }
 
   .cast-card {
@@ -558,17 +566,17 @@
   .rate-controls button {
     width: auto !important;
     height: auto !important;
-    font-size: 0.85rem !important;
+    font-size: 0.9rem !important;
     min-width: auto !important;
     min-height: auto !important;
-    padding: 0.35rem 0.7rem !important;
+    padding: 0.5rem 0.95rem !important;
     margin: 0 !important;
     position: relative !important;
     z-index: 999 !important;
   }
 
   .rate-controls .button-label {
-    font-size: 0.75rem !important;
+    font-size: 0.8rem !important;
     color: inherit !important;
     display: inline-flex !important;
     visibility: visible !important;
