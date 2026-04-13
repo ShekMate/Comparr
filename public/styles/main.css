@@ -2584,18 +2584,10 @@ body[data-user-type='guest'] .compare-ui {
   flex-shrink: 0;
 }
 
-.media-wordmark {
-  height: 22px;
+.media-logo-img {
+  height: 26px;
+  width: auto;
   flex-shrink: 0;
-  overflow: visible;
-}
-
-.plex-wordmark {
-  width: auto;
-}
-
-.emby-wordmark {
-  width: auto;
 }
 
 /* ── Server sign-in buttons (Jellyfin / Emby) ── */
@@ -2647,13 +2639,18 @@ body[data-user-type='guest'] .compare-ui {
 }
 
 .server-signin-btn--plex {
-  --signin-btn-start: #996121;
-  --signin-btn-end: #b97724;
-  --signin-btn-hover-start: #ad6c24;
-  --signin-btn-hover-end: #c9842b;
-  --signin-btn-border: #d1913d;
-  --signin-btn-hover-border: #e4ad5f;
-  --signin-btn-text: #fffaf0;
+  --signin-btn-start: #ffffff;
+  --signin-btn-end: #ffffff;
+  --signin-btn-hover-start: #fff9ee;
+  --signin-btn-hover-end: #fffcf4;
+  --signin-btn-border: rgba(229, 160, 13, 0.4);
+  --signin-btn-hover-border: rgba(229, 160, 13, 0.7);
+  --signin-btn-text: #1a1a1a;
+  box-shadow: 0 4px 14px rgba(229, 160, 13, 0.15);
+}
+
+.server-signin-btn--plex:hover {
+  box-shadow: 0 6px 18px rgba(229, 160, 13, 0.25);
 }
 
 .server-signin-btn--jellyfin {
@@ -2667,13 +2664,18 @@ body[data-user-type='guest'] .compare-ui {
 }
 
 .server-signin-btn--emby {
-  --signin-btn-start: #2f8f4d;
-  --signin-btn-end: #39a45a;
-  --signin-btn-hover-start: #3da763;
-  --signin-btn-hover-end: #46b96d;
-  --signin-btn-border: #63bf81;
-  --signin-btn-hover-border: #86d2a0;
-  --signin-btn-text: #f1fff5;
+  --signin-btn-start: #ffffff;
+  --signin-btn-end: #ffffff;
+  --signin-btn-hover-start: #f5fff4;
+  --signin-btn-hover-end: #f8fff8;
+  --signin-btn-border: rgba(84, 181, 75, 0.4);
+  --signin-btn-hover-border: rgba(84, 181, 75, 0.7);
+  --signin-btn-text: #1a1a1a;
+  box-shadow: 0 4px 14px rgba(84, 181, 75, 0.15);
+}
+
+.server-signin-btn--emby:hover {
+  box-shadow: 0 6px 18px rgba(84, 181, 75, 0.25);
 }
 
 .server-signin-icon {

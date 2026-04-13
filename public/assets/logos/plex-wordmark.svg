@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 116 40" role="img" aria-label="Plex">
+  <title>Plex</title>
+  <!-- Plex circle icon scaled from 24x24 to 40x40 -->
+  <path fill="#E5A00D" transform="scale(1.6667)" d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm-.37 16.5L7.5 12l4.13-4.5V16.5zm1.24 0V7.5L17 12l-4.13 4.5z"/>
+  <!-- plex wordmark -->
+  <text x="48" y="29" font-family="'Arial Black', 'Helvetica Neue', Arial, sans-serif" font-weight="900" font-size="24" fill="#1a1a1a">plex</text>
+</svg>
