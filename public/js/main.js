@@ -4304,13 +4304,6 @@ async function login(api) {
   }
 
   let skipPasswordPrompt = false
-  const shouldReturnToModeSelection =
-    sessionStorage.getItem('comparrReturnToModeSelection') === '1'
-
-  if (shouldReturnToModeSelection) {
-    sessionStorage.removeItem('comparrReturnToModeSelection')
-  }
-
   if (!skipPasswordPrompt) {
     try {
       await api.verifyAccessPassword('')
@@ -9804,7 +9797,6 @@ watchFilterReset?.addEventListener('click', () => {
 // Swipe Filter Modal
 // =========================================================
 const swipeFilterBtn = document.getElementById('swipe-filter-btn')
-const swipeHomeBtn = document.getElementById('swipe-home-btn')
 const swipeFilterModal = document.getElementById('swipe-filter-modal')
 const swipeFilterOverlay = document.getElementById('swipe-filter-overlay')
 const swipeFilterClose = document.getElementById('swipe-filter-close')
@@ -10466,27 +10458,6 @@ swipeFilterBtn?.addEventListener('click', () => openSwipeFilterModal('live'))
 swipeFilterClose?.addEventListener('click', closeSwipeFilterModal)
 swipeFilterOverlay?.addEventListener('click', closeSwipeFilterModal)
 
-function returnToModeSelection() {
-  closeSwipeFilterModal()
-  sessionStorage.setItem('comparrReturnToModeSelection', '1')
-  window.location.reload()
-}
-
-const swipeHeaderHomeButtons = document.querySelectorAll(
-  '.swipe-header .js-home-btn'
-)
-if (swipeHeaderHomeButtons.length > 1) {
-  swipeHeaderHomeButtons.forEach((button, index) => {
-    if (index < swipeHeaderHomeButtons.length - 1) {
-      button.remove()
-    }
-  })
-}
-
-const homeButtons = document.querySelectorAll('.js-home-btn')
-homeButtons.forEach(button => {
-  button.addEventListener('click', returnToModeSelection)
-})
 
 // Setup swipe filter modal dropdowns
 function setupSwipeFilterDropdowns() {
