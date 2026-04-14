@@ -6705,8 +6705,9 @@ const main = async () => {
 
   const updateRoomMembers = members => {
     if (!roomMembersWidget || !roomMembersList || appMode !== 'group') return
-    roomMembersList.textContent = members.join(', ')
-    roomMembersWidget.hidden = members.length === 0
+    const otherMembers = members.filter(m => m !== userName)
+    roomMembersList.textContent = otherMembers.join(', ')
+    roomMembersWidget.hidden = otherMembers.length === 0
   }
 
   // Populate from loginResponse members field
