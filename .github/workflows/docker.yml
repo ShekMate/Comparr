@@ -1,8 +1,8 @@
-name: Build & Push Dev Docker image
+name: Build & Push Docker image
 
 on:
   push:
-    branches: ['main']
+    branches: ['main', 'dev']
   workflow_dispatch:
 
 permissions:
@@ -11,7 +11,6 @@ permissions:
 
 jobs:
   build:
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     env:
       IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/comparr
@@ -37,7 +36,8 @@ jobs:
             org.opencontainers.image.description=Tinder-style movie matcher for Plex
             org.opencontainers.image.licenses=Apache-2.0
           tags: |
-            type=raw,value=dev,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
             type=sha,prefix=sha-
 
       - name: Build and push
