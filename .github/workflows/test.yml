@@ -2,9 +2,9 @@ name: Tests & Coverage
 
 on:
   push:
-    branches: ["main", "dev", "claude/**"]
+    branches: ["main", "master", "dev", "claude/**"]
   pull_request:
-    branches: ["main", "dev"]
+    branches: ["main", "master", "dev"]
 
 permissions:
   contents: read
