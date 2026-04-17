@@ -90,7 +90,12 @@ async function ensurePlexClientId(): Promise<string> {
   let clientId = getPlexClientId()
   if (!clientId) {
     clientId = crypto.randomUUID()
-    await updateSettings({ PLEX_CLIENT_ID: clientId })
+    // Persist asynchronously so a transient write failure doesn't block login.
+    // updateSettings updates the in-memory cache synchronously before its first
+    // await, so getPlexClientId() returns the new ID on the very next call.
+    updateSettings({ PLEX_CLIENT_ID: clientId }).catch(err =>
+      log.warn(`[auth] Failed to persist Plex client ID: ${err}`)
+    )
     log.info('[auth] Generated new Plex client ID')
   }
   return clientId
