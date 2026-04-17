@@ -3308,6 +3308,12 @@ function createFirstRunGuideModal() {
         } else if (currentAdminPassword) {
           setAdminPasswordForSession(currentAdminPassword)
         }
+        // If an access password was just set, immediately verify it so the
+        // browser gets a session cookie. Without this, every subsequent wizard
+        // step would be blocked by the access-password middleware.
+        if (newAccessPassword) {
+          await api.verifyAccessPassword(newAccessPassword).catch(() => {})
+        }
       } catch (err) {
         setWizardStatus(
           err?.message || 'Failed to save security settings.',
