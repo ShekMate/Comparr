@@ -6,6 +6,7 @@ import { Database } from 'jsr:@db/sqlite'
 import * as log from 'jsr:@std/log'
 import { fetchWithTimeout } from '../../infra/http/fetch-with-timeout.ts'
 import { getDataDir } from '../../core/env.ts'
+import { getSetting } from '../../core/settings.ts'
 
 const IMDB_DB_PATH = `${getDataDir()}/imdb-ratings.db`
 const IMDB_DUMP_URL = 'https://datasets.imdbws.com/title.ratings.tsv.gz'
@@ -205,6 +206,13 @@ async function buildDatabase(tsvData: string): Promise<void> {
  * Check if database needs updating and update in background
  */
 export async function checkAndUpdateDatabase(): Promise<void> {
+  // Don't download during initial wizard setup — the ~1.5 GB decompressed
+  // dataset can OOM the container before the wizard finishes.
+  if (getSetting('SETUP_WIZARD_COMPLETED') !== 'true') {
+    log.debug('IMDb update check skipped — wizard setup not complete')
+    return
+  }
+
   const now = Date.now()
 
   // Rate limit checks to once per hour
