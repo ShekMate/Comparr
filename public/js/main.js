@@ -3523,6 +3523,7 @@ function createFirstRunGuideModal() {
         return null
       }
 
+      await loadClientConfig().catch(() => {})
       return { type: 'defaults' }
     }
 
@@ -3664,6 +3665,7 @@ function createFirstRunGuideModal() {
 
       if (current?.type !== 'requests') return
       persistRequestInputs()
+      await loadClientConfig().catch(() => {})
       history.push({ type: 'defaults' })
       renderScreen({ type: 'defaults' })
     })
