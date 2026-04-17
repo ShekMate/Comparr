@@ -68,6 +68,7 @@ import {
 } from './services/cache/poster-cache.ts'
 import {
   closeIMDbDatabase,
+  startBackgroundUpdateJob,
   stopBackgroundUpdateJob,
 } from './features/catalog/imdb-datasets.ts'
 import { buildPlexCache } from './integrations/plex/cache.ts'
@@ -521,6 +522,9 @@ for await (const req of server) {
       clearAllRooms,
       clearRooms,
       clearUsersFromRoom,
+      onWizardComplete: () => {
+        startBackgroundUpdateJob()
+      },
     })
     if (settingsRouteResponse) {
       await req.respondWith(settingsRouteResponse)
