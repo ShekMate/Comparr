@@ -2660,6 +2660,7 @@ function createFirstRunGuideModal() {
   }
 
   const saveSettingsSubset = async (updates, options = {}) => {
+    const apiBase = document.body.dataset.basePath || ''
     const adminPasswordHeader =
       typeof options?.adminPasswordHeader === 'string'
         ? options.adminPasswordHeader.trim()
@@ -2673,7 +2674,7 @@ function createFirstRunGuideModal() {
       headers['x-admin-password'] = adminPasswordHeader
     }
 
-    const res = await fetch('/api/settings', {
+    const res = await fetch(`${apiBase}/api/settings`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ settings: updates }),
@@ -2685,7 +2686,8 @@ function createFirstRunGuideModal() {
   }
 
   const runConnectionTest = async (target, url, token) => {
-    const res = await fetch('/api/settings-test', {
+    const apiBase = document.body.dataset.basePath || ''
+    const res = await fetch(`${apiBase}/api/settings-test`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...getAdminHeaders() },
       body: JSON.stringify({ target, url, token }),
