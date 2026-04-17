@@ -186,9 +186,13 @@ const isAccessPasswordAuthorized = async (req: CompatRequest) => {
   return false
 }
 
+const isSetupWizardActive = () =>
+  String(getSettings().SETUP_WIZARD_COMPLETED ?? '').toLowerCase() !== 'true'
+
 const shouldRequireAccessPassword = (path: string) => {
   if (!getAccessPassword()) return false
   if (!path.startsWith('/api/')) return false
+  if (isSetupWizardActive()) return false
   return !EXEMPT_GLOBAL_ACCESS_PASSWORD_PATHS.has(path)
 }
 
@@ -464,6 +468,7 @@ for await (const req of server) {
     if (
       p.startsWith('/api/') &&
       isUserAuthEnabled() &&
+      !isSetupWizardActive() &&
       !EXEMPT_USER_AUTH_PATHS.has(p) &&
       // Allow Plex pin polling paths (/api/auth/plex/pin/:id)
       !p.startsWith('/api/auth/')

@@ -58,7 +58,7 @@ const makeDeps = (
 })
 
 Deno.test(
-  'setup mode blocks remote admin settings writes by default',
+  'setup mode allows remote admin settings writes during wizard',
   async () => {
     Deno.env.delete('ALLOW_REMOTE_BOOTSTRAP')
     const calls = { updates: 0, reset: 0 }
@@ -72,15 +72,15 @@ Deno.test(
       makeDeps(settings, calls)
     )
 
-    assertEquals(response?.status, 403)
-    assertEquals(calls.updates, 0)
+    assertEquals(response?.status, 200)
+    assertEquals(calls.updates, 1)
   }
 )
 
 Deno.test(
-  'setup mode still allows remote ADMIN_PASSWORD bootstrap when enabled',
+  'setup mode allows admin password write without ALLOW_REMOTE_BOOTSTRAP',
   async () => {
-    Deno.env.set('ALLOW_REMOTE_BOOTSTRAP', 'true')
+    Deno.env.delete('ALLOW_REMOTE_BOOTSTRAP')
     const calls = { updates: 0, reset: 0 }
     const settings = { SETUP_WIZARD_COMPLETED: 'false', ADMIN_PASSWORD: '' }
 
@@ -94,6 +94,27 @@ Deno.test(
 
     assertEquals(response?.status, 200)
     assertEquals(calls.updates, 1)
-    Deno.env.delete('ALLOW_REMOTE_BOOTSTRAP')
+  }
+)
+
+Deno.test(
+  'completed wizard blocks unauthorized remote admin settings writes',
+  async () => {
+    const calls = { updates: 0, reset: 0 }
+    const settings = {
+      SETUP_WIZARD_COMPLETED: 'true',
+      ADMIN_PASSWORD: 'pbkdf2:sha256:100000:aabbcc:ddeeff',
+    }
+
+    const response = await handleSettingsRoutes(
+      makeReq({
+        body: JSON.stringify({ settings: { PLEX_TOKEN: 'secret' } }),
+      }),
+      '/api/settings',
+      makeDeps(settings, calls)
+    )
+
+    assertEquals(response?.status, 403)
+    assertEquals(calls.updates, 0)
   }
 )
