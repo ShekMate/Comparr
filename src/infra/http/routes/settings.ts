@@ -705,11 +705,13 @@ export async function handleSettingsRoutes(
       }
 
       if (!setupWasCompleted && setupIsCompleted) {
-        await onWizardComplete().catch(err =>
+        try {
+          await Promise.resolve(onWizardComplete())
+        } catch (err) {
           log.error(
             `Failed to run setup completion follow-up job: ${err?.message || err}`
           )
-        )
+        }
       }
 
       return new Response(
