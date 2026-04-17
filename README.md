@@ -400,6 +400,33 @@ npm run format
 - Ensure Plex server allows connections from the Docker network
 - Try using the server's IP address instead of hostname
 
+### Unraid Shows Container as "Unhealthy"
+
+**Problem:** Unraid marks Comparr unhealthy even though the container started
+
+**Solutions:**
+
+- Check health endpoint from inside the container:
+  - `docker exec -it comparr wget -qO- http://127.0.0.1:8000/api/health`
+- Confirm Comparr is listening on port `8000` in the container (or set `PORT` to match your mapping).
+- If container logs show startup failures, inspect:
+  - `docker logs comparr --tail=200`
+- Verify your `/data` mount is writable by configured `PUID`/`PGID`.
+
+### Plex Login Fails (PIN endpoint returns 502)
+
+**Problem:** Browser console shows `POST /api/auth/plex/pin` returning `502 Bad Gateway`
+
+**Solutions:**
+
+- Verify container has outbound internet access to `https://plex.tv` (PIN auth requires plex.tv).
+- Check DNS from inside the container:
+  - `docker exec -it comparr getent hosts plex.tv`
+- If your network filters TLS inspection/proxy traffic, allow direct HTTPS egress from the container.
+- Confirm system time is correct on your Unraid host (large clock skew can break remote auth flows).
+- Check logs during login attempt:
+  - `docker logs comparr --tail=200`
+
 ### Movies Not Loading
 
 **Problem:** Session created but no movies appear
