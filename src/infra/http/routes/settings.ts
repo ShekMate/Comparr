@@ -534,17 +534,7 @@ export async function handleSettingsRoutes(
     }
 
     const settings = getSettings()
-    if (isSetupWizardActive(settings)) {
-      if (!isLocalRequest(req)) {
-        return new Response(
-          JSON.stringify({
-            ok: false,
-            message: getSetupModeFailureMessage(),
-          }),
-          { status: 403, headers: makeJsonHeaders(req) }
-        )
-      }
-    } else {
+    if (!isSetupWizardActive(settings)) {
       if (!hasAdminPasswordConfigured(settings)) {
         return new Response(
           JSON.stringify({
@@ -620,7 +610,7 @@ export async function handleSettingsRoutes(
     const currentSettings = getSettings()
     const setupWizardActive = isSetupWizardActive(currentSettings)
     const isAdmin =
-      (setupWizardActive && isLocalRequest(req)) ||
+      setupWizardActive ||
       (await isAdminAuthorized(req, currentSettings, isLocalRequest))
 
     try {
