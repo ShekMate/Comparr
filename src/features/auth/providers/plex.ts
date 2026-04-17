@@ -39,19 +39,37 @@ function plexHeaders(clientId: string): HeadersInit {
     'X-Plex-Version': '1.0',
     'X-Plex-Device': 'Web',
     'X-Plex-Platform': 'Web',
+    'User-Agent': 'Comparr/1.0',
   }
 }
 
 /** Request a new PIN from plex.tv. Returns the pin and the URL to send the user to. */
-export async function requestPlexPin(clientId: string): Promise<{ pin: PlexPin; authUrl: string }> {
-  const res = await fetchWithTimeout(`${PLEX_API_BASE}/pins`, {
-    method: 'POST',
-    headers: {
-      ...plexHeaders(clientId),
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: 'strong=true',
-  })
+export async function requestPlexPin(
+  clientId: string
+): Promise<{ pin: PlexPin; authUrl: string }> {
+  // Plex currently accepts `strong=true` as a query parameter.
+  // Keep this canonical call first, then fall back to form-body mode for
+  // compatibility with older plex.tv behavior.
+  let res: Response
+  try {
+    res = await fetchWithTimeout(`${PLEX_API_BASE}/pins?strong=true`, {
+      method: 'POST',
+      headers: plexHeaders(clientId),
+    })
+  } catch (err) {
+    throw new Error(`[plex-auth] PIN request network failure: ${err}`)
+  }
+
+  if (!res.ok) {
+    res = await fetchWithTimeout(`${PLEX_API_BASE}/pins`, {
+      method: 'POST',
+      headers: {
+        ...plexHeaders(clientId),
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: 'strong=true',
+    })
+  }
 
   if (!res.ok) {
     const body = await res.text().catch(() => '')
@@ -75,7 +93,10 @@ export async function requestPlexPin(clientId: string): Promise<{ pin: PlexPin; 
 }
 
 /** Poll plex.tv for the status of a PIN. Returns pending, expired, or an authToken. */
-export async function pollPlexPin(pinId: number, clientId: string): Promise<PlexPinStatus> {
+export async function pollPlexPin(
+  pinId: number,
+  clientId: string
+): Promise<PlexPinStatus> {
   const res = await fetchWithTimeout(`${PLEX_API_BASE}/pins/${pinId}`, {
     headers: plexHeaders(clientId),
   })
@@ -101,7 +122,10 @@ export async function pollPlexPin(pinId: number, clientId: string): Promise<Plex
 }
 
 /** Fetch the Plex user associated with a given auth token. */
-export async function getPlexUserInfo(authToken: string, clientId: string): Promise<PlexUserInfo> {
+export async function getPlexUserInfo(
+  authToken: string,
+  clientId: string
+): Promise<PlexUserInfo> {
   const res = await fetchWithTimeout(`${PLEX_API_BASE}/user`, {
     headers: {
       ...plexHeaders(clientId),
@@ -159,7 +183,9 @@ export async function isUserOnPlexServer(
 
     const serverData = await serverRes.json()
     const accounts = serverData?.MediaContainer?.Account ?? []
-    return accounts.some((a: { id: number | string }) => String(a.id) === userId)
+    return accounts.some(
+      (a: { id: number | string }) => String(a.id) === userId
+    )
   } catch (err) {
     log.warn(`[plex-auth] isUserOnPlexServer error: ${err}`)
     return false
