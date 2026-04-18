@@ -33,7 +33,7 @@ const makeReq = ({
 
 const makeDeps = (
   settings: Record<string, unknown>,
-  calls: { updates: number; reset: number }
+  calls: { updates: number; reset: number; wizardComplete: number }
 ): SettingsRouteDeps => ({
   buildPlexCache: async () => {},
   clearAllMoviesCache: () => {},
@@ -43,9 +43,9 @@ const makeDeps = (
   getSettings: () => settings,
   isLocalRequest: () => false,
   refreshRadarrCache: async () => {},
-  updateSettings: async () => {
+  updateSettings: async incoming => {
     calls.updates += 1
-    return settings
+    return { ...settings, ...incoming }
   },
   resetSettings: async () => {
     calls.reset += 1
@@ -55,13 +55,16 @@ const makeDeps = (
   clearAllRooms: () => {},
   clearRooms: () => {},
   clearUsersFromRoom: () => {},
+  onWizardComplete: () => {
+    calls.wizardComplete += 1
+  },
 })
 
 Deno.test(
-  'setup mode blocks remote admin settings writes by default',
+  'setup mode allows remote admin settings writes during wizard',
   async () => {
     Deno.env.delete('ALLOW_REMOTE_BOOTSTRAP')
-    const calls = { updates: 0, reset: 0 }
+    const calls = { updates: 0, reset: 0, wizardComplete: 0 }
     const settings = { SETUP_WIZARD_COMPLETED: 'false', ADMIN_PASSWORD: '' }
 
     const response = await handleSettingsRoutes(
@@ -72,16 +75,17 @@ Deno.test(
       makeDeps(settings, calls)
     )
 
-    assertEquals(response?.status, 403)
-    assertEquals(calls.updates, 0)
+    assertEquals(response?.status, 200)
+    assertEquals(calls.updates, 1)
+    assertEquals(calls.wizardComplete, 0)
   }
 )
 
 Deno.test(
-  'setup mode still allows remote ADMIN_PASSWORD bootstrap when enabled',
+  'setup mode allows admin password write without ALLOW_REMOTE_BOOTSTRAP',
   async () => {
-    Deno.env.set('ALLOW_REMOTE_BOOTSTRAP', 'true')
-    const calls = { updates: 0, reset: 0 }
+    Deno.env.delete('ALLOW_REMOTE_BOOTSTRAP')
+    const calls = { updates: 0, reset: 0, wizardComplete: 0 }
     const settings = { SETUP_WIZARD_COMPLETED: 'false', ADMIN_PASSWORD: '' }
 
     const response = await handleSettingsRoutes(
@@ -94,6 +98,49 @@ Deno.test(
 
     assertEquals(response?.status, 200)
     assertEquals(calls.updates, 1)
-    Deno.env.delete('ALLOW_REMOTE_BOOTSTRAP')
+    assertEquals(calls.wizardComplete, 0)
   }
 )
+
+Deno.test(
+  'completed wizard blocks unauthorized remote admin settings writes',
+  async () => {
+    const calls = { updates: 0, reset: 0, wizardComplete: 0 }
+    const settings = {
+      SETUP_WIZARD_COMPLETED: 'true',
+      ADMIN_PASSWORD: 'pbkdf2:sha256:100000:aabbcc:ddeeff',
+    }
+
+    const response = await handleSettingsRoutes(
+      makeReq({
+        body: JSON.stringify({ settings: { PLEX_TOKEN: 'secret' } }),
+      }),
+      '/api/settings',
+      makeDeps(settings, calls)
+    )
+
+    assertEquals(response?.status, 403)
+    assertEquals(calls.updates, 0)
+    assertEquals(calls.wizardComplete, 0)
+  }
+)
+
+Deno.test('wizard completion hook runs once when setup flips to complete', async () => {
+  Deno.env.delete('ALLOW_REMOTE_BOOTSTRAP')
+  const calls = { updates: 0, reset: 0, wizardComplete: 0 }
+  const settings = { SETUP_WIZARD_COMPLETED: 'false', ADMIN_PASSWORD: '' }
+
+  const response = await handleSettingsRoutes(
+    makeReq({
+      body: JSON.stringify({
+        settings: { SETUP_WIZARD_COMPLETED: 'true' },
+      }),
+    }),
+    '/api/settings',
+    makeDeps(settings, calls)
+  )
+
+  assertEquals(response?.status, 200)
+  assertEquals(calls.updates, 1)
+  assertEquals(calls.wizardComplete, 1)
+})

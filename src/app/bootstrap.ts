@@ -1,5 +1,6 @@
 import * as log from 'jsr:@std/log'
 import { getPlexToken, getPlexUrl, getTmdbApiKey } from '../core/config.ts'
+import { getSettings } from '../core/settings.ts'
 import { initializeRadarrCache } from '../api/radarr.ts'
 import {
   initIMDbDatabase,
@@ -34,7 +35,16 @@ export const bootstrapApplication = () => {
   } catch (err) {
     log.error(`[startup] IMDb database init FAILED: ${err}`)
   }
-  startBackgroundUpdateJob()
+
+  const setupWizardCompleted =
+    String(getSettings().SETUP_WIZARD_COMPLETED ?? '').toLowerCase() === 'true'
+  if (setupWizardCompleted) {
+    startBackgroundUpdateJob()
+  } else {
+    log.info(
+      '[startup] Setup wizard incomplete; deferring IMDb background download job'
+    )
+  }
 
   // Initialize Plex availability cache
   const plexCacheReady = initPlexCache()
