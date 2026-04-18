@@ -2737,7 +2737,7 @@ function createFirstRunGuideModal() {
 
   const updateActionButtons = screen => {
     backButton.hidden = history.length <= 1 || screen.type === 'setup-complete'
-    skipButton.hidden = !['security', 'user-auth', 'admin-login', 'requests'].includes(
+    skipButton.hidden = !['security', 'user-auth', 'requests'].includes(
       screen.type
     )
     saveButton.hidden = screen.type !== 'defaults'
@@ -3907,13 +3907,6 @@ function createFirstRunGuideModal() {
         // Skip means advance without making any changes — no save needed
         history.push({ type: 'flow' })
         renderScreen({ type: 'flow' })
-        return
-      }
-
-      if (current?.type === 'admin-login') {
-        const next = selectedState.flow === 'combined' ? { type: 'tmdb' } : { type: 'setup-complete' }
-        history.push(next)
-        renderScreen(next)
         return
       }
 
