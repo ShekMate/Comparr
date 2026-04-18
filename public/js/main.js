@@ -2586,18 +2586,18 @@ function createFirstRunGuideModal() {
   const requirementCopyByFlow = {
     'personal-only':
       '*Requires at least one valid Plex, Emby, or Jellyfin connection. Optional: provide a TMDb API Key for additional movie metadata and an enhanced user experience.',
-    'tmdb-only': `*Requires a TMDb API Key. Get your free API Key <a href="${tmdbRegistrationUrl}" target="_blank" rel="noopener noreferrer">here</a>.`,
+    'tmdb-only': `Requires a TMDb API Key. Get your free API Key <a href="${tmdbRegistrationUrl}" target="_blank" rel="noopener noreferrer">here</a>.`,
     combined: `*Requires at least one valid Plex, Emby, or Jellyfin connection and a TMDb API Key. Get your free API Key <a href="${tmdbRegistrationUrl}" target="_blank" rel="noopener noreferrer">here</a>.`,
   }
   const tmdbOnlyRegistrationCopy = `Get your free API Key <a href="${tmdbRegistrationUrl}" target="_blank" rel="noopener noreferrer">here</a>.`
 
   const flowOptionsMarkup = `
     <div class="first-run-guide-options">
+      <button type="button" class="first-run-guide-option" data-flow="tmdb-only">
+        <strong>My Paid / Free Streaming Subscriptions Only.</strong>
+      </button>
       <button type="button" class="first-run-guide-option" data-flow="personal-only">
         <strong>My Plex, Emby, and/or Jellyfin Libraries Only.*</strong>
-      </button>
-      <button type="button" class="first-run-guide-option" data-flow="tmdb-only">
-        <strong>My Paid / Free Streaming Subscriptions Only.*</strong>
       </button>
       <button type="button" class="first-run-guide-option" data-flow="combined">
         <strong>My Plex, Emby, and/or Jellyfin Libraries + My Paid / Free Streaming Subscriptions.*</strong>
