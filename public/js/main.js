@@ -3164,11 +3164,49 @@ function createFirstRunGuideModal() {
         <input id="${requestFieldIds.radarrUrl}" class="first-run-guide-input" type="url" placeholder="http://localhost" value="${selectedState.requestServices.radarrUrl}" />
         <label class="first-run-guide-field-label">Radarr API Key</label>
         <input id="${requestFieldIds.radarrApiKey}" class="first-run-guide-input" type="text" value="${selectedState.requestServices.radarrApiKey}" />
+        <button type="button" class="submit-button first-run-guide-test-button" id="first-run-test-radarr">Test Radarr Connection</button>
         <label class="first-run-guide-field-label">Seerr URL</label>
         <input id="${requestFieldIds.seerrUrl}" class="first-run-guide-input" type="url" placeholder="http://localhost" value="${selectedState.requestServices.seerrUrl}" />
         <label class="first-run-guide-field-label">Seerr API Key</label>
         <input id="${requestFieldIds.seerrApiKey}" class="first-run-guide-input" type="text" value="${selectedState.requestServices.seerrApiKey}" />
+        <button type="button" class="submit-button first-run-guide-test-button" id="first-run-test-seerr">Test Seerr Connection</button>
       `
+      body.querySelector('#first-run-test-radarr')?.addEventListener('click', async event => {
+        const testButton = event.currentTarget
+        await withButtonLoading(testButton, 'Testing...', async () => {
+          const url = body.querySelector(`#${requestFieldIds.radarrUrl}`)?.value || ''
+          const token = body.querySelector(`#${requestFieldIds.radarrApiKey}`)?.value || ''
+          if (!isValidUrl(url) || !token.trim()) {
+            setWizardStatus('Radarr URL and API Key are required.', 'error')
+            return
+          }
+          try {
+            setWizardStatus('Testing Radarr connection...')
+            await runConnectionTest('radarr', url, token)
+            setWizardStatus('✅ Radarr connection successful.', 'success')
+          } catch (err) {
+            setWizardStatus(err?.message || 'Failed to connect to Radarr.', 'error')
+          }
+        })
+      })
+      body.querySelector('#first-run-test-seerr')?.addEventListener('click', async event => {
+        const testButton = event.currentTarget
+        await withButtonLoading(testButton, 'Testing...', async () => {
+          const url = body.querySelector(`#${requestFieldIds.seerrUrl}`)?.value || ''
+          const token = body.querySelector(`#${requestFieldIds.seerrApiKey}`)?.value || ''
+          if (!isValidUrl(url) || !token.trim()) {
+            setWizardStatus('Seerr URL and API Key are required.', 'error')
+            return
+          }
+          try {
+            setWizardStatus('Testing Seerr connection...')
+            await runConnectionTest('seerr', url, token)
+            setWizardStatus('✅ Seerr connection successful.', 'success')
+          } catch (err) {
+            setWizardStatus(err?.message || 'Failed to connect to Seerr.', 'error')
+          }
+        })
+      })
       return
     }
 
@@ -3676,6 +3714,11 @@ function createFirstRunGuideModal() {
   saveButton?.addEventListener('click', () => {
     if ((history[history.length - 1] || {}).type !== 'defaults') return
     saveDefaultsFromWizard()
+  })
+
+  document.addEventListener('comparr:wizard-defaults-saved', e => {
+    selectedState.defaultsLastSavedSnapshot = e.detail?.snapshot || getCurrentDefaultsSnapshot()
+    setWizardStatus('✅ Default filters saved.', 'success')
   })
 
   renderRequirementCopy('')
@@ -11040,14 +11083,18 @@ swipeFilterApply?.addEventListener('click', e => {
   if (swipeFilterMode === 'defaults') {
     const normalized = normalizeFilterStateForDefaults(window.filterState)
     if (normalized) {
-      localStorage.setItem(
-        SWIPE_DEFAULTS_STORAGE_KEY,
-        JSON.stringify(normalized)
-      )
+      const snapshot = JSON.stringify(normalized)
+      localStorage.setItem(SWIPE_DEFAULTS_STORAGE_KEY, snapshot)
       refreshDefaultsSummary()
-      setSettingsStatus('Default swipe filters saved.')
-      pulseSettingsStatus('success')
-      clearSettingsStatusAfterDelay(3000)
+      if (swipeFilterModal?.classList.contains('inline-defaults-mode')) {
+        document.dispatchEvent(
+          new CustomEvent('comparr:wizard-defaults-saved', { detail: { snapshot } })
+        )
+      } else {
+        setSettingsStatus('Default swipe filters saved.')
+        pulseSettingsStatus('success')
+        clearSettingsStatusAfterDelay(3000)
+      }
     }
     closeSwipeFilterModal()
     return
