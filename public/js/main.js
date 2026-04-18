@@ -2622,6 +2622,8 @@ function createFirstRunGuideModal() {
       seerrApiKey: '',
     },
     defaultsLastSavedSnapshot: '',
+    adminLoggedIn: false,
+    adminLoginUser: null,
   }
   const history = []
 
@@ -2735,11 +2737,11 @@ function createFirstRunGuideModal() {
 
   const updateActionButtons = screen => {
     backButton.hidden = history.length <= 1 || screen.type === 'setup-complete'
-    skipButton.hidden = !['security', 'user-auth', 'requests'].includes(
+    skipButton.hidden = !['security', 'user-auth', 'admin-login', 'requests'].includes(
       screen.type
     )
     saveButton.hidden = screen.type !== 'defaults'
-    nextButton.disabled = false
+    nextButton.disabled = screen.type === 'admin-login' && !selectedState.adminLoggedIn
     skipButton.disabled = false
     if (screen.type === 'setup-complete') {
       nextButton.textContent = 'Start Swiping'
@@ -3223,7 +3225,7 @@ function createFirstRunGuideModal() {
       renderRequirementCopy('')
       title.textContent = 'User Authentication'
       copy.textContent =
-        'Let users sign in with their Plex, Jellyfin, or Emby account. The first user to sign in automatically becomes the admin.'
+        "Let users sign in with their Plex, Jellyfin, or Emby account. Once your media server is configured, you'll sign in to claim admin access."
 
       const currentEnabled =
         window.USER_AUTH_ENABLED === true || window.USER_AUTH_ENABLED === 'true'
@@ -3258,6 +3260,200 @@ function createFirstRunGuideModal() {
           You can always change these settings later under Settings → Security &amp; Access.
         </p>
       `
+      return
+    }
+
+    if (screen.type === 'admin-login') {
+      renderRequirementCopy('')
+      title.textContent = 'Claim Admin Access'
+      copy.textContent =
+        "Sign in with your media server account to be set as the admin. As the person setting this up, that should be you."
+
+      if (selectedState.adminLoggedIn) {
+        body.textContent = ''
+        const msg = document.createElement('p')
+        msg.className = 'first-run-guide-instruction'
+        msg.style.color = '#86efac'
+        msg.style.fontWeight = '600'
+        msg.textContent = `✓ Signed in as ${selectedState.adminLoginUser?.username || 'you'}. Click Next to continue.`
+        body.appendChild(msg)
+        return
+      }
+
+      const hasPlex = selectedState.sources.includes('plex')
+      const hasJellyfin = selectedState.sources.includes('jellyfin')
+      const hasEmby = selectedState.sources.includes('emby')
+
+      body.innerHTML = `
+        <div class="first-run-admin-login-btns">
+          ${hasPlex ? `
+            <button type="button" class="plex-signin-btn server-signin-btn server-signin-btn--plex js-wizard-admin-plex-btn">
+              Sign in with <img src="/assets/logos/plex_logo_button.png" alt="Plex" class="media-logo-img" />
+            </button>
+            <p class="user-auth-status js-wizard-admin-plex-status" hidden></p>
+          ` : ''}
+          ${hasJellyfin ? `
+            <button type="button" class="server-signin-btn server-signin-btn--jellyfin js-wizard-admin-jellyfin-btn">
+              Sign in with <img src="/assets/logos/jellyfin_logo_button.png" alt="Jellyfin" class="media-logo-img" />
+            </button>
+            <p class="user-auth-status js-wizard-admin-jellyfin-status" hidden></p>
+          ` : ''}
+          ${hasEmby ? `
+            <button type="button" class="server-signin-btn server-signin-btn--emby js-wizard-admin-emby-btn">
+              Sign in with <img src="/assets/logos/emby-logo_button.png" alt="emby" class="media-logo-img" />
+            </button>
+            <p class="user-auth-status js-wizard-admin-emby-status" hidden></p>
+          ` : ''}
+        </div>
+        <div class="js-wizard-admin-credential-wrap" hidden>
+          <p class="js-wizard-admin-credential-provider first-run-guide-instruction" style="margin-bottom:0.5rem;font-weight:600"></p>
+          <form class="js-wizard-admin-credential-form" autocomplete="on" novalidate>
+            <div style="display:flex;flex-direction:column;gap:0.5rem">
+              <input type="text" name="username" placeholder="Username" autocomplete="username" required />
+              <input type="password" name="password" placeholder="Password" autocomplete="current-password" />
+            </div>
+            <p class="user-auth-status js-wizard-admin-credential-status" style="margin-top:0.5rem" hidden></p>
+            <div class="first-run-guide-actions" style="margin-top:0.75rem">
+              <button type="button" class="submit-button first-run-guide-secondary js-wizard-admin-credential-cancel">Cancel</button>
+              <button type="submit" class="submit-button">Sign In</button>
+            </div>
+          </form>
+        </div>
+      `
+
+      const handleAdminLoggedIn = user => {
+        window.COMPARR_USER = user
+        selectedState.adminLoggedIn = true
+        selectedState.adminLoginUser = user
+        body.textContent = ''
+        const msg = document.createElement('p')
+        msg.className = 'first-run-guide-instruction'
+        msg.style.color = '#86efac'
+        msg.style.fontWeight = '600'
+        msg.textContent = `✓ Signed in as ${user.username}. Click Next to continue.`
+        body.appendChild(msg)
+        nextButton.disabled = false
+      }
+
+      // ── Plex PIN flow ────────────────────────────────────────────
+      if (hasPlex) {
+        const plexBtn = body.querySelector('.js-wizard-admin-plex-btn')
+        const plexStatus = body.querySelector('.js-wizard-admin-plex-status')
+
+        plexBtn?.addEventListener('click', async () => {
+          plexBtn.disabled = true
+          if (plexStatus) { plexStatus.textContent = 'Opening Plex login…'; plexStatus.hidden = false }
+
+          let pollTimer = null
+          let popup = null
+
+          const cleanupPoll = () => {
+            if (pollTimer) clearInterval(pollTimer)
+            pollTimer = null
+            if (popup && !popup.closed) popup.close()
+          }
+
+          try {
+            const { pinId, authUrl } = await api.requestPlexPin()
+            popup = window.open(authUrl, 'plex-auth', 'width=800,height=700,left=100,top=100')
+
+            if (!popup) {
+              if (plexStatus) plexStatus.textContent = 'Popup blocked. Please allow popups and try again.'
+              plexBtn.disabled = false
+              return
+            }
+
+            if (plexStatus) plexStatus.textContent = 'Waiting for Plex approval…'
+
+            pollTimer = setInterval(async () => {
+              try {
+                const result = await api.pollPlexPin(pinId)
+                if (result.status === 'success') {
+                  cleanupPoll()
+                  handleAdminLoggedIn(result.user)
+                } else if (result.status === 'expired' || result.status === 'denied') {
+                  cleanupPoll()
+                  plexBtn.disabled = false
+                  if (plexStatus) plexStatus.textContent = result.status === 'denied' ? result.error || 'Access denied.' : 'Plex login expired. Please try again.'
+                } else if (popup.closed) {
+                  cleanupPoll()
+                  plexBtn.disabled = false
+                  if (plexStatus) plexStatus.textContent = 'Login cancelled.'
+                }
+              } catch { /* ignore transient poll errors */ }
+            }, 2000)
+          } catch (err) {
+            cleanupPoll()
+            plexBtn.disabled = false
+            if (plexStatus) plexStatus.textContent = err.message || 'Could not start Plex login.'
+          }
+        })
+      }
+
+      // ── Jellyfin / Emby inline credential form ───────────────────
+      const credentialWrap = body.querySelector('.js-wizard-admin-credential-wrap')
+      const credentialProvider = body.querySelector('.js-wizard-admin-credential-provider')
+      const credentialForm = body.querySelector('.js-wizard-admin-credential-form')
+      const credentialStatus = body.querySelector('.js-wizard-admin-credential-status')
+      let activeAdminProvider = null
+
+      const showAdminCredentialForm = (provider, providerLabel) => {
+        activeAdminProvider = provider
+        if (credentialProvider) credentialProvider.textContent = `Sign in with ${providerLabel}`
+        if (credentialStatus) credentialStatus.hidden = true
+        if (credentialForm) credentialForm.reset()
+        if (credentialWrap) credentialWrap.hidden = false
+        credentialForm?.querySelector('input[name="username"]')?.focus()
+      }
+
+      const hideAdminCredentialForm = () => {
+        if (credentialWrap) credentialWrap.hidden = true
+        activeAdminProvider = null
+        const jellyfinBtn = body.querySelector('.js-wizard-admin-jellyfin-btn')
+        const embyBtn = body.querySelector('.js-wizard-admin-emby-btn')
+        if (jellyfinBtn) jellyfinBtn.disabled = false
+        if (embyBtn) embyBtn.disabled = false
+      }
+
+      if (hasJellyfin) {
+        body.querySelector('.js-wizard-admin-jellyfin-btn')?.addEventListener('click', function () {
+          this.disabled = true
+          showAdminCredentialForm('jellyfin', 'Jellyfin')
+        })
+      }
+
+      if (hasEmby) {
+        body.querySelector('.js-wizard-admin-emby-btn')?.addEventListener('click', function () {
+          this.disabled = true
+          showAdminCredentialForm('emby', 'Emby')
+        })
+      }
+
+      body.querySelector('.js-wizard-admin-credential-cancel')?.addEventListener('click', hideAdminCredentialForm)
+
+      credentialForm?.addEventListener('submit', async e => {
+        e.preventDefault()
+        const fd = new FormData(credentialForm)
+        const username = String(fd.get('username') || '').trim()
+        const password = String(fd.get('password') || '')
+        if (!username) { credentialForm.querySelector('input[name="username"]')?.focus(); return }
+        const submitBtn = credentialForm.querySelector('button[type="submit"]')
+        if (submitBtn) submitBtn.disabled = true
+        if (credentialStatus) credentialStatus.hidden = true
+        try {
+          let user
+          if (activeAdminProvider === 'jellyfin') {
+            ;({ user } = await api.loginWithJellyfin(username, password))
+          } else {
+            ;({ user } = await api.loginWithEmby(username, password))
+          }
+          handleAdminLoggedIn(user)
+        } catch (err) {
+          if (credentialStatus) { credentialStatus.textContent = err.message || 'Login failed.'; credentialStatus.hidden = false }
+          if (submitBtn) submitBtn.disabled = false
+        }
+      })
+
       return
     }
 
@@ -3460,9 +3656,20 @@ function createFirstRunGuideModal() {
           index: nextIndex,
         }
       }
+      const userAuthEnabled =
+        window.USER_AUTH_ENABLED === true || window.USER_AUTH_ENABLED === 'true'
+      if (userAuthEnabled) return { type: 'admin-login' }
       return selectedState.flow === 'combined'
         ? { type: 'tmdb' }
         : { type: 'setup-complete' }
+    }
+
+    if (current.type === 'admin-login') {
+      if (!selectedState.adminLoggedIn) {
+        setWizardStatus('Please sign in to continue.', 'error')
+        return null
+      }
+      return selectedState.flow === 'combined' ? { type: 'tmdb' } : { type: 'setup-complete' }
     }
 
     if (current.type === 'tmdb') {
@@ -3700,6 +3907,13 @@ function createFirstRunGuideModal() {
         // Skip means advance without making any changes — no save needed
         history.push({ type: 'flow' })
         renderScreen({ type: 'flow' })
+        return
+      }
+
+      if (current?.type === 'admin-login') {
+        const next = selectedState.flow === 'combined' ? { type: 'tmdb' } : { type: 'setup-complete' }
+        history.push(next)
+        renderScreen(next)
         return
       }
 
