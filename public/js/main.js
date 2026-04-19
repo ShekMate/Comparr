@@ -2741,7 +2741,8 @@ function createFirstRunGuideModal() {
       screen.type
     )
     saveButton.hidden = screen.type !== 'defaults'
-    nextButton.disabled = screen.type === 'admin-login' && !selectedState.adminLoggedIn
+    nextButton.disabled =
+      screen.type === 'admin-login' && !selectedState.adminLoggedIn
     skipButton.disabled = false
     if (screen.type === 'setup-complete') {
       nextButton.textContent = 'Start Swiping'
@@ -2859,12 +2860,29 @@ function createFirstRunGuideModal() {
   }
 
   const saveDefaultsFromWizard = () => {
-    if (swipeFilterMode !== 'defaults' || !window.filterState) return
+    if (swipeFilterMode !== 'defaults' || !window.filterState) {
+      setWizardStatus(
+        'Defaults editor is not ready yet. Please try again.',
+        'error'
+      )
+      return false
+    }
     const normalized = normalizeFilterStateForDefaults(window.filterState)
-    if (!normalized) return
-    localStorage.setItem(SWIPE_DEFAULTS_STORAGE_KEY, JSON.stringify(normalized))
-    selectedState.defaultsLastSavedSnapshot = JSON.stringify(normalized)
+    if (!normalized) {
+      setWizardStatus(
+        'Could not save defaults. Please review your filters.',
+        'error'
+      )
+      return false
+    }
+    const snapshot = JSON.stringify(normalized)
+    localStorage.setItem(SWIPE_DEFAULTS_STORAGE_KEY, snapshot)
+    selectedState.defaultsLastSavedSnapshot = snapshot
+    document.dispatchEvent(
+      new CustomEvent('comparr:wizard-defaults-saved', { detail: { snapshot } })
+    )
     setWizardStatus('✅ Default filters saved.', 'success')
+    return true
   }
 
   const renderScreen = screen => {
@@ -3173,42 +3191,57 @@ function createFirstRunGuideModal() {
         <input id="${requestFieldIds.seerrApiKey}" class="first-run-guide-input" type="text" value="${selectedState.requestServices.seerrApiKey}" />
         <button type="button" class="submit-button first-run-guide-test-button" id="first-run-test-seerr">Test Seerr Connection</button>
       `
-      body.querySelector('#first-run-test-radarr')?.addEventListener('click', async event => {
-        const testButton = event.currentTarget
-        await withButtonLoading(testButton, 'Testing...', async () => {
-          const url = body.querySelector(`#${requestFieldIds.radarrUrl}`)?.value || ''
-          const token = body.querySelector(`#${requestFieldIds.radarrApiKey}`)?.value || ''
-          if (!isValidUrl(url) || !token.trim()) {
-            setWizardStatus('Radarr URL and API Key are required.', 'error')
-            return
-          }
-          try {
-            setWizardStatus('Testing Radarr connection...')
-            await runConnectionTest('radarr', url, token)
-            setWizardStatus('✅ Radarr connection successful.', 'success')
-          } catch (err) {
-            setWizardStatus(err?.message || 'Failed to connect to Radarr.', 'error')
-          }
+      body
+        .querySelector('#first-run-test-radarr')
+        ?.addEventListener('click', async event => {
+          const testButton = event.currentTarget
+          await withButtonLoading(testButton, 'Testing...', async () => {
+            const url =
+              body.querySelector(`#${requestFieldIds.radarrUrl}`)?.value || ''
+            const token =
+              body.querySelector(`#${requestFieldIds.radarrApiKey}`)?.value ||
+              ''
+            if (!isValidUrl(url) || !token.trim()) {
+              setWizardStatus('Radarr URL and API Key are required.', 'error')
+              return
+            }
+            try {
+              setWizardStatus('Testing Radarr connection...')
+              await runConnectionTest('radarr', url, token)
+              setWizardStatus('✅ Radarr connection successful.', 'success')
+            } catch (err) {
+              setWizardStatus(
+                err?.message || 'Failed to connect to Radarr.',
+                'error'
+              )
+            }
+          })
         })
-      })
-      body.querySelector('#first-run-test-seerr')?.addEventListener('click', async event => {
-        const testButton = event.currentTarget
-        await withButtonLoading(testButton, 'Testing...', async () => {
-          const url = body.querySelector(`#${requestFieldIds.seerrUrl}`)?.value || ''
-          const token = body.querySelector(`#${requestFieldIds.seerrApiKey}`)?.value || ''
-          if (!isValidUrl(url) || !token.trim()) {
-            setWizardStatus('Seerr URL and API Key are required.', 'error')
-            return
-          }
-          try {
-            setWizardStatus('Testing Seerr connection...')
-            await runConnectionTest('seerr', url, token)
-            setWizardStatus('✅ Seerr connection successful.', 'success')
-          } catch (err) {
-            setWizardStatus(err?.message || 'Failed to connect to Seerr.', 'error')
-          }
+      body
+        .querySelector('#first-run-test-seerr')
+        ?.addEventListener('click', async event => {
+          const testButton = event.currentTarget
+          await withButtonLoading(testButton, 'Testing...', async () => {
+            const url =
+              body.querySelector(`#${requestFieldIds.seerrUrl}`)?.value || ''
+            const token =
+              body.querySelector(`#${requestFieldIds.seerrApiKey}`)?.value || ''
+            if (!isValidUrl(url) || !token.trim()) {
+              setWizardStatus('Seerr URL and API Key are required.', 'error')
+              return
+            }
+            try {
+              setWizardStatus('Testing Seerr connection...')
+              await runConnectionTest('seerr', url, token)
+              setWizardStatus('✅ Seerr connection successful.', 'success')
+            } catch (err) {
+              setWizardStatus(
+                err?.message || 'Failed to connect to Seerr.',
+                'error'
+              )
+            }
+          })
         })
-      })
       return
     }
 
@@ -3267,7 +3300,7 @@ function createFirstRunGuideModal() {
       renderRequirementCopy('')
       title.textContent = 'Claim Admin Access'
       copy.textContent =
-        "Sign in with your media server account to be set as the admin. As the person setting this up, that should be you."
+        'Sign in with your media server account to be set as the admin. As the person setting this up, that should be you.'
 
       if (selectedState.adminLoggedIn) {
         body.textContent = ''
@@ -3275,7 +3308,9 @@ function createFirstRunGuideModal() {
         msg.className = 'first-run-guide-instruction'
         msg.style.color = '#86efac'
         msg.style.fontWeight = '600'
-        msg.textContent = `✓ Signed in as ${selectedState.adminLoginUser?.username || 'you'}. Click Next to continue.`
+        msg.textContent = `✓ Signed in as ${
+          selectedState.adminLoginUser?.username || 'you'
+        }. Click Next to continue.`
         body.appendChild(msg)
         return
       }
@@ -3286,24 +3321,36 @@ function createFirstRunGuideModal() {
 
       body.innerHTML = `
         <div class="first-run-admin-login-btns">
-          ${hasPlex ? `
+          ${
+            hasPlex
+              ? `
             <button type="button" class="plex-signin-btn server-signin-btn server-signin-btn--plex js-wizard-admin-plex-btn">
               Sign in with <img src="/assets/logos/plex_logo_button.png" alt="Plex" class="media-logo-img" />
             </button>
             <p class="user-auth-status js-wizard-admin-plex-status" hidden></p>
-          ` : ''}
-          ${hasJellyfin ? `
+          `
+              : ''
+          }
+          ${
+            hasJellyfin
+              ? `
             <button type="button" class="server-signin-btn server-signin-btn--jellyfin js-wizard-admin-jellyfin-btn">
               Sign in with <img src="/assets/logos/jellyfin_logo_button.png" alt="Jellyfin" class="media-logo-img" />
             </button>
             <p class="user-auth-status js-wizard-admin-jellyfin-status" hidden></p>
-          ` : ''}
-          ${hasEmby ? `
+          `
+              : ''
+          }
+          ${
+            hasEmby
+              ? `
             <button type="button" class="server-signin-btn server-signin-btn--emby js-wizard-admin-emby-btn">
               Sign in with <img src="/assets/logos/emby-logo_button.png" alt="emby" class="media-logo-img" />
             </button>
             <p class="user-auth-status js-wizard-admin-emby-status" hidden></p>
-          ` : ''}
+          `
+              : ''
+          }
         </div>
         <div class="js-wizard-admin-credential-wrap" hidden>
           <p class="js-wizard-admin-credential-provider first-run-guide-instruction" style="margin-bottom:0.5rem;font-weight:600"></p>
@@ -3342,7 +3389,10 @@ function createFirstRunGuideModal() {
 
         plexBtn?.addEventListener('click', async () => {
           plexBtn.disabled = true
-          if (plexStatus) { plexStatus.textContent = 'Opening Plex login…'; plexStatus.hidden = false }
+          if (plexStatus) {
+            plexStatus.textContent = 'Opening Plex login…'
+            plexStatus.hidden = false
+          }
 
           let pollTimer = null
           let popup = null
@@ -3355,15 +3405,23 @@ function createFirstRunGuideModal() {
 
           try {
             const { pinId, authUrl } = await api.requestPlexPin()
-            popup = window.open(authUrl, 'plex-auth', 'width=800,height=700,left=100,top=100')
+            popup = window.open(
+              'about:blank',
+              '_blank',
+              'width=800,height=700,left=100,top=100'
+            )
 
-            if (!popup) {
-              if (plexStatus) plexStatus.textContent = 'Popup blocked. Please allow popups and try again.'
+            if (!popup || popup === window || popup.closed) {
+              if (plexStatus)
+                plexStatus.textContent =
+                  'Popup blocked. Please allow popups and try again.'
               plexBtn.disabled = false
               return
             }
+            popup.location.href = authUrl
 
-            if (plexStatus) plexStatus.textContent = 'Waiting for Plex approval…'
+            if (plexStatus)
+              plexStatus.textContent = 'Waiting for Plex approval…'
 
             pollTimer = setInterval(async () => {
               try {
@@ -3371,35 +3429,55 @@ function createFirstRunGuideModal() {
                 if (result.status === 'success') {
                   cleanupPoll()
                   handleAdminLoggedIn(result.user)
-                } else if (result.status === 'expired' || result.status === 'denied') {
+                } else if (
+                  result.status === 'expired' ||
+                  result.status === 'denied'
+                ) {
                   cleanupPoll()
                   plexBtn.disabled = false
-                  if (plexStatus) plexStatus.textContent = result.status === 'denied' ? result.error || 'Access denied.' : 'Plex login expired. Please try again.'
+                  if (plexStatus)
+                    plexStatus.textContent =
+                      result.status === 'denied'
+                        ? result.error || 'Access denied.'
+                        : 'Plex login expired. Please try again.'
                 } else if (popup.closed) {
                   cleanupPoll()
                   plexBtn.disabled = false
                   if (plexStatus) plexStatus.textContent = 'Login cancelled.'
                 }
-              } catch { /* ignore transient poll errors */ }
+              } catch {
+                /* ignore transient poll errors */
+              }
             }, 2000)
           } catch (err) {
             cleanupPoll()
             plexBtn.disabled = false
-            if (plexStatus) plexStatus.textContent = err.message || 'Could not start Plex login.'
+            if (plexStatus)
+              plexStatus.textContent =
+                err.message || 'Could not start Plex login.'
           }
         })
       }
 
       // ── Jellyfin / Emby inline credential form ───────────────────
-      const credentialWrap = body.querySelector('.js-wizard-admin-credential-wrap')
-      const credentialProvider = body.querySelector('.js-wizard-admin-credential-provider')
-      const credentialForm = body.querySelector('.js-wizard-admin-credential-form')
-      const credentialStatus = body.querySelector('.js-wizard-admin-credential-status')
+      const credentialWrap = body.querySelector(
+        '.js-wizard-admin-credential-wrap'
+      )
+      const credentialProvider = body.querySelector(
+        '.js-wizard-admin-credential-provider'
+      )
+      const credentialForm = body.querySelector(
+        '.js-wizard-admin-credential-form'
+      )
+      const credentialStatus = body.querySelector(
+        '.js-wizard-admin-credential-status'
+      )
       let activeAdminProvider = null
 
       const showAdminCredentialForm = (provider, providerLabel) => {
         activeAdminProvider = provider
-        if (credentialProvider) credentialProvider.textContent = `Sign in with ${providerLabel}`
+        if (credentialProvider)
+          credentialProvider.textContent = `Sign in with ${providerLabel}`
         if (credentialStatus) credentialStatus.hidden = true
         if (credentialForm) credentialForm.reset()
         if (credentialWrap) credentialWrap.hidden = false
@@ -3416,27 +3494,36 @@ function createFirstRunGuideModal() {
       }
 
       if (hasJellyfin) {
-        body.querySelector('.js-wizard-admin-jellyfin-btn')?.addEventListener('click', function () {
-          this.disabled = true
-          showAdminCredentialForm('jellyfin', 'Jellyfin')
-        })
+        body
+          .querySelector('.js-wizard-admin-jellyfin-btn')
+          ?.addEventListener('click', function () {
+            this.disabled = true
+            showAdminCredentialForm('jellyfin', 'Jellyfin')
+          })
       }
 
       if (hasEmby) {
-        body.querySelector('.js-wizard-admin-emby-btn')?.addEventListener('click', function () {
-          this.disabled = true
-          showAdminCredentialForm('emby', 'Emby')
-        })
+        body
+          .querySelector('.js-wizard-admin-emby-btn')
+          ?.addEventListener('click', function () {
+            this.disabled = true
+            showAdminCredentialForm('emby', 'Emby')
+          })
       }
 
-      body.querySelector('.js-wizard-admin-credential-cancel')?.addEventListener('click', hideAdminCredentialForm)
+      body
+        .querySelector('.js-wizard-admin-credential-cancel')
+        ?.addEventListener('click', hideAdminCredentialForm)
 
       credentialForm?.addEventListener('submit', async e => {
         e.preventDefault()
         const fd = new FormData(credentialForm)
         const username = String(fd.get('username') || '').trim()
         const password = String(fd.get('password') || '')
-        if (!username) { credentialForm.querySelector('input[name="username"]')?.focus(); return }
+        if (!username) {
+          credentialForm.querySelector('input[name="username"]')?.focus()
+          return
+        }
         const submitBtn = credentialForm.querySelector('button[type="submit"]')
         if (submitBtn) submitBtn.disabled = true
         if (credentialStatus) credentialStatus.hidden = true
@@ -3449,7 +3536,10 @@ function createFirstRunGuideModal() {
           }
           handleAdminLoggedIn(user)
         } catch (err) {
-          if (credentialStatus) { credentialStatus.textContent = err.message || 'Login failed.'; credentialStatus.hidden = false }
+          if (credentialStatus) {
+            credentialStatus.textContent = err.message || 'Login failed.'
+            credentialStatus.hidden = false
+          }
           if (submitBtn) submitBtn.disabled = false
         }
       })
@@ -3658,7 +3748,22 @@ function createFirstRunGuideModal() {
       }
       const userAuthEnabled =
         window.USER_AUTH_ENABLED === true || window.USER_AUTH_ENABLED === 'true'
-      if (userAuthEnabled) return { type: 'admin-login' }
+      if (userAuthEnabled) {
+        try {
+          const { user } = await api.getAuthUser()
+          if (user) {
+            selectedState.adminLoggedIn = true
+            selectedState.adminLoginUser = user
+            window.COMPARR_USER = user
+            return selectedState.flow === 'combined'
+              ? { type: 'tmdb' }
+              : { type: 'setup-complete' }
+          }
+        } catch {
+          // no auth session yet
+        }
+        return { type: 'admin-login' }
+      }
       return selectedState.flow === 'combined'
         ? { type: 'tmdb' }
         : { type: 'setup-complete' }
@@ -3666,10 +3771,24 @@ function createFirstRunGuideModal() {
 
     if (current.type === 'admin-login') {
       if (!selectedState.adminLoggedIn) {
+        try {
+          const { user } = await api.getAuthUser()
+          if (user) {
+            selectedState.adminLoggedIn = true
+            selectedState.adminLoginUser = user
+            window.COMPARR_USER = user
+          }
+        } catch {
+          // no auth session yet
+        }
+      }
+      if (!selectedState.adminLoggedIn) {
         setWizardStatus('Please sign in to continue.', 'error')
         return null
       }
-      return selectedState.flow === 'combined' ? { type: 'tmdb' } : { type: 'setup-complete' }
+      return selectedState.flow === 'combined'
+        ? { type: 'tmdb' }
+        : { type: 'setup-complete' }
     }
 
     if (current.type === 'tmdb') {
@@ -3918,13 +4037,16 @@ function createFirstRunGuideModal() {
     })
   })
 
-  saveButton?.addEventListener('click', () => {
+  saveButton?.addEventListener('click', async () => {
     if ((history[history.length - 1] || {}).type !== 'defaults') return
-    saveDefaultsFromWizard()
+    await withButtonLoading(saveButton, 'Saving...', async () => {
+      saveDefaultsFromWizard()
+    })
   })
 
   document.addEventListener('comparr:wizard-defaults-saved', e => {
-    selectedState.defaultsLastSavedSnapshot = e.detail?.snapshot || getCurrentDefaultsSnapshot()
+    selectedState.defaultsLastSavedSnapshot =
+      e.detail?.snapshot || getCurrentDefaultsSnapshot()
     setWizardStatus('✅ Default filters saved.', 'success')
   })
 
@@ -4552,8 +4674,9 @@ async function login(api) {
     '.js-user-auth-modal-status'
   )
 
-  // Track currently logged-in user identity (populated after user auth)
-  let currentUser = null
+  // Track currently logged-in user identity (populated after user auth).
+  // During first-run setup, wizard admin sign-in can already establish this.
+  let currentUser = window.COMPARR_USER || null
   let isGuest = false
 
   if (passwordForm && loginForm && modeForm) {
@@ -4686,12 +4809,12 @@ async function login(api) {
               const { pinId: id, authUrl } = await api.requestPlexPin()
               pinId = id
               popup = window.open(
-                authUrl,
-                'plex-auth',
+                'about:blank',
+                '_blank',
                 'width=800,height=700,left=100,top=100'
               )
 
-              if (!popup) {
+              if (!popup || popup === window || popup.closed) {
                 if (plexStatus) {
                   plexStatus.textContent =
                     'Popup blocked. Please allow popups and try again.'
@@ -4699,6 +4822,7 @@ async function login(api) {
                 plexSigninBtn.disabled = false
                 return
               }
+              popup.location.href = authUrl
 
               if (plexStatus)
                 plexStatus.textContent = 'Waiting for Plex approval…'
@@ -10423,7 +10547,7 @@ function updateSwipeAvailabilityUI() {
             : 'Free Streaming'
         )
       }
-      label = selected.length > 0 ? selected.join(', ') : 'Anywhere'
+      label = selected.length > 0 ? selected.join(', ') : 'Custom'
     }
     toggle.innerHTML = `${label} <span class="dropdown-arrow">▼</span>`
   }
@@ -11145,17 +11269,21 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
       .filter(input => input.checked)
       .map(input => input.value)
     const personalSet = new Set(
-      getAvailableSubscriptionOptions().personalSources
+      getAvailableSubscriptionOptions().personalSources.map(service =>
+        String(service).trim().toLowerCase()
+      )
     )
-    const paidSet = new Set(parsePaidServices())
+    const paidSet = new Set(
+      parsePaidServices().map(service => String(service).trim().toLowerCase())
+    )
     const freeStreamingEnabled = Boolean(swipeAvailabilityFree?.checked)
     setAvailabilityState({
       anywhere: false,
       roomPersonalMedia: selectedSubscriptionServices.some(service =>
-        personalSet.has(service)
+        personalSet.has(String(service).trim().toLowerCase())
       ),
       paidSubscriptions: selectedSubscriptionServices.some(service =>
-        paidSet.has(service)
+        paidSet.has(String(service).trim().toLowerCase())
       ),
       freeStreaming: freeStreamingEnabled,
       subscriptionServices: Array.from(selectedSet),
@@ -11166,9 +11294,13 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
 ;[swipeAvailabilitySubscriptions, swipeAvailabilityFree].forEach(input => {
   input?.addEventListener('change', () => {
     const personalSet = new Set(
-      getAvailableSubscriptionOptions().personalSources
+      getAvailableSubscriptionOptions().personalSources.map(service =>
+        String(service).trim().toLowerCase()
+      )
     )
-    const paidSet = new Set(parsePaidServices())
+    const paidSet = new Set(
+      parsePaidServices().map(service => String(service).trim().toLowerCase())
+    )
 
     if (input === swipeAvailabilitySubscriptions) {
       if (swipeAvailabilitySubscriptions.checked) {
@@ -11207,10 +11339,10 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
     const next = {
       anywhere: false,
       roomPersonalMedia: selectedAfterToggle.some(service =>
-        personalSet.has(service)
+        personalSet.has(String(service).trim().toLowerCase())
       ),
       paidSubscriptions: selectedAfterToggle.some(service =>
-        paidSet.has(service)
+        paidSet.has(String(service).trim().toLowerCase())
       ),
       freeStreaming: freeStreamingEnabled,
       subscriptionServices: selectedAfterToggle,
@@ -11228,9 +11360,13 @@ swipeSubscriptionChildren.forEach(input => {
       .filter(child => child.checked)
       .map(child => child.value)
     const personalSet = new Set(
-      getAvailableSubscriptionOptions().personalSources
+      getAvailableSubscriptionOptions().personalSources.map(service =>
+        String(service).trim().toLowerCase()
+      )
     )
-    const paidSet = new Set(parsePaidServices())
+    const paidSet = new Set(
+      parsePaidServices().map(service => String(service).trim().toLowerCase())
+    )
 
     const freeStreamingEnabled = Boolean(swipeAvailabilityFree?.checked)
     const selectedFreeServices = swipeFreeStreamingChildren
@@ -11239,8 +11375,12 @@ swipeSubscriptionChildren.forEach(input => {
 
     const next = {
       anywhere: false,
-      roomPersonalMedia: selected.some(service => personalSet.has(service)),
-      paidSubscriptions: selected.some(service => paidSet.has(service)),
+      roomPersonalMedia: selected.some(service =>
+        personalSet.has(String(service).trim().toLowerCase())
+      ),
+      paidSubscriptions: selected.some(service =>
+        paidSet.has(String(service).trim().toLowerCase())
+      ),
       freeStreaming: freeStreamingEnabled,
       subscriptionServices: selected,
       freeStreamingServices: freeStreamingEnabled ? selectedFreeServices : [],
@@ -11258,18 +11398,22 @@ swipeFreeStreamingChildren.forEach(input => {
       .filter(child => child.checked)
       .map(child => child.value)
     const personalSet = new Set(
-      getAvailableSubscriptionOptions().personalSources
+      getAvailableSubscriptionOptions().personalSources.map(service =>
+        String(service).trim().toLowerCase()
+      )
     )
-    const paidSet = new Set(parsePaidServices())
+    const paidSet = new Set(
+      parsePaidServices().map(service => String(service).trim().toLowerCase())
+    )
     const freeStreamingEnabled = Boolean(swipeAvailabilityFree?.checked)
 
     const next = {
       anywhere: false,
       roomPersonalMedia: selectedSubscriptions.some(service =>
-        personalSet.has(service)
+        personalSet.has(String(service).trim().toLowerCase())
       ),
       paidSubscriptions: selectedSubscriptions.some(service =>
-        paidSet.has(service)
+        paidSet.has(String(service).trim().toLowerCase())
       ),
       freeStreaming: freeStreamingEnabled,
       subscriptionServices: selectedSubscriptions,
@@ -11278,6 +11422,105 @@ swipeFreeStreamingChildren.forEach(input => {
     setAvailabilityState(next)
   })
 })
+
+// Fallback delegated handler for all swipe-filter dropdown controls.
+// This keeps button labels/default-state selections synchronized in wizard mode
+// even if an individual control-specific listener misses an edge case.
+document
+  .getElementById('swipe-filter-modal')
+  ?.addEventListener('change', () => {
+    if (!window.filterState) return
+
+    window.filterState.genres = Array.from(
+      document.querySelectorAll(
+        '#swipe-genre-list input[type="checkbox"]:checked'
+      )
+    )
+      .map(cb => Number.parseInt(cb.value, 10))
+      .filter(Number.isFinite)
+    updateSwipeGenreButton(window.filterState.genres)
+
+    window.filterState.languages = Array.from(
+      document.querySelectorAll(
+        '#swipe-language-list input[type="checkbox"]:checked'
+      )
+    ).map(cb => cb.value)
+    updateSwipeLanguageButton(window.filterState.languages)
+
+    window.filterState.countries = Array.from(
+      document.querySelectorAll(
+        '#swipe-country-list input[type="checkbox"]:checked'
+      )
+    ).map(cb => cb.value)
+    updateSwipeCountryButton(window.filterState.countries)
+
+    window.filterState.contentRatings = Array.from(
+      document.querySelectorAll(
+        '#swipe-rating-list input[type="checkbox"]:checked'
+      )
+    ).map(cb => cb.value)
+    updateSwipeContentRatingButton(window.filterState.contentRatings)
+
+    const selectedSort = document.querySelector(
+      'input[name="swipe-sort"]:checked'
+    )
+    if (selectedSort) {
+      const dirBtn = document.getElementById('swipe-sort-direction-btn')
+      const direction = dirBtn?.dataset.direction || 'desc'
+      const baseSort = String(selectedSort.value || 'popularity.desc').replace(
+        /\.(asc|desc)$/,
+        ''
+      )
+      window.filterState.sortBy = `${baseSort}.${direction}`
+      updateSwipeSortButton(window.filterState.sortBy)
+    }
+  })
+
+// Fallback delegated handler for availability updates.
+// This keeps the dropdown label/state in sync even if individual checkbox
+// listeners miss an edge-case interaction path.
+document
+  .getElementById('swipe-availability-list')
+  ?.addEventListener('change', event => {
+    const target = event.target
+    if (!(target instanceof HTMLInputElement) || target.type !== 'checkbox') {
+      return
+    }
+
+    const selectedSubscriptions = swipeSubscriptionChildren
+      .filter(child => child.checked)
+      .map(child => child.value)
+    const selectedFreeServices = swipeFreeStreamingChildren
+      .filter(child => child.checked)
+      .map(child => child.value)
+    const personalSet = new Set(
+      getAvailableSubscriptionOptions().personalSources.map(service =>
+        String(service).trim().toLowerCase()
+      )
+    )
+    const paidSet = new Set(
+      parsePaidServices().map(service => String(service).trim().toLowerCase())
+    )
+
+    if (swipeAvailabilityAnywhere?.checked) {
+      setAvailabilityState(getDefaultAvailabilityState())
+      return
+    }
+
+    const freeStreamingEnabled = Boolean(swipeAvailabilityFree?.checked)
+    setAvailabilityState({
+      anywhere: false,
+      roomPersonalMedia: selectedSubscriptions.some(service =>
+        personalSet.has(String(service).trim().toLowerCase())
+      ),
+      paidSubscriptions: selectedSubscriptions.some(service =>
+        paidSet.has(String(service).trim().toLowerCase())
+      ),
+      freeStreaming: freeStreamingEnabled,
+      subscriptionServices: selectedSubscriptions,
+      freeStreamingServices: freeStreamingEnabled ? selectedFreeServices : [],
+    })
+  })
 
 // Apply button
 swipeFilterApply?.addEventListener('click', e => {
@@ -11295,7 +11538,9 @@ swipeFilterApply?.addEventListener('click', e => {
       refreshDefaultsSummary()
       if (swipeFilterModal?.classList.contains('inline-defaults-mode')) {
         document.dispatchEvent(
-          new CustomEvent('comparr:wizard-defaults-saved', { detail: { snapshot } })
+          new CustomEvent('comparr:wizard-defaults-saved', {
+            detail: { snapshot },
+          })
         )
       } else {
         setSettingsStatus('Default swipe filters saved.')
