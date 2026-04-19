@@ -2,7 +2,11 @@ import type { CompatRequest } from '../compat-request.ts'
 import { SettingsValidationError } from '../../../core/settings.ts'
 import * as log from 'jsr:@std/log'
 import { verifyPassword } from '../../../core/security.ts'
-import { createAccessSession, invalidateAccessSession } from '../../../core/access-session-store.ts'
+import {
+  createAccessSession,
+  invalidateAccessSession,
+  validateAccessSession,
+} from '../../../core/access-session-store.ts'
 import { apiRateLimiter, loginRateLimiter } from '../ip-rate-limiter.ts'
 import { addSecurityHeaders } from '../security-headers.ts'
 import { isValidStateChangingOrigin } from '../network-access.ts'
@@ -399,13 +403,16 @@ export async function handleSettingsRoutes(
       const providedPassword = String(body?.accessPassword ?? '').trim()
       const settings = getSettings()
       const configuredPassword = String(settings.ACCESS_PASSWORD ?? '').trim()
-      const cookiePassword =
+      const cookieToken =
         parseCookies(req).get(ACCESS_PASSWORD_COOKIE_NAME) || ''
-      const candidatePassword = providedPassword || cookiePassword
-
+      const hasValidAccessSession =
+        !providedPassword && validateAccessSession(cookieToken)
       const isValid =
         !configuredPassword ||
-        (await verifyPassword(candidatePassword, configuredPassword))
+        hasValidAccessSession ||
+        (providedPassword
+          ? await verifyPassword(providedPassword, configuredPassword)
+          : false)
 
       const headers = makeJsonHeaders(req)
       const secureFlag = shouldUseSecureCookies(req) ? '; Secure' : ''
@@ -510,7 +517,8 @@ export async function handleSettingsRoutes(
         userAuthEnabled:
           String(settings.USER_AUTH_ENABLED || '').toLowerCase() === 'true',
         plexRestrictToServer:
-          String(settings.PLEX_RESTRICT_TO_SERVER || '').toLowerCase() === 'true',
+          String(settings.PLEX_RESTRICT_TO_SERVER || '').toLowerCase() ===
+          'true',
       }),
       { status: 200, headers: makeJsonHeaders(req) }
     )
@@ -713,7 +721,9 @@ export async function handleSettingsRoutes(
           await Promise.resolve(onWizardComplete())
         } catch (err) {
           log.error(
-            `Failed to run setup completion follow-up job: ${err?.message || err}`
+            `Failed to run setup completion follow-up job: ${
+              err?.message || err
+            }`
           )
         }
       }
