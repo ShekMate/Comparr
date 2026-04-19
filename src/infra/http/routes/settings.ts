@@ -692,12 +692,16 @@ export async function handleSettingsRoutes(
 
       if (hasUpdates) {
         clearAllMoviesCache()
-        await refreshRadarrCache().catch(err =>
+        // Rebuild caches in background — do NOT await so the HTTP response
+        // is not held open waiting for Plex/Radarr network calls (each has a
+        // 10-second fetch timeout, and a reverse proxy may time out and return
+        // 502 before the response is sent if both are awaited sequentially).
+        refreshRadarrCache().catch(err =>
           log.error(
             `Failed to refresh Radarr cache after settings update: ${err}`
           )
         )
-        await buildPlexCache().catch(err =>
+        buildPlexCache().catch(err =>
           log.error(
             `Failed to refresh Plex cache after settings update: ${err}`
           )
