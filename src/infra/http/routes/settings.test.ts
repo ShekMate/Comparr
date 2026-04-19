@@ -1,8 +1,7 @@
 import { assertEquals } from 'jsr:@std/assert'
-import {
-  handleSettingsRoutes,
-  type SettingsRouteDeps,
-} from './settings.ts'
+import { handleSettingsRoutes } from './settings.ts'
+import type { SettingsRouteDeps } from './settings.ts'
+import { createAccessSession } from '../../../core/access-session-store.ts'
 
 const makeReq = ({
   method = 'POST',
@@ -29,7 +28,7 @@ const makeReq = ({
     respondWith: async () => {},
     text: async () => body,
     json: async () => JSON.parse(body),
-  }) as any
+  } as any)
 
 const makeDeps = (
   settings: Record<string, unknown>,
@@ -125,22 +124,52 @@ Deno.test(
   }
 )
 
-Deno.test('wizard completion hook runs once when setup flips to complete', async () => {
-  Deno.env.delete('ALLOW_REMOTE_BOOTSTRAP')
-  const calls = { updates: 0, reset: 0, wizardComplete: 0 }
-  const settings = { SETUP_WIZARD_COMPLETED: 'false', ADMIN_PASSWORD: '' }
+Deno.test(
+  'wizard completion hook runs once when setup flips to complete',
+  async () => {
+    Deno.env.delete('ALLOW_REMOTE_BOOTSTRAP')
+    const calls = { updates: 0, reset: 0, wizardComplete: 0 }
+    const settings = { SETUP_WIZARD_COMPLETED: 'false', ADMIN_PASSWORD: '' }
 
-  const response = await handleSettingsRoutes(
-    makeReq({
-      body: JSON.stringify({
-        settings: { SETUP_WIZARD_COMPLETED: 'true' },
+    const response = await handleSettingsRoutes(
+      makeReq({
+        body: JSON.stringify({
+          settings: { SETUP_WIZARD_COMPLETED: 'true' },
+        }),
       }),
-    }),
-    '/api/settings',
-    makeDeps(settings, calls)
-  )
+      '/api/settings',
+      makeDeps(settings, calls)
+    )
 
-  assertEquals(response?.status, 200)
-  assertEquals(calls.updates, 1)
-  assertEquals(calls.wizardComplete, 1)
-})
+    assertEquals(response?.status, 200)
+    assertEquals(calls.updates, 1)
+    assertEquals(calls.wizardComplete, 1)
+  }
+)
+
+Deno.test(
+  'access-password verify accepts an existing access-session cookie token',
+  async () => {
+    const calls = { updates: 0, reset: 0, wizardComplete: 0 }
+    const settings = {
+      SETUP_WIZARD_COMPLETED: 'true',
+      ACCESS_PASSWORD: 'pbkdf2:sha256:100000:aabbcc:ddeeff',
+    }
+    const sessionToken = createAccessSession()
+    const req = makeReq({
+      url: 'http://example.test/api/access-password/verify',
+      body: JSON.stringify({ accessPassword: '' }),
+    })
+    req.headers.set('cookie', `comparr_access=${sessionToken}`)
+
+    const response = await handleSettingsRoutes(
+      req,
+      '/api/access-password/verify',
+      makeDeps(settings, calls)
+    )
+    const data = await response?.json()
+
+    assertEquals(response?.status, 200)
+    assertEquals(data?.success, true)
+  }
+)
