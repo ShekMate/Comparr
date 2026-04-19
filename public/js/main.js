@@ -4074,6 +4074,12 @@ function createFirstRunGuideModal() {
     if (current?.type === 'defaults') {
       leaveDefaultsEditor()
     }
+    if (current?.type === 'admin-login') {
+      // Reset so re-entering admin-login doesn't show a stale "signed in" state
+      // (user may have changed their media server config since signing in).
+      selectedState.adminLoggedIn = false
+      selectedState.adminLoginUser = null
+    }
     history.pop()
     persistWizardProgress()
     renderScreen(history[history.length - 1])
@@ -4086,6 +4092,13 @@ function createFirstRunGuideModal() {
         // Skip means advance without making any changes — no save needed
         history.push({ type: 'flow' })
         persistWizardProgress()
+        renderScreen({ type: 'flow' })
+        return
+      }
+
+      if (current?.type === 'user-auth') {
+        // Skip means advance without enabling user auth — no save needed
+        history.push({ type: 'flow' })
         renderScreen({ type: 'flow' })
         return
       }
