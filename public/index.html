@@ -104,10 +104,18 @@
         </div>
 
         <!-- Login form stub (kept for JS compatibility; room code entry no longer shown) -->
-        <form class="login-form js-login-form u-display-none" name="login" hidden>
+        <form
+          class="login-form js-login-form u-display-none"
+          name="login"
+          hidden
+        >
           <input type="hidden" name="name" />
           <input type="hidden" name="roomCode" id="room-code" />
-          <input type="hidden" name="generatedRoomCode" id="generated-room-code" />
+          <input
+            type="hidden"
+            name="generatedRoomCode"
+            id="generated-room-code"
+          />
         </form>
       </section>
 
@@ -1016,7 +1024,10 @@
           </div>
 
           <!-- Pending friend requests (received) -->
-          <div class="matches-pending-section js-matches-pending-section" hidden>
+          <div
+            class="matches-pending-section js-matches-pending-section"
+            hidden
+          >
             <h3 class="matches-section-heading">Pending Requests</h3>
             <div class="matches-pending-list js-matches-pending-list"></div>
           </div>
@@ -1043,18 +1054,26 @@
         aria-labelledby="server-sharing-modal-title"
       >
         <div class="server-sharing-modal-card">
-          <h2 id="server-sharing-modal-title" class="server-sharing-modal-title">
+          <h2
+            id="server-sharing-modal-title"
+            class="server-sharing-modal-title"
+          >
             Library Sharing
           </h2>
           <p class="server-sharing-modal-body js-server-sharing-modal-body"></p>
           <p class="server-sharing-modal-note">
-            Movies from their server that match <strong>your current filters</strong> will be added to your swipe pool.
+            Movies from their server that match
+            <strong>your current filters</strong> will be added to your swipe
+            pool.
           </p>
           <div class="server-sharing-modal-actions">
             <button type="button" class="btn-primary js-server-sharing-accept">
               Yes, include their library
             </button>
-            <button type="button" class="btn-secondary js-server-sharing-decline">
+            <button
+              type="button"
+              class="btn-secondary js-server-sharing-decline"
+            >
               No thanks
             </button>
           </div>
@@ -2318,7 +2337,6 @@
       <!-- ===== Settings panel ===== -->
       <section class="tab-panel" id="tab-settings" hidden>
         <div class="settings-layout">
-
           <!-- ── Profile settings (all authenticated users) ── -->
           <div class="settings-profile-section" id="settings-profile">
             <h3 class="settings-section-heading">My Profile</h3>
@@ -2327,42 +2345,92 @@
             <div class="settings-profile-invite">
               <label class="settings-label">Your Invite Code</label>
               <div class="settings-invite-row">
-                <code class="settings-my-invite-code js-settings-invite-code">······</code>
-                <button type="button" class="icon-btn js-settings-copy-invite" title="Copy code" aria-label="Copy invite code">
+                <code class="settings-my-invite-code js-settings-invite-code"
+                  >······</code
+                >
+                <button
+                  type="button"
+                  class="icon-btn js-settings-copy-invite"
+                  title="Copy code"
+                  aria-label="Copy invite code"
+                >
                   <i class="fas fa-copy" aria-hidden="true"></i>
                 </button>
               </div>
-              <p class="settings-hint">Share this code so friends can add you.</p>
+              <p class="settings-hint">
+                Share this code so friends can add you.
+              </p>
             </div>
 
             <!-- Personal media server -->
             <details class="settings-collapsible" id="settings-personal-server">
-              <summary class="settings-collapsible-toggle">Connect Your Media Server <span class="settings-collapsible-hint">(optional)</span></summary>
+              <summary class="settings-collapsible-toggle">
+                Connect Your Media Server
+                <span class="settings-collapsible-hint">(optional)</span>
+              </summary>
               <form class="settings-profile-form js-profile-server-form">
                 <div class="settings-field-group">
                   <label class="settings-label">Server Type</label>
-                  <select name="serverType" class="settings-select js-profile-server-type">
+                  <select
+                    name="serverType"
+                    class="settings-select js-profile-server-type"
+                  >
                     <option value="">None</option>
                     <option value="plex">Plex</option>
                     <option value="emby">Emby</option>
                     <option value="jellyfin">Jellyfin</option>
                   </select>
                 </div>
-                <div class="settings-field-group js-profile-server-fields" hidden>
+                <div
+                  class="settings-field-group js-profile-server-fields"
+                  hidden
+                >
                   <label class="settings-label">Server URL</label>
-                  <input type="url" name="serverUrl" class="settings-input" placeholder="http://your-server:32400" autocomplete="off" />
+                  <input
+                    type="url"
+                    name="serverUrl"
+                    class="settings-input"
+                    placeholder="http://your-server:32400"
+                    autocomplete="off"
+                  />
                 </div>
-                <div class="settings-field-group js-profile-server-fields" hidden>
-                  <label class="settings-label js-profile-token-label">API Token / Key</label>
-                  <input type="password" name="serverToken" class="settings-input" placeholder="Token" autocomplete="new-password" />
+                <div
+                  class="settings-field-group js-profile-server-fields"
+                  hidden
+                >
+                  <label class="settings-label js-profile-token-label"
+                    >API Token / Key</label
+                  >
+                  <input
+                    type="password"
+                    name="serverToken"
+                    class="settings-input"
+                    placeholder="Token"
+                    autocomplete="new-password"
+                  />
                 </div>
-                <div class="settings-field-group js-profile-server-fields" hidden>
+                <div
+                  class="settings-field-group js-profile-server-fields"
+                  hidden
+                >
                   <label class="settings-label">Library Name</label>
-                  <input type="text" name="libraryName" class="settings-input" placeholder="Movies" autocomplete="off" />
+                  <input
+                    type="text"
+                    name="libraryName"
+                    class="settings-input"
+                    placeholder="Movies"
+                    autocomplete="off"
+                  />
                 </div>
-                <div class="settings-form-actions js-profile-server-fields" hidden>
+                <div
+                  class="settings-form-actions js-profile-server-fields"
+                  hidden
+                >
                   <button type="submit" class="btn-primary">Save</button>
-                  <p class="settings-status js-profile-server-status" hidden></p>
+                  <p
+                    class="settings-status js-profile-server-status"
+                    hidden
+                  ></p>
                 </div>
               </form>
             </details>
@@ -3191,20 +3259,6 @@
               />
               <p>Password required before users can log in.</p>
             </div>
-            <div class="settings-field">
-              <label for="setting-admin-password">Admin Password</label>
-              <input
-                id="setting-admin-password"
-                type="password"
-                data-setting-key="ADMIN_PASSWORD"
-                placeholder="(optional)"
-              />
-              <p>
-                Password protect the admin settings so your users cannot edit
-                them.
-              </p>
-            </div>
-
             <hr class="settings-divider" />
             <h4>Media Server Login</h4>
             <div class="settings-field settings-field--toggle">

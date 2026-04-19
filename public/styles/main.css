@@ -2611,11 +2611,8 @@ body[data-user-type='guest'] .compare-ui {
     var(--signin-btn-end, #475569)
   );
   box-shadow: 0 8px 24px rgba(2, 6, 23, 0.35);
-  transition:
-    background 0.16s ease,
-    border-color 0.16s ease,
-    transform 0.1s ease,
-    box-shadow 0.16s ease;
+  transition: background 0.16s ease, border-color 0.16s ease,
+    transform 0.1s ease, box-shadow 0.16s ease;
 }
 
 .server-signin-btn:hover {
@@ -5909,10 +5906,6 @@ footer {
   margin-bottom: 0rem;
   color: #cbd5e1;
   font-size: 0.85rem;
-}
-
-.first-run-guide-admin-password-label {
-  margin-top: 0.25rem;
 }
 
 .first-run-password-configured {
