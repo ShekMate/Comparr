@@ -11240,17 +11240,21 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
       .filter(input => input.checked)
       .map(input => input.value)
     const personalSet = new Set(
-      getAvailableSubscriptionOptions().personalSources
+      getAvailableSubscriptionOptions().personalSources.map(service =>
+        String(service).trim().toLowerCase()
+      )
     )
-    const paidSet = new Set(parsePaidServices())
+    const paidSet = new Set(
+      parsePaidServices().map(service => String(service).trim().toLowerCase())
+    )
     const freeStreamingEnabled = Boolean(swipeAvailabilityFree?.checked)
     setAvailabilityState({
       anywhere: false,
       roomPersonalMedia: selectedSubscriptionServices.some(service =>
-        personalSet.has(service)
+        personalSet.has(String(service).trim().toLowerCase())
       ),
       paidSubscriptions: selectedSubscriptionServices.some(service =>
-        paidSet.has(service)
+        paidSet.has(String(service).trim().toLowerCase())
       ),
       freeStreaming: freeStreamingEnabled,
       subscriptionServices: Array.from(selectedSet),
@@ -11261,9 +11265,13 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
 ;[swipeAvailabilitySubscriptions, swipeAvailabilityFree].forEach(input => {
   input?.addEventListener('change', () => {
     const personalSet = new Set(
-      getAvailableSubscriptionOptions().personalSources
+      getAvailableSubscriptionOptions().personalSources.map(service =>
+        String(service).trim().toLowerCase()
+      )
     )
-    const paidSet = new Set(parsePaidServices())
+    const paidSet = new Set(
+      parsePaidServices().map(service => String(service).trim().toLowerCase())
+    )
 
     if (input === swipeAvailabilitySubscriptions) {
       if (swipeAvailabilitySubscriptions.checked) {
@@ -11302,10 +11310,10 @@ swipeAvailabilityAnywhere?.addEventListener('change', e => {
     const next = {
       anywhere: false,
       roomPersonalMedia: selectedAfterToggle.some(service =>
-        personalSet.has(service)
+        personalSet.has(String(service).trim().toLowerCase())
       ),
       paidSubscriptions: selectedAfterToggle.some(service =>
-        paidSet.has(service)
+        paidSet.has(String(service).trim().toLowerCase())
       ),
       freeStreaming: freeStreamingEnabled,
       subscriptionServices: selectedAfterToggle,
@@ -11323,9 +11331,13 @@ swipeSubscriptionChildren.forEach(input => {
       .filter(child => child.checked)
       .map(child => child.value)
     const personalSet = new Set(
-      getAvailableSubscriptionOptions().personalSources
+      getAvailableSubscriptionOptions().personalSources.map(service =>
+        String(service).trim().toLowerCase()
+      )
     )
-    const paidSet = new Set(parsePaidServices())
+    const paidSet = new Set(
+      parsePaidServices().map(service => String(service).trim().toLowerCase())
+    )
 
     const freeStreamingEnabled = Boolean(swipeAvailabilityFree?.checked)
     const selectedFreeServices = swipeFreeStreamingChildren
@@ -11334,8 +11346,12 @@ swipeSubscriptionChildren.forEach(input => {
 
     const next = {
       anywhere: false,
-      roomPersonalMedia: selected.some(service => personalSet.has(service)),
-      paidSubscriptions: selected.some(service => paidSet.has(service)),
+      roomPersonalMedia: selected.some(service =>
+        personalSet.has(String(service).trim().toLowerCase())
+      ),
+      paidSubscriptions: selected.some(service =>
+        paidSet.has(String(service).trim().toLowerCase())
+      ),
       freeStreaming: freeStreamingEnabled,
       subscriptionServices: selected,
       freeStreamingServices: freeStreamingEnabled ? selectedFreeServices : [],
@@ -11353,18 +11369,22 @@ swipeFreeStreamingChildren.forEach(input => {
       .filter(child => child.checked)
       .map(child => child.value)
     const personalSet = new Set(
-      getAvailableSubscriptionOptions().personalSources
+      getAvailableSubscriptionOptions().personalSources.map(service =>
+        String(service).trim().toLowerCase()
+      )
     )
-    const paidSet = new Set(parsePaidServices())
+    const paidSet = new Set(
+      parsePaidServices().map(service => String(service).trim().toLowerCase())
+    )
     const freeStreamingEnabled = Boolean(swipeAvailabilityFree?.checked)
 
     const next = {
       anywhere: false,
       roomPersonalMedia: selectedSubscriptions.some(service =>
-        personalSet.has(service)
+        personalSet.has(String(service).trim().toLowerCase())
       ),
       paidSubscriptions: selectedSubscriptions.some(service =>
-        paidSet.has(service)
+        paidSet.has(String(service).trim().toLowerCase())
       ),
       freeStreaming: freeStreamingEnabled,
       subscriptionServices: selectedSubscriptions,
@@ -11373,6 +11393,105 @@ swipeFreeStreamingChildren.forEach(input => {
     setAvailabilityState(next)
   })
 })
+
+// Fallback delegated handler for all swipe-filter dropdown controls.
+// This keeps button labels/default-state selections synchronized in wizard mode
+// even if an individual control-specific listener misses an edge case.
+document
+  .getElementById('swipe-filter-modal')
+  ?.addEventListener('change', () => {
+    if (!window.filterState) return
+
+    window.filterState.genres = Array.from(
+      document.querySelectorAll(
+        '#swipe-genre-list input[type="checkbox"]:checked'
+      )
+    )
+      .map(cb => Number.parseInt(cb.value, 10))
+      .filter(Number.isFinite)
+    updateSwipeGenreButton(window.filterState.genres)
+
+    window.filterState.languages = Array.from(
+      document.querySelectorAll(
+        '#swipe-language-list input[type="checkbox"]:checked'
+      )
+    ).map(cb => cb.value)
+    updateSwipeLanguageButton(window.filterState.languages)
+
+    window.filterState.countries = Array.from(
+      document.querySelectorAll(
+        '#swipe-country-list input[type="checkbox"]:checked'
+      )
+    ).map(cb => cb.value)
+    updateSwipeCountryButton(window.filterState.countries)
+
+    window.filterState.contentRatings = Array.from(
+      document.querySelectorAll(
+        '#swipe-rating-list input[type="checkbox"]:checked'
+      )
+    ).map(cb => cb.value)
+    updateSwipeContentRatingButton(window.filterState.contentRatings)
+
+    const selectedSort = document.querySelector(
+      'input[name="swipe-sort"]:checked'
+    )
+    if (selectedSort) {
+      const dirBtn = document.getElementById('swipe-sort-direction-btn')
+      const direction = dirBtn?.dataset.direction || 'desc'
+      const baseSort = String(selectedSort.value || 'popularity.desc').replace(
+        /\.(asc|desc)$/,
+        ''
+      )
+      window.filterState.sortBy = `${baseSort}.${direction}`
+      updateSwipeSortButton(window.filterState.sortBy)
+    }
+  })
+
+// Fallback delegated handler for availability updates.
+// This keeps the dropdown label/state in sync even if individual checkbox
+// listeners miss an edge-case interaction path.
+document
+  .getElementById('swipe-availability-list')
+  ?.addEventListener('change', event => {
+    const target = event.target
+    if (!(target instanceof HTMLInputElement) || target.type !== 'checkbox') {
+      return
+    }
+
+    const selectedSubscriptions = swipeSubscriptionChildren
+      .filter(child => child.checked)
+      .map(child => child.value)
+    const selectedFreeServices = swipeFreeStreamingChildren
+      .filter(child => child.checked)
+      .map(child => child.value)
+    const personalSet = new Set(
+      getAvailableSubscriptionOptions().personalSources.map(service =>
+        String(service).trim().toLowerCase()
+      )
+    )
+    const paidSet = new Set(
+      parsePaidServices().map(service => String(service).trim().toLowerCase())
+    )
+
+    if (swipeAvailabilityAnywhere?.checked) {
+      setAvailabilityState(getDefaultAvailabilityState())
+      return
+    }
+
+    const freeStreamingEnabled = Boolean(swipeAvailabilityFree?.checked)
+    setAvailabilityState({
+      anywhere: false,
+      roomPersonalMedia: selectedSubscriptions.some(service =>
+        personalSet.has(String(service).trim().toLowerCase())
+      ),
+      paidSubscriptions: selectedSubscriptions.some(service =>
+        paidSet.has(String(service).trim().toLowerCase())
+      ),
+      freeStreaming: freeStreamingEnabled,
+      subscriptionServices: selectedSubscriptions,
+      freeStreamingServices: freeStreamingEnabled ? selectedFreeServices : [],
+    })
+  })
 
 // Apply button
 swipeFilterApply?.addEventListener('click', e => {
