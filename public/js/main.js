@@ -2626,6 +2626,47 @@ function createFirstRunGuideModal() {
     adminLoginUser: null,
   }
   const history = []
+  const WIZARD_PROGRESS_STORAGE_KEY = 'comparr-wizard-progress-v1'
+
+  const persistWizardProgress = () => {
+    try {
+      sessionStorage.setItem(
+        WIZARD_PROGRESS_STORAGE_KEY,
+        JSON.stringify({ history, selectedState })
+      )
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  const clearWizardProgress = () => {
+    try {
+      sessionStorage.removeItem(WIZARD_PROGRESS_STORAGE_KEY)
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  const restoreWizardProgress = () => {
+    try {
+      const raw = sessionStorage.getItem(WIZARD_PROGRESS_STORAGE_KEY)
+      if (!raw) return false
+      const parsed = JSON.parse(raw)
+      const restoredHistory = Array.isArray(parsed?.history)
+        ? parsed.history
+        : []
+      const restoredState =
+        parsed?.selectedState && typeof parsed.selectedState === 'object'
+          ? parsed.selectedState
+          : null
+      if (!restoredHistory.length || !restoredState) return false
+      history.splice(0, history.length, ...restoredHistory)
+      Object.assign(selectedState, restoredState)
+      return true
+    } catch {
+      return false
+    }
+  }
 
   const requestFieldIds = {
     requestServiceType: 'first-run-request-service-type',
@@ -2887,6 +2928,7 @@ function createFirstRunGuideModal() {
 
   const renderScreen = screen => {
     if (!body || !copy || !title) return
+    persistWizardProgress()
     setWizardStatus('')
     updateActionButtons(screen)
 
@@ -3372,6 +3414,7 @@ function createFirstRunGuideModal() {
         window.COMPARR_USER = user
         selectedState.adminLoggedIn = true
         selectedState.adminLoginUser = user
+        persistWizardProgress()
         body.textContent = ''
         const msg = document.createElement('p')
         msg.className = 'first-run-guide-instruction'
@@ -3921,6 +3964,7 @@ function createFirstRunGuideModal() {
         const adminSuccess = await hydrateSettingsForm()
         settingsHydratedWithAdminAccess = Boolean(adminSuccess)
       }
+      clearWizardProgress()
       document.dispatchEvent(new CustomEvent('comparr:source-config-updated'))
       return { type: 'complete' }
     }
@@ -3990,6 +4034,11 @@ function createFirstRunGuideModal() {
       document.getElementById('setting-access-password')?.value || ''
     selectedState.security.adminPassword = ''
 
+    if (restoreWizardProgress()) {
+      renderScreen(history[history.length - 1])
+      return
+    }
+
     // Skip security screen entirely when both passwords are already configured.
     // The user can change them via the Settings tab.
     const initial =
@@ -4005,6 +4054,7 @@ function createFirstRunGuideModal() {
       const next = await getNextScreen()
       if (!next || next.type === 'complete') return
       history.push(next)
+      persistWizardProgress()
       renderScreen(next)
     })
   })
@@ -4016,6 +4066,7 @@ function createFirstRunGuideModal() {
       leaveDefaultsEditor()
     }
     history.pop()
+    persistWizardProgress()
     renderScreen(history[history.length - 1])
   })
 
@@ -4025,6 +4076,7 @@ function createFirstRunGuideModal() {
       if (current?.type === 'security') {
         // Skip means advance without making any changes — no save needed
         history.push({ type: 'flow' })
+        persistWizardProgress()
         renderScreen({ type: 'flow' })
         return
       }
@@ -4033,6 +4085,7 @@ function createFirstRunGuideModal() {
       persistRequestInputs()
       await loadClientConfig().catch(() => {})
       history.push({ type: 'defaults' })
+      persistWizardProgress()
       renderScreen({ type: 'defaults' })
     })
   })
