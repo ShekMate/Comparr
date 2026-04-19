@@ -3407,11 +3407,11 @@ function createFirstRunGuideModal() {
             const { pinId, authUrl } = await api.requestPlexPin()
             popup = window.open(
               authUrl,
-              'plex-auth',
+              `plex-auth-${Date.now()}`,
               'width=800,height=700,left=100,top=100'
             )
 
-            if (!popup) {
+            if (!popup || popup === window) {
               if (plexStatus)
                 plexStatus.textContent =
                   'Popup blocked. Please allow popups and try again.'
@@ -3747,13 +3747,40 @@ function createFirstRunGuideModal() {
       }
       const userAuthEnabled =
         window.USER_AUTH_ENABLED === true || window.USER_AUTH_ENABLED === 'true'
-      if (userAuthEnabled) return { type: 'admin-login' }
+      if (userAuthEnabled) {
+        try {
+          const { user } = await api.getAuthUser()
+          if (user) {
+            selectedState.adminLoggedIn = true
+            selectedState.adminLoginUser = user
+            window.COMPARR_USER = user
+            return selectedState.flow === 'combined'
+              ? { type: 'tmdb' }
+              : { type: 'setup-complete' }
+          }
+        } catch {
+          // no auth session yet
+        }
+        return { type: 'admin-login' }
+      }
       return selectedState.flow === 'combined'
         ? { type: 'tmdb' }
         : { type: 'setup-complete' }
     }
 
     if (current.type === 'admin-login') {
+      if (!selectedState.adminLoggedIn) {
+        try {
+          const { user } = await api.getAuthUser()
+          if (user) {
+            selectedState.adminLoggedIn = true
+            selectedState.adminLoginUser = user
+            window.COMPARR_USER = user
+          }
+        } catch {
+          // no auth session yet
+        }
+      }
       if (!selectedState.adminLoggedIn) {
         setWizardStatus('Please sign in to continue.', 'error')
         return null
@@ -4782,11 +4809,11 @@ async function login(api) {
               pinId = id
               popup = window.open(
                 authUrl,
-                'plex-auth',
+                `plex-auth-${Date.now()}`,
                 'width=800,height=700,left=100,top=100'
               )
 
-              if (!popup) {
+              if (!popup || popup === window) {
                 if (plexStatus) {
                   plexStatus.textContent =
                     'Popup blocked. Please allow popups and try again.'
