@@ -3450,19 +3450,18 @@ function createFirstRunGuideModal() {
           try {
             const { pinId, authUrl } = await api.requestPlexPin()
             popup = window.open(
-              'about:blank',
-              '_blank',
+              authUrl,
+              `plex-auth-${Date.now()}`,
               'width=800,height=700,left=100,top=100'
             )
 
-            if (!popup || popup === window || popup.closed) {
+            if (!popup) {
               if (plexStatus)
                 plexStatus.textContent =
                   'Popup blocked. Please allow popups and try again.'
               plexBtn.disabled = false
               return
             }
-            popup.location.href = authUrl
 
             if (plexStatus)
               plexStatus.textContent = 'Waiting for Plex approval…'
@@ -3485,17 +3484,14 @@ function createFirstRunGuideModal() {
                         ? result.error || 'Access denied.'
                         : 'Plex login expired. Please try again.'
                 } else if (popup.closed) {
-                  // Grace period: the auth token may have just been issued as
-                  // the popup closed (Plex sets the token before showing the
-                  // success page, but our in-flight poll request was sent before
-                  // the user approved). Keep polling for ~6 s after close so
-                  // that one or two more ticks can detect the success.
+                  // Popup was closed by the user without completing auth.
+                  // Give a short grace period in case the success poll is in flight.
                   if (!popupClosedAt) {
                     popupClosedAt = Date.now()
                     if (plexStatus)
                       plexStatus.textContent = 'Verifying login…'
                   }
-                  if (Date.now() - popupClosedAt >= 6000) {
+                  if (Date.now() - popupClosedAt >= 4000) {
                     cleanupPoll()
                     plexBtn.disabled = false
                     if (plexStatus) plexStatus.textContent = 'Login cancelled.'
@@ -4876,12 +4872,12 @@ async function login(api) {
               const { pinId: id, authUrl } = await api.requestPlexPin()
               pinId = id
               popup = window.open(
-                'about:blank',
-                '_blank',
+                authUrl,
+                `plex-auth-${Date.now()}`,
                 'width=800,height=700,left=100,top=100'
               )
 
-              if (!popup || popup === window || popup.closed) {
+              if (!popup) {
                 if (plexStatus) {
                   plexStatus.textContent =
                     'Popup blocked. Please allow popups and try again.'
@@ -4889,7 +4885,6 @@ async function login(api) {
                 plexSigninBtn.disabled = false
                 return
               }
-              popup.location.href = authUrl
 
               if (plexStatus)
                 plexStatus.textContent = 'Waiting for Plex approval…'
@@ -4914,13 +4909,13 @@ async function login(api) {
                           : 'Plex login expired. Please try again.'
                     }
                   } else if (popup.closed) {
-                    // Grace period: keep polling for ~6 s after the popup closes
-                    // so a success that arrived just as the window shut is still caught.
+                    // Popup was closed by the user without completing auth.
+                    // Give a short grace period in case the success poll is in flight.
                     if (!popupClosedAt) {
                       popupClosedAt = Date.now()
                       if (plexStatus) plexStatus.textContent = 'Verifying login…'
                     }
-                    if (Date.now() - popupClosedAt >= 6000) {
+                    if (Date.now() - popupClosedAt >= 4000) {
                       cleanupPoll()
                       plexSigninBtn.disabled = false
                       if (plexStatus) {
