@@ -81,13 +81,12 @@
           </div>
         </form>
 
-        <!-- User auth screen (shown after password when user auth is enabled) -->
+        <!-- User auth screen — Plex login only -->
         <div class="user-auth-form js-user-auth-form u-display-none">
           <div class="login-intro">
-            <p>Sign in to continue.</p>
+            <p>Sign in with your Plex account to continue.</p>
           </div>
 
-          <!-- Plex sign-in button (shown when Plex is configured) -->
           <div class="user-auth-plex js-user-auth-plex u-display-none">
             <button
               type="button"
@@ -102,205 +101,13 @@
             </button>
             <p class="user-auth-status js-plex-status" hidden></p>
           </div>
-
-          <!-- Jellyfin sign-in button (shown when Jellyfin is configured) -->
-          <div class="user-auth-server js-user-auth-jellyfin u-display-none">
-            <button
-              type="button"
-              class="server-signin-btn server-signin-btn--jellyfin js-jellyfin-signin-btn"
-            >
-              Sign in with
-              <img
-                src="/assets/logos/jellyfin_logo_button.png"
-                alt="Jellyfin"
-                class="media-logo-img"
-              />
-            </button>
-            <p class="user-auth-status js-jellyfin-status" hidden></p>
-          </div>
-
-          <!-- Emby sign-in button (shown when Emby is configured) -->
-          <div class="user-auth-server js-user-auth-emby u-display-none">
-            <button
-              type="button"
-              class="server-signin-btn server-signin-btn--emby js-emby-signin-btn"
-            >
-              Sign in with
-              <img
-                src="/assets/logos/emby-logo_button.png"
-                alt="emby"
-                class="media-logo-img"
-              />
-            </button>
-            <p class="user-auth-status js-emby-status" hidden></p>
-          </div>
-
-          <!-- Guest bypass -->
-          <button
-            type="button"
-            class="user-auth-guest-btn js-user-auth-guest-btn"
-          >
-            Continue as guest
-          </button>
         </div>
 
-        <!-- Shared credential modal for Jellyfin / Emby sign-in -->
-        <div
-          class="user-auth-modal js-user-auth-modal"
-          hidden
-          aria-modal="true"
-          role="dialog"
-          aria-labelledby="user-auth-modal-title"
-        >
-          <div class="user-auth-modal-card">
-            <button
-              type="button"
-              class="user-auth-modal-close js-user-auth-modal-close"
-              aria-label="Close"
-            >
-              <i class="fas fa-times" aria-hidden="true"></i>
-            </button>
-            <p class="user-auth-modal-provider js-user-auth-modal-provider"></p>
-            <h2 id="user-auth-modal-title" class="user-auth-modal-title">
-              Sign in
-            </h2>
-            <form
-              class="user-auth-modal-form js-user-auth-modal-form"
-              autocomplete="on"
-              novalidate
-            >
-              <input
-                type="text"
-                name="username"
-                placeholder="Username"
-                autocomplete="username"
-                required
-              />
-              <input
-                type="password"
-                name="password"
-                placeholder="Password"
-                autocomplete="current-password"
-              />
-              <p class="user-auth-status js-user-auth-modal-status" hidden></p>
-              <button
-                type="submit"
-                class="submit-button user-auth-modal-submit"
-              >
-                Sign In
-              </button>
-            </form>
-          </div>
-        </div>
-
-        <!-- Login form (hidden initially) -->
-        <form class="login-form js-login-form u-display-none" name="login">
-          <div class="login-intro">
-            <button type="button" class="login-back-btn js-login-back-btn">
-              <i class="fas fa-arrow-left" aria-hidden="true"></i>
-              Back
-            </button>
-            <p>${LOGIN_WELCOME_SUBTITLE}</p>
-          </div>
-
-          <div class="login-field-group login-field-group--room-mode">
-            <div class="room-mode-header">
-              <label class="room-mode-question">${LOGIN_NEW_HERE}</label>
-              <div class="room-mode-tabs" role="tablist" aria-label="Room mode">
-                <button
-                  type="button"
-                  class="room-mode-tab js-room-mode-tab"
-                  data-room-mode="create"
-                  role="tab"
-                  aria-selected="false"
-                >
-                  ${LOGIN_ROOM_MODE_YES}
-                </button>
-                <button
-                  type="button"
-                  class="room-mode-tab is-active js-room-mode-tab"
-                  data-room-mode="join"
-                  role="tab"
-                  aria-selected="true"
-                >
-                  ${LOGIN_ROOM_MODE_NO}
-                </button>
-              </div>
-            </div>
-            <p class="login-helper-copy">${LOGIN_ROOM_HELPER}</p>
-          </div>
-
-          <div class="login-field-group login-field-group--name">
-            <label for="name">${LOGIN_STEP_NAME}</label>
-            <input
-              id="name"
-              type="text"
-              name="name"
-              placeholder="${LOGIN_NAME}"
-              autocomplete="given-name"
-              required
-            />
-          </div>
-          <div class="login-field-group login-field-group--room-details">
-            <p class="room-mode-instruction js-room-step-instruction">
-              ${LOGIN_STEP_ROOM}
-            </p>
-
-            <div
-              class="room-code-panel js-room-code-panel"
-              data-room-mode-panel="join"
-            >
-              <div class="room-code-container">
-                <input
-                  id="room-code"
-                  type="text"
-                  name="roomCode"
-                  placeholder="${LOGIN_ROOM_CODE_PLACEHOLDER}"
-                  required
-                  pattern="[0-9A-Z]{4}"
-                  maxlength="4"
-                  autocomplete="off"
-                />
-                <button
-                  type="submit"
-                  class="room-code-submit-button"
-                  aria-label="${LOGIN_CONTINUE}"
-                >
-                  <i class="fas fa-arrow-right" aria-hidden="true"></i>
-                </button>
-              </div>
-            </div>
-
-            <div
-              class="room-code-panel js-room-code-panel"
-              data-room-mode-panel="create"
-              hidden
-            >
-              <div class="room-code-container room-code-container--create">
-                <input
-                  id="generated-room-code"
-                  type="text"
-                  name="generatedRoomCode"
-                  placeholder="${LOGIN_ROOM_CODE_PLACEHOLDER}"
-                  pattern="[0-9A-Z]{4}"
-                  maxlength="4"
-                  autocomplete="off"
-                />
-                <button
-                  type="button"
-                  class="generate-button js-generate-room-code"
-                >
-                  ${LOGIN_GENERATE}
-                </button>
-              </div>
-            </div>
-
-            <p class="room-code-error-message js-room-code-error" hidden></p>
-            <p class="login-error-message js-login-error" hidden></p>
-          </div>
-          <button type="submit" class="submit-button js-login-submit-button">
-            ${LOGIN_CONTINUE}
-          </button>
+        <!-- Login form stub (kept for JS compatibility; room code entry no longer shown) -->
+        <form class="login-form js-login-form u-display-none" name="login" hidden>
+          <input type="hidden" name="name" />
+          <input type="hidden" name="roomCode" id="room-code" />
+          <input type="hidden" name="generatedRoomCode" id="generated-room-code" />
         </form>
       </section>
 
@@ -1208,6 +1015,12 @@
             <p class="matches-status js-matches-status" hidden></p>
           </div>
 
+          <!-- Pending friend requests (received) -->
+          <div class="matches-pending-section js-matches-pending-section" hidden>
+            <h3 class="matches-section-heading">Pending Requests</h3>
+            <div class="matches-pending-list js-matches-pending-list"></div>
+          </div>
+
           <!-- Connected friends + their matches -->
           <div class="matches-friends-section js-matches-friends-section">
             <h3
@@ -1220,6 +1033,33 @@
           </div>
         </div>
       </section>
+
+      <!-- Server-sharing consent modal -->
+      <div
+        class="server-sharing-modal js-server-sharing-modal"
+        hidden
+        aria-modal="true"
+        role="dialog"
+        aria-labelledby="server-sharing-modal-title"
+      >
+        <div class="server-sharing-modal-card">
+          <h2 id="server-sharing-modal-title" class="server-sharing-modal-title">
+            Library Sharing
+          </h2>
+          <p class="server-sharing-modal-body js-server-sharing-modal-body"></p>
+          <p class="server-sharing-modal-note">
+            Movies from their server that match <strong>your current filters</strong> will be added to your swipe pool.
+          </p>
+          <div class="server-sharing-modal-actions">
+            <button type="button" class="btn-primary js-server-sharing-accept">
+              Yes, include their library
+            </button>
+            <button type="button" class="btn-secondary js-server-sharing-decline">
+              No thanks
+            </button>
+          </div>
+        </div>
+      </div>
 
       <!-- ===== Liked panel ===== -->
       <section class="tab-panel" id="tab-likes" hidden>
@@ -2478,6 +2318,56 @@
       <!-- ===== Settings panel ===== -->
       <section class="tab-panel" id="tab-settings" hidden>
         <div class="settings-layout">
+
+          <!-- ── Profile settings (all authenticated users) ── -->
+          <div class="settings-profile-section" id="settings-profile">
+            <h3 class="settings-section-heading">My Profile</h3>
+
+            <!-- Invite code -->
+            <div class="settings-profile-invite">
+              <label class="settings-label">Your Invite Code</label>
+              <div class="settings-invite-row">
+                <code class="settings-my-invite-code js-settings-invite-code">······</code>
+                <button type="button" class="icon-btn js-settings-copy-invite" title="Copy code" aria-label="Copy invite code">
+                  <i class="fas fa-copy" aria-hidden="true"></i>
+                </button>
+              </div>
+              <p class="settings-hint">Share this code so friends can add you.</p>
+            </div>
+
+            <!-- Personal media server -->
+            <details class="settings-collapsible" id="settings-personal-server">
+              <summary class="settings-collapsible-toggle">Connect Your Media Server <span class="settings-collapsible-hint">(optional)</span></summary>
+              <form class="settings-profile-form js-profile-server-form">
+                <div class="settings-field-group">
+                  <label class="settings-label">Server Type</label>
+                  <select name="serverType" class="settings-select js-profile-server-type">
+                    <option value="">None</option>
+                    <option value="plex">Plex</option>
+                    <option value="emby">Emby</option>
+                    <option value="jellyfin">Jellyfin</option>
+                  </select>
+                </div>
+                <div class="settings-field-group js-profile-server-fields" hidden>
+                  <label class="settings-label">Server URL</label>
+                  <input type="url" name="serverUrl" class="settings-input" placeholder="http://your-server:32400" autocomplete="off" />
+                </div>
+                <div class="settings-field-group js-profile-server-fields" hidden>
+                  <label class="settings-label js-profile-token-label">API Token / Key</label>
+                  <input type="password" name="serverToken" class="settings-input" placeholder="Token" autocomplete="new-password" />
+                </div>
+                <div class="settings-field-group js-profile-server-fields" hidden>
+                  <label class="settings-label">Library Name</label>
+                  <input type="text" name="libraryName" class="settings-input" placeholder="Movies" autocomplete="off" />
+                </div>
+                <div class="settings-form-actions js-profile-server-fields" hidden>
+                  <button type="submit" class="btn-primary">Save</button>
+                  <p class="settings-status js-profile-server-status" hidden></p>
+                </div>
+              </form>
+            </details>
+          </div>
+
           <div id="settings-controls">
             <div class="settings-toolbar">
               <button

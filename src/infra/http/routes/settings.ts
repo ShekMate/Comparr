@@ -7,6 +7,8 @@ import {
   invalidateAccessSession,
   validateAccessSession,
 } from '../../../core/access-session-store.ts'
+import { getUserSession } from '../../../core/user-session-store.ts'
+import { getUserTokenFromCookie } from './auth.ts'
 import { apiRateLimiter, loginRateLimiter } from '../ip-rate-limiter.ts'
 import { addSecurityHeaders } from '../security-headers.ts'
 import { isValidStateChangingOrigin } from '../network-access.ts'
@@ -214,89 +216,44 @@ const runConnectionCheck = async (
   }
 }
 
-const parseAdminPassword = (req: CompatRequest) => {
-  const header = req.headers?.get?.('x-admin-password')
-  if (typeof header === 'string') return header.trim()
-  return ''
-}
-
-const hasAdminPasswordConfigured = (settings: Record<string, unknown>) =>
-  Boolean(String(settings.ADMIN_PASSWORD ?? '').trim())
-
 const isRemoteBootstrapEnabled = () =>
   String(Deno.env.get('ALLOW_REMOTE_BOOTSTRAP') ?? '')
     .trim()
     .toLowerCase() === 'true'
 
-const isBootstrappingAdminPassword = (
-  req: CompatRequest,
-  isLocalRequest: (req: CompatRequest) => boolean,
-  settings: Record<string, unknown>,
-  incomingSettings: Record<string, unknown>
-) => {
-  if (hasAdminPasswordConfigured(settings)) return false
-  if (String(settings.ACCESS_PASSWORD ?? '').trim()) return false
-  if (!isLocalRequest(req) && !isRemoteBootstrapEnabled()) return false
-
-  const keys = Object.keys(incomingSettings)
-  if (keys.length === 0) return false
-  if (!keys.every(key => key === 'ADMIN_PASSWORD' || key === 'ACCESS_PASSWORD'))
-    return false
-
-  const candidate = String(incomingSettings.ADMIN_PASSWORD ?? '').trim()
-  return candidate.length > 0
-}
-
 // While SETUP_WIZARD_COMPLETED is false the server operates in setup mode.
-// All admin-gated actions are permitted so the wizard can configure everything
-// (including the admin password itself) without a chicken-and-egg auth problem.
+// All admin-gated actions are permitted so the wizard can configure the
+// access password without a chicken-and-egg auth problem.
 const isSetupWizardActive = (settings: Record<string, unknown>) =>
   String(settings.SETUP_WIZARD_COMPLETED ?? '').toLowerCase() !== 'true'
 
-const isAdminAuthorized = async (
+// Admin access: valid Plex session with is_admin=1, or local network request as fallback.
+const isAdminAuthorized = (
   req: CompatRequest,
-  settings: Record<string, unknown>,
+  _settings: Record<string, unknown>,
   isLocalRequest: (req: CompatRequest) => boolean
 ) => {
-  const configuredPassword = String(settings.ADMIN_PASSWORD ?? '').trim()
-  if (!configuredPassword) {
-    const local = isLocalRequest(req)
-    log.debug(
-      `[admin-auth] No ADMIN_PASSWORD configured — falling back to isLocal=${local}`
-    )
-    return local
+  const token = getUserTokenFromCookie(req)
+  if (token) {
+    const session = getUserSession(token)
+    if (session?.isAdmin) {
+      log.debug(`[admin-auth] Authorized via Plex session (user=${session.username})`)
+      return true
+    }
   }
-
-  const received = parseAdminPassword(req)
-  const match = await verifyPassword(received, configuredPassword)
-  if (!match) {
-    log.warn(
-      `[admin-auth] Password mismatch: receivedLen=${received.length} header=${
-        received ? 'present' : 'absent'
-      }`
-    )
-  } else {
-    log.debug(`[admin-auth] Password matched`)
-  }
-  return match
+  const local = isLocalRequest(req)
+  log.debug(`[admin-auth] No admin session — falling back to isLocal=${local}`)
+  return local
 }
 
 const getAdminAuthFailureMessage = (
-  req: CompatRequest,
-  settings: Record<string, unknown>,
-  isLocalRequest: (req: CompatRequest) => boolean
-) => {
-  if (hasAdminPasswordConfigured(settings)) {
-    return 'Admin password required. Enter the configured admin password and retry.'
-  }
-
-  return isLocalRequest(req)
-    ? 'Admin access is unavailable. Please retry.'
-    : 'Admin access is limited to local/private-network requests when ADMIN_PASSWORD is not configured. If you are behind a reverse proxy, forward client IP headers (X-Forwarded-For or X-Real-IP), or set ADMIN_PASSWORD.'
-}
+  _req: CompatRequest,
+  _settings: Record<string, unknown>,
+  _isLocalRequest: (req: CompatRequest) => boolean
+) => 'Admin access requires signing in with an admin Plex account.'
 
 const getSetupModeFailureMessage = () =>
-  'Setup mode changes are limited to local/private-network requests. Complete setup locally, or only use ALLOW_REMOTE_BOOTSTRAP for initial ADMIN_PASSWORD/ACCESS_PASSWORD bootstrap.'
+  'Setup mode changes are limited to local/private-network requests. Complete setup locally, or set ALLOW_REMOTE_BOOTSTRAP=true for remote initial setup.'
 
 const ADMIN_ONLY_SETTINGS = new Set([
   'PORT',
@@ -323,11 +280,9 @@ const ADMIN_ONLY_SETTINGS = new Set([
   'SEERR_URL',
   'SEERR_API_KEY',
   'ACCESS_PASSWORD',
-  'ADMIN_PASSWORD',
   // Wizard completion state is admin-only: a regular user must not be able to
   // reopen setup mode by setting this back to 'false'.
   'SETUP_WIZARD_COMPLETED',
-  'USER_AUTH_ENABLED',
   'PLEX_RESTRICT_TO_SERVER',
   // PLEX_CLIENT_ID is managed automatically; prevent user modification
   'PLEX_CLIENT_ID',
@@ -337,7 +292,7 @@ const sanitizeSettingsForClient = (
   settings: Record<string, unknown>,
   isAdmin: boolean
 ) => {
-  const sanitized = { ...settings, ADMIN_PASSWORD: '', ACCESS_PASSWORD: '' }
+  const sanitized = { ...settings, ACCESS_PASSWORD: '' }
 
   if (!isAdmin) {
     for (const key of ADMIN_ONLY_SETTINGS) {
@@ -372,15 +327,8 @@ export async function handleSettingsRoutes(
   } = deps
 
   if (pathname === '/api/settings-access') {
-    const settings = getSettings()
-    const hasAdminPassword = hasAdminPasswordConfigured(settings)
-    const canAccess = true
-
     return new Response(
-      JSON.stringify({
-        canAccess,
-        requiresAdminPassword: hasAdminPassword,
-      }),
+      JSON.stringify({ canAccess: true, requiresAdminPassword: false }),
       { status: 200, headers: makeJsonHeaders(req) }
     )
   }
@@ -513,9 +461,6 @@ export async function handleSettingsRoutes(
         accessPasswordSet: Boolean(
           String(settings.ACCESS_PASSWORD ?? '').trim()
         ),
-        adminPasswordSet: Boolean(String(settings.ADMIN_PASSWORD ?? '').trim()),
-        userAuthEnabled:
-          String(settings.USER_AUTH_ENABLED || '').toLowerCase() === 'true',
         plexRestrictToServer:
           String(settings.PLEX_RESTRICT_TO_SERVER || '').toLowerCase() ===
           'true',
@@ -545,18 +490,7 @@ export async function handleSettingsRoutes(
 
     const settings = getSettings()
     if (!isSetupWizardActive(settings)) {
-      if (!hasAdminPasswordConfigured(settings)) {
-        return new Response(
-          JSON.stringify({
-            ok: false,
-            message:
-              'Admin password is not configured. Set ADMIN_PASSWORD before running connection tests.',
-          }),
-          { status: 403, headers: makeJsonHeaders(req) }
-        )
-      }
-
-      if (!(await isAdminAuthorized(req, settings, isLocalRequest))) {
+      if (!isAdminAuthorized(req, settings, isLocalRequest)) {
         return new Response(
           JSON.stringify({
             ok: false,
@@ -629,14 +563,7 @@ export async function handleSettingsRoutes(
       const incomingSettings =
         ((settings ?? {}) as Record<string, unknown>) || {}
 
-      const isAdminPasswordBootstrap = isBootstrappingAdminPassword(
-        req,
-        isLocalRequest,
-        currentSettings,
-        incomingSettings
-      )
-
-      if (!isAdmin && !isAdminPasswordBootstrap) {
+      if (!isAdmin) {
         const attemptedAdminOnlySettings = Object.keys(
           incomingSettings
         ).filter(key => ADMIN_ONLY_SETTINGS.has(key))
@@ -661,19 +588,7 @@ export async function handleSettingsRoutes(
           delete incomingSettings[key]
         }
       }
-      if (
-        isAdmin &&
-        Object.prototype.hasOwnProperty.call(
-          incomingSettings,
-          'ADMIN_PASSWORD'
-        ) &&
-        String(incomingSettings.ADMIN_PASSWORD ?? '').trim() === ''
-      ) {
-        incomingSettings.ADMIN_PASSWORD = String(
-          currentSettings.ADMIN_PASSWORD ?? ''
-        )
-      }
-      // Same preservation logic for ACCESS_PASSWORD: a blank submission means
+      // ACCESS_PASSWORD preservation: a blank submission means
       // "keep existing" — the client never receives the hash, so an empty field
       // simply means the user didn't type a new password.
       if (

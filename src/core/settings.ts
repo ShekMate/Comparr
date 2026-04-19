@@ -18,7 +18,6 @@ export type SettingsKey =
   | 'JELLYFIN_LIBRARY_NAME'
   | 'PORT'
   | 'ACCESS_PASSWORD'
-  | 'ADMIN_PASSWORD'
   | 'TMDB_API_KEY'
   | 'RADARR_URL'
   | 'RADARR_API_KEY'
@@ -36,7 +35,6 @@ export type SettingsKey =
   | 'PAID_STREAMING_SERVICES'
   | 'PERSONAL_MEDIA_SOURCES'
   | 'SETUP_WIZARD_COMPLETED'
-  | 'USER_AUTH_ENABLED'
   | 'PLEX_RESTRICT_TO_SERVER'
   | 'PLEX_CLIENT_ID'
 
@@ -56,7 +54,6 @@ const SETTINGS_KEYS: SettingsKey[] = [
   'JELLYFIN_LIBRARY_NAME',
   'PORT',
   'ACCESS_PASSWORD',
-  'ADMIN_PASSWORD',
   'TMDB_API_KEY',
   'RADARR_URL',
   'RADARR_API_KEY',
@@ -74,7 +71,6 @@ const SETTINGS_KEYS: SettingsKey[] = [
   'PAID_STREAMING_SERVICES',
   'PERSONAL_MEDIA_SOURCES',
   'SETUP_WIZARD_COMPLETED',
-  'USER_AUTH_ENABLED',
   'PLEX_RESTRICT_TO_SERVER',
   'PLEX_CLIENT_ID',
 ]
@@ -84,7 +80,6 @@ const ENV_ONLY_KEYS = new Set<SettingsKey>(['PORT'])
 const DEFAULTS: Partial<Settings> = {
   PORT: '8000',
   ACCESS_PASSWORD: '',
-  ADMIN_PASSWORD: '',
   LOG_LEVEL: 'INFO',
   MOVIE_BATCH_SIZE: '20',
   LIBRARY_FILTER: '',
@@ -100,7 +95,6 @@ const DEFAULTS: Partial<Settings> = {
   PAID_STREAMING_SERVICES: '[]',
   PERSONAL_MEDIA_SOURCES: '[]',
   SETUP_WIZARD_COMPLETED: 'false',
-  USER_AUTH_ENABLED: 'false',
   PLEX_RESTRICT_TO_SERVER: 'false',
   PLEX_CLIENT_ID: '',
 }
@@ -195,7 +189,6 @@ export const getSetting = (key: SettingsKey): string => settingsCache[key] ?? ''
 
 const PASSWORD_KEYS = new Set<SettingsKey>([
   'ACCESS_PASSWORD',
-  'ADMIN_PASSWORD',
 ])
 
 export const updateSettings = async (

@@ -1,22 +1,19 @@
 // src/infra/http/routes/auth.ts
-// Media-server identity auth routes.
-// Supports Plex (PIN OAuth), Jellyfin (local username/password), Emby (local username/password).
+// Plex-only identity auth. Plex account is the sole login method.
+// A personal Plex server is NOT required — any free plex.tv account works.
 
 import type { CompatRequest } from '../compat-request.ts'
 import * as log from 'jsr:@std/log'
 import { makeHeaders } from '../security-headers.ts'
 import { loginRateLimiter } from '../ip-rate-limiter.ts'
 import {
-  isUserAuthEnabled,
   getPlexUrl,
   getPlexToken,
   getPlexClientId,
-  getEmbyUrl,
-  getJellyfinUrl,
   isPlexRestrictedToServer,
 } from '../../../core/config.ts'
-import { getSetting, updateSettings } from '../../../core/settings.ts'
-import { upsertUser, findUserById } from '../../../features/auth/user-db.ts'
+import { updateSettings } from '../../../core/settings.ts'
+import { upsertUser, findUserById, getOrCreateInviteCode } from '../../../features/auth/user-db.ts'
 import {
   createUserSession,
   getUserSession,
@@ -28,14 +25,11 @@ import {
   getPlexUserInfo,
   isUserOnPlexServer,
 } from '../../../features/auth/providers/plex.ts'
-import { authenticateJellyfinUser } from '../../../features/auth/providers/jellyfin.ts'
-import { authenticateEmbyUser } from '../../../features/auth/providers/emby.ts'
 
 const USER_SESSION_COOKIE = 'comparr_user'
-const PIN_TTL_MS = 6 * 60 * 1000 // 6 minutes — slightly over Plex's 5-min pin TTL
+const PIN_TTL_MS = 6 * 60 * 1000
 
-// In-memory store of active Plex PIN requests so polling can verify them.
-// Map<pinId, { clientId, expiresAt }>
+// In-memory store of active Plex PIN requests.
 const _pendingPins = new Map<number, { clientId: string; expiresAt: number }>()
 
 function pruneExpiredPins(): void {
@@ -90,27 +84,12 @@ async function ensurePlexClientId(): Promise<string> {
   let clientId = getPlexClientId()
   if (!clientId) {
     clientId = crypto.randomUUID()
-    // Persist asynchronously so a transient write failure doesn't block login.
-    // updateSettings updates the in-memory cache synchronously before its first
-    // await, so getPlexClientId() returns the new ID on the very next call.
     updateSettings({ PLEX_CLIENT_ID: clientId }).catch(err =>
       log.warn(`[auth] Failed to persist Plex client ID: ${err}`)
     )
     log.info('[auth] Generated new Plex client ID')
   }
   return clientId
-}
-
-function isPlexConfigured(): boolean {
-  return Boolean(getPlexUrl()) && Boolean(getPlexToken())
-}
-
-function isJellyfinConfigured(): boolean {
-  return Boolean(getJellyfinUrl()) && Boolean(getSetting('JELLYFIN_API_KEY'))
-}
-
-function isEmbyConfigured(): boolean {
-  return Boolean(getEmbyUrl()) && Boolean(getSetting('EMBY_API_KEY'))
 }
 
 // ---------------------------------------------------------------------------
@@ -122,21 +101,18 @@ export async function handleAuthRoutes(
   pathname: string
 ): Promise<Response | null> {
   // ── GET /api/auth/providers ──────────────────────────────────────────────
-  // Returns which auth providers are available (based on configured servers).
+  // Plex is always the only auth provider.
   if (pathname === '/api/auth/providers' && req.method === 'GET') {
-    const providers: Array<{ id: string; name: string }> = []
-    if (isPlexConfigured()) providers.push({ id: 'plex', name: 'Plex' })
-    if (isJellyfinConfigured()) providers.push({ id: 'jellyfin', name: 'Jellyfin' })
-    if (isEmbyConfigured()) providers.push({ id: 'emby', name: 'Emby' })
-
     return new Response(
-      JSON.stringify({ providers, userAuthEnabled: isUserAuthEnabled() }),
+      JSON.stringify({
+        providers: [{ id: 'plex', name: 'Plex' }],
+        userAuthEnabled: true,
+      }),
       { status: 200, headers: makeJson(req) }
     )
   }
 
   // ── GET /api/auth/me ─────────────────────────────────────────────────────
-  // Returns the current authenticated user, or null if not logged in.
   if (pathname === '/api/auth/me' && req.method === 'GET') {
     const token = parseCookies(req).get(USER_SESSION_COOKIE) || ''
     const session = token ? getUserSession(token) : null
@@ -146,6 +122,8 @@ export async function handleAuthRoutes(
         headers: makeJson(req),
       })
     }
+    // Derive deterministic personal room code from user ID
+    const roomCode = `U${String(session.userId).padStart(3, '0')}`
     return new Response(
       JSON.stringify({
         user: {
@@ -154,6 +132,7 @@ export async function handleAuthRoutes(
           avatarUrl: session.avatarUrl,
           isAdmin: session.isAdmin,
           provider: session.provider,
+          roomCode,
         },
       }),
       { status: 200, headers: makeJson(req) }
@@ -173,15 +152,8 @@ export async function handleAuthRoutes(
   }
 
   // ── POST /api/auth/plex/pin ──────────────────────────────────────────────
-  // Request a new Plex PIN and return it with the auth URL for the popup.
+  // Plex auth always works — no server required, just a plex.tv account.
   if (pathname === '/api/auth/plex/pin' && req.method === 'POST') {
-    if (!isPlexConfigured()) {
-      return new Response(
-        JSON.stringify({ error: 'Plex is not configured.' }),
-        { status: 400, headers: makeJson(req) }
-      )
-    }
-
     const ip = getClientIp(req)
     if (!loginRateLimiter.check(ip)) {
       return new Response(
@@ -214,7 +186,6 @@ export async function handleAuthRoutes(
   }
 
   // ── GET /api/auth/plex/pin/:pinId ────────────────────────────────────────
-  // Poll for PIN approval. On success, complete the login and set the session cookie.
   const plexPinMatch = pathname.match(/^\/api\/auth\/plex\/pin\/(\d+)$/)
   if (plexPinMatch && req.method === 'GET') {
     const pinId = Number(plexPinMatch[1])
@@ -253,12 +224,11 @@ export async function handleAuthRoutes(
         )
       }
 
-      // User approved — get their info
       _pendingPins.delete(pinId)
       const plexUser = await getPlexUserInfo(status.authToken, pending.clientId)
 
-      // Server-restriction check
-      if (isPlexRestrictedToServer()) {
+      // Optional: restrict to users on a specific Plex server
+      if (isPlexRestrictedToServer() && getPlexUrl() && getPlexToken()) {
         const hasAccess = await isUserOnPlexServer(
           status.authToken,
           getPlexUrl(),
@@ -283,6 +253,12 @@ export async function handleAuthRoutes(
         avatarUrl: plexUser.thumb,
       })
 
+      // Ensure user has an invite code
+      const inviteCode = getOrCreateInviteCode(user.id)
+
+      // Deterministic personal room code derived from user ID
+      const roomCode = `U${String(user.id).padStart(3, '0')}`
+
       const sessionToken = createUserSession({
         userId: user.id,
         provider: user.provider,
@@ -295,7 +271,7 @@ export async function handleAuthRoutes(
       const headers = makeJson(req)
       setUserSessionCookie(headers, sessionToken, req)
 
-      log.info(`[auth] Plex login: ${user.username} (admin=${user.isAdmin})`)
+      log.info(`[auth] Plex login: ${user.username} (id=${user.id})`)
 
       return new Response(
         JSON.stringify({
@@ -306,6 +282,8 @@ export async function handleAuthRoutes(
             avatarUrl: user.avatarUrl,
             isAdmin: user.isAdmin,
             provider: 'plex',
+            roomCode,
+            inviteCode,
           },
         }),
         { status: 200, headers }
@@ -319,194 +297,8 @@ export async function handleAuthRoutes(
     }
   }
 
-  // ── POST /api/auth/jellyfin ──────────────────────────────────────────────
-  if (pathname === '/api/auth/jellyfin' && req.method === 'POST') {
-    if (!isJellyfinConfigured()) {
-      return new Response(
-        JSON.stringify({ error: 'Jellyfin is not configured.' }),
-        { status: 400, headers: makeJson(req) }
-      )
-    }
-
-    const ip = getClientIp(req)
-    if (!loginRateLimiter.check(ip)) {
-      return new Response(
-        JSON.stringify({ error: 'Too many attempts. Please wait.' }),
-        { status: 429, headers: makeJson(req) }
-      )
-    }
-
-    try {
-      const body = await req.json<{ username?: string; password?: string }>()
-      const username = String(body?.username ?? '').trim()
-      const password = String(body?.password ?? '')
-
-      if (!username) {
-        return new Response(
-          JSON.stringify({ error: 'Username is required.' }),
-          { status: 400, headers: makeJson(req) }
-        )
-      }
-
-      const jellyfinUser = await authenticateJellyfinUser(
-        getJellyfinUrl(),
-        username,
-        password
-      )
-
-      const user = upsertUser({
-        provider: 'jellyfin',
-        providerUserId: jellyfinUser.id,
-        username: jellyfinUser.username,
-        email: '',
-        avatarUrl: jellyfinUser.avatarUrl,
-      })
-
-      const sessionToken = createUserSession({
-        userId: user.id,
-        provider: user.provider,
-        providerUserId: user.providerUserId,
-        username: user.username,
-        avatarUrl: user.avatarUrl,
-        isAdmin: user.isAdmin,
-      })
-
-      const headers = makeJson(req)
-      setUserSessionCookie(headers, sessionToken, req)
-
-      log.info(`[auth] Jellyfin login: ${user.username} (admin=${user.isAdmin})`)
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          user: {
-            id: user.id,
-            username: user.username,
-            avatarUrl: user.avatarUrl,
-            isAdmin: user.isAdmin,
-            provider: 'jellyfin',
-          },
-        }),
-        { status: 200, headers }
-      )
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Authentication failed.'
-      log.warn(`[auth] Jellyfin login failed: ${message}`)
-      return new Response(
-        JSON.stringify({ error: message }),
-        { status: 401, headers: makeJson(req) }
-      )
-    }
-  }
-
-  // ── POST /api/auth/emby ──────────────────────────────────────────────────
-  if (pathname === '/api/auth/emby' && req.method === 'POST') {
-    if (!isEmbyConfigured()) {
-      return new Response(
-        JSON.stringify({ error: 'Emby is not configured.' }),
-        { status: 400, headers: makeJson(req) }
-      )
-    }
-
-    const ip = getClientIp(req)
-    if (!loginRateLimiter.check(ip)) {
-      return new Response(
-        JSON.stringify({ error: 'Too many attempts. Please wait.' }),
-        { status: 429, headers: makeJson(req) }
-      )
-    }
-
-    try {
-      const body = await req.json<{ username?: string; password?: string }>()
-      const username = String(body?.username ?? '').trim()
-      const password = String(body?.password ?? '')
-
-      if (!username) {
-        return new Response(
-          JSON.stringify({ error: 'Username is required.' }),
-          { status: 400, headers: makeJson(req) }
-        )
-      }
-
-      const embyUser = await authenticateEmbyUser(
-        getEmbyUrl(),
-        username,
-        password
-      )
-
-      const user = upsertUser({
-        provider: 'emby',
-        providerUserId: embyUser.id,
-        username: embyUser.username,
-        email: '',
-        avatarUrl: embyUser.avatarUrl,
-      })
-
-      const sessionToken = createUserSession({
-        userId: user.id,
-        provider: user.provider,
-        providerUserId: user.providerUserId,
-        username: user.username,
-        avatarUrl: user.avatarUrl,
-        isAdmin: user.isAdmin,
-      })
-
-      const headers = makeJson(req)
-      setUserSessionCookie(headers, sessionToken, req)
-
-      log.info(`[auth] Emby login: ${user.username} (admin=${user.isAdmin})`)
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          user: {
-            id: user.id,
-            username: user.username,
-            avatarUrl: user.avatarUrl,
-            isAdmin: user.isAdmin,
-            provider: 'emby',
-          },
-        }),
-        { status: 200, headers }
-      )
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Authentication failed.'
-      log.warn(`[auth] Emby login failed: ${message}`)
-      return new Response(
-        JSON.stringify({ error: message }),
-        { status: 401, headers: makeJson(req) }
-      )
-    }
-  }
-
-  // ── POST /api/auth/guest ─────────────────────────────────────────────────
-  // Create or resume an anonymous guest session.
-  // Body: { guestToken?: string }
-  // Returns: { guestToken, roomCode, name }
-  // Guest sessions are ephemeral — no DB record is created.
-  // The client stores guestToken in localStorage; clearing it loses the session.
-  if (pathname === '/api/auth/guest' && req.method === 'POST') {
-    let body: { guestToken?: string } = {}
-    try { body = await req.json() } catch { /* ignore — empty body is fine */ }
-
-    const provided = String(body?.guestToken || '').replace(/[^a-f0-9]/gi, '')
-    // Require at least 8 hex chars to accept as a valid existing token
-    const token = provided.length >= 8 ? provided : crypto.randomUUID().replace(/-/g, '')
-
-    // Derive a deterministic 4-char room code from the token.
-    // Uses the first 4 hex chars (uppercase), guaranteed [0-9A-F] ⊂ [0-9A-Z].
-    const roomCode = token.slice(0, 4).toUpperCase()
-
-    return new Response(
-      JSON.stringify({ guestToken: token, roomCode, name: 'Guest' }),
-      { status: 200, headers: makeJson(req) }
-    )
-  }
-
   // ── GET /api/auth/avatar ─────────────────────────────────────────────────
-  // Proxy an avatar image from an allowed media-server origin so the browser
-  // can load it without CSP violations (img-src 'self' only).
-  // Query param: url (URL-encoded absolute avatar URL from Plex/Jellyfin/Emby)
+  // Proxy avatar images from allowed origins to avoid CSP violations.
   if (pathname === '/api/auth/avatar' && req.method === 'GET') {
     const rawUrl = new URL(req.url).searchParams.get('url') || ''
     if (!rawUrl) {
@@ -520,27 +312,18 @@ export async function handleAuthRoutes(
       return new Response('Invalid url parameter', { status: 400 })
     }
 
-    // Only proxy from configured media server origins to prevent SSRF abuse.
-    const allowedOrigins: string[] = []
+    // Always allow plex.tv and its CDN subdomains for Plex user avatars.
+    const allowedOrigins: string[] = [
+      'https://plex.tv',
+      'https://www.gravatar.com',
+      'https://metadata.provider.plex.tv',
+    ]
     const plexUrl = getPlexUrl()
-    const embyUrl = getEmbyUrl()
-    const jellyfinUrl = getJellyfinUrl()
     if (plexUrl) {
       try { allowedOrigins.push(new URL(plexUrl).origin) } catch { /* ignore */ }
-      // Plex user avatars are hosted on plex.tv and its CDN subdomains
-      allowedOrigins.push('https://plex.tv')
-      allowedOrigins.push('https://www.gravatar.com')
-      allowedOrigins.push('https://metadata.provider.plex.tv')
-    }
-    if (embyUrl) {
-      try { allowedOrigins.push(new URL(embyUrl).origin) } catch { /* ignore */ }
-    }
-    if (jellyfinUrl) {
-      try { allowedOrigins.push(new URL(jellyfinUrl).origin) } catch { /* ignore */ }
     }
 
     const targetOrigin = targetUrl.origin
-    // Allow exact origin match OR any subdomain of an allowed origin
     const originAllowed = allowedOrigins.some(o => {
       if (targetOrigin === o) return true
       const domain = o.replace(/^https?:\/\//, '')
@@ -562,7 +345,6 @@ export async function handleAuthRoutes(
       }
 
       const contentType = upstream.headers.get('content-type') || 'image/jpeg'
-      // Only proxy image content types
       if (!contentType.startsWith('image/')) {
         return new Response('Not an image', { status: 415 })
       }
