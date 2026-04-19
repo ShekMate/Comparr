@@ -433,11 +433,31 @@ function updateContentRatingButton(selectedRatings) {
 }
 
 function cloneFilterStateValue(value) {
+  if (!value || typeof value !== 'object') {
+    return createDefaultSwipeFilterState()
+  }
   return JSON.parse(JSON.stringify(value))
 }
 
+function createDefaultSwipeFilterState() {
+  return {
+    yearRange: { min: DEFAULT_YEAR_MIN, max: new Date().getFullYear() },
+    genres: [],
+    contentRatings: [],
+    availability: getDefaultAvailabilityState(),
+    showPlexOnly: false,
+    languages: [...DEFAULT_LANGUAGES],
+    countries: [],
+    imdbRating: 0.0,
+    tmdbRating: 0.0,
+    runtimeRange: { min: 0, max: 300 },
+    voteCount: DEFAULT_VOTE_COUNT,
+    sortBy: 'popularity.desc',
+  }
+}
+
 function normalizeFilterStateForDefaults(raw) {
-  if (!raw || typeof raw !== 'object') return null
+  if (!raw || typeof raw !== 'object') return createDefaultSwipeFilterState()
 
   const currentYear = new Date().getFullYear()
   const normalized = {
@@ -2286,6 +2306,9 @@ async function hydrateSettingsForm({ _retryCount = 0 } = {}) {
     const res = await fetch('/api/settings', {
       headers: { ...getAdminHeaders() },
     })
+    if (res.status === 401) {
+      return false
+    }
     if (!res.ok) {
       throw new Error(`Settings fetch failed: ${res.status}`)
     }
@@ -2808,6 +2831,9 @@ function createFirstRunGuideModal() {
   }
 
   const saveDefaultsFromWizard = () => {
+    if (swipeFilterMode !== 'defaults' || !window.filterState) {
+      enterDefaultsInWizard()
+    }
     if (swipeFilterMode !== 'defaults' || !window.filterState) {
       setWizardStatus(
         'Defaults editor is not ready yet. Please try again.',
@@ -4053,6 +4079,12 @@ async function setupSettingsUI() {
   updateAdminOnlySettingsVisibility()
   bindSettingsAccessGuards()
 
+  // During pre-login screens (normal startup after setup is complete), /api/settings
+  // requires user auth and returns 401. Defer hydration until after login.
+  if (window.SETUP_WIZARD_COMPLETED && !window.COMPARR_USER) {
+    return
+  }
+
   await hydrateSettingsUiIfAuthorized()
 }
 
@@ -4717,7 +4749,7 @@ async function login(api) {
     if (!sidebarUser) return
 
     if (!user) {
-      sidebarUser.style.display = 'none'
+      sidebarUser.hidden = true
       return
     }
 
@@ -4735,12 +4767,12 @@ async function login(api) {
           user.avatarUrl
         )}`
         avatarEl.alt = user.username || ''
-        avatarEl.style.display = ''
+        avatarEl.hidden = false
         avatarEl.onerror = () => {
-          avatarEl.style.display = 'none'
+          avatarEl.hidden = true
         }
       } else {
-        avatarEl.style.display = 'none'
+        avatarEl.hidden = true
       }
     }
 
@@ -4757,7 +4789,7 @@ async function login(api) {
       }
     }
 
-    sidebarUser.style.display = 'flex'
+    sidebarUser.hidden = false
   }
 
   if (currentUser) updateSidebarUser(currentUser)
@@ -6505,6 +6537,7 @@ const main = async () => {
 
   document.body.classList.add('is-logged-in')
   document.body.dataset.appMode = appMode
+  await hydrateSettingsUiIfAuthorized()
 
   sessionStorage.setItem('userName', userName)
   sessionStorage.setItem('roomCode', roomCode)
@@ -7956,21 +7989,7 @@ const main = async () => {
   const savedSwipeDefaults = loadSavedSwipeFilterDefaults()
 
   // Filter state - consolidated into one declaration
-  const filterState = savedSwipeDefaults || {
-    yearRange: { min: DEFAULT_YEAR_MIN, max: new Date().getFullYear() },
-    genres: [],
-    contentRatings: [],
-    availability: getDefaultAvailabilityState(),
-    showPlexOnly: false,
-    languages: [...DEFAULT_LANGUAGES],
-    countries: [],
-    imdbRating: 0.0,
-    tmdbRating: 0.0,
-    runtimeRange: { min: 0, max: 300 },
-    voteCount: DEFAULT_VOTE_COUNT,
-    sortBy: 'popularity.desc',
-    // rtRating: 0 //COMMENTED OUT
-  }
+  const filterState = savedSwipeDefaults || createDefaultSwipeFilterState()
 
   filterState.availability = normalizeAvailabilityState(
     filterState.availability
