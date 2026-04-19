@@ -2626,6 +2626,47 @@ function createFirstRunGuideModal() {
     adminLoginUser: null,
   }
   const history = []
+  const WIZARD_PROGRESS_STORAGE_KEY = 'comparr-wizard-progress-v1'
+
+  const persistWizardProgress = () => {
+    try {
+      sessionStorage.setItem(
+        WIZARD_PROGRESS_STORAGE_KEY,
+        JSON.stringify({ history, selectedState })
+      )
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  const clearWizardProgress = () => {
+    try {
+      sessionStorage.removeItem(WIZARD_PROGRESS_STORAGE_KEY)
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  const restoreWizardProgress = () => {
+    try {
+      const raw = sessionStorage.getItem(WIZARD_PROGRESS_STORAGE_KEY)
+      if (!raw) return false
+      const parsed = JSON.parse(raw)
+      const restoredHistory = Array.isArray(parsed?.history)
+        ? parsed.history
+        : []
+      const restoredState =
+        parsed?.selectedState && typeof parsed.selectedState === 'object'
+          ? parsed.selectedState
+          : null
+      if (!restoredHistory.length || !restoredState) return false
+      history.splice(0, history.length, ...restoredHistory)
+      Object.assign(selectedState, restoredState)
+      return true
+    } catch {
+      return false
+    }
+  }
 
   const requestFieldIds = {
     requestServiceType: 'first-run-request-service-type',
@@ -2887,6 +2928,7 @@ function createFirstRunGuideModal() {
 
   const renderScreen = screen => {
     if (!body || !copy || !title) return
+    persistWizardProgress()
     setWizardStatus('')
     updateActionButtons(screen)
 
@@ -3372,6 +3414,7 @@ function createFirstRunGuideModal() {
         window.COMPARR_USER = user
         selectedState.adminLoggedIn = true
         selectedState.adminLoginUser = user
+        persistWizardProgress()
         body.textContent = ''
         const msg = document.createElement('p')
         msg.className = 'first-run-guide-instruction'
@@ -3396,6 +3439,7 @@ function createFirstRunGuideModal() {
 
           let pollTimer = null
           let popup = null
+          let popupClosedAt = null
 
           const cleanupPoll = () => {
             if (pollTimer) clearInterval(pollTimer)
@@ -3407,7 +3451,7 @@ function createFirstRunGuideModal() {
             const { pinId, authUrl } = await api.requestPlexPin()
             popup = window.open(
               authUrl,
-              'plex-auth',
+              `plex-auth-${Date.now()}`,
               'width=800,height=700,left=100,top=100'
             )
 
@@ -3440,9 +3484,18 @@ function createFirstRunGuideModal() {
                         ? result.error || 'Access denied.'
                         : 'Plex login expired. Please try again.'
                 } else if (popup.closed) {
-                  cleanupPoll()
-                  plexBtn.disabled = false
-                  if (plexStatus) plexStatus.textContent = 'Login cancelled.'
+                  // Popup was closed by the user without completing auth.
+                  // Give a short grace period in case the success poll is in flight.
+                  if (!popupClosedAt) {
+                    popupClosedAt = Date.now()
+                    if (plexStatus)
+                      plexStatus.textContent = 'Verifying login…'
+                  }
+                  if (Date.now() - popupClosedAt >= 4000) {
+                    cleanupPoll()
+                    plexBtn.disabled = false
+                    if (plexStatus) plexStatus.textContent = 'Login cancelled.'
+                  }
                 }
               } catch {
                 /* ignore transient poll errors */
@@ -3747,13 +3800,40 @@ function createFirstRunGuideModal() {
       }
       const userAuthEnabled =
         window.USER_AUTH_ENABLED === true || window.USER_AUTH_ENABLED === 'true'
-      if (userAuthEnabled) return { type: 'admin-login' }
+      if (userAuthEnabled) {
+        try {
+          const { user } = await api.getAuthUser()
+          if (user) {
+            selectedState.adminLoggedIn = true
+            selectedState.adminLoginUser = user
+            window.COMPARR_USER = user
+            return selectedState.flow === 'combined'
+              ? { type: 'tmdb' }
+              : { type: 'setup-complete' }
+          }
+        } catch {
+          // no auth session yet
+        }
+        return { type: 'admin-login' }
+      }
       return selectedState.flow === 'combined'
         ? { type: 'tmdb' }
         : { type: 'setup-complete' }
     }
 
     if (current.type === 'admin-login') {
+      if (!selectedState.adminLoggedIn) {
+        try {
+          const { user } = await api.getAuthUser()
+          if (user) {
+            selectedState.adminLoggedIn = true
+            selectedState.adminLoginUser = user
+            window.COMPARR_USER = user
+          }
+        } catch {
+          // no auth session yet
+        }
+      }
       if (!selectedState.adminLoggedIn) {
         setWizardStatus('Please sign in to continue.', 'error')
         return null
@@ -3893,6 +3973,7 @@ function createFirstRunGuideModal() {
         const adminSuccess = await hydrateSettingsForm()
         settingsHydratedWithAdminAccess = Boolean(adminSuccess)
       }
+      clearWizardProgress()
       document.dispatchEvent(new CustomEvent('comparr:source-config-updated'))
       return { type: 'complete' }
     }
@@ -3962,6 +4043,11 @@ function createFirstRunGuideModal() {
       document.getElementById('setting-access-password')?.value || ''
     selectedState.security.adminPassword = ''
 
+    if (restoreWizardProgress()) {
+      renderScreen(history[history.length - 1])
+      return
+    }
+
     // Skip security screen entirely when both passwords are already configured.
     // The user can change them via the Settings tab.
     const initial =
@@ -3977,6 +4063,7 @@ function createFirstRunGuideModal() {
       const next = await getNextScreen()
       if (!next || next.type === 'complete') return
       history.push(next)
+      persistWizardProgress()
       renderScreen(next)
     })
   })
@@ -3994,6 +4081,7 @@ function createFirstRunGuideModal() {
       selectedState.adminLoginUser = null
     }
     history.pop()
+    persistWizardProgress()
     renderScreen(history[history.length - 1])
   })
 
@@ -4003,6 +4091,7 @@ function createFirstRunGuideModal() {
       if (current?.type === 'security') {
         // Skip means advance without making any changes — no save needed
         history.push({ type: 'flow' })
+        persistWizardProgress()
         renderScreen({ type: 'flow' })
         return
       }
@@ -4018,6 +4107,7 @@ function createFirstRunGuideModal() {
       persistRequestInputs()
       await loadClientConfig().catch(() => {})
       history.push({ type: 'defaults' })
+      persistWizardProgress()
       renderScreen({ type: 'defaults' })
     })
   })
@@ -4783,6 +4873,7 @@ async function login(api) {
             let pinId = null
             let popup = null
             let pollTimer = null
+            let popupClosedAt = null
 
             const cleanupPoll = () => {
               if (pollTimer) clearInterval(pollTimer)
@@ -4795,7 +4886,7 @@ async function login(api) {
               pinId = id
               popup = window.open(
                 authUrl,
-                'plex-auth',
+                `plex-auth-${Date.now()}`,
                 'width=800,height=700,left=100,top=100'
               )
 
@@ -4831,10 +4922,18 @@ async function login(api) {
                           : 'Plex login expired. Please try again.'
                     }
                   } else if (popup.closed) {
-                    cleanupPoll()
-                    plexSigninBtn.disabled = false
-                    if (plexStatus) {
-                      plexStatus.textContent = 'Login cancelled.'
+                    // Popup was closed by the user without completing auth.
+                    // Give a short grace period in case the success poll is in flight.
+                    if (!popupClosedAt) {
+                      popupClosedAt = Date.now()
+                      if (plexStatus) plexStatus.textContent = 'Verifying login…'
+                    }
+                    if (Date.now() - popupClosedAt >= 4000) {
+                      cleanupPoll()
+                      plexSigninBtn.disabled = false
+                      if (plexStatus) {
+                        plexStatus.textContent = 'Login cancelled.'
+                      }
                     }
                   }
                 } catch {
