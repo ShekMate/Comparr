@@ -3439,6 +3439,7 @@ function createFirstRunGuideModal() {
 
           let pollTimer = null
           let popup = null
+          let popupClosedAt = null
 
           const cleanupPoll = () => {
             if (pollTimer) clearInterval(pollTimer)
@@ -3484,9 +3485,17 @@ function createFirstRunGuideModal() {
                         ? result.error || 'Access denied.'
                         : 'Plex login expired. Please try again.'
                 } else if (popup.closed) {
-                  cleanupPoll()
-                  plexBtn.disabled = false
-                  if (plexStatus) plexStatus.textContent = 'Login cancelled.'
+                  // Grace period: the auth token may have just been issued as
+                  // the popup closed (Plex sets the token before showing the
+                  // success page, but our in-flight poll request was sent before
+                  // the user approved). Keep polling for ~6 s after close so
+                  // that one or two more ticks can detect the success.
+                  if (!popupClosedAt) popupClosedAt = Date.now()
+                  if (Date.now() - popupClosedAt >= 6000) {
+                    cleanupPoll()
+                    plexBtn.disabled = false
+                    if (plexStatus) plexStatus.textContent = 'Login cancelled.'
+                  }
                 }
               } catch {
                 /* ignore transient poll errors */
@@ -4851,6 +4860,7 @@ async function login(api) {
             let pinId = null
             let popup = null
             let pollTimer = null
+            let popupClosedAt = null
 
             const cleanupPoll = () => {
               if (pollTimer) clearInterval(pollTimer)
@@ -4900,10 +4910,15 @@ async function login(api) {
                           : 'Plex login expired. Please try again.'
                     }
                   } else if (popup.closed) {
-                    cleanupPoll()
-                    plexSigninBtn.disabled = false
-                    if (plexStatus) {
-                      plexStatus.textContent = 'Login cancelled.'
+                    // Grace period: keep polling for ~6 s after the popup closes
+                    // so a success that arrived just as the window shut is still caught.
+                    if (!popupClosedAt) popupClosedAt = Date.now()
+                    if (Date.now() - popupClosedAt >= 6000) {
+                      cleanupPoll()
+                      plexSigninBtn.disabled = false
+                      if (plexStatus) {
+                        plexStatus.textContent = 'Login cancelled.'
+                      }
                     }
                   }
                 } catch {
