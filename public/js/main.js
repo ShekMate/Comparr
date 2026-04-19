@@ -3406,18 +3406,19 @@ function createFirstRunGuideModal() {
           try {
             const { pinId, authUrl } = await api.requestPlexPin()
             popup = window.open(
-              authUrl,
-              `plex-auth-${Date.now()}`,
+              'about:blank',
+              '_blank',
               'width=800,height=700,left=100,top=100'
             )
 
-            if (!popup || popup === window) {
+            if (!popup || popup === window || popup.closed) {
               if (plexStatus)
                 plexStatus.textContent =
                   'Popup blocked. Please allow popups and try again.'
               plexBtn.disabled = false
               return
             }
+            popup.location.href = authUrl
 
             if (plexStatus)
               plexStatus.textContent = 'Waiting for Plex approval…'
@@ -4808,12 +4809,12 @@ async function login(api) {
               const { pinId: id, authUrl } = await api.requestPlexPin()
               pinId = id
               popup = window.open(
-                authUrl,
-                `plex-auth-${Date.now()}`,
+                'about:blank',
+                '_blank',
                 'width=800,height=700,left=100,top=100'
               )
 
-              if (!popup || popup === window) {
+              if (!popup || popup === window || popup.closed) {
                 if (plexStatus) {
                   plexStatus.textContent =
                     'Popup blocked. Please allow popups and try again.'
@@ -4821,6 +4822,7 @@ async function login(api) {
                 plexSigninBtn.disabled = false
                 return
               }
+              popup.location.href = authUrl
 
               if (plexStatus)
                 plexStatus.textContent = 'Waiting for Plex approval…'
