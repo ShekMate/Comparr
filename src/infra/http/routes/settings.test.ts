@@ -64,7 +64,7 @@ Deno.test(
   async () => {
     Deno.env.delete('ALLOW_REMOTE_BOOTSTRAP')
     const calls = { updates: 0, reset: 0, wizardComplete: 0 }
-    const settings = { SETUP_WIZARD_COMPLETED: 'false', ADMIN_PASSWORD: '' }
+    const settings = { SETUP_WIZARD_COMPLETED: 'false', ACCESS_PASSWORD: '' }
 
     const response = await handleSettingsRoutes(
       makeReq({
@@ -81,15 +81,15 @@ Deno.test(
 )
 
 Deno.test(
-  'setup mode allows admin password write without ALLOW_REMOTE_BOOTSTRAP',
+  'setup mode allows access password write without ALLOW_REMOTE_BOOTSTRAP',
   async () => {
     Deno.env.delete('ALLOW_REMOTE_BOOTSTRAP')
     const calls = { updates: 0, reset: 0, wizardComplete: 0 }
-    const settings = { SETUP_WIZARD_COMPLETED: 'false', ADMIN_PASSWORD: '' }
+    const settings = { SETUP_WIZARD_COMPLETED: 'false', ACCESS_PASSWORD: '' }
 
     const response = await handleSettingsRoutes(
       makeReq({
-        body: JSON.stringify({ settings: { ADMIN_PASSWORD: 'new-secret' } }),
+        body: JSON.stringify({ settings: { ACCESS_PASSWORD: 'new-secret' } }),
       }),
       '/api/settings',
       makeDeps(settings, calls)
@@ -107,7 +107,7 @@ Deno.test(
     const calls = { updates: 0, reset: 0, wizardComplete: 0 }
     const settings = {
       SETUP_WIZARD_COMPLETED: 'true',
-      ADMIN_PASSWORD: 'pbkdf2:sha256:100000:aabbcc:ddeeff',
+      ACCESS_PASSWORD: 'pbkdf2:sha256:100000:aabbcc:ddeeff',
     }
 
     const response = await handleSettingsRoutes(
@@ -129,7 +129,7 @@ Deno.test(
   async () => {
     Deno.env.delete('ALLOW_REMOTE_BOOTSTRAP')
     const calls = { updates: 0, reset: 0, wizardComplete: 0 }
-    const settings = { SETUP_WIZARD_COMPLETED: 'false', ADMIN_PASSWORD: '' }
+    const settings = { SETUP_WIZARD_COMPLETED: 'false', ACCESS_PASSWORD: '' }
 
     const response = await handleSettingsRoutes(
       makeReq({

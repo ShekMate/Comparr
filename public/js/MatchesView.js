@@ -481,8 +481,9 @@ export class MatchesView {
   }
 
   async handleMatchAction(guid, action) {
-    // Remove match from local view
+    // Optimistic UI: remove immediately, but restore if the server rejects.
     const matchIndex = this.matches.findIndex(m => m.movie.guid === guid)
+    const removedMatch = matchIndex !== -1 ? this.matches[matchIndex] : null
     if (matchIndex !== -1) {
       this.matches.splice(matchIndex, 1)
       this.render()
@@ -503,9 +504,17 @@ export class MatchesView {
 
       if (!response.ok) {
         console.error('Failed to process match action')
+        if (removedMatch) {
+          this.matches.splice(matchIndex, 0, removedMatch)
+          this.render()
+        }
       }
     } catch (error) {
       console.error('Error processing match action:', error)
+      if (removedMatch) {
+        this.matches.splice(matchIndex, 0, removedMatch)
+        this.render()
+      }
     }
   }
 
