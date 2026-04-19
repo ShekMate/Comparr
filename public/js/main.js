@@ -3490,7 +3490,11 @@ function createFirstRunGuideModal() {
                   // success page, but our in-flight poll request was sent before
                   // the user approved). Keep polling for ~6 s after close so
                   // that one or two more ticks can detect the success.
-                  if (!popupClosedAt) popupClosedAt = Date.now()
+                  if (!popupClosedAt) {
+                    popupClosedAt = Date.now()
+                    if (plexStatus)
+                      plexStatus.textContent = 'Verifying login…'
+                  }
                   if (Date.now() - popupClosedAt >= 6000) {
                     cleanupPoll()
                     plexBtn.disabled = false
@@ -4912,7 +4916,10 @@ async function login(api) {
                   } else if (popup.closed) {
                     // Grace period: keep polling for ~6 s after the popup closes
                     // so a success that arrived just as the window shut is still caught.
-                    if (!popupClosedAt) popupClosedAt = Date.now()
+                    if (!popupClosedAt) {
+                      popupClosedAt = Date.now()
+                      if (plexStatus) plexStatus.textContent = 'Verifying login…'
+                    }
                     if (Date.now() - popupClosedAt >= 6000) {
                       cleanupPoll()
                       plexSigninBtn.disabled = false
