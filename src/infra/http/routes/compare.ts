@@ -3,18 +3,21 @@ import { addSecurityHeaders } from '../security-headers.ts'
 import { getUserTokenFromCookie } from './auth.ts'
 import { getUserSession } from '../../../core/user-session-store.ts'
 import {
-  getOrCreateUserCode,
-  addConnection,
-  removeConnection,
-  refreshUserCode,
-  getConnections,
-  isValidUserCode,
-  USER_CODE_LENGTH,
-} from '../../../features/session/user-codes.ts'
+  getOrCreateInviteCode,
+  refreshInviteCode,
+  sendFriendRequest,
+  acceptFriendRequest,
+  declineFriendRequest,
+  removeFriendConnection,
+  updateFriendSharing,
+  resolveServerPrompt,
+  getFriendConnections,
+  getUserSettings,
+  upsertUserSettings,
+} from '../../../features/auth/user-db.ts'
+import { getCompareMatches } from '../../../features/session/session.ts'
 
-// Matches the deterministic room code formula used on the frontend:
-//   const userRoomCode = id => `U${String(id).padStart(3, '0')}`
-// Each authenticated user owns a stable personal room keyed to their DB id.
+// Each authenticated user has a deterministic personal room code derived from their DB ID.
 function roomCodeForUser(userId: number): string {
   return `U${String(userId).padStart(3, '0')}`
 }
@@ -25,15 +28,9 @@ const makeJson = (req: CompatRequest) => {
   return h
 }
 
-/** Read the caller's identity from their auth session cookie. */
-function getCallerIdentity(req: CompatRequest): { name: string; roomCode: string } | null {
+function getCallerSession(req: CompatRequest) {
   const token = getUserTokenFromCookie(req)
-  const session = getUserSession(token)
-  if (!session) return null
-  return {
-    name: session.username,
-    roomCode: roomCodeForUser(session.userId),
-  }
+  return token ? getUserSession(token) : null
 }
 
 export async function handleCompareRoutes(
@@ -42,84 +39,42 @@ export async function handleCompareRoutes(
 ): Promise<Response | null> {
 
   // ── GET /api/user/code ──────────────────────────────────────────────────
+  // Returns the user's invite code (creates one if needed).
   if (path === '/api/user/code' && req.method === 'GET') {
-    const caller = getCallerIdentity(req)
-    if (!caller) {
+    const session = getCallerSession(req)
+    if (!session) {
       return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
         status: 401, headers: makeJson(req),
       })
     }
-    const code = await getOrCreateUserCode(caller.name, caller.roomCode)
+    const code = getOrCreateInviteCode(session.userId)
     return new Response(JSON.stringify({ code }), {
       status: 200, headers: makeJson(req),
     })
   }
 
   // ── POST /api/user/refresh ──────────────────────────────────────────────
-  // Returns: { code } — brand-new code, all connections cleared
+  // Generates a new invite code; clears all friend connections.
   if (path === '/api/user/refresh' && req.method === 'POST') {
-    const caller = getCallerIdentity(req)
-    if (!caller) {
+    const session = getCallerSession(req)
+    if (!session) {
       return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
         status: 401, headers: makeJson(req),
       })
     }
-    const code = await refreshUserCode(caller.name, caller.roomCode)
+    const code = refreshInviteCode(session.userId)
     return new Response(JSON.stringify({ code }), {
       status: 200, headers: makeJson(req),
     })
   }
 
   // ── POST /api/matches/add ───────────────────────────────────────────────
+  // Send a friend request by entering the other user's invite code.
+  // Creates a PENDING connection — the recipient must accept.
   // Body: { friendCode }
-  // Returns: { success, friendName }
   if (path === '/api/matches/add' && req.method === 'POST') {
-    const caller = getCallerIdentity(req)
-    if (!caller) {
-      return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
-        status: 401, headers: makeJson(req),
-      })
-    }
-
-    let body: { friendCode?: string } = {}
-    try { body = await req.json() } catch { /* empty body ok */ }
-
-    const friendCode = String(body.friendCode || '')
-      .trim()
-      .toUpperCase()
-      .slice(0, USER_CODE_LENGTH)
-
-    if (!friendCode) {
-      return new Response(JSON.stringify({ error: 'friendCode is required' }), {
-        status: 400, headers: makeJson(req),
-      })
-    }
-
-    if (!isValidUserCode(friendCode)) {
-      return new Response(
-        JSON.stringify({ error: `Friend code must be ${USER_CODE_LENGTH} characters (A-Z or 0-9).` }),
-        { status: 400, headers: makeJson(req) }
-      )
-    }
-
-    const result = await addConnection(caller.name, caller.roomCode, friendCode)
-    if (!result.success) {
-      return new Response(JSON.stringify({ error: result.error }), {
-        status: 404, headers: makeJson(req),
-      })
-    }
-
-    return new Response(
-      JSON.stringify({ success: true, friendName: result.friendName }),
-      { status: 200, headers: makeJson(req) }
-    )
-  }
-
-  // ── DELETE /api/matches/remove-user ────────────────────────────────────
-  // Body: { friendCode }
-  if (path === '/api/matches/remove-user' && req.method === 'DELETE') {
-    const caller = getCallerIdentity(req)
-    if (!caller) {
+    const session = getCallerSession(req)
+    if (!session) {
       return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
         status: 401, headers: makeJson(req),
       })
@@ -135,23 +90,249 @@ export async function handleCompareRoutes(
       })
     }
 
-    await removeConnection(caller.name, friendCode)
+    const result = sendFriendRequest(session.userId, friendCode)
+    if (!result.success) {
+      return new Response(JSON.stringify({ error: result.error }), {
+        status: 404, headers: makeJson(req),
+      })
+    }
+
+    return new Response(
+      JSON.stringify({ success: true, friendName: result.friendName }),
+      { status: 200, headers: makeJson(req) }
+    )
+  }
+
+  // ── POST /api/matches/accept ────────────────────────────────────────────
+  // Accept a pending friend request.
+  // Body: { requesterId, sharesServer }
+  if (path === '/api/matches/accept' && req.method === 'POST') {
+    const session = getCallerSession(req)
+    if (!session) {
+      return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
+        status: 401, headers: makeJson(req),
+      })
+    }
+
+    let body: { requesterId?: number; sharesServer?: boolean } = {}
+    try { body = await req.json() } catch { /* empty body ok */ }
+
+    const requesterId = Number(body.requesterId)
+    if (!requesterId) {
+      return new Response(JSON.stringify({ error: 'requesterId is required' }), {
+        status: 400, headers: makeJson(req),
+      })
+    }
+
+    const result = acceptFriendRequest(session.userId, requesterId, Boolean(body.sharesServer))
+    if (!result.success) {
+      return new Response(JSON.stringify({ error: result.error }), {
+        status: 400, headers: makeJson(req),
+      })
+    }
+
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200, headers: makeJson(req),
+    })
+  }
+
+  // ── POST /api/matches/decline ───────────────────────────────────────────
+  // Decline and remove a pending friend request.
+  // Body: { requesterId }
+  if (path === '/api/matches/decline' && req.method === 'POST') {
+    const session = getCallerSession(req)
+    if (!session) {
+      return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
+        status: 401, headers: makeJson(req),
+      })
+    }
+
+    let body: { requesterId?: number } = {}
+    try { body = await req.json() } catch { /* empty body ok */ }
+
+    const requesterId = Number(body.requesterId)
+    if (!requesterId) {
+      return new Response(JSON.stringify({ error: 'requesterId is required' }), {
+        status: 400, headers: makeJson(req),
+      })
+    }
+
+    declineFriendRequest(session.userId, requesterId)
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200, headers: makeJson(req),
+    })
+  }
+
+  // ── DELETE /api/matches/remove-user ────────────────────────────────────
+  // Remove an accepted friend connection.
+  // Body: { friendUserId }
+  if (path === '/api/matches/remove-user' && req.method === 'DELETE') {
+    const session = getCallerSession(req)
+    if (!session) {
+      return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
+        status: 401, headers: makeJson(req),
+      })
+    }
+
+    let body: { friendUserId?: number } = {}
+    try { body = await req.json() } catch { /* empty body ok */ }
+
+    const friendUserId = Number(body.friendUserId)
+    if (!friendUserId) {
+      return new Response(JSON.stringify({ error: 'friendUserId is required' }), {
+        status: 400, headers: makeJson(req),
+      })
+    }
+
+    removeFriendConnection(session.userId, friendUserId)
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200, headers: makeJson(req),
+    })
+  }
+
+  // ── PUT /api/matches/sharing ────────────────────────────────────────────
+  // Toggle server sharing for a specific friend.
+  // Body: { friendUserId, sharesServer }
+  if (path === '/api/matches/sharing' && req.method === 'PUT') {
+    const session = getCallerSession(req)
+    if (!session) {
+      return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
+        status: 401, headers: makeJson(req),
+      })
+    }
+
+    let body: { friendUserId?: number; sharesServer?: boolean } = {}
+    try { body = await req.json() } catch { /* empty body ok */ }
+
+    const friendUserId = Number(body.friendUserId)
+    if (!friendUserId) {
+      return new Response(JSON.stringify({ error: 'friendUserId is required' }), {
+        status: 400, headers: makeJson(req),
+      })
+    }
+
+    updateFriendSharing(session.userId, friendUserId, Boolean(body.sharesServer))
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200, headers: makeJson(req),
+    })
+  }
+
+  // ── POST /api/matches/resolve-server-prompt ─────────────────────────────
+  // Dismiss the server-sharing consent prompt (accept or decline).
+  // Body: { friendUserId, acceptsServer }
+  if (path === '/api/matches/resolve-server-prompt' && req.method === 'POST') {
+    const session = getCallerSession(req)
+    if (!session) {
+      return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
+        status: 401, headers: makeJson(req),
+      })
+    }
+
+    let body: { friendUserId?: number; acceptsServer?: boolean } = {}
+    try { body = await req.json() } catch { /* empty body ok */ }
+
+    const friendUserId = Number(body.friendUserId)
+    if (!friendUserId) {
+      return new Response(JSON.stringify({ error: 'friendUserId is required' }), {
+        status: 400, headers: makeJson(req),
+      })
+    }
+
+    resolveServerPrompt(session.userId, friendUserId, Boolean(body.acceptsServer))
     return new Response(JSON.stringify({ success: true }), {
       status: 200, headers: makeJson(req),
     })
   }
 
   // ── GET /api/matches/connections ────────────────────────────────────────
+  // Returns all friend connections (pending + accepted) with matches for accepted ones.
   if (path === '/api/matches/connections' && req.method === 'GET') {
-    const caller = getCallerIdentity(req)
-    if (!caller) {
+    const session = getCallerSession(req)
+    if (!session) {
       return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
         status: 401, headers: makeJson(req),
       })
     }
 
-    const connections = await getConnections(caller.name, caller.roomCode)
-    return new Response(JSON.stringify({ connections }), {
+    const myRoomCode = roomCodeForUser(session.userId)
+    const connections = getFriendConnections(session.userId)
+
+    const result = connections.map(conn => {
+      const friendRoomCode = roomCodeForUser(conn.friendUserId)
+      const matches = conn.status === 'accepted'
+        ? getCompareMatches(myRoomCode, session.username, friendRoomCode, conn.friendUsername)
+        : []
+
+      // Whether friend is sharing their server with me (look at FRIEND's row)
+      const friendConnections = getFriendConnections(conn.friendUserId)
+      const friendRow = friendConnections.find(fc => fc.friendUserId === session.userId)
+      const friendSharesServerWithMe = friendRow?.sharesServer ?? false
+
+      return {
+        friendUserId: conn.friendUserId,
+        friendName: conn.friendUsername,
+        friendInviteCode: conn.friendInviteCode,
+        status: conn.status,
+        sharesServer: conn.sharesServer,
+        friendSharesServerWithMe,
+        serverPromptPending: conn.serverPromptPending,
+        matches,
+      }
+    })
+
+    return new Response(JSON.stringify({ connections: result }), {
+      status: 200, headers: makeJson(req),
+    })
+  }
+
+  // ── GET /api/profile/settings ───────────────────────────────────────────
+  // Returns the authenticated user's personal server settings.
+  if (path === '/api/profile/settings' && req.method === 'GET') {
+    const session = getCallerSession(req)
+    if (!session) {
+      return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
+        status: 401, headers: makeJson(req),
+      })
+    }
+
+    const settings = getUserSettings(session.userId)
+    const inviteCode = getOrCreateInviteCode(session.userId)
+    return new Response(JSON.stringify({ settings: settings ?? {}, inviteCode }), {
+      status: 200, headers: makeJson(req),
+    })
+  }
+
+  // ── PUT /api/profile/settings ───────────────────────────────────────────
+  // Updates the authenticated user's personal server settings.
+  if (path === '/api/profile/settings' && req.method === 'PUT') {
+    const session = getCallerSession(req)
+    if (!session) {
+      return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
+        status: 401, headers: makeJson(req),
+      })
+    }
+
+    let body: Record<string, unknown> = {}
+    try { body = await req.json() } catch { /* empty body ok */ }
+
+    upsertUserSettings(session.userId, {
+      plexUrl: typeof body.plexUrl === 'string' ? body.plexUrl.trim() : undefined,
+      plexToken: typeof body.plexToken === 'string' ? body.plexToken.trim() : undefined,
+      plexLibraryName: typeof body.plexLibraryName === 'string' ? body.plexLibraryName.trim() : undefined,
+      embyUrl: typeof body.embyUrl === 'string' ? body.embyUrl.trim() : undefined,
+      embyApiKey: typeof body.embyApiKey === 'string' ? body.embyApiKey.trim() : undefined,
+      embyLibraryName: typeof body.embyLibraryName === 'string' ? body.embyLibraryName.trim() : undefined,
+      jellyfinUrl: typeof body.jellyfinUrl === 'string' ? body.jellyfinUrl.trim() : undefined,
+      jellyfinApiKey: typeof body.jellyfinApiKey === 'string' ? body.jellyfinApiKey.trim() : undefined,
+      jellyfinLibraryName: typeof body.jellyfinLibraryName === 'string' ? body.jellyfinLibraryName.trim() : undefined,
+      radarrUrl: typeof body.radarrUrl === 'string' ? body.radarrUrl.trim() : undefined,
+      radarrApiKey: typeof body.radarrApiKey === 'string' ? body.radarrApiKey.trim() : undefined,
+      seerrUrl: typeof body.seerrUrl === 'string' ? body.seerrUrl.trim() : undefined,
+      seerrApiKey: typeof body.seerrApiKey === 'string' ? body.seerrApiKey.trim() : undefined,
+      defaultFilters: typeof body.defaultFilters === 'string' ? body.defaultFilters : undefined,
+    })
+
+    return new Response(JSON.stringify({ success: true }), {
       status: 200, headers: makeJson(req),
     })
   }

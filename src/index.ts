@@ -20,7 +20,6 @@ import {
   getPort,
   getMaxBodySize,
   getAccessPassword,
-  isUserAuthEnabled,
 } from './core/config.ts'
 import { getDataDir } from './core/env.ts'
 import { getSettings, updateSettings, resetSettings } from './core/settings.ts'
@@ -123,15 +122,11 @@ const EXEMPT_GLOBAL_ACCESS_PASSWORD_PATHS = new Set([
   '/api/health',
 ])
 
-// Paths that bypass the user-auth gate entirely (auth endpoints themselves,
-// plus the paths that must work before login).
+// Paths that bypass the user-auth gate (auth endpoints + pre-login essentials).
 const EXEMPT_USER_AUTH_PATHS = new Set([
   '/api/auth/providers',
   '/api/auth/me',
   '/api/auth/logout',
-  '/api/auth/plex/pin',
-  '/api/auth/jellyfin',
-  '/api/auth/emby',
   '/api/access-password/verify',
   '/api/access-password/status',
   '/api/settings-access',
@@ -464,14 +459,13 @@ for await (const req of server) {
       continue
     }
 
-    // User auth gate: if enabled, require a valid user session for API calls.
+    // User auth gate: always required after first-run setup is done.
     // Auth endpoints and access-password paths are exempt so login can proceed.
     if (
       p.startsWith('/api/') &&
-      isUserAuthEnabled() &&
       !isSetupWizardActive() &&
       !EXEMPT_USER_AUTH_PATHS.has(p) &&
-      // Allow Plex pin polling paths (/api/auth/plex/pin/:id)
+      // Allow all /api/auth/* paths (PIN polling, logout, avatar proxy, etc.)
       !p.startsWith('/api/auth/')
     ) {
       const userToken = getUserTokenFromCookie(req)

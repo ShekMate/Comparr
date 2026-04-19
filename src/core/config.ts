@@ -102,8 +102,6 @@ export const getAllowedOrigins = () =>
     .split(',')
     .map(value => value.trim().toLowerCase())
     .filter(Boolean)
-export const isUserAuthEnabled = () =>
-  getSettingTrimmed('USER_AUTH_ENABLED')?.toLowerCase() === 'true'
 export const isPlexRestrictedToServer = () =>
   getSettingTrimmed('PLEX_RESTRICT_TO_SERVER')?.toLowerCase() === 'true'
 export const getPlexClientId = () => getSettingTrimmed('PLEX_CLIENT_ID') ?? ''

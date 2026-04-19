@@ -667,6 +667,10 @@ function initTabs() {
       if (typeof window.initCompareTab === 'function') {
         window.initCompareTab()
       }
+    } else if (tabId === 'tab-settings') {
+      if (typeof window.initSettingsTab === 'function') {
+        window.initSettingsTab()
+      }
     } else if (tabId === 'tab-stats') {
       if (typeof window.refreshStatsTab === 'function') {
         window.refreshStatsTab()
@@ -4796,263 +4800,119 @@ async function login(api) {
   }
 
   // ── User auth step ────────────────────────────────────────────────────────
-  // Fetch provider config and current user. If user auth is enabled and the
-  // user is not yet signed in, show the auth screen and wait for them to log in.
-  let authConfig = { providers: [], userAuthEnabled: false }
+  // Plex login is always required. Check for an existing session first.
   try {
-    authConfig = await api.getAuthProviders()
+    const { user } = await api.getAuthUser()
+    if (user) {
+      currentUser = user
+      window.COMPARR_USER = user
+    }
   } catch {
-    // ignore — fall through without user auth
+    // no session
   }
 
-  if (authConfig.userAuthEnabled) {
-    // Check if user already has a valid session
-    try {
-      const { user } = await api.getAuthUser()
-      if (user) {
+  if (!currentUser) {
+    // Show Plex-only login screen
+    if (userAuthForm) userAuthForm.style.display = 'flex'
+    if (userAuthPlex) userAuthPlex.style.display = 'flex'
+
+    await new Promise(resolve => {
+      const handleUserLoggedIn = user => {
         currentUser = user
         window.COMPARR_USER = user
+        resolve()
       }
-    } catch {
-      // no session
-    }
 
-    if (!currentUser) {
-      // Show user auth screen and wire up providers
-      if (userAuthForm) userAuthForm.style.display = 'flex'
+      // ── Plex PIN flow ────────────────────────────────────────────────────
+      if (plexSigninBtn) {
+        plexSigninBtn.addEventListener('click', async () => {
+          plexSigninBtn.disabled = true
+          if (plexStatus) {
+            plexStatus.textContent = 'Opening Plex login…'
+            plexStatus.hidden = false
+          }
 
-      const providers = authConfig.providers || []
-      const hasPlex = providers.some(p => p.id === 'plex')
-      const hasJellyfin = providers.some(p => p.id === 'jellyfin')
-      const hasEmby = providers.some(p => p.id === 'emby')
+          let pinId = null
+          let popup = null
+          let pollTimer = null
+          let popupClosedAt = null
 
-      if (userAuthPlex && hasPlex) userAuthPlex.style.display = 'flex'
-      if (userAuthJellyfin && hasJellyfin)
-        userAuthJellyfin.style.display = 'flex'
-      if (userAuthEmby && hasEmby) userAuthEmby.style.display = 'flex'
+          const cleanupPoll = () => {
+            if (pollTimer) clearInterval(pollTimer)
+            pollTimer = null
+            if (popup && !popup.closed) popup.close()
+          }
 
-      // Wait for the user to authenticate OR choose to continue as guest
-      await new Promise(resolve => {
-        const handleUserLoggedIn = user => {
-          currentUser = user
-          window.COMPARR_USER = user
-          resolve()
-        }
+          try {
+            const { pinId: id, authUrl } = await api.requestPlexPin()
+            pinId = id
+            popup = window.open(
+              'about:blank',
+              '_blank',
+              'width=800,height=700,left=100,top=100'
+            )
 
-        // Guest bypass — skip media server login entirely
-        const guestBtn = document.querySelector('.js-user-auth-guest-btn')
-        if (guestBtn) {
-          guestBtn.addEventListener(
-            'click',
-            () => {
-              isGuest = true
-              resolve()
-            },
-            { once: true }
-          )
-        }
-
-        // ── Plex PIN flow ──────────────────────────────────────────────────
-        if (plexSigninBtn && hasPlex) {
-          plexSigninBtn.addEventListener('click', async () => {
-            plexSigninBtn.disabled = true
-            if (plexStatus) {
-              plexStatus.textContent = 'Opening Plex login…'
-              plexStatus.hidden = false
-            }
-
-            let pinId = null
-            let popup = null
-            let pollTimer = null
-            let popupClosedAt = null
-
-            const cleanupPoll = () => {
-              if (pollTimer) clearInterval(pollTimer)
-              pollTimer = null
-              if (popup && !popup.closed) popup.close()
-            }
-
-            try {
-              const { pinId: id, authUrl } = await api.requestPlexPin()
-              pinId = id
-              popup = window.open(
-                'about:blank',
-                '_blank',
-                'width=800,height=700,left=100,top=100'
-              )
-
-              if (!popup || popup === window || popup.closed) {
-                if (plexStatus) {
-                  plexStatus.textContent =
-                    'Popup blocked. Please allow popups and try again.'
-                }
-                plexSigninBtn.disabled = false
-                return
+            if (!popup || popup === window || popup.closed) {
+              if (plexStatus) {
+                plexStatus.textContent =
+                  'Popup blocked. Please allow popups and try again.'
               }
-              popup.location.href = authUrl
+              plexSigninBtn.disabled = false
+              return
+            }
+            popup.location.href = authUrl
 
-              if (plexStatus)
-                plexStatus.textContent = 'Waiting for Plex approval…'
+            if (plexStatus)
+              plexStatus.textContent = 'Waiting for Plex approval…'
 
-              pollTimer = setInterval(async () => {
-                try {
-                  const result = await api.pollPlexPin(pinId)
-                  if (result.status === 'success') {
-                    cleanupPoll()
-                    if (plexStatus) plexStatus.hidden = true
-                    handleUserLoggedIn(result.user)
-                  } else if (
-                    result.status === 'expired' ||
-                    result.status === 'denied'
-                  ) {
+            pollTimer = setInterval(async () => {
+              try {
+                const result = await api.pollPlexPin(pinId)
+                if (result.status === 'success') {
+                  cleanupPoll()
+                  if (plexStatus) plexStatus.hidden = true
+                  handleUserLoggedIn(result.user)
+                } else if (
+                  result.status === 'expired' ||
+                  result.status === 'denied'
+                ) {
+                  cleanupPoll()
+                  plexSigninBtn.disabled = false
+                  if (plexStatus) {
+                    plexStatus.textContent =
+                      result.status === 'denied'
+                        ? result.error || 'Access denied.'
+                        : 'Plex login expired. Please try again.'
+                  }
+                } else if (popup.closed) {
+                  if (!popupClosedAt) {
+                    popupClosedAt = Date.now()
+                    if (plexStatus) plexStatus.textContent = 'Verifying login…'
+                  }
+                  if (Date.now() - popupClosedAt >= 6000) {
                     cleanupPoll()
                     plexSigninBtn.disabled = false
                     if (plexStatus) {
-                      plexStatus.textContent =
-                        result.status === 'denied'
-                          ? result.error || 'Access denied.'
-                          : 'Plex login expired. Please try again.'
-                    }
-                  } else if (popup.closed) {
-                    // Grace period: keep polling for ~6 s after the popup closes
-                    // so a success that arrived just as the window shut is still caught.
-                    if (!popupClosedAt) {
-                      popupClosedAt = Date.now()
-                      if (plexStatus) plexStatus.textContent = 'Verifying login…'
-                    }
-                    if (Date.now() - popupClosedAt >= 6000) {
-                      cleanupPoll()
-                      plexSigninBtn.disabled = false
-                      if (plexStatus) {
-                        plexStatus.textContent = 'Login cancelled.'
-                      }
+                      plexStatus.textContent = 'Login cancelled.'
                     }
                   }
-                } catch {
-                  // ignore transient poll errors
                 }
-              }, 2000)
-            } catch (err) {
-              cleanupPoll()
-              plexSigninBtn.disabled = false
-              if (plexStatus) {
-                plexStatus.textContent =
-                  err.message || 'Could not start Plex login.'
+              } catch {
+                // ignore transient poll errors
               }
+            }, 2000)
+          } catch (err) {
+            cleanupPoll()
+            plexSigninBtn.disabled = false
+            if (plexStatus) {
+              plexStatus.textContent =
+                err.message || 'Could not start Plex login.'
             }
-          })
-        }
+          }
+        })
+      }
 
-        // ── Jellyfin / Emby — shared credential modal ─────────────────────
-        let activeProvider = null // 'jellyfin' | 'emby'
-
-        const openCredentialModal = provider => {
-          activeProvider = provider
-          const label = provider === 'jellyfin' ? 'Jellyfin' : 'Emby'
-          if (credentialModalProvider)
-            credentialModalProvider.textContent = `Sign in with ${label}`
-          if (credentialModalStatus) credentialModalStatus.hidden = true
-          if (credentialModalForm) credentialModalForm.reset()
-          if (credentialModal) credentialModal.hidden = false
-          // Focus username field
-          credentialModalForm?.querySelector('input[name="username"]')?.focus()
-        }
-
-        const closeCredentialModal = () => {
-          if (credentialModal) credentialModal.hidden = true
-          activeProvider = null
-          if (jellyfinSigninBtn) jellyfinSigninBtn.disabled = false
-          if (embySigninBtn) embySigninBtn.disabled = false
-        }
-
-        if (credentialModalClose) {
-          credentialModalClose.addEventListener('click', closeCredentialModal)
-        }
-
-        // Close on backdrop click
-        if (credentialModal) {
-          credentialModal.addEventListener('click', e => {
-            if (e.target === credentialModal) closeCredentialModal()
-          })
-        }
-
-        // Close on Escape
-        document.addEventListener(
-          'keydown',
-          e => {
-            if (
-              e.key === 'Escape' &&
-              credentialModal &&
-              !credentialModal.hidden
-            ) {
-              closeCredentialModal()
-            }
-          },
-          { once: false }
-        )
-
-        if (jellyfinSigninBtn && hasJellyfin) {
-          jellyfinSigninBtn.addEventListener('click', () => {
-            jellyfinSigninBtn.disabled = true
-            openCredentialModal('jellyfin')
-          })
-        }
-
-        if (embySigninBtn && hasEmby) {
-          embySigninBtn.addEventListener('click', () => {
-            embySigninBtn.disabled = true
-            openCredentialModal('emby')
-          })
-        }
-
-        if (credentialModalForm) {
-          credentialModalForm.addEventListener('submit', async e => {
-            e.preventDefault()
-            const fd = new FormData(credentialModalForm)
-            const username = String(fd.get('username') || '').trim()
-            const password = String(fd.get('password') || '')
-            if (!username) {
-              credentialModalForm
-                .querySelector('input[name="username"]')
-                ?.focus()
-              return
-            }
-
-            const submitBtn = credentialModalForm.querySelector(
-              'button[type="submit"]'
-            )
-            if (submitBtn) submitBtn.disabled = true
-            if (credentialModalStatus) credentialModalStatus.hidden = true
-
-            try {
-              let user
-              if (activeProvider === 'jellyfin') {
-                ;({ user } = await api.loginWithJellyfin(username, password))
-              } else {
-                ;({ user } = await api.loginWithEmby(username, password))
-              }
-              closeCredentialModal()
-              handleUserLoggedIn(user)
-            } catch (err) {
-              if (credentialModalStatus) {
-                credentialModalStatus.textContent =
-                  err.message || 'Login failed.'
-                credentialModalStatus.hidden = false
-              }
-              if (submitBtn) submitBtn.disabled = false
-
-              // Also surface error on the provider's status element
-              const providerStatus =
-                activeProvider === 'jellyfin' ? jellyfinStatus : embyStatus
-              if (providerStatus) {
-                providerStatus.textContent = err.message || 'Login failed.'
-                providerStatus.hidden = false
-              }
-            }
-          })
-        }
-      })
-    }
+    })
   }
 
   // Update sidebar user indicator when a user identity is available
@@ -5144,39 +5004,13 @@ async function login(api) {
     return { ...loginApiData, user: name, roomCode: code, appMode: 'personal' }
   }
 
-  // ── Auto-login path for authenticated users (Plex / Jellyfin / Emby) ──────
-  if (currentUser && authConfig.userAuthEnabled) {
+  // ── Auto-login: always runs after Plex auth ──────────────────────────────
+  // Room code is deterministic from user ID; returned by the login response.
+  if (currentUser) {
     const name = currentUser.username
-    const code = userRoomCode(currentUser.id)
+    const code = currentUser.roomCode || userRoomCode(currentUser.id)
 
     try {
-      let data
-      try {
-        data = await api.login(name, code, verifiedPassword)
-      } catch (err) {
-        if (err.code !== 'ACTIVE_SESSION_EXISTS') throw err
-        // Auto-takeover own session (same user, same browser or new tab)
-        data = await api.login(name, code, verifiedPassword, true)
-      }
-      return await revealApp(name, code, data)
-    } catch (err) {
-      // If auto-login fails, fall through to manual mode form
-      console.warn(
-        '[auth] Auto-login failed, falling back to manual flow:',
-        err.message
-      )
-    }
-  }
-
-  // ── Auto-login path for guests ────────────────────────────────────────────
-  if (isGuest) {
-    try {
-      const storedToken = localStorage.getItem('comparr_guest_token') || ''
-      const { guestToken, roomCode: code, name } = await api.createGuestSession(
-        storedToken
-      )
-      localStorage.setItem('comparr_guest_token', guestToken)
-
       let data
       try {
         data = await api.login(name, code, verifiedPassword)
@@ -5186,167 +5020,21 @@ async function login(api) {
       }
       return await revealApp(name, code, data)
     } catch (err) {
-      console.warn(
-        '[auth] Guest auto-login failed, falling back to manual flow:',
-        err.message
-      )
+      console.warn('[auth] Auto-login failed:', err.message)
+      // Re-show login screen so user can try again
+      if (userAuthForm) userAuthForm.style.display = 'flex'
+      if (userAuthPlex) userAuthPlex.style.display = 'flex'
+      if (plexStatus) {
+        plexStatus.textContent = 'Connection failed. Please try again.'
+        plexStatus.hidden = false
+      }
     }
   }
 
-  // ── Manual flow (auth disabled, or auto-login failed) ────────────────────
-  // Mode picker removed: always personal mode.
-  selectedMode = 'personal'
-  loginForm.style.display = 'grid'
-
-  // Prefer authenticated user's name; fall back to saved local value
-  const authedName = currentUser?.username || ''
-
-  setRoomMode('join', 'personal')
-  const savedPersonalUser = (
-    authedName ||
-    localStorage.getItem('personalUser') ||
-    localStorage.getItem('user') ||
-    ''
-  ).trim()
-  const savedPersonalCode = normalizeRoomCodeInput(
-    localStorage.getItem('personalRoomCode') || ''
-  )
-  if (savedPersonalUser && loginForm.elements.name) {
-    loginForm.elements.name.value = savedPersonalUser
-  }
-  if (savedPersonalCode && roomCodeInput) {
-    roomCodeInput.value = savedPersonalCode
-  }
-
-  // Generate unique code button
-  generateBtn?.addEventListener('click', async () => {
-    setRoomCodeError('')
-    setLoginError('')
-    try {
-      const code = await api.generateRoomCode()
-      setRoomMode('create', 'personal')
-      setActiveRoomCode(code)
-      syncRoomCodeInputs()
-    } catch (err) {
-      // Server unavailable — generate a code client-side as a fallback
-      const map = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789'
-      let fallbackCode = ''
-      for (let i = 0; i < 4; i++) {
-        const val = crypto.getRandomValues(new Uint32Array(1))[0]
-        fallbackCode += map[val % map.length]
-      }
-      setRoomMode('create', 'personal')
-      setActiveRoomCode(fallbackCode)
-      syncRoomCodeInputs()
-      try {
-        localStorage.setItem('personalRoomCode', fallbackCode)
-      } catch (_) {}
-    }
-  })
-
-  return new Promise(resolve => {
-    const handleSubmit = async e => {
-      e.preventDefault()
-
-      const fd = new FormData(loginForm)
-      const name = String(fd.get('name') || '').trim()
-      const code = getActiveRoomCode()
-
-      if (roomCodeInput) roomCodeInput.value = code
-      if (generatedRoomCodeInput) generatedRoomCodeInput.value = code
-
-      if (!name || !code) return
-      if (!/^[0-9A-Z]{4}$/.test(code)) {
-        setRoomCodeError('Room code must be exactly 4 characters (A-Z or 0-9).')
-        return
-      }
-
-      try {
-        setPasswordError('')
-        setRoomCodeError('')
-        setLoginError('')
-
-        const existsResponse = await api.checkRoomExists(code)
-        const exists = Boolean(existsResponse?.exists)
-
-        if (roomMode === 'join' && !exists) {
-          setRoomCodeError(i18nRoomNotFoundMessage)
-          return
-        }
-
-        if (roomMode === 'create' && exists) {
-          setRoomCodeError(i18nRoomExistsMessage)
-          return
-        }
-
-        let data
-        try {
-          data = await api.login(name, code, verifiedPassword)
-        } catch (err) {
-          if (err.code !== 'ACTIVE_SESSION_EXISTS') {
-            throw err
-          }
-
-          const shouldTakeOver = await promptActiveSessionTakeover()
-          if (!shouldTakeOver) {
-            return
-          }
-
-          data = await api.login(name, code, verifiedPassword, true)
-        }
-        loginForm.removeEventListener('submit', handleSubmit)
-
-        // Hide login section
-        await loginSection.animate(
-          { opacity: ['1', '0'] },
-          { duration: 250, easing: 'ease-in-out', fill: 'both' }
-        ).finished
-        loginSection.hidden = true
-
-        localStorage.setItem('personalUser', name)
-        localStorage.setItem('personalRoomCode', code)
-        document.body.dataset.appMode = 'personal'
-        // Manual-flow users are not authenticated through a media server
-        document.body.dataset.userType = 'auth'
-        document.body.scrollIntoView()
-
-        // Reveal swipe section
-        await Promise.all(
-          [...document.querySelectorAll('.rate-section')].map(node => {
-            node.hidden = false
-            return node.animate(
-              { opacity: ['0', '1'] },
-              { duration: 250, easing: 'ease-in-out', fill: 'both' }
-            ).finished
-          })
-        )
-
-        initTabs()
-        resolve({
-          ...data,
-          user: name,
-          roomCode: code,
-          appMode: 'personal',
-        })
-      } catch (err) {
-        setLoginError(err.message)
-      }
-    }
-
-    loginForm.addEventListener('submit', handleSubmit)
-
-    // Back button: return to user auth form (or just reload if none exists).
-    const backBtn = document.querySelector('.js-login-back-btn')
-    backBtn?.addEventListener('click', () => {
-      setRoomCodeError('')
-      setLoginError('')
-      loginForm.style.display = 'none'
-      if (userAuthForm) {
-        userAuthForm.style.display = 'flex'
-      }
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    })
-  })
+  // Plex login is always required — show auth screen and wait indefinitely.
+  if (userAuthForm) userAuthForm.style.display = 'flex'
+  if (userAuthPlex) userAuthPlex.style.display = 'flex'
+  return new Promise(() => { /* resolved by Plex login above */ })
 }
 
 // Given server history, append rows to Watch/Pass tab UIs.
@@ -7185,9 +6873,8 @@ const main = async () => {
   })
 
   // ===== MATCHES TAB =====
-  // Each user has a static personal code. Share it or enter a friend's code
-  // to link up. Either side adding the other's code connects both users.
-  // Refresh generates a new code and clears all connections.
+  // Each user has a stable invite code. Enter a friend's code to send a
+  // request — they must accept before matches are visible.
 
   const matchesMyCodeEl = document.querySelector('.js-matches-my-code')
   const matchesCopyBtn = document.querySelector('.js-matches-copy-btn')
@@ -7196,9 +6883,16 @@ const main = async () => {
   const matchesFriendInput = document.querySelector('.js-matches-friend-input')
   const matchesStatus = document.querySelector('.js-matches-status')
   const matchesFriendsList = document.querySelector('.js-matches-friends-list')
-  const matchesFriendsHeading = document.querySelector(
-    '.js-matches-friends-heading'
-  )
+  const matchesFriendsHeading = document.querySelector('.js-matches-friends-heading')
+  const matchesPendingSection = document.querySelector('.js-matches-pending-section')
+  const matchesPendingList = document.querySelector('.js-matches-pending-list')
+
+  // Server-sharing consent modal elements
+  const sharingModal = document.querySelector('.js-server-sharing-modal')
+  const sharingModalBody = document.querySelector('.js-server-sharing-modal-body')
+  const sharingAcceptBtn = document.querySelector('.js-server-sharing-accept')
+  const sharingDeclineBtn = document.querySelector('.js-server-sharing-decline')
+  let _sharingPromptQueue = []
 
   const setMatchesStatus = (msg, isError = false) => {
     if (!matchesStatus) return
@@ -7221,9 +6915,7 @@ const main = async () => {
         <div class="watch-card-collapsed">
           <div class="watch-card-header-compact">
             <div class="watch-card-title-compact">
-              ${movie.title}${
-      movie.year ? ` <span class="watch-card-year">(${movie.year})</span>` : ''
-    }
+              ${movie.title}${movie.year ? ` <span class="watch-card-year">(${movie.year})</span>` : ''}
             </div>
             <div class="expand-icon"><i class="fas fa-chevron-down"></i></div>
           </div>
@@ -7231,11 +6923,7 @@ const main = async () => {
         <div class="watch-card-details">
           ${imgHtml}
           <div class="watch-card-content">
-            ${
-              movie.summary
-                ? `<p class="watch-card-summary">${movie.summary}</p>`
-                : ''
-            }
+            ${movie.summary ? `<p class="watch-card-summary">${movie.summary}</p>` : ''}
             <div class="watch-card-metadata">
               <i class="fas fa-heart"></i>
               You and ${friendName} both want to watch this
@@ -7245,56 +6933,69 @@ const main = async () => {
       </div>`
   }
 
-  const renderFriends = connections => {
-    if (!matchesFriendsList || !matchesFriendsHeading) return
-    if (!connections.length) {
-      matchesFriendsHeading.hidden = true
-      matchesFriendsList.innerHTML = ''
+  // Show server-sharing consent modal for one pending prompt at a time.
+  const processNextSharingPrompt = () => {
+    if (!sharingModal || !_sharingPromptQueue.length) {
+      if (sharingModal) sharingModal.hidden = true
       return
     }
-    matchesFriendsHeading.hidden = false
-    matchesFriendsList.innerHTML = connections
-      .map(({ code, name: friendName, matches }) => {
-        const matchCount = matches ? matches.length : 0
-        const matchLabel =
-          matchCount === 0
-            ? 'No matches yet — keep swiping!'
-            : matchCount === 1
-            ? '1 match'
-            : `${matchCount} matches`
-        const moviesHtml = matchCount
-          ? matches.map(m => renderMatchMovie(m, friendName)).join('')
-          : `<p class="matches-empty-note">No matches yet — keep swiping!</p>`
-        return `
-          <div class="matches-friend-card" data-friend-code="${code}">
-            <div class="matches-friend-header">
-              <span class="matches-friend-name">${friendName}</span>
-              <span class="matches-friend-count">${matchLabel}</span>
-              <button
-                class="matches-remove-btn"
-                type="button"
-                data-friend-code="${code}"
-                title="Remove ${friendName}"
-                aria-label="Remove ${friendName}"
-              ><i class="fas fa-times"></i></button>
-            </div>
-            <div class="matches-friend-movies">${moviesHtml}</div>
-          </div>`
-      })
-      .join('')
+    const { friendUserId, friendName } = _sharingPromptQueue[0]
+    if (sharingModalBody) {
+      sharingModalBody.textContent = `${friendName} wants to share their media library with you.`
+    }
+    sharingModal.hidden = false
+    sharingModal.dataset.friendUserId = friendUserId
 
-    // Wire up remove buttons
-    matchesFriendsList.querySelectorAll('.matches-remove-btn').forEach(btn => {
+    const resolve = async accepts => {
+      sharingModal.hidden = true
+      _sharingPromptQueue.shift()
+      try {
+        await fetch(`${basePath}/api/matches/resolve-server-prompt`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ friendUserId, acceptsServer: accepts }),
+        })
+      } catch { /* ignore */ }
+      processNextSharingPrompt()
+    }
+
+    sharingAcceptBtn?.addEventListener('click', () => resolve(true), { once: true })
+    sharingDeclineBtn?.addEventListener('click', () => resolve(false), { once: true })
+  }
+
+  const renderPendingRequests = connections => {
+    if (!matchesPendingSection || !matchesPendingList) return
+    const pending = connections.filter(c => c.status === 'pending' && c.friendUserId)
+    const incomingPending = connections.filter(c => c.status === 'pending')
+    matchesPendingSection.hidden = !incomingPending.length
+    if (!incomingPending.length) { matchesPendingList.innerHTML = ''; return }
+
+    matchesPendingList.innerHTML = incomingPending.map(conn => `
+      <div class="matches-pending-card" data-friend-id="${conn.friendUserId}">
+        <span class="matches-pending-name">${conn.friendName}</span>
+        <div class="matches-pending-actions">
+          <label class="matches-pending-share-label">
+            <input type="checkbox" class="js-pending-share-check" />
+            Share my library
+          </label>
+          <button type="button" class="btn-primary js-pending-accept" data-friend-id="${conn.friendUserId}">Accept</button>
+          <button type="button" class="btn-ghost js-pending-decline" data-friend-id="${conn.friendUserId}">Decline</button>
+        </div>
+      </div>`).join('')
+
+    matchesPendingList.querySelectorAll('.js-pending-accept').forEach(btn => {
       btn.addEventListener('click', async () => {
-        const fCode = btn.dataset.friendCode
-        if (!fCode) return
+        const friendId = Number(btn.dataset.friendId)
+        const card = btn.closest('.matches-pending-card')
+        const sharesServer = card?.querySelector('.js-pending-share-check')?.checked ?? false
         btn.disabled = true
         try {
-          await fetch(`${basePath}/api/matches/remove-user`, {
-            method: 'DELETE',
+          const res = await fetch(`${basePath}/api/matches/accept`, {
+            method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ friendCode: fCode }),
+            body: JSON.stringify({ requesterId: friendId, sharesServer }),
           })
+          if (!res.ok) throw new Error()
           await loadMatchesData()
         } catch {
           btn.disabled = false
@@ -7302,7 +7003,108 @@ const main = async () => {
       })
     })
 
-    // Wire up watch-card expand/collapse
+    matchesPendingList.querySelectorAll('.js-pending-decline').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const friendId = Number(btn.dataset.friendId)
+        btn.disabled = true
+        try {
+          await fetch(`${basePath}/api/matches/decline`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ requesterId: friendId }),
+          })
+          await loadMatchesData()
+        } catch {
+          btn.disabled = false
+        }
+      })
+    })
+  }
+
+  const renderFriends = connections => {
+    if (!matchesFriendsList || !matchesFriendsHeading) return
+    const accepted = connections.filter(c => c.status === 'accepted')
+    if (!accepted.length) {
+      matchesFriendsHeading.hidden = true
+      matchesFriendsList.innerHTML = ''
+      return
+    }
+    matchesFriendsHeading.hidden = false
+
+    // Queue server-sharing prompts
+    const prompts = accepted.filter(c => c.serverPromptPending && c.friendSharesServerWithMe)
+    for (const c of prompts) {
+      if (!_sharingPromptQueue.some(q => q.friendUserId === c.friendUserId)) {
+        _sharingPromptQueue.push({ friendUserId: c.friendUserId, friendName: c.friendName })
+      }
+    }
+    if (_sharingPromptQueue.length && sharingModal?.hidden !== false) {
+      processNextSharingPrompt()
+    }
+
+    matchesFriendsList.innerHTML = accepted.map(conn => {
+      const { friendUserId, friendName, sharesServer, friendSharesServerWithMe, matches } = conn
+      const matchCount = matches ? matches.length : 0
+      const matchLabel = matchCount === 0
+        ? 'No matches yet — keep swiping!'
+        : matchCount === 1 ? '1 match' : `${matchCount} matches`
+      const moviesHtml = matchCount
+        ? matches.map(m => renderMatchMovie(m, friendName)).join('')
+        : `<p class="matches-empty-note">No matches yet — keep swiping!</p>`
+      const sharingBadge = friendSharesServerWithMe
+        ? `<span class="matches-friend-sharing-badge" title="Sharing their library with you"><i class="fas fa-server"></i></span>`
+        : ''
+      return `
+        <div class="matches-friend-card" data-friend-id="${friendUserId}">
+          <div class="matches-friend-header">
+            <span class="matches-friend-name">${friendName}</span>
+            ${sharingBadge}
+            <span class="matches-friend-count">${matchLabel}</span>
+            <label class="matches-share-toggle" title="Share your library with ${friendName}">
+              <input type="checkbox" class="js-friend-share-toggle" data-friend-id="${friendUserId}" ${sharesServer ? 'checked' : ''} />
+              <span class="matches-share-toggle-label">Share my library</span>
+            </label>
+            <button class="matches-remove-btn" type="button" data-friend-id="${friendUserId}"
+              title="Remove ${friendName}" aria-label="Remove ${friendName}">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="matches-friend-movies">${moviesHtml}</div>
+        </div>`
+    }).join('')
+
+    // Wire sharing toggles
+    matchesFriendsList.querySelectorAll('.js-friend-share-toggle').forEach(toggle => {
+      toggle.addEventListener('change', async () => {
+        const friendId = Number(toggle.dataset.friendId)
+        try {
+          await fetch(`${basePath}/api/matches/sharing`, {
+            method: 'PUT',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ friendUserId: friendId, sharesServer: toggle.checked }),
+          })
+        } catch { toggle.checked = !toggle.checked }
+      })
+    })
+
+    // Wire remove buttons
+    matchesFriendsList.querySelectorAll('.matches-remove-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const friendId = Number(btn.dataset.friendId)
+        if (!friendId) return
+        btn.disabled = true
+        try {
+          await fetch(`${basePath}/api/matches/remove-user`, {
+            method: 'DELETE',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ friendUserId: friendId }),
+          })
+          await loadMatchesData()
+        } catch { btn.disabled = false }
+      })
+    })
+
+    // Expand/collapse match cards
     matchesFriendsList.querySelectorAll('.watch-card').forEach(card => {
       const collapsed = card.querySelector('.watch-card-collapsed')
       const details = card.querySelector('.watch-card-details')
@@ -7318,46 +7120,37 @@ const main = async () => {
 
   const loadMatchesData = async () => {
     try {
-      // Fetch user code
       const codeRes = await fetch(`${basePath}/api/user/code`)
       const codeData = await codeRes.json().catch(() => ({}))
       if (matchesMyCodeEl) matchesMyCodeEl.textContent = codeData.code || '——'
 
-      // Fetch connections + matches
       const connRes = await fetch(`${basePath}/api/matches/connections`)
       const connData = await connRes.json().catch(() => ({}))
-      renderFriends(connData.connections || [])
+      const connections = connData.connections || []
+      renderPendingRequests(connections)
+      renderFriends(connections)
     } catch (err) {
       console.warn('[matches] Failed to load matches data:', err)
     }
   }
 
-  // Copy my code
+  // Copy invite code
   if (matchesCopyBtn) {
     matchesCopyBtn.addEventListener('click', () => {
       const code = matchesMyCodeEl?.textContent?.trim() || ''
       if (!code || code === '——' || code === '······') return
-      navigator.clipboard
-        .writeText(code)
+      navigator.clipboard.writeText(code)
         .then(() => {
           matchesCopyBtn.innerHTML = '<i class="fas fa-check"></i>'
-          setTimeout(() => {
-            matchesCopyBtn.innerHTML = '<i class="fas fa-copy"></i>'
-          }, 2000)
-        })
-        .catch(() => {})
+          setTimeout(() => { matchesCopyBtn.innerHTML = '<i class="fas fa-copy"></i>' }, 2000)
+        }).catch(() => {})
     })
   }
 
   // Refresh code
   if (matchesRefreshBtn) {
     matchesRefreshBtn.addEventListener('click', async () => {
-      if (
-        !confirm(
-          'Refresh your code? This will remove all your current friend connections and generate a new code.'
-        )
-      )
-        return
+      if (!confirm('Refresh your code? This will remove all your current friend connections and generate a new code.')) return
       matchesRefreshBtn.disabled = true
       try {
         const res = await fetch(`${basePath}/api/user/refresh`, {
@@ -7368,6 +7161,7 @@ const main = async () => {
         const data = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(data.error || 'Could not refresh code.')
         if (matchesMyCodeEl) matchesMyCodeEl.textContent = data.code || '——'
+        renderPendingRequests([])
         renderFriends([])
         setMatchesStatus('New code generated — share it with your friends.')
       } catch (err) {
@@ -7378,13 +7172,13 @@ const main = async () => {
     })
   }
 
-  // Add friend
+  // Add friend (sends pending request)
   if (matchesAddForm) {
     matchesAddForm.addEventListener('submit', async e => {
       e.preventDefault()
       const friendCode = (matchesFriendInput?.value || '').trim().toUpperCase()
       if (!friendCode) return
-      setMatchesStatus('Adding friend…')
+      setMatchesStatus('Sending friend request…')
       try {
         const res = await fetch(`${basePath}/api/matches/add`, {
           method: 'POST',
@@ -7394,8 +7188,8 @@ const main = async () => {
         const data = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(data.error || 'Could not add friend.')
         if (matchesFriendInput) matchesFriendInput.value = ''
-        setMatchesStatus(`Added ${data.friendName}!`)
-        setTimeout(() => setMatchesStatus(''), 3000)
+        setMatchesStatus(`Request sent to ${data.friendName}! They need to accept.`)
+        setTimeout(() => setMatchesStatus(''), 5000)
         await loadMatchesData()
       } catch (err) {
         setMatchesStatus(err.message, true)
@@ -7409,6 +7203,169 @@ const main = async () => {
     window._matchesTabInitialized = true
     loadMatchesData()
   }
+
+  // ===== PROFILE SETTINGS (settings tab — My Profile section) =====
+
+  const profileInviteCode = document.querySelector('.js-settings-invite-code')
+  const profileCopyInvite = document.querySelector('.js-settings-copy-invite')
+  const profileServerForm = document.querySelector('.js-profile-server-form')
+  const profileServerType = document.querySelector('.js-profile-server-type')
+  const profileServerFields = document.querySelectorAll('.js-profile-server-fields')
+  const profileTokenLabel = document.querySelector('.js-profile-token-label')
+  const profileServerStatus = document.querySelector('.js-profile-server-status')
+
+  // Show or hide server-specific fields based on selected type
+  const updateProfileServerFields = () => {
+    const type = profileServerType?.value || ''
+    profileServerFields.forEach(el => el.hidden = !type)
+    if (profileTokenLabel) {
+      profileTokenLabel.textContent = type === 'plex' ? 'Plex Token' : 'API Key'
+    }
+  }
+
+  if (profileServerType) {
+    profileServerType.addEventListener('change', updateProfileServerFields)
+    updateProfileServerFields()
+  }
+
+  // Populate invite code from already-loaded currentUser or fetch it
+  const hydrateInviteCode = code => {
+    if (profileInviteCode && code) profileInviteCode.textContent = code
+  }
+
+  if (currentUser?.inviteCode) hydrateInviteCode(currentUser.inviteCode)
+
+  if (profileCopyInvite) {
+    profileCopyInvite.addEventListener('click', async () => {
+      const code = profileInviteCode?.textContent?.trim()
+      if (!code || code === '······') return
+      try {
+        await navigator.clipboard.writeText(code)
+        const icon = profileCopyInvite.querySelector('i')
+        if (icon) {
+          icon.className = 'fas fa-check'
+          setTimeout(() => { icon.className = 'fas fa-copy' }, 1500)
+        }
+      } catch {
+        // clipboard not available; silently ignore
+      }
+    })
+  }
+
+  // Map specific backend fields → generic form fields based on which server type is set
+  const detectServerType = settings => {
+    if (settings.plexUrl) return 'plex'
+    if (settings.embyUrl) return 'emby'
+    if (settings.jellyfinUrl) return 'jellyfin'
+    return ''
+  }
+
+  const serverFieldsForType = (type, url, token, library) => {
+    if (type === 'plex') return { plexUrl: url, plexToken: token, plexLibraryName: library }
+    if (type === 'emby') return { embyUrl: url, embyApiKey: token, embyLibraryName: library }
+    if (type === 'jellyfin') return { jellyfinUrl: url, jellyfinApiKey: token, jellyfinLibraryName: library }
+    // "None" clears all server types
+    return {
+      plexUrl: '', plexToken: '', plexLibraryName: '',
+      embyUrl: '', embyApiKey: '', embyLibraryName: '',
+      jellyfinUrl: '', jellyfinApiKey: '', jellyfinLibraryName: '',
+    }
+  }
+
+  const urlFromSettings = (type, s) => {
+    if (type === 'plex') return s.plexUrl || ''
+    if (type === 'emby') return s.embyUrl || ''
+    if (type === 'jellyfin') return s.jellyfinUrl || ''
+    return ''
+  }
+
+  const tokenFromSettings = (type, s) => {
+    if (type === 'plex') return s.plexToken || ''
+    if (type === 'emby') return s.embyApiKey || ''
+    if (type === 'jellyfin') return s.jellyfinApiKey || ''
+    return ''
+  }
+
+  const libraryFromSettings = (type, s) => {
+    if (type === 'plex') return s.plexLibraryName || ''
+    if (type === 'emby') return s.embyLibraryName || ''
+    if (type === 'jellyfin') return s.jellyfinLibraryName || ''
+    return ''
+  }
+
+  // Load profile settings from server and hydrate the form
+  const loadProfileSettings = async () => {
+    try {
+      const res = await fetch('/api/profile/settings')
+      if (!res.ok) return
+      const { settings, inviteCode } = await res.json()
+      if (inviteCode) hydrateInviteCode(inviteCode)
+      if (profileServerForm && settings) {
+        const type = detectServerType(settings)
+        const typeEl = profileServerForm.querySelector('[name="serverType"]')
+        const urlEl = profileServerForm.querySelector('[name="serverUrl"]')
+        const tokenEl = profileServerForm.querySelector('[name="serverToken"]')
+        const libraryEl = profileServerForm.querySelector('[name="libraryName"]')
+        if (typeEl) typeEl.value = type
+        if (urlEl) urlEl.value = urlFromSettings(type, settings)
+        if (tokenEl) tokenEl.value = tokenFromSettings(type, settings)
+        if (libraryEl) libraryEl.value = libraryFromSettings(type, settings)
+        updateProfileServerFields()
+      }
+    } catch (err) {
+      console.warn('[profile] Failed to load profile settings:', err.message)
+    }
+  }
+
+  if (profileServerForm) {
+    profileServerForm.addEventListener('submit', async e => {
+      e.preventDefault()
+      if (profileServerStatus) {
+        profileServerStatus.textContent = 'Saving…'
+        profileServerStatus.hidden = false
+      }
+      const type = profileServerForm.querySelector('[name="serverType"]')?.value || ''
+      const url = profileServerForm.querySelector('[name="serverUrl"]')?.value || ''
+      const token = profileServerForm.querySelector('[name="serverToken"]')?.value || ''
+      const library = profileServerForm.querySelector('[name="libraryName"]')?.value || ''
+      const body = serverFieldsForType(type, url, token, library)
+      try {
+        const res = await fetch('/api/profile/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          throw new Error(err.error || `HTTP ${res.status}`)
+        }
+        if (profileServerStatus) {
+          profileServerStatus.textContent = 'Saved!'
+          profileServerStatus.hidden = false
+          setTimeout(() => { if (profileServerStatus) profileServerStatus.hidden = true }, 2500)
+        }
+      } catch (err) {
+        if (profileServerStatus) {
+          profileServerStatus.textContent = `Error: ${err.message}`
+          profileServerStatus.hidden = false
+        }
+      }
+    })
+  }
+
+  // Load profile settings when the settings tab first becomes active
+  let _profileSettingsLoaded = false
+  const origInitSettingsTab = window.initSettingsTab
+  window.initSettingsTab = () => {
+    if (origInitSettingsTab) origInitSettingsTab()
+    if (!_profileSettingsLoaded) {
+      _profileSettingsLoaded = true
+      loadProfileSettings()
+    }
+  }
+
+  // Also load immediately if invite code not yet populated (e.g. page reload)
+  if (!currentUser?.inviteCode) loadProfileSettings()
 
   // ===== RECOMMENDATIONS TAB =====
   let recommendationsLoaded = false
