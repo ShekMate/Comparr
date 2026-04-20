@@ -21,6 +21,12 @@ export class ComparrAPI extends EventTarget {
     })
 
     this.socket.addEventListener('close', event => {
+      if (
+        event.code === 1000 &&
+        String(event.reason || '').includes('Reconnecting')
+      ) {
+        return
+      }
       console.warn('⚠️ WebSocket closed:', event.code, event.reason)
 
       // Clear any pending buffer promises in main.js

@@ -5113,6 +5113,13 @@ async function login(api) {
     const code = currentUser.roomCode || userRoomCode(currentUser.id)
 
     try {
+      // Reconnect after auth so the WS handshake carries the latest comparr_user cookie.
+      // Without this, sockets opened pre-login can use stale/no auth session context.
+      try {
+        api?.socket?.close?.(1000, 'Reconnecting with authenticated session')
+      } catch {
+        // ignore close errors; _waitOpen() will recreate if needed
+      }
       let data
       try {
         data = await api.login(name, code, verifiedPassword)
