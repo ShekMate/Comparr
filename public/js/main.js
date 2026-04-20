@@ -1245,6 +1245,7 @@ function saveUserSubscriptions(userId, subscriptions) {
   )
 }
 
+<<<<<<< codex/task-title-ucuzdd
 function applyUserSubscriptions(services) {
   const normalized = Array.isArray(services)
     ? Array.from(
@@ -1282,6 +1283,8 @@ function applyUserSubscriptions(services) {
   updateSwipeAvailabilityUI()
 }
 
+=======
+>>>>>>> dev
 async function maybeRunUserOnboardingWizard(currentUser) {
   if (!currentUser?.id) return
 
@@ -1387,7 +1390,10 @@ async function maybeRunUserOnboardingWizard(currentUser) {
       })
       applyDisplayPreferencesToNavigation(loadDisplayPreferences())
       saveUserSubscriptions(currentUser.id, state.subscriptions)
+<<<<<<< codex/task-title-ucuzdd
       applyUserSubscriptions(state.subscriptions)
+=======
+>>>>>>> dev
 
       try {
         await fetch('/api/profile/settings', {
@@ -2728,6 +2734,80 @@ function hasConfiguredMovieSource() {
   return hasConfiguredPersonalMediaSource() || Boolean(window.TMDB_CONFIGURED)
 }
 
+async function maybeRunUserOnboardingWizard() {
+  const user = window.COMPARR_USER
+  if (!user?.id) return
+  const storageKey = `comparrUserOnboarded-${user.id}`
+  if (localStorage.getItem(storageKey)) return
+
+  const SERVICES = [
+    ['netflix', 'Netflix'],
+    ['amazon-prime', 'Amazon Prime Video'],
+    ['disney-plus', 'Disney+'],
+    ['hbo-max', 'Max'],
+    ['hulu', 'Hulu'],
+    ['paramount-plus', 'Paramount+'],
+    ['peacock', 'Peacock'],
+    ['apple-tv-plus', 'Apple TV+'],
+  ]
+
+  const overlay = document.createElement('div')
+  overlay.className = 'first-run-guide-modal is-visible'
+  overlay.setAttribute('role', 'dialog')
+  overlay.setAttribute('aria-modal', 'true')
+  overlay.innerHTML = `
+    <div class="first-run-guide-card">
+      <h2 style="margin:0 0 0.5rem">Welcome to Comparr!</h2>
+      <p style="color:#cbd5e1;margin:0 0 1.25rem">Pick your streaming subscriptions so we can set your default movie filter.</p>
+      <div class="wizard-subscription-grid">
+        ${SERVICES.map(([val, label]) => `
+          <label class="rating-checkbox">
+            <input type="checkbox" class="js-onboard-sub" value="${val}" />
+            ${label}
+          </label>
+        `).join('')}
+      </div>
+      <div style="display:flex;align-items:center;gap:1rem;margin-top:1.5rem;flex-wrap:wrap;">
+        <button type="button" class="submit-button js-onboard-save">Save &amp; Continue</button>
+        <button type="button" class="js-onboard-skip" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:0.9rem;text-decoration:underline;">Skip</button>
+        <p class="settings-status js-onboard-status" hidden style="margin:0;"></p>
+      </div>
+    </div>
+  `
+  document.body.appendChild(overlay)
+
+  const checkboxes = overlay.querySelectorAll('.js-onboard-sub')
+  const saveBtn = overlay.querySelector('.js-onboard-save')
+  const skipBtn = overlay.querySelector('.js-onboard-skip')
+  const statusEl = overlay.querySelector('.js-onboard-status')
+
+  const dismiss = () => {
+    localStorage.setItem(storageKey, '1')
+    overlay.remove()
+  }
+
+  skipBtn.addEventListener('click', dismiss)
+
+  saveBtn.addEventListener('click', async () => {
+    const selected = Array.from(checkboxes).filter(c => c.checked).map(c => c.value)
+    saveBtn.disabled = true
+    if (statusEl) { statusEl.textContent = 'Saving…'; statusEl.hidden = false }
+    try {
+      const res = await fetch('/api/profile/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscriptions: JSON.stringify(selected) }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      if (selected.length) applyUserSubscriptions(selected)
+      dismiss()
+    } catch (err) {
+      saveBtn.disabled = false
+      if (statusEl) { statusEl.textContent = `Error: ${err.message}`; statusEl.hidden = false }
+    }
+  })
+}
+
 function createFirstRunGuideModal() {
   const existing = document.getElementById('first-run-guide-modal')
   if (existing) return existing
@@ -3463,56 +3543,12 @@ function createFirstRunGuideModal() {
         return
       }
 
-      const hasPlex = selectedState.sources.includes('plex')
-      const hasJellyfin = selectedState.sources.includes('jellyfin')
-      const hasEmby = selectedState.sources.includes('emby')
-
       body.innerHTML = `
         <div class="first-run-admin-login-btns">
-          ${
-            hasPlex
-              ? `
-            <button type="button" class="plex-signin-btn server-signin-btn server-signin-btn--plex js-wizard-admin-plex-btn">
-              Sign in with <img src="/assets/logos/plex_logo_button.png" alt="Plex" class="media-logo-img" />
-            </button>
-            <p class="user-auth-status js-wizard-admin-plex-status" hidden></p>
-          `
-              : ''
-          }
-          ${
-            hasJellyfin
-              ? `
-            <button type="button" class="server-signin-btn server-signin-btn--jellyfin js-wizard-admin-jellyfin-btn">
-              Sign in with <img src="/assets/logos/jellyfin_logo_button.png" alt="Jellyfin" class="media-logo-img" />
-            </button>
-            <p class="user-auth-status js-wizard-admin-jellyfin-status" hidden></p>
-          `
-              : ''
-          }
-          ${
-            hasEmby
-              ? `
-            <button type="button" class="server-signin-btn server-signin-btn--emby js-wizard-admin-emby-btn">
-              Sign in with <img src="/assets/logos/emby-logo_button.png" alt="emby" class="media-logo-img" />
-            </button>
-            <p class="user-auth-status js-wizard-admin-emby-status" hidden></p>
-          `
-              : ''
-          }
-        </div>
-        <div class="js-wizard-admin-credential-wrap" hidden>
-          <p class="js-wizard-admin-credential-provider first-run-guide-instruction" style="margin-bottom:0.5rem;font-weight:600"></p>
-          <form class="js-wizard-admin-credential-form" autocomplete="on" novalidate>
-            <div style="display:flex;flex-direction:column;gap:0.5rem">
-              <input type="text" name="username" placeholder="Username" autocomplete="username" required />
-              <input type="password" name="password" placeholder="Password" autocomplete="current-password" />
-            </div>
-            <p class="user-auth-status js-wizard-admin-credential-status" style="margin-top:0.5rem" hidden></p>
-            <div class="first-run-guide-actions" style="margin-top:0.75rem">
-              <button type="button" class="submit-button first-run-guide-secondary js-wizard-admin-credential-cancel">Cancel</button>
-              <button type="submit" class="submit-button">Sign In</button>
-            </div>
-          </form>
+          <button type="button" class="plex-signin-btn server-signin-btn server-signin-btn--plex js-wizard-admin-plex-btn">
+            Sign in with <img src="/assets/logos/plex_logo_button.png" alt="Plex" class="media-logo-img" />
+          </button>
+          <p class="user-auth-status js-wizard-admin-plex-status" hidden></p>
         </div>
       `
 
@@ -3532,176 +3568,84 @@ function createFirstRunGuideModal() {
       }
 
       // ── Plex PIN flow ────────────────────────────────────────────
-      if (hasPlex) {
-        const plexBtn = body.querySelector('.js-wizard-admin-plex-btn')
-        const plexStatus = body.querySelector('.js-wizard-admin-plex-status')
+      const plexBtn = body.querySelector('.js-wizard-admin-plex-btn')
+      const plexStatus = body.querySelector('.js-wizard-admin-plex-status')
 
-        plexBtn?.addEventListener('click', async () => {
-          plexBtn.disabled = true
-          if (plexStatus) {
-            plexStatus.textContent = 'Opening Plex login…'
-            plexStatus.hidden = false
-          }
+      plexBtn?.addEventListener('click', async () => {
+        plexBtn.disabled = true
+        if (plexStatus) {
+          plexStatus.textContent = 'Opening Plex login…'
+          plexStatus.hidden = false
+        }
 
-          let pollTimer = null
-          let popup = null
-          let popupClosedAt = null
+        let pollTimer = null
+        let popup = null
+        let popupClosedAt = null
 
-          const cleanupPoll = () => {
-            if (pollTimer) clearInterval(pollTimer)
-            pollTimer = null
-            if (popup && !popup.closed) popup.close()
-          }
+        const cleanupPoll = () => {
+          if (pollTimer) clearInterval(pollTimer)
+          pollTimer = null
+          if (popup && !popup.closed) popup.close()
+        }
 
-          try {
-            const { pinId, authUrl } = await api.requestPlexPin()
-            popup = window.open(
-              'about:blank',
-              '_blank',
-              'width=800,height=700,left=100,top=100'
-            )
+        try {
+          const { pinId, authUrl } = await api.requestPlexPin()
+          popup = window.open(
+            'about:blank',
+            '_blank',
+            'width=800,height=700,left=100,top=100'
+          )
 
-            if (!popup || popup === window || popup.closed) {
-              if (plexStatus)
-                plexStatus.textContent =
-                  'Popup blocked. Please allow popups and try again.'
-              plexBtn.disabled = false
-              return
-            }
-            popup.location.href = authUrl
-
-            if (plexStatus)
-              plexStatus.textContent = 'Waiting for Plex approval…'
-
-            pollTimer = setInterval(async () => {
-              try {
-                const result = await api.pollPlexPin(pinId)
-                if (result.status === 'success') {
-                  cleanupPoll()
-                  handleAdminLoggedIn(result.user)
-                } else if (
-                  result.status === 'expired' ||
-                  result.status === 'denied'
-                ) {
-                  cleanupPoll()
-                  plexBtn.disabled = false
-                  if (plexStatus)
-                    plexStatus.textContent =
-                      result.status === 'denied'
-                        ? result.error || 'Access denied.'
-                        : 'Plex login expired. Please try again.'
-                } else if (popup.closed) {
-                  // Grace period: the auth token may have just been issued as
-                  // the popup closed (Plex sets the token before showing the
-                  // success page, but our in-flight poll request was sent before
-                  // the user approved). Keep polling for ~6 s after close so
-                  // that one or two more ticks can detect the success.
-                  if (!popupClosedAt) {
-                    popupClosedAt = Date.now()
-                    if (plexStatus) plexStatus.textContent = 'Verifying login…'
-                  }
-                  if (Date.now() - popupClosedAt >= 6000) {
-                    cleanupPoll()
-                    plexBtn.disabled = false
-                    if (plexStatus) plexStatus.textContent = 'Login cancelled.'
-                  }
-                }
-              } catch {
-                /* ignore transient poll errors */
-              }
-            }, 2000)
-          } catch (err) {
-            cleanupPoll()
-            plexBtn.disabled = false
+          if (!popup || popup === window || popup.closed) {
             if (plexStatus)
               plexStatus.textContent =
-                err.message || 'Could not start Plex login.'
+                'Popup blocked. Please allow popups and try again.'
+            plexBtn.disabled = false
+            return
           }
-        })
-      }
+          popup.location.href = authUrl
 
-      // ── Jellyfin / Emby inline credential form ───────────────────
-      const credentialWrap = body.querySelector(
-        '.js-wizard-admin-credential-wrap'
-      )
-      const credentialProvider = body.querySelector(
-        '.js-wizard-admin-credential-provider'
-      )
-      const credentialForm = body.querySelector(
-        '.js-wizard-admin-credential-form'
-      )
-      const credentialStatus = body.querySelector(
-        '.js-wizard-admin-credential-status'
-      )
-      let activeAdminProvider = null
+          if (plexStatus)
+            plexStatus.textContent = 'Waiting for Plex approval…'
 
-      const showAdminCredentialForm = (provider, providerLabel) => {
-        activeAdminProvider = provider
-        if (credentialProvider)
-          credentialProvider.textContent = `Sign in with ${providerLabel}`
-        if (credentialStatus) credentialStatus.hidden = true
-        if (credentialForm) credentialForm.reset()
-        if (credentialWrap) credentialWrap.hidden = false
-        credentialForm?.querySelector('input[name="username"]')?.focus()
-      }
-
-      const hideAdminCredentialForm = () => {
-        if (credentialWrap) credentialWrap.hidden = true
-        activeAdminProvider = null
-        const jellyfinBtn = body.querySelector('.js-wizard-admin-jellyfin-btn')
-        const embyBtn = body.querySelector('.js-wizard-admin-emby-btn')
-        if (jellyfinBtn) jellyfinBtn.disabled = false
-        if (embyBtn) embyBtn.disabled = false
-      }
-
-      if (hasJellyfin) {
-        body
-          .querySelector('.js-wizard-admin-jellyfin-btn')
-          ?.addEventListener('click', function () {
-            this.disabled = true
-            showAdminCredentialForm('jellyfin', 'Jellyfin')
-          })
-      }
-
-      if (hasEmby) {
-        body
-          .querySelector('.js-wizard-admin-emby-btn')
-          ?.addEventListener('click', function () {
-            this.disabled = true
-            showAdminCredentialForm('emby', 'Emby')
-          })
-      }
-
-      body
-        .querySelector('.js-wizard-admin-credential-cancel')
-        ?.addEventListener('click', hideAdminCredentialForm)
-
-      credentialForm?.addEventListener('submit', async e => {
-        e.preventDefault()
-        const fd = new FormData(credentialForm)
-        const username = String(fd.get('username') || '').trim()
-        const password = String(fd.get('password') || '')
-        if (!username) {
-          credentialForm.querySelector('input[name="username"]')?.focus()
-          return
-        }
-        const submitBtn = credentialForm.querySelector('button[type="submit"]')
-        if (submitBtn) submitBtn.disabled = true
-        if (credentialStatus) credentialStatus.hidden = true
-        try {
-          let user
-          if (activeAdminProvider === 'jellyfin') {
-            ;({ user } = await api.loginWithJellyfin(username, password))
-          } else {
-            ;({ user } = await api.loginWithEmby(username, password))
-          }
-          handleAdminLoggedIn(user)
+          pollTimer = setInterval(async () => {
+            try {
+              const result = await api.pollPlexPin(pinId)
+              if (result.status === 'success') {
+                cleanupPoll()
+                handleAdminLoggedIn(result.user)
+              } else if (
+                result.status === 'expired' ||
+                result.status === 'denied'
+              ) {
+                cleanupPoll()
+                plexBtn.disabled = false
+                if (plexStatus)
+                  plexStatus.textContent =
+                    result.status === 'denied'
+                      ? result.error || 'Access denied.'
+                      : 'Plex login expired. Please try again.'
+              } else if (popup.closed) {
+                if (!popupClosedAt) {
+                  popupClosedAt = Date.now()
+                  if (plexStatus) plexStatus.textContent = 'Verifying login…'
+                }
+                if (Date.now() - popupClosedAt >= 6000) {
+                  cleanupPoll()
+                  plexBtn.disabled = false
+                  if (plexStatus) plexStatus.textContent = 'Login cancelled.'
+                }
+              }
+            } catch {
+              /* ignore transient poll errors */
+            }
+          }, 2000)
         } catch (err) {
-          if (credentialStatus) {
-            credentialStatus.textContent = err.message || 'Login failed.'
-            credentialStatus.hidden = false
-          }
-          if (submitBtn) submitBtn.disabled = false
+          cleanupPoll()
+          plexBtn.disabled = false
+          if (plexStatus)
+            plexStatus.textContent =
+              err.message || 'Could not start Plex login.'
         }
       })
 
@@ -4882,9 +4826,12 @@ async function login(api) {
         currentUser = user
         window.COMPARR_USER = user
         window.USER_HAS_SERVER_ACCESS = user.hasServerAccess !== false
+<<<<<<< codex/task-title-ucuzdd
         loadClientConfig()
           .then(() => updateHostManagedSubscriptionServiceOptions())
           .catch(() => {})
+=======
+>>>>>>> dev
         resolve()
       }
 
@@ -5101,9 +5048,12 @@ async function login(api) {
   }
 
   if (currentUser) {
+<<<<<<< codex/task-title-ucuzdd
     await loadClientConfig().catch(() => {})
     updateHostManagedSubscriptionServiceOptions()
     applyUserSubscriptions(loadUserSubscriptions(currentUser.id))
+=======
+>>>>>>> dev
     await maybeRunUserOnboardingWizard(currentUser)
   }
 
@@ -6819,6 +6769,11 @@ const main = async () => {
   displayPreferences = loadDisplayPreferences()
   applyDisplayPreferencesToNavigation(displayPreferences)
 
+  // Kick off profile settings fetch so subscriptions can be applied once filterState is ready
+  const _profileSettingsFetch = fetch('/api/profile/settings')
+    .then(r => r.ok ? r.json() : null)
+    .catch(() => null)
+
   // Track movies this user has already rated (to prevent showing them again)
   const normalizeGuid = value => {
     if (value == null) return ''
@@ -7380,6 +7335,7 @@ const main = async () => {
 
   const profileInviteCode = document.querySelector('.js-settings-invite-code')
   const profileCopyInvite = document.querySelector('.js-settings-copy-invite')
+<<<<<<< codex/task-title-ucuzdd
   const profileServerForm = document.querySelector('.js-profile-server-form')
   const profileServerType = document.querySelector('.js-profile-server-type')
   const profileServerFields = document.querySelectorAll(
@@ -7412,6 +7368,11 @@ const main = async () => {
     profileServerType.addEventListener('change', updateProfileServerFields)
     updateProfileServerFields()
   }
+=======
+  const profileSubCheckboxes = document.querySelectorAll('.js-profile-sub-checkbox')
+  const profileSubSaveBtn = document.querySelector('.js-profile-subscriptions-save')
+  const profileSubStatus = document.querySelector('.js-profile-subscriptions-status')
+>>>>>>> dev
 
   // Populate invite code from already-loaded currentUser or fetch it
   const hydrateInviteCode = code => {
@@ -7429,9 +7390,7 @@ const main = async () => {
         const icon = profileCopyInvite.querySelector('i')
         if (icon) {
           icon.className = 'fas fa-check'
-          setTimeout(() => {
-            icon.className = 'fas fa-copy'
-          }, 1500)
+          setTimeout(() => { icon.className = 'fas fa-copy' }, 1500)
         }
       } catch {
         // clipboard not available; silently ignore
@@ -7439,123 +7398,60 @@ const main = async () => {
     })
   }
 
-  // Map specific backend fields → generic form fields based on which server type is set
-  const detectServerType = settings => {
-    if (settings.plexUrl) return 'plex'
-    if (settings.embyUrl) return 'emby'
-    if (settings.jellyfinUrl) return 'jellyfin'
-    return ''
+  const hydrateProfileSubscriptions = subs => {
+    const subsSet = new Set(Array.isArray(subs) ? subs : [])
+    profileSubCheckboxes.forEach(cb => {
+      cb.checked = subsSet.has(cb.value)
+    })
   }
 
-  const serverFieldsForType = (type, url, token, library) => {
-    if (type === 'plex')
-      return { plexUrl: url, plexToken: token, plexLibraryName: library }
-    if (type === 'emby')
-      return { embyUrl: url, embyApiKey: token, embyLibraryName: library }
-    if (type === 'jellyfin')
-      return {
-        jellyfinUrl: url,
-        jellyfinApiKey: token,
-        jellyfinLibraryName: library,
-      }
-    // "None" clears all server types
-    return {
-      plexUrl: '',
-      plexToken: '',
-      plexLibraryName: '',
-      embyUrl: '',
-      embyApiKey: '',
-      embyLibraryName: '',
-      jellyfinUrl: '',
-      jellyfinApiKey: '',
-      jellyfinLibraryName: '',
-    }
-  }
-
-  const urlFromSettings = (type, s) => {
-    if (type === 'plex') return s.plexUrl || ''
-    if (type === 'emby') return s.embyUrl || ''
-    if (type === 'jellyfin') return s.jellyfinUrl || ''
-    return ''
-  }
-
-  const tokenFromSettings = (type, s) => {
-    if (type === 'plex') return s.plexToken || ''
-    if (type === 'emby') return s.embyApiKey || ''
-    if (type === 'jellyfin') return s.jellyfinApiKey || ''
-    return ''
-  }
-
-  const libraryFromSettings = (type, s) => {
-    if (type === 'plex') return s.plexLibraryName || ''
-    if (type === 'emby') return s.embyLibraryName || ''
-    if (type === 'jellyfin') return s.jellyfinLibraryName || ''
-    return ''
-  }
-
-  // Load profile settings from server and hydrate the form
+  // Load profile settings from server and hydrate subscriptions + invite code
   const loadProfileSettings = async () => {
     try {
       const res = await fetch('/api/profile/settings')
       if (!res.ok) return
       const { settings, inviteCode } = await res.json()
       if (inviteCode) hydrateInviteCode(inviteCode)
-      if (profileServerForm && settings) {
-        const type = detectServerType(settings)
-        const typeEl = profileServerForm.querySelector('[name="serverType"]')
-        const urlEl = profileServerForm.querySelector('[name="serverUrl"]')
-        const tokenEl = profileServerForm.querySelector('[name="serverToken"]')
-        const libraryEl = profileServerForm.querySelector(
-          '[name="libraryName"]'
-        )
-        if (typeEl) typeEl.value = type
-        if (urlEl) urlEl.value = urlFromSettings(type, settings)
-        if (tokenEl) tokenEl.value = tokenFromSettings(type, settings)
-        if (libraryEl) libraryEl.value = libraryFromSettings(type, settings)
-        updateProfileServerFields()
+      if (settings?.subscriptions) {
+        try {
+          hydrateProfileSubscriptions(JSON.parse(settings.subscriptions))
+        } catch { /* ignore parse errors */ }
       }
     } catch (err) {
       console.warn('[profile] Failed to load profile settings:', err.message)
     }
   }
 
-  if (profileServerForm) {
-    profileServerForm.addEventListener('submit', async e => {
-      e.preventDefault()
-      if (profileServerStatus) {
-        profileServerStatus.textContent = 'Saving…'
-        profileServerStatus.hidden = false
+  if (profileSubSaveBtn) {
+    profileSubSaveBtn.addEventListener('click', async () => {
+      const selected = Array.from(profileSubCheckboxes)
+        .filter(cb => cb.checked)
+        .map(cb => cb.value)
+      if (profileSubStatus) {
+        profileSubStatus.textContent = 'Saving…'
+        profileSubStatus.hidden = false
       }
-      const type =
-        profileServerForm.querySelector('[name="serverType"]')?.value || ''
-      const url =
-        profileServerForm.querySelector('[name="serverUrl"]')?.value || ''
-      const token =
-        profileServerForm.querySelector('[name="serverToken"]')?.value || ''
-      const library =
-        profileServerForm.querySelector('[name="libraryName"]')?.value || ''
-      const body = serverFieldsForType(type, url, token, library)
       try {
         const res = await fetch('/api/profile/settings', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
+          body: JSON.stringify({ subscriptions: JSON.stringify(selected) }),
         })
         if (!res.ok) {
           const err = await res.json().catch(() => ({}))
           throw new Error(err.error || `HTTP ${res.status}`)
         }
-        if (profileServerStatus) {
-          profileServerStatus.textContent = 'Saved!'
-          profileServerStatus.hidden = false
-          setTimeout(() => {
-            if (profileServerStatus) profileServerStatus.hidden = true
-          }, 2500)
+        // Apply the user's chosen subscriptions to the active swipe filter
+        applyUserSubscriptions(selected)
+        if (profileSubStatus) {
+          profileSubStatus.textContent = '✅ Saved!'
+          profileSubStatus.hidden = false
+          setTimeout(() => { if (profileSubStatus) profileSubStatus.hidden = true }, 2500)
         }
       } catch (err) {
-        if (profileServerStatus) {
-          profileServerStatus.textContent = `Error: ${err.message}`
-          profileServerStatus.hidden = false
+        if (profileSubStatus) {
+          profileSubStatus.textContent = `Error: ${err.message}`
+          profileSubStatus.hidden = false
         }
       }
     })
@@ -8285,6 +8181,18 @@ const main = async () => {
 
   // Expose filterState globally for swipe filter modal
   window.filterState = filterState
+
+  // Apply saved user subscription preferences to the swipe filter
+  _profileSettingsFetch.then(data => {
+    if (!data?.settings?.subscriptions) return
+    try {
+      const subs = JSON.parse(data.settings.subscriptions)
+      if (Array.isArray(subs) && subs.length) applyUserSubscriptions(subs)
+    } catch { /* ignore parse errors */ }
+  })
+
+  // Show first-time user onboarding wizard (only on first login)
+  maybeRunUserOnboardingWizard().catch(() => {})
 
   // Filter UI elements
   // const streamingCheckboxes = document.querySelectorAll('#streaming-checkboxes input[type="checkbox"]')  // COMMENTED OUT
@@ -10793,6 +10701,21 @@ function setAvailabilityState(nextState) {
     oldToggle.checked = window.filterState.showPlexOnly
   }
   updateSwipeAvailabilityUI()
+}
+
+function applyUserSubscriptions(services) {
+  if (!Array.isArray(services) || !services.length) return
+  const existing = parseArraySetting(window.PAID_STREAMING_SERVICES)
+  const merged = Array.from(new Set([...existing, ...services]))
+  window.PAID_STREAMING_SERVICES = JSON.stringify(merged)
+  hydratePaidStreamingServicesSetting(window.PAID_STREAMING_SERVICES)
+  if (!window.filterState) return
+  setAvailabilityState({
+    ...(window.filterState.availability || getDefaultAvailabilityState()),
+    subscriptionServices: services,
+    paidSubscriptions: true,
+    anywhere: false,
+  })
 }
 
 // Sync swipe filter modal UI with filterState
