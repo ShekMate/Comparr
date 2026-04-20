@@ -2734,80 +2734,6 @@ function hasConfiguredMovieSource() {
   return hasConfiguredPersonalMediaSource() || Boolean(window.TMDB_CONFIGURED)
 }
 
-async function maybeRunUserOnboardingWizard() {
-  const user = window.COMPARR_USER
-  if (!user?.id) return
-  const storageKey = `comparrUserOnboarded-${user.id}`
-  if (localStorage.getItem(storageKey)) return
-
-  const SERVICES = [
-    ['netflix', 'Netflix'],
-    ['amazon-prime', 'Amazon Prime Video'],
-    ['disney-plus', 'Disney+'],
-    ['hbo-max', 'Max'],
-    ['hulu', 'Hulu'],
-    ['paramount-plus', 'Paramount+'],
-    ['peacock', 'Peacock'],
-    ['apple-tv-plus', 'Apple TV+'],
-  ]
-
-  const overlay = document.createElement('div')
-  overlay.className = 'first-run-guide-modal is-visible'
-  overlay.setAttribute('role', 'dialog')
-  overlay.setAttribute('aria-modal', 'true')
-  overlay.innerHTML = `
-    <div class="first-run-guide-card">
-      <h2 style="margin:0 0 0.5rem">Welcome to Comparr!</h2>
-      <p style="color:#cbd5e1;margin:0 0 1.25rem">Pick your streaming subscriptions so we can set your default movie filter.</p>
-      <div class="wizard-subscription-grid">
-        ${SERVICES.map(([val, label]) => `
-          <label class="rating-checkbox">
-            <input type="checkbox" class="js-onboard-sub" value="${val}" />
-            ${label}
-          </label>
-        `).join('')}
-      </div>
-      <div style="display:flex;align-items:center;gap:1rem;margin-top:1.5rem;flex-wrap:wrap;">
-        <button type="button" class="submit-button js-onboard-save">Save &amp; Continue</button>
-        <button type="button" class="js-onboard-skip" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:0.9rem;text-decoration:underline;">Skip</button>
-        <p class="settings-status js-onboard-status" hidden style="margin:0;"></p>
-      </div>
-    </div>
-  `
-  document.body.appendChild(overlay)
-
-  const checkboxes = overlay.querySelectorAll('.js-onboard-sub')
-  const saveBtn = overlay.querySelector('.js-onboard-save')
-  const skipBtn = overlay.querySelector('.js-onboard-skip')
-  const statusEl = overlay.querySelector('.js-onboard-status')
-
-  const dismiss = () => {
-    localStorage.setItem(storageKey, '1')
-    overlay.remove()
-  }
-
-  skipBtn.addEventListener('click', dismiss)
-
-  saveBtn.addEventListener('click', async () => {
-    const selected = Array.from(checkboxes).filter(c => c.checked).map(c => c.value)
-    saveBtn.disabled = true
-    if (statusEl) { statusEl.textContent = 'Saving…'; statusEl.hidden = false }
-    try {
-      const res = await fetch('/api/profile/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subscriptions: JSON.stringify(selected) }),
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      if (selected.length) applyUserSubscriptions(selected)
-      dismiss()
-    } catch (err) {
-      saveBtn.disabled = false
-      if (statusEl) { statusEl.textContent = `Error: ${err.message}`; statusEl.hidden = false }
-    }
-  })
-}
-
 function createFirstRunGuideModal() {
   const existing = document.getElementById('first-run-guide-modal')
   if (existing) return existing
@@ -8193,9 +8119,6 @@ const main = async () => {
       if (Array.isArray(subs) && subs.length) applyUserSubscriptions(subs)
     } catch { /* ignore parse errors */ }
   })
-
-  // Show first-time user onboarding wizard (only on first login)
-  maybeRunUserOnboardingWizard().catch(() => {})
 
   // Filter UI elements
   // const streamingCheckboxes = document.querySelectorAll('#streaming-checkboxes input[type="checkbox"]')  // COMMENTED OUT
