@@ -9,6 +9,8 @@ import { isMovieInRadarr } from '../../../api/radarr.ts'
 import { isMovieInPlex } from '../../../integrations/plex/cache.ts'
 import { isMovieInEmby } from '../../../integrations/emby/cache.ts'
 import { isMovieInJellyfin } from '../../../integrations/jellyfin/cache.ts'
+import { getUserTokenFromCookie } from './auth.ts'
+import { getUserSession } from '../../../core/user-session-store.ts'
 
 const makeJsonHeaders = (req?: CompatRequest) => {
   const headers = new Headers({ 'content-type': 'application/json' })
@@ -20,14 +22,36 @@ export async function handleRequestServiceRoutes(
   req: CompatRequest,
   path: string
 ): Promise<Response | null> {
+  const userToken = getUserTokenFromCookie(req)
+  const userSession = userToken ? getUserSession(userToken) : null
+  const hasServerAccess = userSession?.hasServerAccess !== false
+
   if (path === '/api/request-service-status') {
     return new Response(
-      JSON.stringify({ configured: isRequestServiceConfigured() }),
+      JSON.stringify({
+        configured: isRequestServiceConfigured() && hasServerAccess,
+        available: hasServerAccess,
+      }),
       { status: 200, headers: makeJsonHeaders(req) }
     )
   }
 
   if (path.startsWith('/api/check-movie-status')) {
+    if (!hasServerAccess) {
+      return new Response(
+        JSON.stringify({
+          inLibrary: false,
+          inPlex: false,
+          inEmby: false,
+          inJellyfin: false,
+          inRadarr: false,
+          available: false,
+          configured: false,
+        }),
+        { status: 200, headers: makeJsonHeaders(req) }
+      )
+    }
+
     try {
       const url = new URL(req.url, 'http://local')
       const tmdbId = parseInt(url.searchParams.get('tmdbId') || '')
@@ -66,6 +90,18 @@ export async function handleRequestServiceRoutes(
   }
 
   if (path.startsWith('/api/check-request-status')) {
+    if (!hasServerAccess) {
+      return new Response(
+        JSON.stringify({
+          available: false,
+          pending: false,
+          processing: false,
+          configured: false,
+        }),
+        { status: 200, headers: makeJsonHeaders(req) }
+      )
+    }
+
     try {
       const url = new URL(req.url, 'http://local')
       const tmdbId = parseInt(url.searchParams.get('tmdbId') || '')
