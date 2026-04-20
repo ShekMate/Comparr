@@ -3414,7 +3414,7 @@ function createFirstRunGuideModal() {
       renderRequirementCopy('')
       title.textContent = 'User Authentication'
       copy.textContent =
-        "Let users sign in with their Plex, Jellyfin, or Emby account. Once your media server is configured, you'll sign in to claim admin access."
+        "Let users sign in with their Plex account. Once your media server is configured, you'll sign in to claim admin access."
 
       const currentPlexRestrict =
         window.PLEX_RESTRICT_TO_SERVER === true ||
