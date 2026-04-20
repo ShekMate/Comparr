@@ -4882,6 +4882,9 @@ async function login(api) {
         currentUser = user
         window.COMPARR_USER = user
         window.USER_HAS_SERVER_ACCESS = user.hasServerAccess !== false
+        loadClientConfig()
+          .then(() => updateHostManagedSubscriptionServiceOptions())
+          .catch(() => {})
         resolve()
       }
 
