@@ -1245,7 +1245,6 @@ function saveUserSubscriptions(userId, subscriptions) {
   )
 }
 
-<<<<<<< codex/task-title-ucuzdd
 function applyUserSubscriptions(services) {
   const normalized = Array.isArray(services)
     ? Array.from(
@@ -1283,8 +1282,6 @@ function applyUserSubscriptions(services) {
   updateSwipeAvailabilityUI()
 }
 
-=======
->>>>>>> dev
 async function maybeRunUserOnboardingWizard(currentUser) {
   if (!currentUser?.id) return
 
@@ -1390,10 +1387,7 @@ async function maybeRunUserOnboardingWizard(currentUser) {
       })
       applyDisplayPreferencesToNavigation(loadDisplayPreferences())
       saveUserSubscriptions(currentUser.id, state.subscriptions)
-<<<<<<< codex/task-title-ucuzdd
       applyUserSubscriptions(state.subscriptions)
-=======
->>>>>>> dev
 
       try {
         await fetch('/api/profile/settings', {
@@ -4752,12 +4746,9 @@ async function login(api) {
         currentUser = user
         window.COMPARR_USER = user
         window.USER_HAS_SERVER_ACCESS = user.hasServerAccess !== false
-<<<<<<< codex/task-title-ucuzdd
         loadClientConfig()
           .then(() => updateHostManagedSubscriptionServiceOptions())
           .catch(() => {})
-=======
->>>>>>> dev
         resolve()
       }
 
@@ -4974,12 +4965,9 @@ async function login(api) {
   }
 
   if (currentUser) {
-<<<<<<< codex/task-title-ucuzdd
     await loadClientConfig().catch(() => {})
     updateHostManagedSubscriptionServiceOptions()
     applyUserSubscriptions(loadUserSubscriptions(currentUser.id))
-=======
->>>>>>> dev
     await maybeRunUserOnboardingWizard(currentUser)
   }
 
@@ -7264,44 +7252,9 @@ const main = async () => {
 
   const profileInviteCode = document.querySelector('.js-settings-invite-code')
   const profileCopyInvite = document.querySelector('.js-settings-copy-invite')
-<<<<<<< codex/task-title-ucuzdd
-  const profileServerForm = document.querySelector('.js-profile-server-form')
-  const profileServerType = document.querySelector('.js-profile-server-type')
-  const profileServerFields = document.querySelectorAll(
-    '.js-profile-server-fields'
-  )
-  const profileTokenLabel = document.querySelector('.js-profile-token-label')
-  const profileServerStatus = document.querySelector(
-    '.js-profile-server-status'
-  )
-
-  if (profileServerForm) {
-    profileServerForm.hidden = true
-    if (profileServerStatus) {
-      profileServerStatus.textContent =
-        'Personal media server settings are managed by the instance admin.'
-      profileServerStatus.hidden = false
-    }
-  }
-
-  // Show or hide server-specific fields based on selected type
-  const updateProfileServerFields = () => {
-    const type = profileServerType?.value || ''
-    profileServerFields.forEach(el => (el.hidden = !type))
-    if (profileTokenLabel) {
-      profileTokenLabel.textContent = type === 'plex' ? 'Plex Token' : 'API Key'
-    }
-  }
-
-  if (profileServerType) {
-    profileServerType.addEventListener('change', updateProfileServerFields)
-    updateProfileServerFields()
-  }
-=======
   const profileSubCheckboxes = document.querySelectorAll('.js-profile-sub-checkbox')
   const profileSubSaveBtn = document.querySelector('.js-profile-subscriptions-save')
   const profileSubStatus = document.querySelector('.js-profile-subscriptions-status')
->>>>>>> dev
 
   // Populate invite code from already-loaded currentUser or fetch it
   const hydrateInviteCode = code => {
@@ -10627,27 +10580,6 @@ function setAvailabilityState(nextState) {
     oldToggle.checked = window.filterState.showPlexOnly
   }
   updateSwipeAvailabilityUI()
-}
-
-function applyUserSubscriptions(services) {
-  if (!Array.isArray(services)) return
-  if (!window.filterState) return
-  if (!services.length) {
-    // User cleared all subscriptions — reset availability to "anywhere"
-    setAvailabilityState({
-      ...(window.filterState.availability || getDefaultAvailabilityState()),
-      subscriptionServices: [],
-      paidSubscriptions: false,
-      anywhere: true,
-    })
-    return
-  }
-  setAvailabilityState({
-    ...(window.filterState.availability || getDefaultAvailabilityState()),
-    subscriptionServices: services,
-    paidSubscriptions: true,
-    anywhere: false,
-  })
 }
 
 // Sync swipe filter modal UI with filterState
