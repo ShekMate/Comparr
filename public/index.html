@@ -2362,78 +2362,60 @@
               </p>
             </div>
 
-            <!-- Personal media server -->
-            <details class="settings-collapsible" id="settings-personal-server">
-              <summary class="settings-collapsible-toggle">
-                Connect Your Media Server
-                <span class="settings-collapsible-hint">(optional)</span>
-              </summary>
-              <form class="settings-profile-form js-profile-server-form">
-                <div class="settings-field-group">
-                  <label class="settings-label">Server Type</label>
-                  <select
-                    name="serverType"
-                    class="settings-select js-profile-server-type"
-                  >
-                    <option value="">None</option>
-                    <option value="plex">Plex</option>
-                    <option value="emby">Emby</option>
-                    <option value="jellyfin">Jellyfin</option>
-                  </select>
-                </div>
-                <div
-                  class="settings-field-group js-profile-server-fields"
-                  hidden
+            <!-- My Subscriptions -->
+            <div class="settings-profile-subscriptions" id="settings-profile-subscriptions">
+              <label class="settings-label">My Streaming Subscriptions</label>
+              <p class="settings-hint">
+                Which streaming services do you subscribe to? Used as your
+                default filter when browsing movies.
+              </p>
+              <div class="js-profile-subscription-list settings-subscription-grid">
+                <label class="rating-checkbox">
+                  <input type="checkbox" class="js-profile-sub-checkbox" value="netflix" />
+                  Netflix
+                </label>
+                <label class="rating-checkbox">
+                  <input type="checkbox" class="js-profile-sub-checkbox" value="amazon-prime" />
+                  Amazon Prime Video
+                </label>
+                <label class="rating-checkbox">
+                  <input type="checkbox" class="js-profile-sub-checkbox" value="disney-plus" />
+                  Disney+
+                </label>
+                <label class="rating-checkbox">
+                  <input type="checkbox" class="js-profile-sub-checkbox" value="hbo-max" />
+                  Max
+                </label>
+                <label class="rating-checkbox">
+                  <input type="checkbox" class="js-profile-sub-checkbox" value="hulu" />
+                  Hulu
+                </label>
+                <label class="rating-checkbox">
+                  <input type="checkbox" class="js-profile-sub-checkbox" value="paramount-plus" />
+                  Paramount+
+                </label>
+                <label class="rating-checkbox">
+                  <input type="checkbox" class="js-profile-sub-checkbox" value="peacock" />
+                  Peacock
+                </label>
+                <label class="rating-checkbox">
+                  <input type="checkbox" class="js-profile-sub-checkbox" value="apple-tv-plus" />
+                  Apple TV+
+                </label>
+              </div>
+              <div class="settings-inline-actions" style="margin-top:0.75rem">
+                <button
+                  type="button"
+                  class="submit-button js-profile-subscriptions-save"
                 >
-                  <label class="settings-label">Server URL</label>
-                  <input
-                    type="url"
-                    name="serverUrl"
-                    class="settings-input"
-                    placeholder="http://your-server:32400"
-                    autocomplete="off"
-                  />
-                </div>
-                <div
-                  class="settings-field-group js-profile-server-fields"
+                  Save
+                </button>
+                <p
+                  class="settings-status js-profile-subscriptions-status"
                   hidden
-                >
-                  <label class="settings-label js-profile-token-label"
-                    >API Token / Key</label
-                  >
-                  <input
-                    type="password"
-                    name="serverToken"
-                    class="settings-input"
-                    placeholder="Token"
-                    autocomplete="new-password"
-                  />
-                </div>
-                <div
-                  class="settings-field-group js-profile-server-fields"
-                  hidden
-                >
-                  <label class="settings-label">Library Name</label>
-                  <input
-                    type="text"
-                    name="libraryName"
-                    class="settings-input"
-                    placeholder="Movies"
-                    autocomplete="off"
-                  />
-                </div>
-                <div
-                  class="settings-form-actions js-profile-server-fields"
-                  hidden
-                >
-                  <button type="submit" class="btn-primary">Save</button>
-                  <p
-                    class="settings-status js-profile-server-status"
-                    hidden
-                  ></p>
-                </div>
-              </form>
-            </details>
+                ></p>
+              </div>
+            </div>
           </div>
 
           <div id="settings-controls">

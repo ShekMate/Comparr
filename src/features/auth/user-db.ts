@@ -37,6 +37,7 @@ export interface UserSettings {
   seerrUrl: string
   seerrApiKey: string
   defaultFilters: string
+  subscriptions: string
   updatedAt: string
 }
 
@@ -90,6 +91,13 @@ export function initUserDatabase(): Database {
       // Column already exists — ignore
     }
 
+    // Add subscriptions column to existing user_settings tables
+    try {
+      db.exec(`ALTER TABLE user_settings ADD COLUMN subscriptions TEXT NOT NULL DEFAULT '[]'`)
+    } catch {
+      // Column already exists — ignore
+    }
+
     db.exec(`
       CREATE TABLE IF NOT EXISTS user_settings (
         user_id             INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
@@ -107,6 +115,7 @@ export function initUserDatabase(): Database {
         seerr_url           TEXT NOT NULL DEFAULT '',
         seerr_api_key       TEXT NOT NULL DEFAULT '',
         default_filters     TEXT NOT NULL DEFAULT '{}',
+        subscriptions       TEXT NOT NULL DEFAULT '[]',
         updated_at          TEXT NOT NULL
       )
     `)
@@ -303,10 +312,18 @@ export function refreshInviteCode(userId: number): string {
 
 // ── User settings ──────────────────────────────────────────────────────────
 
+const USER_SETTINGS_SELECT = `
+  SELECT user_id, plex_url, plex_token, plex_library_name,
+    emby_url, emby_api_key, emby_library_name,
+    jellyfin_url, jellyfin_api_key, jellyfin_library_name,
+    radarr_url, radarr_api_key, seerr_url, seerr_api_key,
+    default_filters, subscriptions, updated_at
+  FROM user_settings`
+
 function rowToUserSettings(row: unknown[]): UserSettings {
   const [userId, plexUrl, plexToken, plexLibraryName, embyUrl, embyApiKey, embyLibraryName,
     jellyfinUrl, jellyfinApiKey, jellyfinLibraryName, radarrUrl, radarrApiKey,
-    seerrUrl, seerrApiKey, defaultFilters, updatedAt] = row as string[]
+    seerrUrl, seerrApiKey, defaultFilters, subscriptions, updatedAt] = row as string[]
   return {
     userId: Number(userId),
     plexUrl, plexToken, plexLibraryName,
@@ -314,13 +331,15 @@ function rowToUserSettings(row: unknown[]): UserSettings {
     jellyfinUrl, jellyfinApiKey, jellyfinLibraryName,
     radarrUrl, radarrApiKey,
     seerrUrl, seerrApiKey,
-    defaultFilters, updatedAt,
+    defaultFilters,
+    subscriptions: subscriptions ?? '[]',
+    updatedAt,
   }
 }
 
 export function getUserSettings(userId: number): UserSettings | null {
   try {
-    const stmt = getDb().prepare('SELECT * FROM user_settings WHERE user_id = ? LIMIT 1')
+    const stmt = getDb().prepare(`${USER_SETTINGS_SELECT} WHERE user_id = ? LIMIT 1`)
     const row = stmt.value<unknown[]>(userId)
     stmt.finalize()
     return row ? rowToUserSettings(row) : null
@@ -339,8 +358,8 @@ export function upsertUserSettings(userId: number, updates: Partial<Omit<UserSet
       `INSERT INTO user_settings (user_id, plex_url, plex_token, plex_library_name,
         emby_url, emby_api_key, emby_library_name, jellyfin_url, jellyfin_api_key,
         jellyfin_library_name, radarr_url, radarr_api_key, seerr_url, seerr_api_key,
-        default_filters, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        default_filters, subscriptions, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       userId,
       updates.plexUrl ?? '',
       updates.plexToken ?? '',
@@ -356,6 +375,7 @@ export function upsertUserSettings(userId: number, updates: Partial<Omit<UserSet
       updates.seerrUrl ?? '',
       updates.seerrApiKey ?? '',
       updates.defaultFilters ?? '{}',
+      updates.subscriptions ?? '[]',
       now
     )
   } else {
@@ -366,13 +386,13 @@ export function upsertUserSettings(userId: number, updates: Partial<Omit<UserSet
         emby_url = ?, emby_api_key = ?, emby_library_name = ?,
         jellyfin_url = ?, jellyfin_api_key = ?, jellyfin_library_name = ?,
         radarr_url = ?, radarr_api_key = ?, seerr_url = ?, seerr_api_key = ?,
-        default_filters = ?, updated_at = ?
+        default_filters = ?, subscriptions = ?, updated_at = ?
        WHERE user_id = ?`,
       merged.plexUrl, merged.plexToken, merged.plexLibraryName,
       merged.embyUrl, merged.embyApiKey, merged.embyLibraryName,
       merged.jellyfinUrl, merged.jellyfinApiKey, merged.jellyfinLibraryName,
       merged.radarrUrl, merged.radarrApiKey, merged.seerrUrl, merged.seerrApiKey,
-      merged.defaultFilters, now,
+      merged.defaultFilters, merged.subscriptions ?? '[]', now,
       userId
     )
   }

@@ -6984,3 +6984,24 @@ footer {
 .u-icon-accent-primary {
   color: var(--color-primary-light);
 }
+
+
+/* ===== Profile subscriptions ===== */
+.settings-profile-subscriptions {
+  margin-top: 1rem;
+}
+
+.settings-subscription-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.4rem 0.75rem;
+  margin-top: 0.5rem;
+}
+
+
+/* ===== User onboarding wizard subscription grid ===== */
+.wizard-subscription-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.5rem 0.75rem;
+}
