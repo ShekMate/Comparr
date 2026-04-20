@@ -10,7 +10,6 @@ import {
   getPlexUrl,
   getPlexToken,
   getPlexClientId,
-  isPlexRestrictedToServer,
 } from '../../../core/config.ts'
 import { updateSettings } from '../../../core/settings.ts'
 import { upsertUser, findUserById, getOrCreateInviteCode } from '../../../features/auth/user-db.ts'
@@ -131,6 +130,7 @@ export async function handleAuthRoutes(
           username: session.username,
           avatarUrl: session.avatarUrl,
           isAdmin: session.isAdmin,
+          hasServerAccess: session.hasServerAccess,
           provider: session.provider,
           roomCode,
         },
@@ -227,22 +227,16 @@ export async function handleAuthRoutes(
       _pendingPins.delete(pinId)
       const plexUser = await getPlexUserInfo(status.authToken, pending.clientId)
 
-      // Optional: restrict to users on a specific Plex server
-      if (isPlexRestrictedToServer() && getPlexUrl() && getPlexToken()) {
-        const hasAccess = await isUserOnPlexServer(
+      // Determine whether this Plex user has access to the configured Plex server.
+      // Users without server access may still sign in, but server-backed features
+      // (library filtering/requests) are restricted.
+      let hasServerAccess = true
+      if (getPlexUrl() && getPlexToken()) {
+        hasServerAccess = await isUserOnPlexServer(
           status.authToken,
           getPlexUrl(),
           getPlexToken()
         )
-        if (!hasAccess) {
-          return new Response(
-            JSON.stringify({
-              status: 'denied',
-              error: 'You do not have access to this Plex server.',
-            }),
-            { status: 403, headers: makeJson(req) }
-          )
-        }
       }
 
       const user = upsertUser({
@@ -266,6 +260,7 @@ export async function handleAuthRoutes(
         username: user.username,
         avatarUrl: user.avatarUrl,
         isAdmin: user.isAdmin,
+        hasServerAccess,
       })
 
       const headers = makeJson(req)
@@ -281,6 +276,7 @@ export async function handleAuthRoutes(
             username: user.username,
             avatarUrl: user.avatarUrl,
             isAdmin: user.isAdmin,
+            hasServerAccess,
             provider: 'plex',
             roomCode,
             inviteCode,
