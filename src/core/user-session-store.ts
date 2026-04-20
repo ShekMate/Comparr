@@ -58,6 +58,18 @@ export const invalidateUserSession = (token: string): void => {
   _sessions.delete(token)
 }
 
+/** Find the most-recent valid session for a given userId (used to refresh hasServerAccess). */
+export const findSessionByUserId = (userId: number): UserSession | null => {
+  const now = Date.now()
+  let found: UserSession | null = null
+  for (const [, session] of _sessions) {
+    if (session.userId === userId && now <= session.expiresAt) {
+      if (!found || session.expiresAt > found.expiresAt) found = session
+    }
+  }
+  return found
+}
+
 /** Invalidate all active user sessions (e.g. when user auth is disabled). */
 export const clearUserSessions = (): void => {
   _sessions.clear()

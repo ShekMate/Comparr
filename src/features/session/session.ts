@@ -38,6 +38,7 @@ import {
   getRootPath,
   getTmdbApiKey,
 } from '../../core/config.ts'
+import { findSessionByUserId } from '../../core/user-session-store.ts'
 import { tmdbFetch } from '../../api/tmdb.ts'
 import {
   validateTMDbPoster,
@@ -3245,7 +3246,16 @@ export const handleLogin = (
             name: data.payload.name,
             responses: [],
           }
-          user.hasServerAccess = userHasServerAccess
+          // Re-resolve hasServerAccess from the live session store so first-time
+          // logins (WS opened before Plex auth completed) get the correct value.
+          const personalRoomMatch = roomCode.match(/^U(\d+)$/)
+          if (personalRoomMatch) {
+            const userId = parseInt(personalRoomMatch[1], 10)
+            const liveSession = findSessionByUserId(userId)
+            user.hasServerAccess = liveSession?.hasServerAccess !== false
+          } else {
+            user.hasServerAccess = userHasServerAccess
+          }
 
           log.debug(
             `${existingUser ? 'Existing user' : 'New user'} ${
@@ -3273,14 +3283,10 @@ export const handleLogin = (
           })
 
           if (!hasUnratedMoviesForUser) {
-            await session.sendNextBatch(
-              undefined,
-              {
-                suppressBroadcast: true,
-                softTimeoutMs: LOGIN_PREFETCH_SOFT_TIMEOUT_MS,
-              },
-              user
-            )
+            await session.sendNextBatch(undefined, {
+              suppressBroadcast: true,
+              softTimeoutMs: LOGIN_PREFETCH_SOFT_TIMEOUT_MS,
+            }, user)
           }
 
           let responsesMutated = dedupeUserResponses(user, session)
