@@ -3273,10 +3273,14 @@ export const handleLogin = (
           })
 
           if (!hasUnratedMoviesForUser) {
-            await session.sendNextBatch(undefined, {
-              suppressBroadcast: true,
-              softTimeoutMs: LOGIN_PREFETCH_SOFT_TIMEOUT_MS,
-            })
+            await session.sendNextBatch(
+              undefined,
+              {
+                suppressBroadcast: true,
+                softTimeoutMs: LOGIN_PREFETCH_SOFT_TIMEOUT_MS,
+              },
+              user
+            )
           }
 
           let responsesMutated = dedupeUserResponses(user, session)

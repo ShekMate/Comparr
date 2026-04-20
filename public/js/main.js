@@ -1245,6 +1245,46 @@ function saveUserSubscriptions(userId, subscriptions) {
   )
 }
 
+<<<<<<< codex/task-title-ucuzdd
+function applyUserSubscriptions(services) {
+  const normalized = Array.isArray(services)
+    ? Array.from(
+        new Set(services.map(v => String(v).trim()).filter(Boolean))
+      )
+    : []
+
+  const availability = normalizeAvailabilityState(window.filterState?.availability, {
+    enforceSelection: false,
+  })
+  const { paidServices, personalSources } = getAvailableSubscriptionOptions()
+  const availableSet = new Set([...paidServices, ...personalSources])
+  const nextSelected = normalized.filter(service => availableSet.has(service))
+
+  availability.subscriptionServices = nextSelected
+  availability.paidSubscriptions = nextSelected.some(service =>
+    paidServices.includes(service)
+  )
+  availability.roomPersonalMedia = nextSelected.some(service =>
+    personalSources.includes(service)
+  )
+
+  if (nextSelected.length === 0) {
+    availability.paidSubscriptions = false
+    availability.roomPersonalMedia = false
+    if (!availability.freeStreaming) {
+      availability.anywhere = true
+    }
+  } else {
+    availability.anywhere = false
+  }
+
+  window.filterState = window.filterState || {}
+  window.filterState.availability = availability
+  updateSwipeAvailabilityUI()
+}
+
+=======
+>>>>>>> dev
 async function maybeRunUserOnboardingWizard(currentUser) {
   if (!currentUser?.id) return
 
@@ -1350,6 +1390,10 @@ async function maybeRunUserOnboardingWizard(currentUser) {
       })
       applyDisplayPreferencesToNavigation(loadDisplayPreferences())
       saveUserSubscriptions(currentUser.id, state.subscriptions)
+<<<<<<< codex/task-title-ucuzdd
+      applyUserSubscriptions(state.subscriptions)
+=======
+>>>>>>> dev
 
       try {
         await fetch('/api/profile/settings', {
@@ -3766,7 +3810,8 @@ function createFirstRunGuideModal() {
       }
       const userAuthEnabled =
         window.USER_AUTH_ENABLED === true || window.USER_AUTH_ENABLED === 'true'
-      if (userAuthEnabled) {
+      const canUseAdminSignIn = selectedState.sources.includes('plex')
+      if (userAuthEnabled && canUseAdminSignIn) {
         try {
           const { user } = await api.getAuthUser()
           if (user) {
@@ -4781,6 +4826,12 @@ async function login(api) {
         currentUser = user
         window.COMPARR_USER = user
         window.USER_HAS_SERVER_ACCESS = user.hasServerAccess !== false
+<<<<<<< codex/task-title-ucuzdd
+        loadClientConfig()
+          .then(() => updateHostManagedSubscriptionServiceOptions())
+          .catch(() => {})
+=======
+>>>>>>> dev
         resolve()
       }
 
@@ -4997,6 +5048,12 @@ async function login(api) {
   }
 
   if (currentUser) {
+<<<<<<< codex/task-title-ucuzdd
+    await loadClientConfig().catch(() => {})
+    updateHostManagedSubscriptionServiceOptions()
+    applyUserSubscriptions(loadUserSubscriptions(currentUser.id))
+=======
+>>>>>>> dev
     await maybeRunUserOnboardingWizard(currentUser)
   }
 
@@ -7278,9 +7335,44 @@ const main = async () => {
 
   const profileInviteCode = document.querySelector('.js-settings-invite-code')
   const profileCopyInvite = document.querySelector('.js-settings-copy-invite')
+<<<<<<< codex/task-title-ucuzdd
+  const profileServerForm = document.querySelector('.js-profile-server-form')
+  const profileServerType = document.querySelector('.js-profile-server-type')
+  const profileServerFields = document.querySelectorAll(
+    '.js-profile-server-fields'
+  )
+  const profileTokenLabel = document.querySelector('.js-profile-token-label')
+  const profileServerStatus = document.querySelector(
+    '.js-profile-server-status'
+  )
+
+  if (profileServerForm) {
+    profileServerForm.hidden = true
+    if (profileServerStatus) {
+      profileServerStatus.textContent =
+        'Personal media server settings are managed by the instance admin.'
+      profileServerStatus.hidden = false
+    }
+  }
+
+  // Show or hide server-specific fields based on selected type
+  const updateProfileServerFields = () => {
+    const type = profileServerType?.value || ''
+    profileServerFields.forEach(el => (el.hidden = !type))
+    if (profileTokenLabel) {
+      profileTokenLabel.textContent = type === 'plex' ? 'Plex Token' : 'API Key'
+    }
+  }
+
+  if (profileServerType) {
+    profileServerType.addEventListener('change', updateProfileServerFields)
+    updateProfileServerFields()
+  }
+=======
   const profileSubCheckboxes = document.querySelectorAll('.js-profile-sub-checkbox')
   const profileSubSaveBtn = document.querySelector('.js-profile-subscriptions-save')
   const profileSubStatus = document.querySelector('.js-profile-subscriptions-status')
+>>>>>>> dev
 
   // Populate invite code from already-loaded currentUser or fetch it
   const hydrateInviteCode = code => {
