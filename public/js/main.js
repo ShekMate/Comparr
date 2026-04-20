@@ -4694,10 +4694,16 @@ async function login(api) {
             if (plexStatus)
               plexStatus.textContent = 'Waiting for Plex approval…'
 
+            let consecutivePollErrors = 0
             pollTimer = setInterval(async () => {
               try {
                 const result = await api.pollPlexPin(pinId)
-                if (result.status === 'success') {
+                consecutivePollErrors = 0
+
+                // Accept either explicit success status or a user payload.
+                // Some proxy/error edge-cases can strip status while still
+                // returning a usable authenticated user object.
+                if (result.status === 'success' || result?.user?.username) {
                   cleanupPoll()
                   if (plexStatus) plexStatus.hidden = true
                   handleUserLoggedIn(result.user)
@@ -4727,7 +4733,33 @@ async function login(api) {
                   }
                 }
               } catch {
-                // ignore transient poll errors
+                consecutivePollErrors += 1
+
+                // If the auth cookie was set but the poll response payload is
+                // malformed/blocked by a proxy, /api/auth/me can still confirm
+                // the session and let us continue.
+                try {
+                  const me = await api.getAuthUser()
+                  if (me?.user) {
+                    cleanupPoll()
+                    if (plexStatus) plexStatus.hidden = true
+                    handleUserLoggedIn(me.user)
+                    return
+                  }
+                } catch {
+                  // continue retrying below
+                }
+
+                // Keep retrying transient failures, but don't spin forever.
+                if (consecutivePollErrors >= 5) {
+                  cleanupPoll()
+                  plexSigninBtn.disabled = false
+                  if (plexStatus) {
+                    plexStatus.textContent =
+                      'Could not verify Plex login. Please try again.'
+                    plexStatus.hidden = false
+                  }
+                }
               }
             }, 2000)
           } catch (err) {
