@@ -1187,9 +1187,15 @@ async function loadClientConfig() {
     }
     if (data?.userAuthEnabled !== undefined) {
       window.USER_AUTH_ENABLED = Boolean(data.userAuthEnabled)
+    } else {
+      // Plex auth is mandatory; default true if older payload omits this field.
+      window.USER_AUTH_ENABLED = true
     }
     if (data?.plexRestrictToServer !== undefined) {
       window.PLEX_RESTRICT_TO_SERVER = Boolean(data.plexRestrictToServer)
+    }
+    if (data?.userHasServerAccess !== undefined) {
+      window.USER_HAS_SERVER_ACCESS = Boolean(data.userHasServerAccess)
     }
     updateHostManagedSubscriptionServiceOptions()
   } catch (err) {
@@ -1204,6 +1210,204 @@ const FREE_STREAMING_SERVICE_OPTIONS = [
   'roku-channel',
   'crackle',
 ]
+
+const USER_ONBOARDING_VERSION = 'v1'
+const USER_ONBOARDING_STORAGE_PREFIX = 'comparrUserOnboarding'
+const USER_SUBSCRIPTIONS_STORAGE_PREFIX = 'comparrUserSubscriptions'
+
+const getUserOnboardingStorageKey = userId =>
+  `${USER_ONBOARDING_STORAGE_PREFIX}:${USER_ONBOARDING_VERSION}:${userId}`
+
+const getUserSubscriptionsStorageKey = userId =>
+  `${USER_SUBSCRIPTIONS_STORAGE_PREFIX}:${userId}`
+
+function loadUserSubscriptions(userId) {
+  if (!userId) return []
+  try {
+    const raw = localStorage.getItem(getUserSubscriptionsStorageKey(userId))
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.map(v => String(v).trim()).filter(Boolean)
+  } catch {
+    return []
+  }
+}
+
+function saveUserSubscriptions(userId, subscriptions) {
+  if (!userId) return
+  const normalized = Array.from(
+    new Set((subscriptions || []).map(v => String(v).trim()).filter(Boolean))
+  )
+  localStorage.setItem(
+    getUserSubscriptionsStorageKey(userId),
+    JSON.stringify(normalized)
+  )
+}
+
+async function maybeRunUserOnboardingWizard(currentUser) {
+  if (!currentUser?.id) return
+
+  const completionKey = getUserOnboardingStorageKey(currentUser.id)
+  if (localStorage.getItem(completionKey) === 'complete') return
+
+  const { paidServices = [], personalSources = [] } =
+    getAvailableSubscriptionOptions()
+  const allOptions = [...paidServices, ...personalSources]
+  const existingSubs = loadUserSubscriptions(currentUser.id)
+  const existingDisplayPrefs = loadDisplayPreferences()
+
+  await new Promise(resolve => {
+    const modal = document.createElement('div')
+    modal.className = 'first-run-guide-modal is-visible'
+    modal.style.zIndex = '1300'
+    modal.innerHTML = `
+      <div class="first-run-guide-content" style="max-width:640px">
+        <h3 id="user-onboarding-title" style="margin-bottom:0.4rem">Welcome to Comparr</h3>
+        <p id="user-onboarding-copy" class="first-run-guide-instruction" style="margin-bottom:1rem"></p>
+        <div id="user-onboarding-body"></div>
+        <div class="first-run-guide-actions" style="margin-top:1rem">
+          <button type="button" id="user-onboarding-back" class="submit-button first-run-guide-secondary">Back</button>
+          <button type="button" id="user-onboarding-skip" class="submit-button first-run-guide-secondary">Skip</button>
+          <button type="button" id="user-onboarding-next" class="submit-button">Next</button>
+        </div>
+      </div>
+    `
+    document.body.appendChild(modal)
+
+    const steps = ['preferences', 'subscriptions', 'friends']
+    let idx = 0
+    const state = {
+      showSeenList: existingDisplayPrefs.showSeenList !== false,
+      showPassList: existingDisplayPrefs.showPassList !== false,
+      subscriptions: existingSubs.length ? existingSubs : paidServices,
+    }
+
+    const title = modal.querySelector('#user-onboarding-title')
+    const copy = modal.querySelector('#user-onboarding-copy')
+    const body = modal.querySelector('#user-onboarding-body')
+    const backBtn = modal.querySelector('#user-onboarding-back')
+    const skipBtn = modal.querySelector('#user-onboarding-skip')
+    const nextBtn = modal.querySelector('#user-onboarding-next')
+
+    const render = () => {
+      const step = steps[idx]
+      backBtn.hidden = idx === 0
+      nextBtn.textContent = idx === steps.length - 1 ? 'Finish' : 'Next'
+
+      if (step === 'preferences') {
+        title.textContent = 'Step 1: Display Preferences'
+        copy.textContent = 'Choose which personal lists you want visible.'
+        body.innerHTML = `
+          <label class="first-run-user-auth-row">
+            <input type="checkbox" id="user-onboarding-seen" ${
+              state.showSeenList ? 'checked' : ''
+            } />
+            <div><strong>Show Seen list</strong></div>
+          </label>
+          <label class="first-run-user-auth-row">
+            <input type="checkbox" id="user-onboarding-pass" ${
+              state.showPassList ? 'checked' : ''
+            } />
+            <div><strong>Show Pass list</strong></div>
+          </label>
+        `
+        return
+      }
+
+      if (step === 'subscriptions') {
+        title.textContent = 'Step 2: My Subscriptions'
+        copy.textContent =
+          'Pick the services you want pre-selected while filtering.'
+        body.innerHTML = allOptions.length
+          ? allOptions
+              .map(
+                option => `<label class="first-run-user-auth-row">
+              <input type="checkbox" class="user-onboarding-sub" value="${option}" ${
+                  state.subscriptions.includes(option) ? 'checked' : ''
+                } />
+              <div><strong>${option}</strong></div>
+            </label>`
+              )
+              .join('')
+          : `<p class="first-run-guide-instruction">No host-managed subscriptions are available yet.</p>`
+        return
+      }
+
+      title.textContent = 'Step 3: Connect Friends'
+      copy.textContent =
+        'Use your invite code and add friends in the Compare tab to unlock shared matching.'
+      body.innerHTML = `
+        <p class="first-run-guide-instruction">Open <strong>Compare</strong> to add or accept friend invites.</p>
+        <p class="first-run-guide-instruction">You can update all of these preferences later in Settings.</p>
+      `
+    }
+
+    const saveAndFinish = async () => {
+      saveDisplayPreferences({
+        showSeenList: state.showSeenList,
+        showPassList: state.showPassList,
+      })
+      applyDisplayPreferencesToNavigation(loadDisplayPreferences())
+      saveUserSubscriptions(currentUser.id, state.subscriptions)
+
+      try {
+        await fetch('/api/profile/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            defaultFilters: JSON.stringify({
+              onboardingCompleted: true,
+              subscriptions: state.subscriptions,
+            }),
+          }),
+        })
+      } catch {
+        // non-fatal: onboarding completion is still tracked locally
+      }
+
+      localStorage.setItem(completionKey, 'complete')
+      modal.remove()
+      resolve()
+    }
+
+    backBtn.addEventListener('click', () => {
+      idx = Math.max(0, idx - 1)
+      render()
+    })
+
+    skipBtn.addEventListener('click', async () => {
+      localStorage.setItem(completionKey, 'complete')
+      modal.remove()
+      resolve()
+    })
+
+    nextBtn.addEventListener('click', async () => {
+      const step = steps[idx]
+      if (step === 'preferences') {
+        state.showSeenList = Boolean(
+          body.querySelector('#user-onboarding-seen')?.checked
+        )
+        state.showPassList = Boolean(
+          body.querySelector('#user-onboarding-pass')?.checked
+        )
+      } else if (step === 'subscriptions') {
+        state.subscriptions = Array.from(
+          body.querySelectorAll('.user-onboarding-sub:checked')
+        ).map(input => String(input.value))
+      }
+
+      if (idx === steps.length - 1) {
+        await saveAndFinish()
+        return
+      }
+      idx += 1
+      render()
+    })
+
+    render()
+  })
+}
 
 function getDefaultAvailabilityState() {
   return {
@@ -3174,8 +3378,6 @@ function createFirstRunGuideModal() {
       copy.textContent =
         "Let users sign in with their Plex, Jellyfin, or Emby account. Once your media server is configured, you'll sign in to claim admin access."
 
-      const currentEnabled =
-        window.USER_AUTH_ENABLED === true || window.USER_AUTH_ENABLED === 'true'
       const currentPlexRestrict =
         window.PLEX_RESTRICT_TO_SERVER === true ||
         window.PLEX_RESTRICT_TO_SERVER === 'true'
@@ -3193,15 +3395,9 @@ function createFirstRunGuideModal() {
         : ''
 
       body.innerHTML = `
-        <label class="first-run-user-auth-row">
-          <input type="checkbox" id="first-run-user-auth-enabled" ${
-            currentEnabled ? 'checked' : ''
-          } />
-          <div>
-            <strong>Enable user authentication</strong>
-            <p class="first-run-guide-instruction">Require users to sign in with their media server account.</p>
-          </div>
-        </label>
+        <p class="first-run-guide-instruction" style="margin-bottom:0.75rem">
+          Plex authentication is always enabled. Every user must sign in with Plex before using Comparr.
+        </p>
         ${plexRestrictRow}
         <p id="first-run-user-auth-note" class="first-run-guide-instruction" style="margin-top:0.75rem">
           You can always change these settings later under Settings → Security &amp; Access.
@@ -3230,8 +3426,8 @@ function createFirstRunGuideModal() {
       }
 
       const hasPlex = selectedState.sources.includes('plex')
-      const hasJellyfin = selectedState.sources.includes('jellyfin')
-      const hasEmby = selectedState.sources.includes('emby')
+      const hasJellyfin = false
+      const hasEmby = false
 
       body.innerHTML = `
         <div class="first-run-admin-login-btns">
@@ -3540,22 +3736,18 @@ function createFirstRunGuideModal() {
     }
 
     if (current.type === 'user-auth') {
-      const enabledEl = body.querySelector('#first-run-user-auth-enabled')
       const plexRestrictEl = body.querySelector('#first-run-plex-restrict')
 
-      const enabled = enabledEl?.checked ?? false
       const plexRestrict = plexRestrictEl?.checked ?? false
 
-      const settingsToSave = {
-        USER_AUTH_ENABLED: enabled ? 'true' : 'false',
-      }
+      const settingsToSave = {}
       if (plexRestrictEl) {
         settingsToSave.PLEX_RESTRICT_TO_SERVER = plexRestrict ? 'true' : 'false'
       }
 
       try {
         await saveSettingsSubset(settingsToSave)
-        window.USER_AUTH_ENABLED = enabled
+        window.USER_AUTH_ENABLED = true
         if (plexRestrictEl) window.PLEX_RESTRICT_TO_SERVER = plexRestrict
       } catch (err) {
         setWizardStatus(
@@ -4635,6 +4827,7 @@ async function login(api) {
     if (user) {
       currentUser = user
       window.COMPARR_USER = user
+      window.USER_HAS_SERVER_ACCESS = user.hasServerAccess !== false
     }
   } catch {
     // no session
@@ -4649,6 +4842,7 @@ async function login(api) {
       const handleUserLoggedIn = user => {
         currentUser = user
         window.COMPARR_USER = user
+        window.USER_HAS_SERVER_ACCESS = user.hasServerAccess !== false
         resolve()
       }
 
@@ -4862,6 +5056,10 @@ async function login(api) {
 
     initTabs()
     return { ...loginApiData, user: name, roomCode: code, appMode: 'personal' }
+  }
+
+  if (currentUser) {
+    await maybeRunUserOnboardingWizard(currentUser)
   }
 
   // ── Auto-login: always runs after Plex auth ──────────────────────────────
@@ -7146,6 +7344,15 @@ const main = async () => {
   const profileServerStatus = document.querySelector(
     '.js-profile-server-status'
   )
+
+  if (profileServerForm) {
+    profileServerForm.hidden = true
+    if (profileServerStatus) {
+      profileServerStatus.textContent =
+        'Personal media server settings are managed by the instance admin.'
+      profileServerStatus.hidden = false
+    }
+  }
 
   // Show or hide server-specific fields based on selected type
   const updateProfileServerFields = () => {

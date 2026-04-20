@@ -434,6 +434,9 @@ export async function handleSettingsRoutes(
 
   if (pathname === '/api/client-config') {
     const settings = getSettings()
+    const userToken = getUserTokenFromCookie(req)
+    const userSession = userToken ? getUserSession(userToken) : null
+    const userHasServerAccess = userSession?.hasServerAccess !== false
     const plexConfigured =
       Boolean(String(settings.PLEX_URL || '').trim()) &&
       Boolean(String(settings.PLEX_TOKEN || '').trim())
@@ -454,7 +457,9 @@ export async function handleSettingsRoutes(
         jellyfinConfigured,
         tmdbConfigured,
         paidStreamingServices: settings.PAID_STREAMING_SERVICES,
-        personalMediaSources: settings.PERSONAL_MEDIA_SOURCES,
+        personalMediaSources: userHasServerAccess
+          ? settings.PERSONAL_MEDIA_SOURCES
+          : '[]',
         setupWizardCompleted:
           String(settings.SETUP_WIZARD_COMPLETED || '').toLowerCase() ===
           'true',
@@ -464,6 +469,7 @@ export async function handleSettingsRoutes(
         plexRestrictToServer:
           String(settings.PLEX_RESTRICT_TO_SERVER || '').toLowerCase() ===
           'true',
+        userHasServerAccess,
       }),
       { status: 200, headers: makeJsonHeaders(req) }
     )

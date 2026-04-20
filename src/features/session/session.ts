@@ -149,6 +149,7 @@ interface Response {
 interface User {
   name: string
   responses: Response[]
+  hasServerAccess?: boolean
 }
 
 interface MediaItem {
@@ -489,6 +490,7 @@ interface WebSocketLoginResponseMessage {
     | { success: false; message?: string; code?: string }
     | {
         success: true
+        hasServerAccess: boolean
         matches: Array<WebSocketMatchMessage['payload']>
         movies: MediaItem[]
         rated: RatedPayloadItem[]
@@ -1433,7 +1435,7 @@ class Session {
             `${user.name} asked for the next batch of movies with filters:`,
             filters
           )
-          await this.sendNextBatch(filters)
+          await this.sendNextBatch(filters, undefined, user)
           break
         }
         case 'response': {
@@ -1614,10 +1616,12 @@ class Session {
       softTimeoutMs?: number
       hardTimeoutMs?: number
       stopAfterFirstMovie?: boolean
-    }
+    },
+    requester?: User
   ) {
     const configuredPaidServices = getPaidStreamingServices()
-    const configuredPersonalSources = getPersonalMediaSources()
+    const configuredPersonalSources =
+      requester?.hasServerAccess === false ? [] : getPersonalMediaSources()
     const requestedServices = (filters?.streamingServices || [])
       .map(service => service.trim())
       .filter(Boolean)
@@ -3105,7 +3109,8 @@ export const getSession = (roomCode: string, ws: WebSocket): Session => {
 export const handleLogin = (
   ws: WebSocket,
   clientIp = 'unknown',
-  cookieAccessPassword = ''
+  cookieAccessPassword = '',
+  userHasServerAccess = true
 ): Promise<User> => {
   return new Promise(resolve => {
     const handler = async (msg: string) => {
@@ -3240,6 +3245,7 @@ export const handleLogin = (
             name: data.payload.name,
             responses: [],
           }
+          user.hasServerAccess = userHasServerAccess
 
           log.debug(
             `${existingUser ? 'Existing user' : 'New user'} ${
@@ -3364,6 +3370,7 @@ export const handleLogin = (
             type: 'loginResponse',
             payload: {
               success: true,
+              hasServerAccess: user.hasServerAccess !== false,
               matches: session.getExistingMatches(user),
               movies: session.movieList.filter(movie => {
                 if (ratedGuidSet.has(movie.guid)) {
