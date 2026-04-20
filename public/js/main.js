@@ -3464,8 +3464,8 @@ function createFirstRunGuideModal() {
       }
 
       const hasPlex = selectedState.sources.includes('plex')
-      const hasJellyfin = false
-      const hasEmby = false
+      const hasJellyfin = selectedState.sources.includes('jellyfin')
+      const hasEmby = selectedState.sources.includes('emby')
 
       body.innerHTML = `
         <div class="first-run-admin-login-btns">
@@ -3866,7 +3866,8 @@ function createFirstRunGuideModal() {
       }
       const userAuthEnabled =
         window.USER_AUTH_ENABLED === true || window.USER_AUTH_ENABLED === 'true'
-      if (userAuthEnabled) {
+      const canUseAdminSignIn = selectedState.sources.includes('plex')
+      if (userAuthEnabled && canUseAdminSignIn) {
         try {
           const { user } = await api.getAuthUser()
           if (user) {
@@ -5097,6 +5098,8 @@ async function login(api) {
   }
 
   if (currentUser) {
+    await loadClientConfig().catch(() => {})
+    updateHostManagedSubscriptionServiceOptions()
     applyUserSubscriptions(loadUserSubscriptions(currentUser.id))
     await maybeRunUserOnboardingWizard(currentUser)
   }
