@@ -433,11 +433,31 @@ function updateContentRatingButton(selectedRatings) {
 }
 
 function cloneFilterStateValue(value) {
+  if (!value || typeof value !== 'object') {
+    return createDefaultSwipeFilterState()
+  }
   return JSON.parse(JSON.stringify(value))
 }
 
+function createDefaultSwipeFilterState() {
+  return {
+    yearRange: { min: DEFAULT_YEAR_MIN, max: new Date().getFullYear() },
+    genres: [],
+    contentRatings: [],
+    availability: getDefaultAvailabilityState(),
+    showPlexOnly: false,
+    languages: [...DEFAULT_LANGUAGES],
+    countries: [],
+    imdbRating: 0.0,
+    tmdbRating: 0.0,
+    runtimeRange: { min: 0, max: 300 },
+    voteCount: DEFAULT_VOTE_COUNT,
+    sortBy: 'popularity.desc',
+  }
+}
+
 function normalizeFilterStateForDefaults(raw) {
-  if (!raw || typeof raw !== 'object') return null
+  if (!raw || typeof raw !== 'object') return createDefaultSwipeFilterState()
 
   const currentYear = new Date().getFullYear()
   const normalized = {
@@ -980,7 +1000,7 @@ function clearSettingsStatusAfterDelay(delayMs = 0) {
 }
 
 function clearCachedAdminPassword() {
-  setAdminPasswordForSession('')
+  // no-op: admin password auth was removed
 }
 
 function parseApiErrorMessage(data, fallback = 'Request failed.') {
@@ -1087,8 +1107,6 @@ function saveDisplaySettingsForm() {
   applyDisplayPreferencesToNavigation(nextPreferences)
 }
 
-// Keep admin password in-memory only and never persist it in storage.
-let adminPassword = ''
 let settingsAccessState = {
   canAccess: false,
   requiresAdminPassword: false,
@@ -1099,20 +1117,7 @@ let activeAdminSettingsTab = 'settings-core'
 let displayPreferences = loadDisplayPreferences()
 
 function getAdminHeaders() {
-  return adminPassword ? { 'x-admin-password': adminPassword } : {}
-}
-
-function setAdminPasswordForSession(value) {
-  adminPassword = String(value || '').trim()
-  syncAdminPasswordFieldFromSession()
-}
-
-function syncAdminPasswordFieldFromSession() {
-  const adminPasswordInput = document.getElementById('setting-admin-password')
-  if (!adminPasswordInput) return
-  // Mirror the in-memory admin session password into the Security tab so users
-  // don't see a blank field after successfully authenticating via prompt.
-  adminPasswordInput.value = adminPassword
+  return {}
 }
 
 async function fetchSettingsAccess() {
@@ -1132,38 +1137,13 @@ async function fetchSettingsAccess() {
 
 async function ensureAdminAccess(forcePrompt = false) {
   // Always refresh access state so we never act on stale data (e.g. after
-  // the setup wizard sets a new admin password, requiresAdminPassword could
+  // setup/admin state changes, requiresAdminPassword could
   // still be false from the initial page-load fetch).
   settingsAccessState = await fetchSettingsAccess()
 
-  console.debug('[admin-auth] ensureAdminAccess', {
-    forcePrompt,
-    requiresAdminPassword: settingsAccessState.requiresAdminPassword,
-    hasSessionPassword: !!adminPassword,
-    sessionPasswordLen: adminPassword.length,
-  })
+  console.debug('[admin-auth] ensureAdminAccess', { forcePrompt })
 
   if (!settingsAccessState.canAccess) return false
-
-  if (!settingsAccessState.requiresAdminPassword) {
-    return true
-  }
-
-  if (!forcePrompt && adminPassword) {
-    return true
-  }
-
-  const entered = window.prompt('Enter admin password to access settings:')
-  if (!entered) {
-    console.debug('[admin-auth] ensureAdminAccess: prompt cancelled or empty')
-    return false
-  }
-
-  console.debug(
-    '[admin-auth] ensureAdminAccess: password entered, len=',
-    entered.trim().length
-  )
-  setAdminPasswordForSession(entered)
   return true
 }
 
@@ -1204,9 +1184,6 @@ async function loadClientConfig() {
     }
     if (data?.accessPasswordSet !== undefined) {
       window.ACCESS_PASSWORD_SET = Boolean(data.accessPasswordSet)
-    }
-    if (data?.adminPasswordSet !== undefined) {
-      window.ADMIN_PASSWORD_SET = Boolean(data.adminPasswordSet)
     }
     if (data?.userAuthEnabled !== undefined) {
       window.USER_AUTH_ENABLED = Boolean(data.userAuthEnabled)
@@ -1496,12 +1473,7 @@ async function loadUserHistory() {
     // missing or stale — not that we need to prompt from scratch.  Show a
     // clear error rather than wiping the session and re-prompting unexpectedly.
     if (res.status === 403) {
-      console.warn(
-        '[admin-auth] loadUserHistory got 403 — sessionPasswordLen=',
-        adminPassword.length,
-        'hasAdminSettingsAccess=',
-        hasAdminSettingsAccess
-      )
+      console.warn('[admin-auth] loadUserHistory got 403')
       listEl.innerHTML = `<div class="user-history-empty"><i class="fas fa-exclamation-circle"></i> Admin access required. Please close and re-open Admin Settings.</div>`
       return
     }
@@ -2334,6 +2306,9 @@ async function hydrateSettingsForm({ _retryCount = 0 } = {}) {
     const res = await fetch('/api/settings', {
       headers: { ...getAdminHeaders() },
     })
+    if (res.status === 401) {
+      return false
+    }
     if (!res.ok) {
       throw new Error(`Settings fetch failed: ${res.status}`)
     }
@@ -2346,43 +2321,21 @@ async function hydrateSettingsForm({ _retryCount = 0 } = {}) {
       'hasAdminSettingsAccess=',
       hasAdminSettingsAccess,
       'retryCount=',
-      _retryCount,
-      'sessionPasswordLen=',
-      adminPassword.length
+      _retryCount
     )
 
     // If the server says admin auth failed but the frontend believes it has
-    // admin access, the cached password is wrong or missing.  Re-prompt once
-    // via ensureAdminAccess so the user can correct it.
+    // admin access, clear the access flag and require a fresh entry through the
+    // regular access guard.
     if (
       data?.isAdmin === false &&
       hasAdminSettingsAccess &&
       _retryCount < MAX_RETRIES
     ) {
-      // Refresh access state — if no admin password is configured the server
-      // will return isAdmin:false for non-local requests even without a header,
-      // and there is nothing the user can enter to fix it.
-      settingsAccessState = await fetchSettingsAccess()
-      if (!settingsAccessState.requiresAdminPassword) {
-        // No admin password configured — non-admin result is expected and
-        // there is nothing to re-prompt for.
-        return false
-      }
-
       clearCachedAdminPassword()
       hasAdminSettingsAccess = false
       settingsHydratedWithAdminAccess = false
       updateAdminOnlySettingsVisibility()
-
-      // Re-prompt with forcePrompt=true so the stale-state bypass is skipped.
-      const hasAccess = await ensureAdminAccess(true)
-      if (hasAccess && adminPassword) {
-        hasAdminSettingsAccess = true
-        updateAdminOnlySettingsVisibility()
-        // One retry with incremented counter — won't loop again.
-        return await hydrateSettingsForm({ _retryCount: _retryCount + 1 })
-      }
-      // User cancelled or left blank — stay without admin access.
       return false
     }
 
@@ -2405,19 +2358,7 @@ async function hydrateSettingsForm({ _retryCount = 0 } = {}) {
           option.selected = selectedSet.has(option.value)
         })
       } else {
-        // ADMIN_PASSWORD is intentionally redacted by the server; preserve the
-        // in-memory authenticated value so admin users don't see a blank field
-        // after authenticating, and don't get re-prompted while switching tabs.
-        if (
-          key === 'ADMIN_PASSWORD' &&
-          hasAdminSettingsAccess &&
-          !String(value).trim() &&
-          adminPassword
-        ) {
-          el.value = adminPassword
-        } else {
-          el.value = value
-        }
+        el.value = value
         // ACCESS_PASSWORD is redacted to '' by the server (the hash is never
         // sent to the client). When a password is already set, show a helpful
         // placeholder so the field doesn't appear empty/unconfigured.
@@ -2453,7 +2394,7 @@ async function hydrateSettingsForm({ _retryCount = 0 } = {}) {
       clearCachedAdminPassword()
       hasAdminSettingsAccess = false
       updateAdminOnlySettingsVisibility()
-      setSettingsStatus('Admin password was rejected. Please try again.')
+      setSettingsStatus('Admin access was rejected. Please try again.')
     }
     console.warn('Failed to hydrate settings form:', err)
     return false
@@ -2510,12 +2451,6 @@ async function saveSettingsForm() {
     }
     if (data?.settings?.PERSONAL_MEDIA_SOURCES !== undefined) {
       window.PERSONAL_MEDIA_SOURCES = data.settings.PERSONAL_MEDIA_SOURCES
-    }
-    // If the admin password was changed, update the session so subsequent
-    // requests use the new password instead of the now-stale old one.
-    const savedAdminPassword = String(settings.ADMIN_PASSWORD || '').trim()
-    if (savedAdminPassword) {
-      setAdminPasswordForSession(savedAdminPassword)
     }
     await loadClientConfig()
     document.dispatchEvent(new CustomEvent('comparr:source-config-updated'))
@@ -2613,7 +2548,6 @@ function createFirstRunGuideModal() {
     flow: '',
     security: {
       accessPassword: '',
-      adminPassword: '',
     },
     sources: [],
     subscriptions: [],
@@ -2706,19 +2640,11 @@ function createFirstRunGuideModal() {
     }
   }
 
-  const saveSettingsSubset = async (updates, options = {}) => {
+  const saveSettingsSubset = async updates => {
     const apiBase = document.body.dataset.basePath || ''
-    const adminPasswordHeader =
-      typeof options?.adminPasswordHeader === 'string'
-        ? options.adminPasswordHeader.trim()
-        : ''
     const headers = {
       'content-type': 'application/json',
       ...getAdminHeaders(),
-    }
-
-    if (!headers['x-admin-password'] && adminPasswordHeader) {
-      headers['x-admin-password'] = adminPasswordHeader
     }
 
     const res = await fetch(`${apiBase}/api/settings`, {
@@ -2906,6 +2832,9 @@ function createFirstRunGuideModal() {
 
   const saveDefaultsFromWizard = () => {
     if (swipeFilterMode !== 'defaults' || !window.filterState) {
+      enterDefaultsInWizard()
+    }
+    if (swipeFilterMode !== 'defaults' || !window.filterState) {
       setWizardStatus(
         'Defaults editor is not ready yet. Please try again.',
         'error'
@@ -2947,11 +2876,6 @@ function createFirstRunGuideModal() {
         ''
       const accessPasswordAlreadySet =
         Boolean(existingAccessPassword) || Boolean(window.ACCESS_PASSWORD_SET)
-      const adminPasswordAlreadySet = Boolean(window.ADMIN_PASSWORD_SET)
-      // If the session already authenticated with admin password, use it
-      const sessionAdminPassword = getAdminHeaders()['x-admin-password'] || ''
-      const needsAdminAuth = adminPasswordAlreadySet && !sessionAdminPassword
-
       // Access password section: show "configured" badge + Change toggle if
       // already set, otherwise show the input directly
       const accessSection = accessPasswordAlreadySet
@@ -2964,35 +2888,10 @@ function createFirstRunGuideModal() {
           </div>`
         : `<input id="first-run-access-password" class="first-run-guide-input" type="password" placeholder="(optional)" autocomplete="new-password" />`
 
-      // Admin password section: same pattern
-      const adminSection = adminPasswordAlreadySet
-        ? `<div class="first-run-password-configured" id="first-run-admin-configured">
-            <span class="first-run-password-status-badge"><i class="fas fa-check-circle" aria-hidden="true"></i> Configured</span>
-            <button type="button" class="first-run-change-password-btn" id="first-run-admin-change-btn">Change →</button>
-          </div>
-          <div id="first-run-admin-input-wrap" hidden>
-            <input id="first-run-admin-password" class="first-run-guide-input" type="password" placeholder="New admin password" autocomplete="new-password" />
-          </div>`
-        : `<input id="first-run-admin-password" class="first-run-guide-input" type="password" placeholder="(optional)" autocomplete="new-password" />`
-
-      // Current admin password field: shown when admin password is set and we
-      // don't already have it in the session. User must enter it to save changes.
-      const adminAuthSection = needsAdminAuth
-        ? `<div class="first-run-admin-auth-section">
-            <label class="first-run-guide-field-label first-run-guide-security-label">Current Admin Password</label>
-            <p class="first-run-guide-instruction">Required to save any changes on this screen.</p>
-            <input id="first-run-current-admin-password" class="first-run-guide-input" type="password" placeholder="Enter current admin password" autocomplete="current-password" />
-          </div>`
-        : ''
-
       body.innerHTML = `
         <label class="first-run-guide-field-label first-run-guide-security-label">Access Password</label>
         <p class="first-run-guide-instruction">Require a password for anyone to access your Comparr instance.</p>
         ${accessSection}
-        <label class="first-run-guide-field-label first-run-guide-security-label first-run-guide-admin-password-label">Admin Settings Password</label>
-        <p class="first-run-guide-instruction">Set a password for admin settings so your users cannot edit them.</p>
-        ${adminSection}
-        ${adminAuthSection}
       `
 
       // Expand access password input on Change click
@@ -3006,49 +2905,18 @@ function createFirstRunGuideModal() {
           updateSecurityActionState()
         })
 
-      // Expand admin password input on Change click
-      body
-        .querySelector('#first-run-admin-change-btn')
-        ?.addEventListener('click', () => {
-          body.querySelector('#first-run-admin-configured').hidden = true
-          body.querySelector('#first-run-admin-input-wrap').hidden = false
-          body.querySelector('#first-run-admin-password')?.focus()
-          initializePasswordVisibilityToggles()
-          updateSecurityActionState()
-        })
-
       const updateSecurityActionState = () => {
         const accessPassword =
           body.querySelector('#first-run-access-password')?.value?.trim() || ''
-        const adminPassword =
-          body.querySelector('#first-run-admin-password')?.value?.trim() || ''
-        const currentAdminPassword =
-          body
-            .querySelector('#first-run-current-admin-password')
-            ?.value?.trim() || ''
-        const hasTypedPassword = Boolean(accessPassword || adminPassword)
-        const hasPassword =
-          hasTypedPassword ||
-          accessPasswordAlreadySet ||
-          adminPasswordAlreadySet
-        // Block Next if the user is making changes but hasn't provided the
-        // current admin password needed to authenticate the save
-        const needsCurrentAdminToSave =
-          needsAdminAuth && hasTypedPassword && !currentAdminPassword
-        nextButton.disabled = !hasPassword || needsCurrentAdminToSave
+        const hasTypedPassword = Boolean(accessPassword)
+        const hasPassword = hasTypedPassword || accessPasswordAlreadySet
+        nextButton.disabled = !hasPassword
         skipButton.disabled = hasTypedPassword
       }
 
       body
         .querySelector('#first-run-access-password')
         ?.addEventListener('input', updateSecurityActionState)
-      body
-        .querySelector('#first-run-admin-password')
-        ?.addEventListener('input', updateSecurityActionState)
-      body
-        .querySelector('#first-run-current-admin-password')
-        ?.addEventListener('input', updateSecurityActionState)
-
       initializePasswordVisibilityToggles()
       updateSecurityActionState()
       return
@@ -3496,8 +3364,7 @@ function createFirstRunGuideModal() {
                   // that one or two more ticks can detect the success.
                   if (!popupClosedAt) {
                     popupClosedAt = Date.now()
-                    if (plexStatus)
-                      plexStatus.textContent = 'Verifying login…'
+                    if (plexStatus) plexStatus.textContent = 'Verifying login…'
                   }
                   if (Date.now() - popupClosedAt >= 6000) {
                     cleanupPoll()
@@ -3623,39 +3490,17 @@ function createFirstRunGuideModal() {
       const accessPasswordInput = body.querySelector(
         '#first-run-access-password'
       )
-      const adminPasswordInput = body.querySelector('#first-run-admin-password')
-      const currentAdminPasswordInput = body.querySelector(
-        '#first-run-current-admin-password'
-      )
 
       // A field is "changed" only when it was explicitly revealed via the
       // Change toggle (or was never configured, so always visible) AND has a value
       const accessChangeActive =
         body.querySelector('#first-run-access-input-wrap')?.hidden === false ||
         !window.ACCESS_PASSWORD_SET
-      const adminChangeActive =
-        body.querySelector('#first-run-admin-input-wrap')?.hidden === false ||
-        !window.ADMIN_PASSWORD_SET
 
       const newAccessPassword =
         accessChangeActive && accessPasswordInput?.value
           ? accessPasswordInput.value
           : null
-      const newAdminPassword =
-        adminChangeActive && adminPasswordInput?.value
-          ? adminPasswordInput.value
-          : null
-
-      // Auth header: when admin password exists use the current-admin field (or
-      // the session value); when it doesn't exist yet use the new password itself
-      // (bootstrap — the new password authenticates its own creation)
-      const currentAdminPassword =
-        currentAdminPasswordInput?.value ||
-        getAdminHeaders()['x-admin-password'] ||
-        ''
-      const authHeader = window.ADMIN_PASSWORD_SET
-        ? currentAdminPassword
-        : newAdminPassword || ''
 
       // Build the save payload — only include keys that actually changed
       const settingsToSave = {}
@@ -3669,15 +3514,6 @@ function createFirstRunGuideModal() {
         syncInputValue('setting-access-password', '')
         selectedState.security.accessPassword = ''
       }
-      if (newAdminPassword !== null) {
-        settingsToSave.ADMIN_PASSWORD = newAdminPassword
-        syncInputValue('setting-admin-password', newAdminPassword)
-        selectedState.security.adminPassword = newAdminPassword
-      } else if (!window.ADMIN_PASSWORD_SET) {
-        settingsToSave.ADMIN_PASSWORD = ''
-        syncInputValue('setting-admin-password', '')
-        selectedState.security.adminPassword = ''
-      }
 
       // Nothing actually changed — just advance
       if (Object.keys(settingsToSave).length === 0) {
@@ -3685,15 +3521,7 @@ function createFirstRunGuideModal() {
       }
 
       try {
-        await saveSettingsSubset(settingsToSave, {
-          adminPasswordHeader: authHeader,
-        })
-        // Keep session updated with whichever admin password is now active
-        if (newAdminPassword) {
-          setAdminPasswordForSession(newAdminPassword)
-        } else if (currentAdminPassword) {
-          setAdminPasswordForSession(currentAdminPassword)
-        }
+        await saveSettingsSubset(settingsToSave)
         // If an access password was just set, immediately verify it so the
         // browser gets a session cookie. Without this, every subsequent wizard
         // step would be blocked by the access-password middleware.
@@ -4049,19 +3877,16 @@ function createFirstRunGuideModal() {
         : 'jellyseerr'
     selectedState.security.accessPassword =
       document.getElementById('setting-access-password')?.value || ''
-    selectedState.security.adminPassword = ''
 
     if (restoreWizardProgress()) {
       renderScreen(history[history.length - 1])
       return
     }
 
-    // Skip security screen entirely when both passwords are already configured.
-    // The user can change them via the Settings tab.
-    const initial =
-      window.ACCESS_PASSWORD_SET && window.ADMIN_PASSWORD_SET
-        ? { type: 'flow' }
-        : { type: 'security' }
+    // Skip security screen when an access password is already configured.
+    const initial = window.ACCESS_PASSWORD_SET
+      ? { type: 'flow' }
+      : { type: 'security' }
     history.splice(0, history.length, initial)
     renderScreen(initial)
   }
@@ -4228,9 +4053,7 @@ function bindSettingsAccessGuards() {
           if (typeof e.stopImmediatePropagation === 'function') {
             e.stopImmediatePropagation()
           }
-          setSettingsStatus(
-            'Admin password is required to access Admin settings.'
-          )
+          setSettingsStatus('Admin access is required to open Admin settings.')
           return
         }
 
@@ -4255,6 +4078,12 @@ async function setupSettingsUI() {
   hasAdminSettingsAccess = !settingsAccessState.requiresAdminPassword
   updateAdminOnlySettingsVisibility()
   bindSettingsAccessGuards()
+
+  // During pre-login screens (normal startup after setup is complete), /api/settings
+  // requires user auth and returns 401. Defer hydration until after login.
+  if (window.SETUP_WIZARD_COMPLETED && !window.COMPARR_USER) {
+    return
+  }
 
   await hydrateSettingsUiIfAuthorized()
 }
@@ -4865,10 +4694,16 @@ async function login(api) {
             if (plexStatus)
               plexStatus.textContent = 'Waiting for Plex approval…'
 
+            let consecutivePollErrors = 0
             pollTimer = setInterval(async () => {
               try {
                 const result = await api.pollPlexPin(pinId)
-                if (result.status === 'success') {
+                consecutivePollErrors = 0
+
+                // Accept either explicit success status or a user payload.
+                // Some proxy/error edge-cases can strip status while still
+                // returning a usable authenticated user object.
+                if (result.status === 'success' || result?.user?.username) {
                   cleanupPoll()
                   if (plexStatus) plexStatus.hidden = true
                   handleUserLoggedIn(result.user)
@@ -4898,7 +4733,33 @@ async function login(api) {
                   }
                 }
               } catch {
-                // ignore transient poll errors
+                consecutivePollErrors += 1
+
+                // If the auth cookie was set but the poll response payload is
+                // malformed/blocked by a proxy, /api/auth/me can still confirm
+                // the session and let us continue.
+                try {
+                  const me = await api.getAuthUser()
+                  if (me?.user) {
+                    cleanupPoll()
+                    if (plexStatus) plexStatus.hidden = true
+                    handleUserLoggedIn(me.user)
+                    return
+                  }
+                } catch {
+                  // continue retrying below
+                }
+
+                // Keep retrying transient failures, but don't spin forever.
+                if (consecutivePollErrors >= 5) {
+                  cleanupPoll()
+                  plexSigninBtn.disabled = false
+                  if (plexStatus) {
+                    plexStatus.textContent =
+                      'Could not verify Plex login. Please try again.'
+                    plexStatus.hidden = false
+                  }
+                }
               }
             }, 2000)
           } catch (err) {
@@ -4911,7 +4772,6 @@ async function login(api) {
           }
         })
       }
-
     })
   }
 
@@ -4921,7 +4781,7 @@ async function login(api) {
     if (!sidebarUser) return
 
     if (!user) {
-      sidebarUser.style.display = 'none'
+      sidebarUser.hidden = true
       return
     }
 
@@ -4939,12 +4799,12 @@ async function login(api) {
           user.avatarUrl
         )}`
         avatarEl.alt = user.username || ''
-        avatarEl.style.display = ''
+        avatarEl.hidden = false
         avatarEl.onerror = () => {
-          avatarEl.style.display = 'none'
+          avatarEl.hidden = true
         }
       } else {
-        avatarEl.style.display = 'none'
+        avatarEl.hidden = true
       }
     }
 
@@ -4961,7 +4821,7 @@ async function login(api) {
       }
     }
 
-    sidebarUser.style.display = 'flex'
+    sidebarUser.hidden = false
   }
 
   if (currentUser) updateSidebarUser(currentUser)
@@ -5034,7 +4894,9 @@ async function login(api) {
   // Plex login is always required — show auth screen and wait indefinitely.
   if (userAuthForm) userAuthForm.style.display = 'flex'
   if (userAuthPlex) userAuthPlex.style.display = 'flex'
-  return new Promise(() => { /* resolved by Plex login above */ })
+  return new Promise(() => {
+    /* resolved by Plex login above */
+  })
 }
 
 // Given server history, append rows to Watch/Pass tab UIs.
@@ -6707,6 +6569,7 @@ const main = async () => {
 
   document.body.classList.add('is-logged-in')
   document.body.dataset.appMode = appMode
+  await hydrateSettingsUiIfAuthorized()
 
   sessionStorage.setItem('userName', userName)
   sessionStorage.setItem('roomCode', roomCode)
@@ -6883,13 +6746,19 @@ const main = async () => {
   const matchesFriendInput = document.querySelector('.js-matches-friend-input')
   const matchesStatus = document.querySelector('.js-matches-status')
   const matchesFriendsList = document.querySelector('.js-matches-friends-list')
-  const matchesFriendsHeading = document.querySelector('.js-matches-friends-heading')
-  const matchesPendingSection = document.querySelector('.js-matches-pending-section')
+  const matchesFriendsHeading = document.querySelector(
+    '.js-matches-friends-heading'
+  )
+  const matchesPendingSection = document.querySelector(
+    '.js-matches-pending-section'
+  )
   const matchesPendingList = document.querySelector('.js-matches-pending-list')
 
   // Server-sharing consent modal elements
   const sharingModal = document.querySelector('.js-server-sharing-modal')
-  const sharingModalBody = document.querySelector('.js-server-sharing-modal-body')
+  const sharingModalBody = document.querySelector(
+    '.js-server-sharing-modal-body'
+  )
   const sharingAcceptBtn = document.querySelector('.js-server-sharing-accept')
   const sharingDeclineBtn = document.querySelector('.js-server-sharing-decline')
   let _sharingPromptQueue = []
@@ -6915,7 +6784,9 @@ const main = async () => {
         <div class="watch-card-collapsed">
           <div class="watch-card-header-compact">
             <div class="watch-card-title-compact">
-              ${movie.title}${movie.year ? ` <span class="watch-card-year">(${movie.year})</span>` : ''}
+              ${movie.title}${
+      movie.year ? ` <span class="watch-card-year">(${movie.year})</span>` : ''
+    }
             </div>
             <div class="expand-icon"><i class="fas fa-chevron-down"></i></div>
           </div>
@@ -6923,7 +6794,11 @@ const main = async () => {
         <div class="watch-card-details">
           ${imgHtml}
           <div class="watch-card-content">
-            ${movie.summary ? `<p class="watch-card-summary">${movie.summary}</p>` : ''}
+            ${
+              movie.summary
+                ? `<p class="watch-card-summary">${movie.summary}</p>`
+                : ''
+            }
             <div class="watch-card-metadata">
               <i class="fas fa-heart"></i>
               You and ${friendName} both want to watch this
@@ -6955,22 +6830,35 @@ const main = async () => {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ friendUserId, acceptsServer: accepts }),
         })
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       processNextSharingPrompt()
     }
 
-    sharingAcceptBtn?.addEventListener('click', () => resolve(true), { once: true })
-    sharingDeclineBtn?.addEventListener('click', () => resolve(false), { once: true })
+    sharingAcceptBtn?.addEventListener('click', () => resolve(true), {
+      once: true,
+    })
+    sharingDeclineBtn?.addEventListener('click', () => resolve(false), {
+      once: true,
+    })
   }
 
   const renderPendingRequests = connections => {
     if (!matchesPendingSection || !matchesPendingList) return
-    const pending = connections.filter(c => c.status === 'pending' && c.friendUserId)
+    const pending = connections.filter(
+      c => c.status === 'pending' && c.friendUserId
+    )
     const incomingPending = connections.filter(c => c.status === 'pending')
     matchesPendingSection.hidden = !incomingPending.length
-    if (!incomingPending.length) { matchesPendingList.innerHTML = ''; return }
+    if (!incomingPending.length) {
+      matchesPendingList.innerHTML = ''
+      return
+    }
 
-    matchesPendingList.innerHTML = incomingPending.map(conn => `
+    matchesPendingList.innerHTML = incomingPending
+      .map(
+        conn => `
       <div class="matches-pending-card" data-friend-id="${conn.friendUserId}">
         <span class="matches-pending-name">${conn.friendName}</span>
         <div class="matches-pending-actions">
@@ -6981,13 +6869,16 @@ const main = async () => {
           <button type="button" class="btn-primary js-pending-accept" data-friend-id="${conn.friendUserId}">Accept</button>
           <button type="button" class="btn-ghost js-pending-decline" data-friend-id="${conn.friendUserId}">Decline</button>
         </div>
-      </div>`).join('')
+      </div>`
+      )
+      .join('')
 
     matchesPendingList.querySelectorAll('.js-pending-accept').forEach(btn => {
       btn.addEventListener('click', async () => {
         const friendId = Number(btn.dataset.friendId)
         const card = btn.closest('.matches-pending-card')
-        const sharesServer = card?.querySelector('.js-pending-share-check')?.checked ?? false
+        const sharesServer =
+          card?.querySelector('.js-pending-share-check')?.checked ?? false
         btn.disabled = true
         try {
           const res = await fetch(`${basePath}/api/matches/accept`, {
@@ -7032,36 +6923,53 @@ const main = async () => {
     matchesFriendsHeading.hidden = false
 
     // Queue server-sharing prompts
-    const prompts = accepted.filter(c => c.serverPromptPending && c.friendSharesServerWithMe)
+    const prompts = accepted.filter(
+      c => c.serverPromptPending && c.friendSharesServerWithMe
+    )
     for (const c of prompts) {
       if (!_sharingPromptQueue.some(q => q.friendUserId === c.friendUserId)) {
-        _sharingPromptQueue.push({ friendUserId: c.friendUserId, friendName: c.friendName })
+        _sharingPromptQueue.push({
+          friendUserId: c.friendUserId,
+          friendName: c.friendName,
+        })
       }
     }
     if (_sharingPromptQueue.length && sharingModal?.hidden !== false) {
       processNextSharingPrompt()
     }
 
-    matchesFriendsList.innerHTML = accepted.map(conn => {
-      const { friendUserId, friendName, sharesServer, friendSharesServerWithMe, matches } = conn
-      const matchCount = matches ? matches.length : 0
-      const matchLabel = matchCount === 0
-        ? 'No matches yet — keep swiping!'
-        : matchCount === 1 ? '1 match' : `${matchCount} matches`
-      const moviesHtml = matchCount
-        ? matches.map(m => renderMatchMovie(m, friendName)).join('')
-        : `<p class="matches-empty-note">No matches yet — keep swiping!</p>`
-      const sharingBadge = friendSharesServerWithMe
-        ? `<span class="matches-friend-sharing-badge" title="Sharing their library with you"><i class="fas fa-server"></i></span>`
-        : ''
-      return `
+    matchesFriendsList.innerHTML = accepted
+      .map(conn => {
+        const {
+          friendUserId,
+          friendName,
+          sharesServer,
+          friendSharesServerWithMe,
+          matches,
+        } = conn
+        const matchCount = matches ? matches.length : 0
+        const matchLabel =
+          matchCount === 0
+            ? 'No matches yet — keep swiping!'
+            : matchCount === 1
+            ? '1 match'
+            : `${matchCount} matches`
+        const moviesHtml = matchCount
+          ? matches.map(m => renderMatchMovie(m, friendName)).join('')
+          : `<p class="matches-empty-note">No matches yet — keep swiping!</p>`
+        const sharingBadge = friendSharesServerWithMe
+          ? `<span class="matches-friend-sharing-badge" title="Sharing their library with you"><i class="fas fa-server"></i></span>`
+          : ''
+        return `
         <div class="matches-friend-card" data-friend-id="${friendUserId}">
           <div class="matches-friend-header">
             <span class="matches-friend-name">${friendName}</span>
             ${sharingBadge}
             <span class="matches-friend-count">${matchLabel}</span>
             <label class="matches-share-toggle" title="Share your library with ${friendName}">
-              <input type="checkbox" class="js-friend-share-toggle" data-friend-id="${friendUserId}" ${sharesServer ? 'checked' : ''} />
+              <input type="checkbox" class="js-friend-share-toggle" data-friend-id="${friendUserId}" ${
+          sharesServer ? 'checked' : ''
+        } />
               <span class="matches-share-toggle-label">Share my library</span>
             </label>
             <button class="matches-remove-btn" type="button" data-friend-id="${friendUserId}"
@@ -7071,21 +6979,29 @@ const main = async () => {
           </div>
           <div class="matches-friend-movies">${moviesHtml}</div>
         </div>`
-    }).join('')
+      })
+      .join('')
 
     // Wire sharing toggles
-    matchesFriendsList.querySelectorAll('.js-friend-share-toggle').forEach(toggle => {
-      toggle.addEventListener('change', async () => {
-        const friendId = Number(toggle.dataset.friendId)
-        try {
-          await fetch(`${basePath}/api/matches/sharing`, {
-            method: 'PUT',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ friendUserId: friendId, sharesServer: toggle.checked }),
-          })
-        } catch { toggle.checked = !toggle.checked }
+    matchesFriendsList
+      .querySelectorAll('.js-friend-share-toggle')
+      .forEach(toggle => {
+        toggle.addEventListener('change', async () => {
+          const friendId = Number(toggle.dataset.friendId)
+          try {
+            await fetch(`${basePath}/api/matches/sharing`, {
+              method: 'PUT',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({
+                friendUserId: friendId,
+                sharesServer: toggle.checked,
+              }),
+            })
+          } catch {
+            toggle.checked = !toggle.checked
+          }
+        })
       })
-    })
 
     // Wire remove buttons
     matchesFriendsList.querySelectorAll('.matches-remove-btn').forEach(btn => {
@@ -7100,7 +7016,9 @@ const main = async () => {
             body: JSON.stringify({ friendUserId: friendId }),
           })
           await loadMatchesData()
-        } catch { btn.disabled = false }
+        } catch {
+          btn.disabled = false
+        }
       })
     })
 
@@ -7139,18 +7057,27 @@ const main = async () => {
     matchesCopyBtn.addEventListener('click', () => {
       const code = matchesMyCodeEl?.textContent?.trim() || ''
       if (!code || code === '——' || code === '······') return
-      navigator.clipboard.writeText(code)
+      navigator.clipboard
+        .writeText(code)
         .then(() => {
           matchesCopyBtn.innerHTML = '<i class="fas fa-check"></i>'
-          setTimeout(() => { matchesCopyBtn.innerHTML = '<i class="fas fa-copy"></i>' }, 2000)
-        }).catch(() => {})
+          setTimeout(() => {
+            matchesCopyBtn.innerHTML = '<i class="fas fa-copy"></i>'
+          }, 2000)
+        })
+        .catch(() => {})
     })
   }
 
   // Refresh code
   if (matchesRefreshBtn) {
     matchesRefreshBtn.addEventListener('click', async () => {
-      if (!confirm('Refresh your code? This will remove all your current friend connections and generate a new code.')) return
+      if (
+        !confirm(
+          'Refresh your code? This will remove all your current friend connections and generate a new code.'
+        )
+      )
+        return
       matchesRefreshBtn.disabled = true
       try {
         const res = await fetch(`${basePath}/api/user/refresh`, {
@@ -7188,7 +7115,9 @@ const main = async () => {
         const data = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(data.error || 'Could not add friend.')
         if (matchesFriendInput) matchesFriendInput.value = ''
-        setMatchesStatus(`Request sent to ${data.friendName}! They need to accept.`)
+        setMatchesStatus(
+          `Request sent to ${data.friendName}! They need to accept.`
+        )
         setTimeout(() => setMatchesStatus(''), 5000)
         await loadMatchesData()
       } catch (err) {
@@ -7210,14 +7139,18 @@ const main = async () => {
   const profileCopyInvite = document.querySelector('.js-settings-copy-invite')
   const profileServerForm = document.querySelector('.js-profile-server-form')
   const profileServerType = document.querySelector('.js-profile-server-type')
-  const profileServerFields = document.querySelectorAll('.js-profile-server-fields')
+  const profileServerFields = document.querySelectorAll(
+    '.js-profile-server-fields'
+  )
   const profileTokenLabel = document.querySelector('.js-profile-token-label')
-  const profileServerStatus = document.querySelector('.js-profile-server-status')
+  const profileServerStatus = document.querySelector(
+    '.js-profile-server-status'
+  )
 
   // Show or hide server-specific fields based on selected type
   const updateProfileServerFields = () => {
     const type = profileServerType?.value || ''
-    profileServerFields.forEach(el => el.hidden = !type)
+    profileServerFields.forEach(el => (el.hidden = !type))
     if (profileTokenLabel) {
       profileTokenLabel.textContent = type === 'plex' ? 'Plex Token' : 'API Key'
     }
@@ -7244,7 +7177,9 @@ const main = async () => {
         const icon = profileCopyInvite.querySelector('i')
         if (icon) {
           icon.className = 'fas fa-check'
-          setTimeout(() => { icon.className = 'fas fa-copy' }, 1500)
+          setTimeout(() => {
+            icon.className = 'fas fa-copy'
+          }, 1500)
         }
       } catch {
         // clipboard not available; silently ignore
@@ -7261,14 +7196,27 @@ const main = async () => {
   }
 
   const serverFieldsForType = (type, url, token, library) => {
-    if (type === 'plex') return { plexUrl: url, plexToken: token, plexLibraryName: library }
-    if (type === 'emby') return { embyUrl: url, embyApiKey: token, embyLibraryName: library }
-    if (type === 'jellyfin') return { jellyfinUrl: url, jellyfinApiKey: token, jellyfinLibraryName: library }
+    if (type === 'plex')
+      return { plexUrl: url, plexToken: token, plexLibraryName: library }
+    if (type === 'emby')
+      return { embyUrl: url, embyApiKey: token, embyLibraryName: library }
+    if (type === 'jellyfin')
+      return {
+        jellyfinUrl: url,
+        jellyfinApiKey: token,
+        jellyfinLibraryName: library,
+      }
     // "None" clears all server types
     return {
-      plexUrl: '', plexToken: '', plexLibraryName: '',
-      embyUrl: '', embyApiKey: '', embyLibraryName: '',
-      jellyfinUrl: '', jellyfinApiKey: '', jellyfinLibraryName: '',
+      plexUrl: '',
+      plexToken: '',
+      plexLibraryName: '',
+      embyUrl: '',
+      embyApiKey: '',
+      embyLibraryName: '',
+      jellyfinUrl: '',
+      jellyfinApiKey: '',
+      jellyfinLibraryName: '',
     }
   }
 
@@ -7305,7 +7253,9 @@ const main = async () => {
         const typeEl = profileServerForm.querySelector('[name="serverType"]')
         const urlEl = profileServerForm.querySelector('[name="serverUrl"]')
         const tokenEl = profileServerForm.querySelector('[name="serverToken"]')
-        const libraryEl = profileServerForm.querySelector('[name="libraryName"]')
+        const libraryEl = profileServerForm.querySelector(
+          '[name="libraryName"]'
+        )
         if (typeEl) typeEl.value = type
         if (urlEl) urlEl.value = urlFromSettings(type, settings)
         if (tokenEl) tokenEl.value = tokenFromSettings(type, settings)
@@ -7324,10 +7274,14 @@ const main = async () => {
         profileServerStatus.textContent = 'Saving…'
         profileServerStatus.hidden = false
       }
-      const type = profileServerForm.querySelector('[name="serverType"]')?.value || ''
-      const url = profileServerForm.querySelector('[name="serverUrl"]')?.value || ''
-      const token = profileServerForm.querySelector('[name="serverToken"]')?.value || ''
-      const library = profileServerForm.querySelector('[name="libraryName"]')?.value || ''
+      const type =
+        profileServerForm.querySelector('[name="serverType"]')?.value || ''
+      const url =
+        profileServerForm.querySelector('[name="serverUrl"]')?.value || ''
+      const token =
+        profileServerForm.querySelector('[name="serverToken"]')?.value || ''
+      const library =
+        profileServerForm.querySelector('[name="libraryName"]')?.value || ''
       const body = serverFieldsForType(type, url, token, library)
       try {
         const res = await fetch('/api/profile/settings', {
@@ -7342,7 +7296,9 @@ const main = async () => {
         if (profileServerStatus) {
           profileServerStatus.textContent = 'Saved!'
           profileServerStatus.hidden = false
-          setTimeout(() => { if (profileServerStatus) profileServerStatus.hidden = true }, 2500)
+          setTimeout(() => {
+            if (profileServerStatus) profileServerStatus.hidden = true
+          }, 2500)
         }
       } catch (err) {
         if (profileServerStatus) {
@@ -8065,21 +8021,7 @@ const main = async () => {
   const savedSwipeDefaults = loadSavedSwipeFilterDefaults()
 
   // Filter state - consolidated into one declaration
-  const filterState = savedSwipeDefaults || {
-    yearRange: { min: DEFAULT_YEAR_MIN, max: new Date().getFullYear() },
-    genres: [],
-    contentRatings: [],
-    availability: getDefaultAvailabilityState(),
-    showPlexOnly: false,
-    languages: [...DEFAULT_LANGUAGES],
-    countries: [],
-    imdbRating: 0.0,
-    tmdbRating: 0.0,
-    runtimeRange: { min: 0, max: 300 },
-    voteCount: DEFAULT_VOTE_COUNT,
-    sortBy: 'popularity.desc',
-    // rtRating: 0 //COMMENTED OUT
-  }
+  const filterState = savedSwipeDefaults || createDefaultSwipeFilterState()
 
   filterState.availability = normalizeAvailabilityState(
     filterState.availability
