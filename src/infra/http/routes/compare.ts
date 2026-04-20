@@ -301,7 +301,6 @@ export async function handleCompareRoutes(
       JSON.stringify({
         settings: {
           defaultFilters: settings?.defaultFilters ?? '{}',
-          subscriptions: settings?.subscriptions ?? '[]',
         },
         inviteCode,
       }),
@@ -328,8 +327,11 @@ export async function handleCompareRoutes(
     upsertUserSettings(session.userId, {
       defaultFilters:
         typeof body.defaultFilters === 'string' ? body.defaultFilters : undefined,
+<<<<<<< codex/task-title-ucuzdd
+=======
       subscriptions:
         typeof body.subscriptions === 'string' ? body.subscriptions : undefined,
+>>>>>>> dev
     })
 
     return new Response(JSON.stringify({ success: true }), {
