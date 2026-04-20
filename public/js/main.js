@@ -6705,6 +6705,9 @@ const main = async () => {
 
   document.body.classList.add('is-logged-in')
   document.body.dataset.appMode = appMode
+  // Re-fetch client config now that we know the user's server access level,
+  // so PERSONAL_MEDIA_SOURCES and subscription options are up-to-date.
+  await loadClientConfig().catch(() => {})
   await hydrateSettingsUiIfAuthorized()
 
   sessionStorage.setItem('userName', userName)
@@ -10612,12 +10615,18 @@ function setAvailabilityState(nextState) {
 }
 
 function applyUserSubscriptions(services) {
-  if (!Array.isArray(services) || !services.length) return
-  const existing = parseArraySetting(window.PAID_STREAMING_SERVICES)
-  const merged = Array.from(new Set([...existing, ...services]))
-  window.PAID_STREAMING_SERVICES = JSON.stringify(merged)
-  hydratePaidStreamingServicesSetting(window.PAID_STREAMING_SERVICES)
+  if (!Array.isArray(services)) return
   if (!window.filterState) return
+  if (!services.length) {
+    // User cleared all subscriptions — reset availability to "anywhere"
+    setAvailabilityState({
+      ...(window.filterState.availability || getDefaultAvailabilityState()),
+      subscriptionServices: [],
+      paidSubscriptions: false,
+      anywhere: true,
+    })
+    return
+  }
   setAvailabilityState({
     ...(window.filterState.availability || getDefaultAvailabilityState()),
     subscriptionServices: services,
