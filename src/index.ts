@@ -336,12 +336,16 @@ try {
 }
 
 const wss = new WebSocketServer({
-  onConnection: (ws, req) =>
-    handleLogin(
+  onConnection: (ws, req) => {
+    const userToken = getUserTokenFromCookie(req)
+    const userSession = userToken ? getUserSession(userToken) : null
+    return handleLogin(
       ws,
       String((req.conn.remoteAddr as Deno.NetAddr)?.hostname || 'unknown'),
-      parseAccessPassword(req)
-    ),
+      parseAccessPassword(req),
+      userSession?.hasServerAccess !== false
+    )
+  },
   onError: err => log.error(err),
 })
 

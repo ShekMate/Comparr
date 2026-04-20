@@ -286,7 +286,7 @@ export async function handleCompareRoutes(
   }
 
   // ── GET /api/profile/settings ───────────────────────────────────────────
-  // Returns the authenticated user's personal server settings.
+  // Returns authenticated user preferences + invite metadata.
   if (path === '/api/profile/settings' && req.method === 'GET') {
     const session = getCallerSession(req)
     if (!session) {
@@ -297,13 +297,22 @@ export async function handleCompareRoutes(
 
     const settings = getUserSettings(session.userId)
     const inviteCode = getOrCreateInviteCode(session.userId)
-    return new Response(JSON.stringify({ settings: settings ?? {}, inviteCode }), {
-      status: 200, headers: makeJson(req),
-    })
+    return new Response(
+      JSON.stringify({
+        settings: {
+          defaultFilters: settings?.defaultFilters ?? '{}',
+        },
+        inviteCode,
+      }),
+      {
+        status: 200,
+        headers: makeJson(req),
+      }
+    )
   }
 
   // ── PUT /api/profile/settings ───────────────────────────────────────────
-  // Updates the authenticated user's personal server settings.
+  // Updates authenticated user preferences.
   if (path === '/api/profile/settings' && req.method === 'PUT') {
     const session = getCallerSession(req)
     if (!session) {
@@ -316,20 +325,8 @@ export async function handleCompareRoutes(
     try { body = await req.json() } catch { /* empty body ok */ }
 
     upsertUserSettings(session.userId, {
-      plexUrl: typeof body.plexUrl === 'string' ? body.plexUrl.trim() : undefined,
-      plexToken: typeof body.plexToken === 'string' ? body.plexToken.trim() : undefined,
-      plexLibraryName: typeof body.plexLibraryName === 'string' ? body.plexLibraryName.trim() : undefined,
-      embyUrl: typeof body.embyUrl === 'string' ? body.embyUrl.trim() : undefined,
-      embyApiKey: typeof body.embyApiKey === 'string' ? body.embyApiKey.trim() : undefined,
-      embyLibraryName: typeof body.embyLibraryName === 'string' ? body.embyLibraryName.trim() : undefined,
-      jellyfinUrl: typeof body.jellyfinUrl === 'string' ? body.jellyfinUrl.trim() : undefined,
-      jellyfinApiKey: typeof body.jellyfinApiKey === 'string' ? body.jellyfinApiKey.trim() : undefined,
-      jellyfinLibraryName: typeof body.jellyfinLibraryName === 'string' ? body.jellyfinLibraryName.trim() : undefined,
-      radarrUrl: typeof body.radarrUrl === 'string' ? body.radarrUrl.trim() : undefined,
-      radarrApiKey: typeof body.radarrApiKey === 'string' ? body.radarrApiKey.trim() : undefined,
-      seerrUrl: typeof body.seerrUrl === 'string' ? body.seerrUrl.trim() : undefined,
-      seerrApiKey: typeof body.seerrApiKey === 'string' ? body.seerrApiKey.trim() : undefined,
-      defaultFilters: typeof body.defaultFilters === 'string' ? body.defaultFilters : undefined,
+      defaultFilters:
+        typeof body.defaultFilters === 'string' ? body.defaultFilters : undefined,
     })
 
     return new Response(JSON.stringify({ success: true }), {

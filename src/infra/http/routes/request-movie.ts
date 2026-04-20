@@ -11,6 +11,8 @@ import {
 } from '../../../integrations/plex/cache.ts'
 import { isMovieInEmby } from '../../../integrations/emby/cache.ts'
 import { isMovieInJellyfin } from '../../../integrations/jellyfin/cache.ts'
+import { getUserTokenFromCookie } from './auth.ts'
+import { getUserSession } from '../../../core/user-session-store.ts'
 
 export async function handleRequestMovieRoute(
   req: CompatRequest,
@@ -20,6 +22,19 @@ export async function handleRequestMovieRoute(
   if (path !== '/api/request-movie' || req.method !== 'POST') return null
 
   try {
+    const userToken = getUserTokenFromCookie(req)
+    const userSession = userToken ? getUserSession(userToken) : null
+    if (userSession?.hasServerAccess === false) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message:
+            'Movie requests are only available to users with access to the host Plex server.',
+        }),
+        { status: 200, headers: makeHeaders(req, 'application/json') }
+      )
+    }
+
     if (!isValidStateChangingOrigin(req)) {
       return new Response(
         JSON.stringify({ error: 'Invalid request origin.' }),

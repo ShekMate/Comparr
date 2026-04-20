@@ -1187,9 +1187,15 @@ async function loadClientConfig() {
     }
     if (data?.userAuthEnabled !== undefined) {
       window.USER_AUTH_ENABLED = Boolean(data.userAuthEnabled)
+    } else {
+      // Plex auth is mandatory; default true if older payload omits this field.
+      window.USER_AUTH_ENABLED = true
     }
     if (data?.plexRestrictToServer !== undefined) {
       window.PLEX_RESTRICT_TO_SERVER = Boolean(data.plexRestrictToServer)
+    }
+    if (data?.userHasServerAccess !== undefined) {
+      window.USER_HAS_SERVER_ACCESS = Boolean(data.userHasServerAccess)
     }
     updateHostManagedSubscriptionServiceOptions()
   } catch (err) {
@@ -3174,8 +3180,6 @@ function createFirstRunGuideModal() {
       copy.textContent =
         "Let users sign in with their Plex, Jellyfin, or Emby account. Once your media server is configured, you'll sign in to claim admin access."
 
-      const currentEnabled =
-        window.USER_AUTH_ENABLED === true || window.USER_AUTH_ENABLED === 'true'
       const currentPlexRestrict =
         window.PLEX_RESTRICT_TO_SERVER === true ||
         window.PLEX_RESTRICT_TO_SERVER === 'true'
@@ -3193,15 +3197,9 @@ function createFirstRunGuideModal() {
         : ''
 
       body.innerHTML = `
-        <label class="first-run-user-auth-row">
-          <input type="checkbox" id="first-run-user-auth-enabled" ${
-            currentEnabled ? 'checked' : ''
-          } />
-          <div>
-            <strong>Enable user authentication</strong>
-            <p class="first-run-guide-instruction">Require users to sign in with their media server account.</p>
-          </div>
-        </label>
+        <p class="first-run-guide-instruction" style="margin-bottom:0.75rem">
+          Plex authentication is always enabled. Every user must sign in with Plex before using Comparr.
+        </p>
         ${plexRestrictRow}
         <p id="first-run-user-auth-note" class="first-run-guide-instruction" style="margin-top:0.75rem">
           You can always change these settings later under Settings → Security &amp; Access.
@@ -3540,22 +3538,18 @@ function createFirstRunGuideModal() {
     }
 
     if (current.type === 'user-auth') {
-      const enabledEl = body.querySelector('#first-run-user-auth-enabled')
       const plexRestrictEl = body.querySelector('#first-run-plex-restrict')
 
-      const enabled = enabledEl?.checked ?? false
       const plexRestrict = plexRestrictEl?.checked ?? false
 
-      const settingsToSave = {
-        USER_AUTH_ENABLED: enabled ? 'true' : 'false',
-      }
+      const settingsToSave = {}
       if (plexRestrictEl) {
         settingsToSave.PLEX_RESTRICT_TO_SERVER = plexRestrict ? 'true' : 'false'
       }
 
       try {
         await saveSettingsSubset(settingsToSave)
-        window.USER_AUTH_ENABLED = enabled
+        window.USER_AUTH_ENABLED = true
         if (plexRestrictEl) window.PLEX_RESTRICT_TO_SERVER = plexRestrict
       } catch (err) {
         setWizardStatus(
@@ -4635,6 +4629,7 @@ async function login(api) {
     if (user) {
       currentUser = user
       window.COMPARR_USER = user
+      window.USER_HAS_SERVER_ACCESS = user.hasServerAccess !== false
     }
   } catch {
     // no session
@@ -4649,6 +4644,7 @@ async function login(api) {
       const handleUserLoggedIn = user => {
         currentUser = user
         window.COMPARR_USER = user
+        window.USER_HAS_SERVER_ACCESS = user.hasServerAccess !== false
         resolve()
       }
 
@@ -7146,6 +7142,15 @@ const main = async () => {
   const profileServerStatus = document.querySelector(
     '.js-profile-server-status'
   )
+
+  if (profileServerForm) {
+    profileServerForm.hidden = true
+    if (profileServerStatus) {
+      profileServerStatus.textContent =
+        'Personal media server settings are managed by the instance admin.'
+      profileServerStatus.hidden = false
+    }
+  }
 
   // Show or hide server-specific fields based on selected type
   const updateProfileServerFields = () => {

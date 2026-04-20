@@ -18,6 +18,7 @@ export interface UserSession {
   username: string
   avatarUrl: string
   isAdmin: boolean
+  hasServerAccess: boolean
   expiresAt: number
 }
 
