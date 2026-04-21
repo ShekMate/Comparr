@@ -3507,11 +3507,19 @@ function createFirstRunGuideModal() {
         let pollTimer = null
         let popup = null
         let popupClosedAt = null
+        let consecutivePollErrors = 0
 
         const cleanupPoll = () => {
           if (pollTimer) clearInterval(pollTimer)
           pollTimer = null
           if (popup && !popup.closed) popup.close()
+        }
+        const recoverFromExistingSession = async () => {
+          const authState = await api.getAuthUser().catch(() => ({ user: null }))
+          if (!authState?.user) return false
+          cleanupPoll()
+          handleAdminLoggedIn(authState.user)
+          return true
         }
 
         try {
@@ -3537,6 +3545,7 @@ function createFirstRunGuideModal() {
           pollTimer = setInterval(async () => {
             try {
               const result = await api.pollPlexPin(pinId)
+              consecutivePollErrors = 0
               if (result.status === 'success') {
                 cleanupPoll()
                 handleAdminLoggedIn(result.user)
@@ -3556,6 +3565,7 @@ function createFirstRunGuideModal() {
                   popupClosedAt = Date.now()
                   if (plexStatus) plexStatus.textContent = 'Verifying login…'
                 }
+                if (await recoverFromExistingSession()) return
                 if (Date.now() - popupClosedAt >= 6000) {
                   cleanupPoll()
                   plexBtn.disabled = false
@@ -3563,7 +3573,16 @@ function createFirstRunGuideModal() {
                 }
               }
             } catch {
-              /* ignore transient poll errors */
+              consecutivePollErrors += 1
+              if (await recoverFromExistingSession()) return
+              if (consecutivePollErrors >= 3) {
+                cleanupPoll()
+                plexBtn.disabled = false
+                if (plexStatus) {
+                  plexStatus.textContent =
+                    'Unable to verify Plex login right now. Please try again.'
+                }
+              }
             }
           }, 2000)
         } catch (err) {
