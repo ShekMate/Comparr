@@ -164,7 +164,9 @@ export async function handleAuthRoutes(
 
     try {
       const clientId = await ensurePlexClientId()
-      const { pin, authUrl } = await requestPlexPin(clientId)
+      const requestUrl = new URL(req.url)
+      const forwardUrl = `${requestUrl.origin}/auth/plex-callback.html`
+      const { pin, authUrl } = await requestPlexPin(clientId, forwardUrl)
 
       pruneExpiredPins()
       _pendingPins.set(pin.id, {

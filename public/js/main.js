@@ -2940,9 +2940,14 @@ function createFirstRunGuideModal() {
     },
   }
   let adminSessionWatcher = null
+  let detachAdminLoginMessageListener = null
   const stopAdminSessionWatcher = () => {
     if (adminSessionWatcher) clearInterval(adminSessionWatcher)
     adminSessionWatcher = null
+  }
+  const stopAdminLoginMessageListener = () => {
+    if (detachAdminLoginMessageListener) detachAdminLoginMessageListener()
+    detachAdminLoginMessageListener = null
   }
 
   const setSelectedFlow = flow => {
@@ -3108,7 +3113,10 @@ function createFirstRunGuideModal() {
 
   const renderScreen = screen => {
     if (!body || !copy || !title) return
-    if (screen.type !== 'admin-login') stopAdminSessionWatcher()
+    if (screen.type !== 'admin-login') {
+      stopAdminSessionWatcher()
+      stopAdminLoginMessageListener()
+    }
     persistWizardProgress()
     setWizardStatus('')
     updateActionButtons(screen)
@@ -3489,6 +3497,7 @@ function createFirstRunGuideModal() {
           provider: user?.provider || null,
         })
         stopAdminSessionWatcher()
+        stopAdminLoginMessageListener()
         window.COMPARR_USER = user
         selectedState.adminLoggedIn = true
         selectedState.adminLoginUser = user
@@ -3520,6 +3529,19 @@ function createFirstRunGuideModal() {
           handleAdminLoggedIn(authState.user)
         }
       }, 2500)
+      stopAdminLoginMessageListener()
+      const onAdminLoginMessage = async event => {
+        if (event.origin !== window.location.origin) return
+        if (event.data?.type !== 'comparr-plex-auth-complete') return
+        console.info(
+          '[wizard][admin-login] Received completion message from Plex callback'
+        )
+        const authState = await api.getAuthUser().catch(() => ({ user: null }))
+        if (authState?.user) handleAdminLoggedIn(authState.user)
+      }
+      window.addEventListener('message', onAdminLoginMessage)
+      detachAdminLoginMessageListener = () =>
+        window.removeEventListener('message', onAdminLoginMessage)
 
       plexBtn?.addEventListener('click', async () => {
         console.info('[wizard][admin-login] Starting Plex PIN login flow')
