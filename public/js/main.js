@@ -3538,11 +3538,44 @@ function createFirstRunGuideModal() {
         console.info(
           '[wizard][admin-login] Received completion message from Plex callback'
         )
-        if (activeAdminPinId && typeof pollAdminPinNow === 'function') {
-          console.info('[wizard][admin-login] Triggering immediate PIN poll from callback message', {
-            pinId: activeAdminPinId,
-          })
-          await pollAdminPinNow().catch(() => {})
+        if (activeAdminPinId) {
+          console.info(
+            '[wizard][admin-login] Running callback-triggered PIN verification loop',
+            {
+              pinId: activeAdminPinId,
+            }
+          )
+
+          for (let attempt = 1; attempt <= 15; attempt++) {
+            const result = await api.pollPlexPin(activeAdminPinId).catch(() => null)
+            console.debug(
+              '[wizard][admin-login] Callback verification poll attempt',
+              {
+                pinId: activeAdminPinId,
+                attempt,
+                status: result?.status || 'error',
+                hasUser: Boolean(result?.user),
+              }
+            )
+
+            if (result?.status === 'success' || result?.user?.username) {
+              handleAdminLoggedIn(result.user)
+              return
+            }
+
+            if (result?.status === 'denied' || result?.status === 'expired') {
+              if (plexStatus) {
+                plexStatus.textContent =
+                  result.status === 'denied'
+                    ? result.error || 'Access denied.'
+                    : 'Plex login expired. Please try again.'
+                plexStatus.hidden = false
+              }
+              break
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 1000))
+          }
         }
         const authState = await api.getAuthUser().catch(() => ({ user: null }))
         if (authState?.user) handleAdminLoggedIn(authState.user)

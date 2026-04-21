@@ -140,11 +140,17 @@ export async function handleAuthRoutes(
     const token = parseCookies(req).get(USER_SESSION_COOKIE) || ''
     const session = token ? getUserSession(token) : null
     if (!session) {
+      log.info(
+        `[auth] /api/auth/me no active session (hasCookie=${Boolean(token)})`
+      )
       return new Response(JSON.stringify({ user: null }), {
         status: 200,
         headers: makeJson(req),
       })
     }
+    log.info(
+      `[auth] /api/auth/me active session found (userId=${session.userId}, username=${session.username})`
+    )
     // Derive deterministic personal room code from user ID
     const roomCode = `U${String(session.userId).padStart(3, '0')}`
     return new Response(
@@ -166,6 +172,7 @@ export async function handleAuthRoutes(
   // ── POST /api/auth/logout ────────────────────────────────────────────────
   if (pathname === '/api/auth/logout' && req.method === 'POST') {
     const token = parseCookies(req).get(USER_SESSION_COOKIE) || ''
+    log.info(`[auth] Logout requested (hasCookie=${Boolean(token)})`)
     if (token) invalidateUserSession(token)
     const headers = makeJson(req)
     setUserSessionCookie(headers, '', req, 0)
@@ -253,6 +260,12 @@ export async function handleAuthRoutes(
         { status: 200, headers: makeJson(req) }
       )
     }
+    log.info(
+      `[auth] Plex PIN pending entry loaded (pinId=${pinId}, expiresInMs=${Math.max(
+        0,
+        pending.expiresAt - Date.now()
+      )}, hasCode=${Boolean(pending.code)})`
+    )
 
     try {
       log.info(`[auth] Plex PIN poll: pinId=${pinId} checking status`)
