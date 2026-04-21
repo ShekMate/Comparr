@@ -3515,6 +3515,8 @@ function createFirstRunGuideModal() {
       // ── Plex PIN flow ────────────────────────────────────────────
       const plexBtn = body.querySelector('.js-wizard-admin-plex-btn')
       const plexStatus = body.querySelector('.js-wizard-admin-plex-status')
+      let activeAdminPinId = null
+      let pollAdminPinNow = null
       stopAdminSessionWatcher()
       adminSessionWatcher = setInterval(async () => {
         if (selectedState.adminLoggedIn) {
@@ -3536,6 +3538,12 @@ function createFirstRunGuideModal() {
         console.info(
           '[wizard][admin-login] Received completion message from Plex callback'
         )
+        if (activeAdminPinId && typeof pollAdminPinNow === 'function') {
+          console.info('[wizard][admin-login] Triggering immediate PIN poll from callback message', {
+            pinId: activeAdminPinId,
+          })
+          await pollAdminPinNow().catch(() => {})
+        }
         const authState = await api.getAuthUser().catch(() => ({ user: null }))
         if (authState?.user) handleAdminLoggedIn(authState.user)
       }
@@ -3562,6 +3570,8 @@ function createFirstRunGuideModal() {
           if (pollTimer) clearInterval(pollTimer)
           pollTimer = null
           if (popup && !popup.closed) popup.close()
+          activeAdminPinId = null
+          pollAdminPinNow = null
         }
         const recoverFromExistingSession = async () => {
           const authState = await api.getAuthUser().catch(() => ({ user: null }))
@@ -3577,6 +3587,7 @@ function createFirstRunGuideModal() {
         try {
           const { pinId, authUrl } = await api.requestPlexPin()
           console.info('[wizard][admin-login] Received PIN payload', { pinId })
+          activeAdminPinId = pinId
           popup = window.open(
             'about:blank',
             '_blank',
@@ -3597,7 +3608,7 @@ function createFirstRunGuideModal() {
           if (plexStatus)
             plexStatus.textContent = 'Waiting for Plex approval…'
 
-          pollTimer = setInterval(async () => {
+          pollAdminPinNow = async () => {
             try {
               const result = await api.pollPlexPin(pinId)
               console.debug('[wizard][admin-login] PIN poll response', {
@@ -3689,7 +3700,11 @@ function createFirstRunGuideModal() {
                 }
               }
             }
-          }, 2000)
+          }
+
+          // Trigger one poll immediately so we don't rely on the first interval tick.
+          await pollAdminPinNow()
+          pollTimer = setInterval(pollAdminPinNow, 2000)
         } catch (err) {
           console.error('[wizard][admin-login] Failed to start Plex PIN flow', err)
           cleanupPoll()
@@ -4957,6 +4972,11 @@ async function login(api) {
                 // Some proxy/error edge-cases can strip status while still
                 // returning a usable authenticated user object.
                 if (result.status === 'success' || result?.user?.username) {
+                  console.info('[auth][user-login] PIN poll success', {
+                    pinId,
+                    status: result.status || null,
+                    hasUser: Boolean(result?.user?.username),
+                  })
                   cleanupPoll()
                   if (plexStatus) plexStatus.hidden = true
                   handleUserLoggedIn(result.user)
@@ -4964,6 +4984,11 @@ async function login(api) {
                   result.status === 'expired' ||
                   result.status === 'denied'
                 ) {
+                  console.warn('[auth][user-login] PIN poll terminal status', {
+                    pinId,
+                    status: result.status,
+                    error: result.error || null,
+                  })
                   cleanupPoll()
                   plexSigninBtn.disabled = false
                   if (plexStatus) {
@@ -4973,6 +4998,9 @@ async function login(api) {
                         : 'Plex login expired. Please try again.'
                   }
                 } else if (popup.closed) {
+                  console.info('[auth][user-login] Popup closed while poll pending', {
+                    pinId,
+                  })
                   if (!popupClosedAt) {
                     popupClosedAt = Date.now()
                     if (plexStatus) {
@@ -4983,6 +5011,10 @@ async function login(api) {
                   // A closed popup is not always a cancellation. Keep polling
                   // for a while so slower Plex approvals still succeed.
                   if (Date.now() - popupClosedAt >= 120000) {
+                    console.warn('[auth][user-login] Popup closed timeout reached', {
+                      pinId,
+                      waitedMs: Date.now() - popupClosedAt,
+                    })
                     cleanupPoll()
                     plexSigninBtn.disabled = false
                     if (plexStatus) {
@@ -4993,6 +5025,10 @@ async function login(api) {
                 }
               } catch {
                 consecutivePollErrors += 1
+                console.warn('[auth][user-login] PIN poll threw error', {
+                  pinId,
+                  consecutivePollErrors,
+                })
 
                 // If the auth cookie was set but the poll response payload is
                 // malformed/blocked by a proxy, /api/auth/me can still confirm
@@ -5009,6 +5045,9 @@ async function login(api) {
                     return
                   }
                 } catch {
+                  console.warn(
+                    '[auth][user-login] Fallback /api/auth/me check failed'
+                  )
                   // continue retrying below
                 }
 

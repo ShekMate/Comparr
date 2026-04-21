@@ -182,6 +182,7 @@ export async function handleAuthRoutes(
     const requestOrigin = getRequestOrigin(req)
     log.info(`[auth] Plex PIN start requested (ip=${ip}, origin=${requestOrigin})`)
     if (!loginRateLimiter.check(ip)) {
+      log.warn(`[auth] Plex PIN start rate-limited (ip=${ip})`)
       return new Response(
         JSON.stringify({ error: 'Too many attempts. Please wait.' }),
         { status: 429, headers: makeJson(req) }
@@ -190,6 +191,7 @@ export async function handleAuthRoutes(
 
     try {
       const clientId = await ensurePlexClientId()
+      log.info(`[auth] Using Plex client ID for PIN start (clientId=${clientId})`)
       const forwardUrl = `${requestOrigin}/auth/plex-callback.html`
       let pinPayload: { pin: { id: number }; authUrl: string } | null = null
 
@@ -278,16 +280,23 @@ export async function handleAuthRoutes(
       log.info(`[auth] Plex PIN poll: pinId=${pinId} received auth token`)
 
       const plexUser = await getPlexUserInfo(status.authToken, pending.clientId)
+      log.info(
+        `[auth] Plex user info fetched from auth token (pinId=${pinId}, plexUserId=${plexUser.id}, username=${plexUser.username})`
+      )
 
       // Determine whether this Plex user has access to the configured Plex server.
       // Users without server access may still sign in, but server-backed features
       // (library filtering/requests) are restricted.
       let hasServerAccess = true
       if (getPlexUrl() && getPlexToken()) {
+        log.info(`[auth] Checking Plex server access for user (pinId=${pinId})`)
         hasServerAccess = await isUserOnPlexServer(
           status.authToken,
           getPlexUrl(),
           getPlexToken()
+        )
+        log.info(
+          `[auth] Plex server access check complete (pinId=${pinId}, hasServerAccess=${hasServerAccess})`
         )
       }
 
@@ -298,9 +307,11 @@ export async function handleAuthRoutes(
         email: plexUser.email,
         avatarUrl: plexUser.thumb,
       })
+      log.info(`[auth] Upserted auth user (pinId=${pinId}, userId=${user.id})`)
 
       // Ensure user has an invite code
       const inviteCode = getOrCreateInviteCode(user.id)
+      log.info(`[auth] Resolved invite code for user (pinId=${pinId}, userId=${user.id})`)
 
       // Deterministic personal room code derived from user ID
       const roomCode = `U${String(user.id).padStart(3, '0')}`
