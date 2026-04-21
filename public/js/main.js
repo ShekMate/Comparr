@@ -3649,13 +3649,22 @@ function createFirstRunGuideModal() {
                 console.debug('[wizard][admin-login] Popup closed while pending')
                 if (!popupClosedAt) {
                   popupClosedAt = Date.now()
-                  if (plexStatus) plexStatus.textContent = 'Verifying login…'
+                  if (plexStatus) {
+                    plexStatus.textContent =
+                      'Finishing sign in… This can take a few seconds.'
+                  }
                 }
                 if (await recoverFromExistingSession()) return
-                if (Date.now() - popupClosedAt >= 6000) {
+                // Do not treat a closed popup as cancellation right away.
+                // Plex may need extra time to finalize approval and issue the
+                // auth token, especially when proxied.
+                if (Date.now() - popupClosedAt >= 120000) {
                   cleanupPoll()
                   plexBtn.disabled = false
-                  if (plexStatus) plexStatus.textContent = 'Login cancelled.'
+                  if (plexStatus) {
+                    plexStatus.textContent =
+                      'Login was not completed. Please click "Sign in with Plex" and finish approval.'
+                  }
                 }
               }
             } catch {
@@ -4951,13 +4960,19 @@ async function login(api) {
                 } else if (popup.closed) {
                   if (!popupClosedAt) {
                     popupClosedAt = Date.now()
-                    if (plexStatus) plexStatus.textContent = 'Verifying login…'
+                    if (plexStatus) {
+                      plexStatus.textContent =
+                        'Finishing sign in… This can take a few seconds.'
+                    }
                   }
-                  if (Date.now() - popupClosedAt >= 6000) {
+                  // A closed popup is not always a cancellation. Keep polling
+                  // for a while so slower Plex approvals still succeed.
+                  if (Date.now() - popupClosedAt >= 120000) {
                     cleanupPoll()
                     plexSigninBtn.disabled = false
                     if (plexStatus) {
-                      plexStatus.textContent = 'Login cancelled.'
+                      plexStatus.textContent =
+                        'Login was not completed. Please click "Sign in with Plex" and finish approval.'
                     }
                   }
                 }
