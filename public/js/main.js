@@ -2939,6 +2939,11 @@ function createFirstRunGuideModal() {
       },
     },
   }
+  let adminSessionWatcher = null
+  const stopAdminSessionWatcher = () => {
+    if (adminSessionWatcher) clearInterval(adminSessionWatcher)
+    adminSessionWatcher = null
+  }
 
   const setSelectedFlow = flow => {
     selectedState.flow = flow
@@ -3104,6 +3109,7 @@ function createFirstRunGuideModal() {
 
   const renderScreen = screen => {
     if (!body || !copy || !title) return
+    if (screen.type !== 'admin-login') stopAdminSessionWatcher()
     persistWizardProgress()
     setWizardStatus('')
     updateActionButtons(screen)
@@ -3479,6 +3485,7 @@ function createFirstRunGuideModal() {
       `
 
       const handleAdminLoggedIn = user => {
+        stopAdminSessionWatcher()
         window.COMPARR_USER = user
         selectedState.adminLoggedIn = true
         selectedState.adminLoginUser = user
@@ -3496,6 +3503,17 @@ function createFirstRunGuideModal() {
       // ── Plex PIN flow ────────────────────────────────────────────
       const plexBtn = body.querySelector('.js-wizard-admin-plex-btn')
       const plexStatus = body.querySelector('.js-wizard-admin-plex-status')
+      stopAdminSessionWatcher()
+      adminSessionWatcher = setInterval(async () => {
+        if (selectedState.adminLoggedIn) {
+          stopAdminSessionWatcher()
+          return
+        }
+        const authState = await api.getAuthUser().catch(() => ({ user: null }))
+        if (authState?.user) {
+          handleAdminLoggedIn(authState.user)
+        }
+      }, 2500)
 
       plexBtn?.addEventListener('click', async () => {
         plexBtn.disabled = true

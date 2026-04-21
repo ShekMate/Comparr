@@ -224,7 +224,6 @@ export async function handleAuthRoutes(
         )
       }
 
-      _pendingPins.delete(pinId)
       const plexUser = await getPlexUserInfo(status.authToken, pending.clientId)
 
       // Determine whether this Plex user has access to the configured Plex server.
@@ -267,6 +266,10 @@ export async function handleAuthRoutes(
       setUserSessionCookie(headers, sessionToken, req)
 
       log.info(`[auth] Plex login: ${user.username} (id=${user.id})`)
+      // Delete only after the full login + session creation path succeeds.
+      // If another poll arrives while we're still creating the user/session,
+      // keeping the pin prevents false "expired" responses.
+      _pendingPins.delete(pinId)
 
       return new Response(
         JSON.stringify({
