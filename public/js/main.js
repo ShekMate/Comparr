@@ -3590,7 +3590,9 @@ function createFirstRunGuideModal() {
             plexBtn.disabled = false
             return
           }
+          console.info('[wizard][admin-login] Popup opened successfully')
           popup.location.href = authUrl
+          console.debug('[wizard][admin-login] Popup redirected to Plex auth URL')
 
           if (plexStatus)
             plexStatus.textContent = 'Waiting for Plex approval…'
@@ -3598,6 +3600,11 @@ function createFirstRunGuideModal() {
           pollTimer = setInterval(async () => {
             try {
               const result = await api.pollPlexPin(pinId)
+              console.debug('[wizard][admin-login] PIN poll response', {
+                pinId,
+                status: result?.status || 'unknown',
+                hasUser: Boolean(result?.user),
+              })
               consecutivePollErrors = 0
               if (result.status !== 'expired') {
                 transientExpiredResponses = 0
@@ -3684,6 +3691,7 @@ function createFirstRunGuideModal() {
             }
           }, 2000)
         } catch (err) {
+          console.error('[wizard][admin-login] Failed to start Plex PIN flow', err)
           cleanupPoll()
           plexBtn.disabled = false
           if (plexStatus)
@@ -4927,7 +4935,9 @@ async function login(api) {
               plexSigninBtn.disabled = false
               return
             }
+            console.info('[auth][user-login] Popup opened successfully')
             popup.location.href = authUrl
+            console.debug('[auth][user-login] Popup redirected to Plex auth URL')
 
             if (plexStatus)
               plexStatus.textContent = 'Waiting for Plex approval…'
@@ -4936,6 +4946,11 @@ async function login(api) {
             pollTimer = setInterval(async () => {
               try {
                 const result = await api.pollPlexPin(pinId)
+                console.debug('[auth][user-login] PIN poll response', {
+                  pinId,
+                  status: result?.status || 'unknown',
+                  hasUser: Boolean(result?.user),
+                })
                 consecutivePollErrors = 0
 
                 // Accept either explicit success status or a user payload.
@@ -4984,6 +4999,9 @@ async function login(api) {
                 // the session and let us continue.
                 try {
                   const me = await api.getAuthUser()
+                  console.debug('[auth][user-login] Fallback /api/auth/me check', {
+                    hasUser: Boolean(me?.user),
+                  })
                   if (me?.user) {
                     cleanupPoll()
                     if (plexStatus) plexStatus.hidden = true
@@ -5007,6 +5025,7 @@ async function login(api) {
               }
             }, 2000)
           } catch (err) {
+            console.error('[auth][user-login] Failed to start Plex PIN flow', err)
             cleanupPoll()
             plexSigninBtn.disabled = false
             if (plexStatus) {
