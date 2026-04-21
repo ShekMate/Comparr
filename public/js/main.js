@@ -3546,7 +3546,10 @@ function createFirstRunGuideModal() {
             try {
               const result = await api.pollPlexPin(pinId)
               consecutivePollErrors = 0
-              if (result.status === 'success') {
+              // Accept either explicit success status or a user payload.
+              // Some reverse-proxy setups may drop/transform status while
+              // still returning a valid authenticated user object.
+              if (result.status === 'success' || result?.user?.username) {
                 cleanupPoll()
                 handleAdminLoggedIn(result.user)
               } else if (
