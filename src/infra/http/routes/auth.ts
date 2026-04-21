@@ -171,6 +171,9 @@ export async function handleAuthRoutes(
         clientId,
         expiresAt: Date.now() + PIN_TTL_MS,
       })
+      log.info(
+        `[auth] Plex PIN created: pinId=${pin.id} expiresInMs=${PIN_TTL_MS}`
+      )
 
       return new Response(
         JSON.stringify({ pinId: pin.id, authUrl }),
@@ -192,6 +195,7 @@ export async function handleAuthRoutes(
     const pending = _pendingPins.get(pinId)
 
     if (!pending) {
+      log.warn(`[auth] Plex PIN poll: pinId=${pinId} not found (expired/missing)`)
       return new Response(
         JSON.stringify({ status: 'expired' }),
         { status: 200, headers: makeJson(req) }
@@ -200,6 +204,7 @@ export async function handleAuthRoutes(
 
     if (Date.now() > pending.expiresAt) {
       _pendingPins.delete(pinId)
+      log.warn(`[auth] Plex PIN poll: pinId=${pinId} expired by TTL`)
       return new Response(
         JSON.stringify({ status: 'expired' }),
         { status: 200, headers: makeJson(req) }
@@ -207,10 +212,12 @@ export async function handleAuthRoutes(
     }
 
     try {
+      log.info(`[auth] Plex PIN poll: pinId=${pinId} checking status`)
       const status = await pollPlexPin(pinId, pending.clientId)
 
       if (status.expired) {
         _pendingPins.delete(pinId)
+        log.warn(`[auth] Plex PIN poll: pinId=${pinId} reported expired by Plex`)
         return new Response(
           JSON.stringify({ status: 'expired' }),
           { status: 200, headers: makeJson(req) }
@@ -218,13 +225,14 @@ export async function handleAuthRoutes(
       }
 
       if (!status.authToken) {
+        log.info(`[auth] Plex PIN poll: pinId=${pinId} still pending`)
         return new Response(
           JSON.stringify({ status: 'pending' }),
           { status: 200, headers: makeJson(req) }
         )
       }
+      log.info(`[auth] Plex PIN poll: pinId=${pinId} received auth token`)
 
-      _pendingPins.delete(pinId)
       const plexUser = await getPlexUserInfo(status.authToken, pending.clientId)
 
       // Determine whether this Plex user has access to the configured Plex server.
@@ -267,6 +275,11 @@ export async function handleAuthRoutes(
       setUserSessionCookie(headers, sessionToken, req)
 
       log.info(`[auth] Plex login: ${user.username} (id=${user.id})`)
+      // Delete only after the full login + session creation path succeeds.
+      // If another poll arrives while we're still creating the user/session,
+      // keeping the pin prevents false "expired" responses.
+      _pendingPins.delete(pinId)
+      log.info(`[auth] Plex PIN poll: pinId=${pinId} completed successfully`)
 
       return new Response(
         JSON.stringify({
@@ -285,7 +298,7 @@ export async function handleAuthRoutes(
         { status: 200, headers }
       )
     } catch (err) {
-      log.error(`[auth] Plex PIN poll error: ${err}`)
+      log.error(`[auth] Plex PIN poll error: pinId=${pinId} err=${err}`)
       return new Response(
         JSON.stringify({ error: 'Authentication failed. Please try again.' }),
         { status: 500, headers: makeJson(req) }
