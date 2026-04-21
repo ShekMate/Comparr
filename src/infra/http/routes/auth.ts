@@ -166,7 +166,19 @@ export async function handleAuthRoutes(
       const clientId = await ensurePlexClientId()
       const requestUrl = new URL(req.url)
       const forwardUrl = `${requestUrl.origin}/auth/plex-callback.html`
-      const { pin, authUrl } = await requestPlexPin(clientId, forwardUrl)
+      let pinPayload: { pin: { id: number }; authUrl: string } | null = null
+
+      // Prefer callback-enabled flow, but gracefully fall back to the
+      // baseline Plex PIN auth URL if Plex rejects the forwardUrl.
+      try {
+        pinPayload = await requestPlexPin(clientId, forwardUrl)
+      } catch (forwardErr) {
+        log.warn(
+          `[auth] Plex PIN request with forwardUrl failed, retrying without forwardUrl: ${forwardErr}`
+        )
+        pinPayload = await requestPlexPin(clientId)
+      }
+      const { pin, authUrl } = pinPayload
 
       pruneExpiredPins()
       _pendingPins.set(pin.id, {

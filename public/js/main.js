@@ -3555,6 +3555,8 @@ function createFirstRunGuideModal() {
         let popup = null
         let popupClosedAt = null
         let consecutivePollErrors = 0
+        let transientExpiredResponses = 0
+        const pollStartedAt = Date.now()
 
         const cleanupPoll = () => {
           if (pollTimer) clearInterval(pollTimer)
@@ -3597,6 +3599,9 @@ function createFirstRunGuideModal() {
             try {
               const result = await api.pollPlexPin(pinId)
               consecutivePollErrors = 0
+              if (result.status !== 'expired') {
+                transientExpiredResponses = 0
+              }
               // Accept either explicit success status or a user payload.
               // Some reverse-proxy setups may drop/transform status while
               // still returning a valid authenticated user object.
@@ -3607,21 +3612,39 @@ function createFirstRunGuideModal() {
                 })
                 cleanupPoll()
                 handleAdminLoggedIn(result.user)
-              } else if (
-                result.status === 'expired' ||
-                result.status === 'denied'
-              ) {
-                console.warn('[wizard][admin-login] PIN poll terminal status', {
-                  status: result.status || null,
+              } else if (result.status === 'denied') {
+                console.warn('[wizard][admin-login] PIN poll denied', {
                   error: result.error || null,
                 })
                 cleanupPoll()
                 plexBtn.disabled = false
                 if (plexStatus)
-                  plexStatus.textContent =
-                    result.status === 'denied'
-                      ? result.error || 'Access denied.'
-                      : 'Plex login expired. Please try again.'
+                  plexStatus.textContent = result.error || 'Access denied.'
+              } else if (result.status === 'expired') {
+                transientExpiredResponses += 1
+                const withinGraceWindow = Date.now() - pollStartedAt < 120000
+                const keepRetrying =
+                  transientExpiredResponses < 6 && withinGraceWindow
+
+                console.warn('[wizard][admin-login] PIN poll expired response', {
+                  transientExpiredResponses,
+                  withinGraceWindow,
+                  keepRetrying,
+                })
+
+                if (await recoverFromExistingSession()) return
+                if (keepRetrying) {
+                  if (plexStatus) {
+                    plexStatus.textContent = 'Still verifying login…'
+                    plexStatus.hidden = false
+                  }
+                  return
+                }
+
+                cleanupPoll()
+                plexBtn.disabled = false
+                if (plexStatus)
+                  plexStatus.textContent = 'Plex login expired. Please try again.'
               } else if (popup.closed) {
                 console.debug('[wizard][admin-login] Popup closed while pending')
                 if (!popupClosedAt) {
