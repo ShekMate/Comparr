@@ -87,7 +87,7 @@ export async function requestPlexPin(
   const pin: PlexPin = {
     id: data.id,
     code: data.code,
-    expiresAt: data.expiresAt,
+    expiresAt: data.expiresAt || data.expires_at || '',
   }
   log.info(
     `[plex-auth] PIN created (id=${pin.id}, codeLength=${pin.code?.length ?? 0}, expiresAt=${pin.expiresAt})`
@@ -127,16 +127,17 @@ export async function pollPlexPin(
   }
 
   const data = await res.json()
-  const authToken: string | null = data.authToken || null
+  const authToken: string | null = data.authToken || data.auth_token || null
   log.info(
-    `[plex-auth] PIN poll response (pinId=${pinId}, hasAuthToken=${Boolean(authToken)}, expiresAt=${data.expiresAt || 'n/a'})`
+    `[plex-auth] PIN poll response (pinId=${pinId}, hasAuthToken=${Boolean(authToken)}, expiresAt=${data.expiresAt || data.expires_at || 'n/a'}, keys=${Object.keys(data).join(',')})`
   )
 
   if (authToken) {
     return { pending: false, authToken, expired: false }
   }
 
-  const expiresAt = data.expiresAt ? new Date(data.expiresAt).getTime() : 0
+  const rawExpiresAt = data.expiresAt || data.expires_at || ''
+  const expiresAt = rawExpiresAt ? new Date(rawExpiresAt).getTime() : 0
   if (expiresAt && Date.now() > expiresAt) {
     return { pending: false, authToken: null, expired: true }
   }
