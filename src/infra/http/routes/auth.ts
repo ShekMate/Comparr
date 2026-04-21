@@ -64,6 +64,24 @@ const shouldUseSecureCookies = (req: CompatRequest): boolean => {
   return String(req.url || '').toLowerCase().startsWith('https://')
 }
 
+const getRequestOrigin = (req: CompatRequest): string => {
+  try {
+    return new URL(req.url).origin
+  } catch {
+    const protoHeader = String(req.headers?.get?.('x-forwarded-proto') || '')
+      .split(',')[0]
+      .trim()
+      .toLowerCase()
+    const proto = protoHeader || 'http'
+    const host = String(req.headers?.get?.('x-forwarded-host') || '')
+      .split(',')[0]
+      .trim() ||
+      String(req.headers?.get?.('host') || '').trim() ||
+      'localhost'
+    return `${proto}://${host}`
+  }
+}
+
 const setUserSessionCookie = (
   headers: Headers,
   token: string,
@@ -164,8 +182,7 @@ export async function handleAuthRoutes(
 
     try {
       const clientId = await ensurePlexClientId()
-      const requestUrl = new URL(req.url)
-      const forwardUrl = `${requestUrl.origin}/auth/plex-callback.html`
+      const forwardUrl = `${getRequestOrigin(req)}/auth/plex-callback.html`
       let pinPayload: { pin: { id: number }; authUrl: string } | null = null
 
       // Prefer callback-enabled flow, but gracefully fall back to the
