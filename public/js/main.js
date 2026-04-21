@@ -2960,8 +2960,7 @@ function createFirstRunGuideModal() {
     backButton.hidden = history.length <= 1 || screen.type === 'setup-complete'
     skipButton.hidden = !['security', 'requests'].includes(screen.type)
     saveButton.hidden = screen.type !== 'defaults'
-    nextButton.disabled =
-      screen.type === 'admin-login' && !selectedState.adminLoggedIn
+    nextButton.disabled = false
     skipButton.disabled = false
     if (screen.type === 'setup-complete') {
       nextButton.textContent = 'Start Swiping'
