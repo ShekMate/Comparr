@@ -2840,7 +2840,10 @@ function createFirstRunGuideModal() {
           ? parsed.selectedState
           : null
       if (!restoredHistory.length || !restoredState) return false
-      history.splice(0, history.length, ...restoredHistory)
+      const normalizedHistory = restoredHistory.map(entry =>
+        entry?.type === 'user-auth' ? { type: 'flow' } : entry
+      )
+      history.splice(0, history.length, ...normalizedHistory)
       Object.assign(selectedState, restoredState)
       return true
     } catch {
@@ -2950,9 +2953,7 @@ function createFirstRunGuideModal() {
 
   const updateActionButtons = screen => {
     backButton.hidden = history.length <= 1 || screen.type === 'setup-complete'
-    skipButton.hidden = !['security', 'user-auth', 'requests'].includes(
-      screen.type
-    )
+    skipButton.hidden = !['security', 'requests'].includes(screen.type)
     saveButton.hidden = screen.type !== 'defaults'
     nextButton.disabled =
       screen.type === 'admin-login' && !selectedState.adminLoggedIn
@@ -3414,7 +3415,7 @@ function createFirstRunGuideModal() {
       renderRequirementCopy('')
       title.textContent = 'User Authentication'
       copy.textContent =
-        "Let users sign in with their Plex, Jellyfin, or Emby account. Once your media server is configured, you'll sign in to claim admin access."
+        "Let users sign in with their Plex account. Once your media server is configured, you'll sign in to claim admin access."
 
       const currentPlexRestrict =
         window.PLEX_RESTRICT_TO_SERVER === true ||
@@ -3436,6 +3437,11 @@ function createFirstRunGuideModal() {
         <p class="first-run-guide-instruction" style="margin-bottom:0.75rem">
           Plex authentication is always enabled. Every user must sign in with Plex before using Comparr.
         </p>
+        ${
+          plexConfigured
+            ? '<p class="first-run-guide-instruction" style="margin-bottom:0.75rem">Click <strong>Next</strong> to save changes on this screen. Click <strong>Skip</strong> to continue without changing current settings.</p>'
+            : '<p class="first-run-guide-instruction" style="margin-bottom:0.75rem">There are no additional settings on this step. Click <strong>Continue</strong> to keep going.</p>'
+        }
         ${plexRestrictRow}
         <p id="first-run-user-auth-note" class="first-run-guide-instruction" style="margin-top:0.75rem">
           You can always change these settings later under Settings → Security &amp; Access.
@@ -3501,11 +3507,19 @@ function createFirstRunGuideModal() {
         let pollTimer = null
         let popup = null
         let popupClosedAt = null
+        let consecutivePollErrors = 0
 
         const cleanupPoll = () => {
           if (pollTimer) clearInterval(pollTimer)
           pollTimer = null
           if (popup && !popup.closed) popup.close()
+        }
+        const recoverFromExistingSession = async () => {
+          const authState = await api.getAuthUser().catch(() => ({ user: null }))
+          if (!authState?.user) return false
+          cleanupPoll()
+          handleAdminLoggedIn(authState.user)
+          return true
         }
 
         try {
@@ -3531,6 +3545,7 @@ function createFirstRunGuideModal() {
           pollTimer = setInterval(async () => {
             try {
               const result = await api.pollPlexPin(pinId)
+              consecutivePollErrors = 0
               if (result.status === 'success') {
                 cleanupPoll()
                 handleAdminLoggedIn(result.user)
@@ -3550,6 +3565,7 @@ function createFirstRunGuideModal() {
                   popupClosedAt = Date.now()
                   if (plexStatus) plexStatus.textContent = 'Verifying login…'
                 }
+                if (await recoverFromExistingSession()) return
                 if (Date.now() - popupClosedAt >= 6000) {
                   cleanupPoll()
                   plexBtn.disabled = false
@@ -3557,7 +3573,16 @@ function createFirstRunGuideModal() {
                 }
               }
             } catch {
-              /* ignore transient poll errors */
+              consecutivePollErrors += 1
+              if (await recoverFromExistingSession()) return
+              if (consecutivePollErrors >= 3) {
+                cleanupPoll()
+                plexBtn.disabled = false
+                if (plexStatus) {
+                  plexStatus.textContent =
+                    'Unable to verify Plex login right now. Please try again.'
+                }
+              }
             }
           }, 2000)
         } catch (err) {
@@ -3614,9 +3639,7 @@ function createFirstRunGuideModal() {
       }
 
       // Nothing actually changed — just advance
-      if (Object.keys(settingsToSave).length === 0) {
-        return { type: 'user-auth' }
-      }
+      if (Object.keys(settingsToSave).length === 0) return { type: 'flow' }
 
       try {
         await saveSettingsSubset(settingsToSave)
@@ -3634,7 +3657,7 @@ function createFirstRunGuideModal() {
         return null
       }
 
-      return { type: 'user-auth' }
+      return { type: 'flow' }
     }
 
     if (current.type === 'user-auth') {
@@ -3647,13 +3670,22 @@ function createFirstRunGuideModal() {
         settingsToSave.PLEX_RESTRICT_TO_SERVER = plexRestrict ? 'true' : 'false'
       }
 
+      // No editable fields on this screen for the current setup; just continue.
+      if (Object.keys(settingsToSave).length === 0) {
+        return { type: 'flow' }
+      }
+
       try {
         await saveSettingsSubset(settingsToSave)
         window.USER_AUTH_ENABLED = true
         if (plexRestrictEl) window.PLEX_RESTRICT_TO_SERVER = plexRestrict
       } catch (err) {
+        const friendlyMessage =
+          err?.message === 'Failed to fetch'
+            ? 'Could not reach the server to save this setting. Please check your connection and try again.'
+            : err?.message || 'Failed to save authentication settings.'
         setWizardStatus(
-          err?.message || 'Failed to save authentication settings.',
+          friendlyMessage,
           'error'
         )
         return null
@@ -4012,6 +4044,14 @@ function createFirstRunGuideModal() {
       const current = history[history.length - 1]
       if (current?.type === 'security') {
         // Skip means advance without making any changes — no save needed
+        history.push({ type: 'flow' })
+        persistWizardProgress()
+        renderScreen({ type: 'flow' })
+        return
+      }
+
+      if (current?.type === 'user-auth') {
+        // Skip means continue without changing auth-related settings
         history.push({ type: 'flow' })
         persistWizardProgress()
         renderScreen({ type: 'flow' })
