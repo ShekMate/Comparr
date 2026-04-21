@@ -45,7 +45,8 @@ function plexHeaders(clientId: string): HeadersInit {
 
 /** Request a new PIN from plex.tv. Returns the pin and the URL to send the user to. */
 export async function requestPlexPin(
-  clientId: string
+  clientId: string,
+  forwardUrl?: string
 ): Promise<{ pin: PlexPin; authUrl: string }> {
   // Plex currently accepts `strong=true` as a query parameter.
   // Keep this canonical call first, then fall back to form-body mode for
@@ -87,7 +88,10 @@ export async function requestPlexPin(
     `${PLEX_AUTH_URL}#?` +
     `clientID=${encodeURIComponent(clientId)}` +
     `&code=${encodeURIComponent(pin.code)}` +
-    `&context%5Bdevice%5D%5Bproduct%5D=Comparr`
+    `&context%5Bdevice%5D%5Bproduct%5D=Comparr` +
+    (forwardUrl
+      ? `&forwardUrl=${encodeURIComponent(forwardUrl)}`
+      : '')
 
   return { pin, authUrl }
 }
