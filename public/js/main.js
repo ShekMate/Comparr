@@ -3485,6 +3485,10 @@ function createFirstRunGuideModal() {
       `
 
       const handleAdminLoggedIn = user => {
+        console.info('[wizard][admin-login] Admin session established', {
+          username: user?.username || null,
+          provider: user?.provider || null,
+        })
         stopAdminSessionWatcher()
         window.COMPARR_USER = user
         selectedState.adminLoggedIn = true
@@ -3510,12 +3514,16 @@ function createFirstRunGuideModal() {
           return
         }
         const authState = await api.getAuthUser().catch(() => ({ user: null }))
+        console.debug('[wizard][admin-login] Session watcher tick', {
+          hasUser: Boolean(authState?.user),
+        })
         if (authState?.user) {
           handleAdminLoggedIn(authState.user)
         }
       }, 2500)
 
       plexBtn?.addEventListener('click', async () => {
+        console.info('[wizard][admin-login] Starting Plex PIN login flow')
         plexBtn.disabled = true
         if (plexStatus) {
           plexStatus.textContent = 'Opening Plex login…'
@@ -3535,6 +3543,9 @@ function createFirstRunGuideModal() {
         const recoverFromExistingSession = async () => {
           const authState = await api.getAuthUser().catch(() => ({ user: null }))
           if (!authState?.user) return false
+          console.info(
+            '[wizard][admin-login] Recovered login via existing auth session'
+          )
           cleanupPoll()
           handleAdminLoggedIn(authState.user)
           return true
@@ -3542,6 +3553,7 @@ function createFirstRunGuideModal() {
 
         try {
           const { pinId, authUrl } = await api.requestPlexPin()
+          console.info('[wizard][admin-login] Received PIN payload', { pinId })
           popup = window.open(
             'about:blank',
             '_blank',
@@ -3568,12 +3580,20 @@ function createFirstRunGuideModal() {
               // Some reverse-proxy setups may drop/transform status while
               // still returning a valid authenticated user object.
               if (result.status === 'success' || result?.user?.username) {
+                console.info('[wizard][admin-login] PIN poll success', {
+                  status: result.status || null,
+                  hasUser: Boolean(result?.user?.username),
+                })
                 cleanupPoll()
                 handleAdminLoggedIn(result.user)
               } else if (
                 result.status === 'expired' ||
                 result.status === 'denied'
               ) {
+                console.warn('[wizard][admin-login] PIN poll terminal status', {
+                  status: result.status || null,
+                  error: result.error || null,
+                })
                 cleanupPoll()
                 plexBtn.disabled = false
                 if (plexStatus)
@@ -3582,6 +3602,7 @@ function createFirstRunGuideModal() {
                       ? result.error || 'Access denied.'
                       : 'Plex login expired. Please try again.'
               } else if (popup.closed) {
+                console.debug('[wizard][admin-login] Popup closed while pending')
                 if (!popupClosedAt) {
                   popupClosedAt = Date.now()
                   if (plexStatus) plexStatus.textContent = 'Verifying login…'
@@ -3595,6 +3616,9 @@ function createFirstRunGuideModal() {
               }
             } catch {
               consecutivePollErrors += 1
+              console.warn('[wizard][admin-login] PIN poll error', {
+                consecutivePollErrors,
+              })
               if (await recoverFromExistingSession()) return
               if (consecutivePollErrors >= 3) {
                 cleanupPoll()
