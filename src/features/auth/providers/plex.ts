@@ -48,6 +48,9 @@ export async function requestPlexPin(
   clientId: string,
   forwardUrl?: string
 ): Promise<{ pin: PlexPin; authUrl: string }> {
+  log.info(
+    `[plex-auth] Requesting Plex PIN (clientId=${clientId}, forwardUrlSet=${Boolean(forwardUrl)})`
+  )
   // Plex currently accepts `strong=true` as a query parameter.
   // Keep this canonical call first, then fall back to form-body mode for
   // compatibility with older plex.tv behavior.
@@ -62,6 +65,9 @@ export async function requestPlexPin(
   }
 
   if (!res.ok) {
+    log.warn(
+      `[plex-auth] Primary PIN request failed with ${res.status}; retrying form-body mode`
+    )
     res = await fetchWithTimeout(`${PLEX_API_BASE}/pins`, {
       method: 'POST',
       headers: {
@@ -81,8 +87,11 @@ export async function requestPlexPin(
   const pin: PlexPin = {
     id: data.id,
     code: data.code,
-    expiresAt: data.expiresAt,
+    expiresAt: data.expiresAt || data.expires_at || '',
   }
+  log.info(
+    `[plex-auth] PIN created (id=${pin.id}, codeLength=${pin.code?.length ?? 0}, expiresAt=${pin.expiresAt})`
+  )
 
   const authUrl =
     `${PLEX_AUTH_URL}#?` +
@@ -99,9 +108,16 @@ export async function requestPlexPin(
 /** Poll plex.tv for the status of a PIN. Returns pending, expired, or an authToken. */
 export async function pollPlexPin(
   pinId: number,
-  clientId: string
+  clientId: string,
+  code?: string
 ): Promise<PlexPinStatus> {
-  const res = await fetchWithTimeout(`${PLEX_API_BASE}/pins/${pinId}`, {
+  const pinUrl = new URL(`${PLEX_API_BASE}/pins/${pinId}`)
+  if (code) pinUrl.searchParams.set('code', code)
+  log.info(
+    `[plex-auth] Polling PIN status (pinId=${pinId}, hasCode=${Boolean(code)})`
+  )
+
+  const res = await fetchWithTimeout(pinUrl.toString(), {
     headers: plexHeaders(clientId),
   })
 
@@ -111,13 +127,17 @@ export async function pollPlexPin(
   }
 
   const data = await res.json()
-  const authToken: string | null = data.authToken || null
+  const authToken: string | null = data.authToken || data.auth_token || null
+  log.info(
+    `[plex-auth] PIN poll response (pinId=${pinId}, hasAuthToken=${Boolean(authToken)}, expiresAt=${data.expiresAt || data.expires_at || 'n/a'}, keys=${Object.keys(data).join(',')})`
+  )
 
   if (authToken) {
     return { pending: false, authToken, expired: false }
   }
 
-  const expiresAt = data.expiresAt ? new Date(data.expiresAt).getTime() : 0
+  const rawExpiresAt = data.expiresAt || data.expires_at || ''
+  const expiresAt = rawExpiresAt ? new Date(rawExpiresAt).getTime() : 0
   if (expiresAt && Date.now() > expiresAt) {
     return { pending: false, authToken: null, expired: true }
   }
