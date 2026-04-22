@@ -107,11 +107,32 @@ export async function requestPlexPin(
       ? `&forwardUrl=${encodeURIComponent(forwardUrl)}`
       : '')
 
-  // Prefer Plex-provided location when available. This is the canonical
-  // URL for the generated PIN and avoids subtle auth parameter mismatches.
-  const authUrl = data.location || fallbackAuthUrl
+  // Normalize Plex-provided location. Some responses may provide this as a
+  // structured object instead of a plain string.
+  let plexLocation = ''
+  if (typeof data.location === 'string') {
+    plexLocation = data.location.trim()
+  } else if (data.location && typeof data.location === 'object') {
+    if (typeof data.location.href === 'string') {
+      plexLocation = data.location.href.trim()
+    } else if (typeof data.location.url === 'string') {
+      plexLocation = data.location.url.trim()
+    }
+  }
+
+  // Prefer Plex-provided URL when valid; otherwise fall back.
+  let authUrl = plexLocation || fallbackAuthUrl
+  try {
+    authUrl = String(authUrl)
+    new URL(authUrl)
+  } catch {
+    log.warn(
+      `[plex-auth][${traceId}] Invalid Plex location payload; falling back to constructed URL`
+    )
+    authUrl = fallbackAuthUrl
+  }
   log.info(
-    `[plex-auth][${traceId}] [step 7] Using auth URL source=${data.location ? 'plex-location' : 'constructed'}`
+    `[plex-auth][${traceId}] [step 7] Using auth URL source=${plexLocation ? 'plex-location' : 'constructed'}`
   )
 
   return { pin, authUrl }

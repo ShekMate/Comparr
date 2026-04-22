@@ -213,6 +213,15 @@ export async function handleAuthRoutes(
         pinPayload = await requestPlexPin(clientId)
       }
       const { pin, authUrl } = pinPayload
+      if (typeof authUrl !== 'string' || !authUrl.trim()) {
+        log.error(
+          `[auth] Invalid Plex authUrl returned from provider: ${JSON.stringify(authUrl)}`
+        )
+        return new Response(
+          JSON.stringify({ error: 'Invalid Plex auth URL returned from provider.' }),
+          { status: 502, headers: makeJson(req) }
+        )
+      }
 
       pruneExpiredPins()
       _pendingPins.set(pin.id, {
