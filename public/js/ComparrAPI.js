@@ -144,25 +144,42 @@ export class ComparrAPI extends EventTarget {
   }
 
   async getAuthUser() {
+    console.debug('[api][auth] GET /api/auth/me')
     const res = await fetch(`${this._basePath}/api/auth/me`)
+    console.debug('[api][auth] /api/auth/me response', { status: res.status })
     if (!res.ok) return { user: null }
     return res.json().catch(() => ({ user: null }))
   }
 
   async requestPlexPin() {
+    console.info('[api][auth] POST /api/auth/plex/pin')
     const res = await fetch(`${this._basePath}/api/auth/plex/pin`, {
       method: 'POST',
     })
     const data = await res.json().catch(() => ({}))
+    console.info('[api][auth] /api/auth/plex/pin response', {
+      status: res.status,
+      hasPinId: Boolean(data?.pinId),
+      hasAuthUrl: Boolean(data?.authUrl),
+      error: data?.error || null,
+    })
     if (!res.ok) throw new Error(data.error || 'Could not start Plex login.')
     return data
   }
 
   async pollPlexPin(pinId) {
+    console.debug('[api][auth] GET /api/auth/plex/pin/:pinId', { pinId })
     const res = await fetch(
       `${this._basePath}/api/auth/plex/pin/${encodeURIComponent(pinId)}`
     )
     const data = await res.json().catch(() => ({}))
+    console.debug('[api][auth] /api/auth/plex/pin/:pinId response', {
+      pinId,
+      statusCode: res.status,
+      status: data?.status || null,
+      hasUser: Boolean(data?.user),
+      error: data?.error || null,
+    })
     if (!res.ok) throw new Error(data.error || 'Plex login check failed.')
     return data
   }
