@@ -106,6 +106,37 @@ export async function requestPlexPin(
     (forwardUrl
       ? `&forwardUrl=${encodeURIComponent(forwardUrl)}`
       : '')
+  log.info(
+    `[plex-auth][${traceId}] [step 6b] Constructed fallback auth URL (includesForwardUrl=${Boolean(forwardUrl)})`
+  )
+
+  // Normalize Plex-provided location. Some responses may provide this as a
+  // structured object instead of a plain string.
+  let plexLocation = ''
+  if (typeof data.location === 'string') {
+    plexLocation = data.location.trim()
+  } else if (data.location && typeof data.location === 'object') {
+    if (typeof data.location.href === 'string') {
+      plexLocation = data.location.href.trim()
+    } else if (typeof data.location.url === 'string') {
+      plexLocation = data.location.url.trim()
+    }
+  }
+
+  // Prefer Plex-provided URL when valid; otherwise fall back.
+  let authUrl = plexLocation || fallbackAuthUrl
+  try {
+    authUrl = String(authUrl)
+    new URL(authUrl)
+  } catch {
+    log.warn(
+      `[plex-auth][${traceId}] Invalid Plex location payload; falling back to constructed URL`
+    )
+    authUrl = fallbackAuthUrl
+  }
+  log.info(
+    `[plex-auth][${traceId}] [step 7] Using auth URL source=${plexLocation ? 'plex-location' : 'constructed'}`
+  )
 
   // Normalize Plex-provided location. Some responses may provide this as a
   // structured object instead of a plain string.
@@ -165,7 +196,6 @@ export async function pollPlexPin(
   }
 
   const text = await res.text()
-  log.info(`[plex-auth][${traceId}] [debug] Raw PIN poll XML: ${text}`)
 
   const getAttr = (name: string): string => {
     const match = text.match(new RegExp(`${name}="([^"]*)"`, 'i'))
@@ -175,6 +205,11 @@ export async function pollPlexPin(
   const authToken: string | null =
     getAttr('authToken') || getAttr('auth_token') || null
   const rawExpiresAt = getAttr('expiresAt') || getAttr('expires_at') || ''
+  if (!authToken) {
+    log.info(
+      `[plex-auth][${traceId}] [debug] PIN poll missing authToken; rawResponse=${text}`
+    )
+  }
   log.info(
     `[plex-auth][${traceId}] [step 3] PIN poll XML parsed (pinId=${pinId}, hasAuthToken=${Boolean(authToken)}, expiresAt=${rawExpiresAt || 'n/a'})`
   )
