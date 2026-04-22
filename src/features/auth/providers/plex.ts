@@ -48,6 +48,10 @@ export async function requestPlexPin(
   clientId: string,
   forwardUrl?: string
 ): Promise<{ pin: PlexPin; authUrl: string }> {
+  const traceId = crypto.randomUUID().slice(0, 8)
+  log.info(
+    `[plex-auth][${traceId}] [step 1] Requesting Plex PIN (clientId=${clientId}, forwardUrlSet=${Boolean(forwardUrl)})`
+  )
   // Plex currently accepts `strong=true` as a query parameter.
   // Keep this canonical call first, then fall back to form-body mode for
   // compatibility with older plex.tv behavior.
@@ -57,11 +61,16 @@ export async function requestPlexPin(
       method: 'POST',
       headers: plexHeaders(clientId),
     })
+    log.info(`[plex-auth][${traceId}] [step 2] Primary PIN request returned status=${res.status}`)
   } catch (err) {
+    log.error(`[plex-auth][${traceId}] [step 2] Primary PIN request failed: ${err}`)
     throw new Error(`[plex-auth] PIN request network failure: ${err}`)
   }
 
   if (!res.ok) {
+    log.warn(
+      `[plex-auth][${traceId}] [step 3] Primary PIN request failed with ${res.status}; retrying form-body mode`
+    )
     res = await fetchWithTimeout(`${PLEX_API_BASE}/pins`, {
       method: 'POST',
       headers: {
@@ -70,6 +79,7 @@ export async function requestPlexPin(
       },
       body: 'strong=true',
     })
+    log.info(`[plex-auth][${traceId}] [step 4] Fallback PIN request returned status=${res.status}`)
   }
 
   if (!res.ok) {
@@ -78,13 +88,17 @@ export async function requestPlexPin(
   }
 
   const data = await res.json()
+  log.info(`[plex-auth][${traceId}] [step 5] Parsed PIN response payload`)
   const pin: PlexPin = {
     id: data.id,
     code: data.code,
-    expiresAt: data.expiresAt,
+    expiresAt: data.expiresAt || data.expires_at || '',
   }
+  log.info(
+    `[plex-auth][${traceId}] [step 6] PIN created (id=${pin.id}, codeLength=${pin.code?.length ?? 0}, expiresAt=${pin.expiresAt})`
+  )
 
-  const authUrl =
+  const fallbackAuthUrl =
     `${PLEX_AUTH_URL}#?` +
     `clientID=${encodeURIComponent(clientId)}` +
     `&code=${encodeURIComponent(pin.code)}` +
@@ -93,17 +107,33 @@ export async function requestPlexPin(
       ? `&forwardUrl=${encodeURIComponent(forwardUrl)}`
       : '')
 
+  // Prefer Plex-provided location when available. This is the canonical
+  // URL for the generated PIN and avoids subtle auth parameter mismatches.
+  const authUrl = data.location || fallbackAuthUrl
+  log.info(
+    `[plex-auth][${traceId}] [step 7] Using auth URL source=${data.location ? 'plex-location' : 'constructed'}`
+  )
+
   return { pin, authUrl }
 }
 
 /** Poll plex.tv for the status of a PIN. Returns pending, expired, or an authToken. */
 export async function pollPlexPin(
   pinId: number,
-  clientId: string
+  clientId: string,
+  code?: string
 ): Promise<PlexPinStatus> {
-  const res = await fetchWithTimeout(`${PLEX_API_BASE}/pins/${pinId}`, {
+  const traceId = `${pinId}-${Date.now().toString(36)}`
+  const pinUrl = new URL(`${PLEX_API_BASE}/pins/${pinId}`)
+  if (code) pinUrl.searchParams.set('code', code)
+  log.info(
+    `[plex-auth][${traceId}] [step 1] Polling PIN status (pinId=${pinId}, hasCode=${Boolean(code)})`
+  )
+
+  const res = await fetchWithTimeout(pinUrl.toString(), {
     headers: plexHeaders(clientId),
   })
+  log.info(`[plex-auth][${traceId}] [step 2] PIN poll returned status=${res.status}`)
 
   if (!res.ok) {
     log.warn(`[plex-auth] PIN poll returned ${res.status}`)
@@ -111,13 +141,17 @@ export async function pollPlexPin(
   }
 
   const data = await res.json()
-  const authToken: string | null = data.authToken || null
+  const authToken: string | null = data.authToken || data.auth_token || null
+  log.info(
+    `[plex-auth][${traceId}] [step 3] PIN poll response (pinId=${pinId}, hasAuthToken=${Boolean(authToken)}, expiresAt=${data.expiresAt || data.expires_at || 'n/a'}, keys=${Object.keys(data).join(',')})`
+  )
 
   if (authToken) {
     return { pending: false, authToken, expired: false }
   }
 
-  const expiresAt = data.expiresAt ? new Date(data.expiresAt).getTime() : 0
+  const rawExpiresAt = data.expiresAt || data.expires_at || ''
+  const expiresAt = rawExpiresAt ? new Date(rawExpiresAt).getTime() : 0
   if (expiresAt && Date.now() > expiresAt) {
     return { pending: false, authToken: null, expired: true }
   }
