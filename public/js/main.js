@@ -3533,10 +3533,14 @@ function createFirstRunGuideModal() {
       }, 2500)
       stopAdminLoginMessageListener()
       const onAdminLoginMessage = async event => {
-        if (event.origin !== window.location.origin) return
         if (event.data?.type !== 'comparr-plex-auth-complete') return
         console.info(
-          '[wizard][admin-login] Received completion message from Plex callback'
+          '[wizard][admin-login] Received completion message from Plex callback',
+          {
+            eventOrigin: event.origin,
+            pageOrigin: window.location.origin,
+            data: event.data,
+          }
         )
         if (activeAdminPinId) {
           console.info(
