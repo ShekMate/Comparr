@@ -152,7 +152,10 @@ export async function pollPlexPin(
   )
 
   const res = await fetchWithTimeout(pinUrl.toString(), {
-    headers: plexHeaders(clientId),
+    headers: {
+      ...plexHeaders(clientId),
+      Accept: 'application/xml',
+    },
   })
   log.info(`[plex-auth][${traceId}] [step 2] PIN poll returned status=${res.status}`)
 
@@ -161,17 +164,25 @@ export async function pollPlexPin(
     return { pending: false, authToken: null, expired: true }
   }
 
-  const data = await res.json()
-  const authToken: string | null = data.authToken || data.auth_token || null
+  const text = await res.text()
+  log.info(`[plex-auth][${traceId}] [debug] Raw PIN poll XML: ${text}`)
+
+  const getAttr = (name: string): string => {
+    const match = text.match(new RegExp(`${name}="([^"]*)"`, 'i'))
+    return match?.[1] || ''
+  }
+
+  const authToken: string | null =
+    getAttr('authToken') || getAttr('auth_token') || null
+  const rawExpiresAt = getAttr('expiresAt') || getAttr('expires_at') || ''
   log.info(
-    `[plex-auth][${traceId}] [step 3] PIN poll response (pinId=${pinId}, hasAuthToken=${Boolean(authToken)}, expiresAt=${data.expiresAt || data.expires_at || 'n/a'}, keys=${Object.keys(data).join(',')})`
+    `[plex-auth][${traceId}] [step 3] PIN poll XML parsed (pinId=${pinId}, hasAuthToken=${Boolean(authToken)}, expiresAt=${rawExpiresAt || 'n/a'})`
   )
 
   if (authToken) {
     return { pending: false, authToken, expired: false }
   }
 
-  const rawExpiresAt = data.expiresAt || data.expires_at || ''
   const expiresAt = rawExpiresAt ? new Date(rawExpiresAt).getTime() : 0
   if (expiresAt && Date.now() > expiresAt) {
     return { pending: false, authToken: null, expired: true }
