@@ -12,7 +12,11 @@ import {
   getPlexClientId,
 } from '../../../core/config.ts'
 import { updateSettings } from '../../../core/settings.ts'
-import { upsertUser, findUserById, getOrCreateInviteCode } from '../../../features/auth/user-db.ts'
+import {
+  upsertUser,
+  findUserById,
+  getOrCreateInviteCode,
+} from '../../../features/auth/user-db.ts'
 import {
   createUserSession,
   getUserSession,
@@ -41,8 +45,7 @@ function pruneExpiredPins(): void {
   }
 }
 
-const makeJson = (req: CompatRequest) =>
-  makeHeaders(req, 'application/json')
+const makeJson = (req: CompatRequest) => makeHeaders(req, 'application/json')
 
 const getClientIp = (req: CompatRequest) =>
   String(req?.conn?.remoteAddr?.hostname || 'unknown')
@@ -64,7 +67,9 @@ const shouldUseSecureCookies = (req: CompatRequest): boolean => {
     .trim()
     .toLowerCase()
   if (proto) return proto === 'https'
-  return String(req.url || '').toLowerCase().startsWith('https://')
+  return String(req.url || '')
+    .toLowerCase()
+    .startsWith('https://')
 }
 
 const getRequestOrigin = (req: CompatRequest): string => {
@@ -76,9 +81,10 @@ const getRequestOrigin = (req: CompatRequest): string => {
       .trim()
       .toLowerCase()
     const proto = protoHeader || 'http'
-    const host = String(req.headers?.get?.('x-forwarded-host') || '')
-      .split(',')[0]
-      .trim() ||
+    const host =
+      String(req.headers?.get?.('x-forwarded-host') || '')
+        .split(',')[0]
+        .trim() ||
       String(req.headers?.get?.('host') || '').trim() ||
       'localhost'
     return `${proto}://${host}`
@@ -98,7 +104,9 @@ const setUserSessionCookie = (
     `${USER_SESSION_COOKIE}=${token}; Path=/; SameSite=Strict; HttpOnly${secure}${age}`
   )
   log.info(
-    `[auth] Set user session cookie (secure=${Boolean(secure)}, maxAge=${maxAge ?? 'session'})`
+    `[auth] Set user session cookie (secure=${Boolean(secure)}, maxAge=${
+      maxAge ?? 'session'
+    })`
   )
 }
 
@@ -187,7 +195,9 @@ export async function handleAuthRoutes(
   if (pathname === '/api/auth/plex/pin' && req.method === 'POST') {
     const ip = getClientIp(req)
     const requestOrigin = getRequestOrigin(req)
-    log.info(`[auth] Plex PIN start requested (ip=${ip}, origin=${requestOrigin})`)
+    log.info(
+      `[auth] Plex PIN start requested (ip=${ip}, origin=${requestOrigin})`
+    )
     if (!loginRateLimiter.check(ip)) {
       log.warn(`[auth] Plex PIN start rate-limited (ip=${ip})`)
       return new Response(
@@ -198,8 +208,29 @@ export async function handleAuthRoutes(
 
     try {
       const clientId = await ensurePlexClientId()
-      log.info(`[auth] Using Plex client ID for PIN start (clientId=${clientId})`)
-      const forwardUrl = `${requestOrigin}/auth/plex-callback.html`
+      log.info(
+        `[auth] Using Plex client ID for PIN start (clientId=${clientId})`
+      )
+      let forwardUrl: string | undefined
+      try {
+        const parsedOrigin = new URL(requestOrigin)
+        const isSecure = parsedOrigin.protocol === 'https:'
+        const isLoopback =
+          parsedOrigin.hostname === 'localhost' ||
+          parsedOrigin.hostname === '127.0.0.1' ||
+          parsedOrigin.hostname === '::1'
+        if (isSecure || isLoopback) {
+          forwardUrl = `${requestOrigin}/auth/plex-callback.html`
+        } else {
+          log.info(
+            `[auth] Skipping forwardUrl for non-HTTPS/non-loopback origin (origin=${requestOrigin})`
+          )
+        }
+      } catch {
+        log.warn(
+          `[auth] Could not parse request origin for forwardUrl: ${requestOrigin}`
+        )
+      }
       let pinPayload: { pin: { id: number }; authUrl: string } | null = null
 
       // Prefer callback-enabled flow, but gracefully fall back to the
@@ -215,10 +246,14 @@ export async function handleAuthRoutes(
       const { pin, authUrl } = pinPayload
       if (typeof authUrl !== 'string' || !authUrl.trim()) {
         log.error(
-          `[auth] Invalid Plex authUrl returned from provider: ${JSON.stringify(authUrl)}`
+          `[auth] Invalid Plex authUrl returned from provider: ${JSON.stringify(
+            authUrl
+          )}`
         )
         return new Response(
-          JSON.stringify({ error: 'Invalid Plex auth URL returned from provider.' }),
+          JSON.stringify({
+            error: 'Invalid Plex auth URL returned from provider.',
+          }),
           { status: 502, headers: makeJson(req) }
         )
       }
@@ -230,13 +265,15 @@ export async function handleAuthRoutes(
         expiresAt: Date.now() + PIN_TTL_MS,
       })
       log.info(
-        `[auth] Plex PIN created: pinId=${pin.id} codeLength=${pin.code?.length ?? 0} expiresInMs=${PIN_TTL_MS}`
+        `[auth] Plex PIN created: pinId=${pin.id} codeLength=${
+          pin.code?.length ?? 0
+        } expiresInMs=${PIN_TTL_MS}`
       )
 
-      return new Response(
-        JSON.stringify({ pinId: pin.id, authUrl }),
-        { status: 200, headers: makeJson(req) }
-      )
+      return new Response(JSON.stringify({ pinId: pin.id, authUrl }), {
+        status: 200,
+        headers: makeJson(req),
+      })
     } catch (err) {
       log.error(`[auth] Plex PIN request failed: ${err}`)
       return new Response(
@@ -252,23 +289,27 @@ export async function handleAuthRoutes(
     const pinId = Number(plexPinMatch[1])
     const traceId = `pin-${pinId}-${Date.now().toString(36)}`
     const pending = _pendingPins.get(pinId)
-    log.info(`[auth][${traceId}] [step 1] Plex PIN poll request received (pinId=${pinId})`)
+    log.info(
+      `[auth][${traceId}] [step 1] Plex PIN poll request received (pinId=${pinId})`
+    )
 
     if (!pending) {
-      log.warn(`[auth][${traceId}] [step 2] pinId=${pinId} not found (expired/missing)`)
-      return new Response(
-        JSON.stringify({ status: 'expired' }),
-        { status: 200, headers: makeJson(req) }
+      log.warn(
+        `[auth][${traceId}] [step 2] pinId=${pinId} not found (expired/missing)`
       )
+      return new Response(JSON.stringify({ status: 'expired' }), {
+        status: 200,
+        headers: makeJson(req),
+      })
     }
 
     if (Date.now() > pending.expiresAt) {
       _pendingPins.delete(pinId)
       log.warn(`[auth][${traceId}] [step 3] pinId=${pinId} expired by TTL`)
-      return new Response(
-        JSON.stringify({ status: 'expired' }),
-        { status: 200, headers: makeJson(req) }
-      )
+      return new Response(JSON.stringify({ status: 'expired' }), {
+        status: 200,
+        headers: makeJson(req),
+      })
     }
     log.info(
       `[auth][${traceId}] [step 4] Pending entry loaded (pinId=${pinId}, expiresInMs=${Math.max(
@@ -281,24 +322,28 @@ export async function handleAuthRoutes(
       log.info(`[auth][${traceId}] [step 5] Checking status with plex.tv`)
       const status = await pollPlexPin(pinId, pending.clientId, pending.code)
       log.info(
-        `[auth][${traceId}] [step 6] Poll evaluated (pinId=${pinId}, expired=${status.expired}, hasAuthToken=${Boolean(status.authToken)})`
+        `[auth][${traceId}] [step 6] Poll evaluated (pinId=${pinId}, expired=${
+          status.expired
+        }, hasAuthToken=${Boolean(status.authToken)})`
       )
 
       if (status.expired) {
         _pendingPins.delete(pinId)
-        log.warn(`[auth][${traceId}] [step 7] pinId=${pinId} reported expired by Plex`)
-        return new Response(
-          JSON.stringify({ status: 'expired' }),
-          { status: 200, headers: makeJson(req) }
+        log.warn(
+          `[auth][${traceId}] [step 7] pinId=${pinId} reported expired by Plex`
         )
+        return new Response(JSON.stringify({ status: 'expired' }), {
+          status: 200,
+          headers: makeJson(req),
+        })
       }
 
       if (!status.authToken) {
         log.info(`[auth][${traceId}] [step 8] pinId=${pinId} still pending`)
-        return new Response(
-          JSON.stringify({ status: 'pending' }),
-          { status: 200, headers: makeJson(req) }
-        )
+        return new Response(JSON.stringify({ status: 'pending' }), {
+          status: 200,
+          headers: makeJson(req),
+        })
       }
       log.info(`[auth][${traceId}] [step 9] pinId=${pinId} received auth token`)
 
@@ -334,7 +379,9 @@ export async function handleAuthRoutes(
 
       // Ensure user has an invite code
       const inviteCode = getOrCreateInviteCode(user.id)
-      log.info(`[auth] Resolved invite code for user (pinId=${pinId}, userId=${user.id})`)
+      log.info(
+        `[auth] Resolved invite code for user (pinId=${pinId}, userId=${user.id})`
+      )
 
       // Deterministic personal room code derived from user ID
       const roomCode = `U${String(user.id).padStart(3, '0')}`
@@ -360,7 +407,9 @@ export async function handleAuthRoutes(
       // If another poll arrives while we're still creating the user/session,
       // keeping the pin prevents false "expired" responses.
       _pendingPins.delete(pinId)
-      log.info(`[auth][${traceId}] [step 11] pinId=${pinId} completed successfully`)
+      log.info(
+        `[auth][${traceId}] [step 11] pinId=${pinId} completed successfully`
+      )
 
       return new Response(
         JSON.stringify({
@@ -379,7 +428,9 @@ export async function handleAuthRoutes(
         { status: 200, headers }
       )
     } catch (err) {
-      log.error(`[auth][${traceId}] [step X] Plex PIN poll error: pinId=${pinId} err=${err}`)
+      log.error(
+        `[auth][${traceId}] [step X] Plex PIN poll error: pinId=${pinId} err=${err}`
+      )
       return new Response(
         JSON.stringify({ error: 'Authentication failed. Please try again.' }),
         { status: 500, headers: makeJson(req) }
@@ -410,7 +461,11 @@ export async function handleAuthRoutes(
     ]
     const plexUrl = getPlexUrl()
     if (plexUrl) {
-      try { allowedOrigins.push(new URL(plexUrl).origin) } catch { /* ignore */ }
+      try {
+        allowedOrigins.push(new URL(plexUrl).origin)
+      } catch {
+        /* ignore */
+      }
     }
 
     const targetOrigin = targetUrl.origin
