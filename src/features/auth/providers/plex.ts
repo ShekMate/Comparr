@@ -280,7 +280,12 @@ export async function pollPlexPin(
 
   if (!pollResult.statusOk) {
     log.warn(`[plex-auth] PIN poll returned ${pollResult.status}`)
-    return { pending: false, authToken: null, expired: true }
+    if (pollResult.status === 404 || pollResult.status === 410) {
+      return { pending: false, authToken: null, expired: true }
+    }
+    throw new Error(
+      `[plex-auth] transient PIN poll failure: ${pollResult.status}`
+    )
   }
 
   // Some Plex environments return token data only when code is omitted.

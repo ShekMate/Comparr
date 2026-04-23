@@ -10,8 +10,10 @@ import {
   getPlexUrl,
   getPlexToken,
   getPlexClientId,
+  isPlexRestrictedToServer,
 } from '../../../core/config.ts'
 import { updateSettings } from '../../../core/settings.ts'
+import { getDataDir } from '../../../core/env.ts'
 import {
   upsertUser,
   findUserById,
@@ -30,19 +32,72 @@ import {
 } from '../../../features/auth/providers/plex.ts'
 
 const USER_SESSION_COOKIE = 'comparr_user'
+const PLEX_LOGIN_NONCE_COOKIE = 'comparr_plex_login'
 const PIN_TTL_MS = 6 * 60 * 1000
 
-// In-memory store of active Plex PIN requests.
+// Active Plex PIN requests (memory cache mirrored to DATA_DIR).
 const _pendingPins = new Map<
   number,
-  { clientId: string; code: string; expiresAt: number }
+  { clientId: string; code: string; nonce: string; expiresAt: number }
 >()
+const PENDING_PINS_FILE = `${getDataDir()}/pending-plex-pins.json`
+
+const loadPendingPinsFromDisk = (): void => {
+  try {
+    const text = Deno.readTextFileSync(PENDING_PINS_FILE)
+    const parsed = JSON.parse(text)
+    if (!parsed || typeof parsed !== 'object') return
+    _pendingPins.clear()
+    const now = Date.now()
+    for (const [rawPinId, value] of Object.entries(parsed)) {
+      const pinId = Number(rawPinId)
+      if (!Number.isFinite(pinId)) continue
+      if (!value || typeof value !== 'object') continue
+      const record = value as {
+        clientId?: string
+        code?: string
+        nonce?: string
+        expiresAt?: number
+      }
+      const expiresAt = Number(record.expiresAt || 0)
+      if (!record.clientId || !record.code || !record.nonce || now > expiresAt) {
+        continue
+      }
+      _pendingPins.set(pinId, {
+        clientId: String(record.clientId),
+        code: String(record.code),
+        nonce: String(record.nonce),
+        expiresAt,
+      })
+    }
+  } catch {
+    // ignore file-read/parse errors; continue with in-memory cache
+  }
+}
+
+const persistPendingPinsToDisk = (): void => {
+  try {
+    Deno.mkdirSync(getDataDir(), { recursive: true })
+    const tmp = `${PENDING_PINS_FILE}.tmp.${Date.now()}`
+    const payload = Object.fromEntries(_pendingPins.entries())
+    Deno.writeTextFileSync(tmp, JSON.stringify(payload))
+    Deno.renameSync(tmp, PENDING_PINS_FILE)
+  } catch {
+    // ignore persistence failures; best-effort durability
+  }
+}
 
 function pruneExpiredPins(): void {
+  loadPendingPinsFromDisk()
   const now = Date.now()
+  let changed = false
   for (const [id, pin] of _pendingPins) {
-    if (now > pin.expiresAt) _pendingPins.delete(id)
+    if (now > pin.expiresAt) {
+      _pendingPins.delete(id)
+      changed = true
+    }
   }
+  if (changed) persistPendingPinsToDisk()
 }
 
 const makeJson = (req: CompatRequest) => makeHeaders(req, 'application/json')
@@ -73,23 +128,34 @@ const shouldUseSecureCookies = (req: CompatRequest): boolean => {
 }
 
 const getRequestOrigin = (req: CompatRequest): string => {
+  const forwardedProto = String(req.headers?.get?.('x-forwarded-proto') || '')
+    .split(',')[0]
+    .trim()
+    .toLowerCase()
+  const forwardedHost = String(req.headers?.get?.('x-forwarded-host') || '')
+    .split(',')[0]
+    .trim()
+  if (forwardedProto && forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`
+  }
+
   try {
     return new URL(req.url).origin
   } catch {
-    const protoHeader = String(req.headers?.get?.('x-forwarded-proto') || '')
-      .split(',')[0]
-      .trim()
-      .toLowerCase()
-    const proto = protoHeader || 'http'
+    const proto = forwardedProto || 'http'
     const host =
-      String(req.headers?.get?.('x-forwarded-host') || '')
-        .split(',')[0]
-        .trim() ||
+      forwardedHost ||
       String(req.headers?.get?.('host') || '').trim() ||
       'localhost'
     return `${proto}://${host}`
   }
 }
+
+const getForwardedPrefix = (req: CompatRequest): string =>
+  String(req.headers?.get?.('x-forwarded-prefix') || '')
+    .split(',')[0]
+    .trim()
+    .replace(/\/$/, '')
 
 const setUserSessionCookie = (
   headers: Headers,
@@ -99,7 +165,7 @@ const setUserSessionCookie = (
 ): void => {
   const secure = shouldUseSecureCookies(req) ? '; Secure' : ''
   const age = maxAge !== undefined ? `; Max-Age=${maxAge}` : ''
-  headers.set(
+  headers.append(
     'set-cookie',
     `${USER_SESSION_COOKIE}=${token}; Path=/; SameSite=Strict; HttpOnly${secure}${age}`
   )
@@ -107,6 +173,19 @@ const setUserSessionCookie = (
     `[auth] Set user session cookie (secure=${Boolean(secure)}, maxAge=${
       maxAge ?? 'session'
     })`
+  )
+}
+
+const setPlexLoginNonceCookie = (
+  headers: Headers,
+  nonce: string,
+  req: CompatRequest,
+  maxAgeSeconds: number
+): void => {
+  const secure = shouldUseSecureCookies(req) ? '; Secure' : ''
+  headers.append(
+    'set-cookie',
+    `${PLEX_LOGIN_NONCE_COOKIE}=${nonce}; Path=/; SameSite=Strict; HttpOnly${secure}; Max-Age=${maxAgeSeconds}`
   )
 }
 
@@ -220,7 +299,9 @@ export async function handleAuthRoutes(
           parsedOrigin.hostname === '127.0.0.1' ||
           parsedOrigin.hostname === '::1'
         if (isSecure || isLoopback) {
-          forwardUrl = `${requestOrigin}/auth/plex-callback.html`
+          forwardUrl = `${requestOrigin}${getForwardedPrefix(
+            req
+          )}/auth/plex-callback.html`
         } else {
           log.info(
             `[auth] Skipping forwardUrl for non-HTTPS/non-loopback origin (origin=${requestOrigin})`
@@ -231,7 +312,9 @@ export async function handleAuthRoutes(
           `[auth] Could not parse request origin for forwardUrl: ${requestOrigin}`
         )
       }
-      let pinPayload: { pin: { id: number }; authUrl: string } | null = null
+      let pinPayload:
+        | { pin: { id: number; code: string; expiresAt?: string }; authUrl: string }
+        | null = null
 
       // Prefer callback-enabled flow, but gracefully fall back to the
       // baseline Plex PIN auth URL if Plex rejects the forwardUrl.
@@ -258,21 +341,36 @@ export async function handleAuthRoutes(
         )
       }
 
+      const parsedPinExpiresAt = Date.parse(String(pin.expiresAt || ''))
+      const pinExpiresAt =
+        Number.isFinite(parsedPinExpiresAt) && parsedPinExpiresAt > Date.now()
+          ? parsedPinExpiresAt
+          : Date.now() + PIN_TTL_MS
+      const maxAgeSeconds = Math.max(
+        1,
+        Math.ceil((pinExpiresAt - Date.now()) / 1000)
+      )
+      const loginNonce = crypto.randomUUID()
+
       pruneExpiredPins()
       _pendingPins.set(pin.id, {
         clientId,
         code: pin.code,
-        expiresAt: Date.now() + PIN_TTL_MS,
+        nonce: loginNonce,
+        expiresAt: pinExpiresAt,
       })
+      persistPendingPinsToDisk()
       log.info(
         `[auth] Plex PIN created: pinId=${pin.id} codeLength=${
           pin.code?.length ?? 0
-        } expiresInMs=${PIN_TTL_MS}`
+        } expiresInMs=${Math.max(0, pinExpiresAt - Date.now())}`
       )
 
+      const headers = makeJson(req)
+      setPlexLoginNonceCookie(headers, loginNonce, req, maxAgeSeconds)
       return new Response(JSON.stringify({ pinId: pin.id, authUrl }), {
         status: 200,
-        headers: makeJson(req),
+        headers,
       })
     } catch (err) {
       log.error(`[auth] Plex PIN request failed: ${err}`)
@@ -288,27 +386,34 @@ export async function handleAuthRoutes(
   if (plexPinMatch && req.method === 'GET') {
     const pinId = Number(plexPinMatch[1])
     const traceId = `pin-${pinId}-${Date.now().toString(36)}`
+    loadPendingPinsFromDisk()
     const pending = _pendingPins.get(pinId)
+    const loginNonce = parseCookies(req).get(PLEX_LOGIN_NONCE_COOKIE) || ''
     log.info(
       `[auth][${traceId}] [step 1] Plex PIN poll request received (pinId=${pinId})`
     )
 
-    if (!pending) {
+    if (!pending || !loginNonce || pending.nonce !== loginNonce) {
       log.warn(
-        `[auth][${traceId}] [step 2] pinId=${pinId} not found (expired/missing)`
+        `[auth][${traceId}] [step 2] pinId=${pinId} missing or nonce mismatch`
       )
+      const headers = makeJson(req)
+      setPlexLoginNonceCookie(headers, '', req, 0)
       return new Response(JSON.stringify({ status: 'expired' }), {
         status: 200,
-        headers: makeJson(req),
+        headers,
       })
     }
 
     if (Date.now() > pending.expiresAt) {
       _pendingPins.delete(pinId)
+      persistPendingPinsToDisk()
       log.warn(`[auth][${traceId}] [step 3] pinId=${pinId} expired by TTL`)
+      const headers = makeJson(req)
+      setPlexLoginNonceCookie(headers, '', req, 0)
       return new Response(JSON.stringify({ status: 'expired' }), {
         status: 200,
-        headers: makeJson(req),
+        headers,
       })
     }
     log.info(
@@ -329,12 +434,15 @@ export async function handleAuthRoutes(
 
       if (status.expired) {
         _pendingPins.delete(pinId)
+        persistPendingPinsToDisk()
         log.warn(
           `[auth][${traceId}] [step 7] pinId=${pinId} reported expired by Plex`
         )
+        const headers = makeJson(req)
+        setPlexLoginNonceCookie(headers, '', req, 0)
         return new Response(JSON.stringify({ status: 'expired' }), {
           status: 200,
-          headers: makeJson(req),
+          headers,
         })
       }
 
@@ -365,6 +473,19 @@ export async function handleAuthRoutes(
         )
         log.info(
           `[auth] Plex server access check complete (pinId=${pinId}, hasServerAccess=${hasServerAccess})`
+        )
+      }
+      if (isPlexRestrictedToServer() && !hasServerAccess) {
+        _pendingPins.delete(pinId)
+        persistPendingPinsToDisk()
+        const headers = makeJson(req)
+        setPlexLoginNonceCookie(headers, '', req, 0)
+        return new Response(
+          JSON.stringify({
+            status: 'denied',
+            error: 'You do not have access to this Plex server.',
+          }),
+          { status: 200, headers }
         )
       }
 
@@ -398,6 +519,7 @@ export async function handleAuthRoutes(
 
       const headers = makeJson(req)
       setUserSessionCookie(headers, sessionToken, req)
+      setPlexLoginNonceCookie(headers, '', req, 0)
       log.info(
         `[auth][${traceId}] [step 10] User session established (pinId=${pinId}, userId=${user.id}, username=${user.username}, hasServerAccess=${hasServerAccess})`
       )
@@ -407,6 +529,7 @@ export async function handleAuthRoutes(
       // If another poll arrives while we're still creating the user/session,
       // keeping the pin prevents false "expired" responses.
       _pendingPins.delete(pinId)
+      persistPendingPinsToDisk()
       log.info(
         `[auth][${traceId}] [step 11] pinId=${pinId} completed successfully`
       )
