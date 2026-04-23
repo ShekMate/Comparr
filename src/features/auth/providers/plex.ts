@@ -124,12 +124,16 @@ export async function requestPlexPin(
     }, expiresAt=${pin.expiresAt})`
   )
 
-  const fallbackAuthUrl =
-    `${PLEX_AUTH_URL}#?` +
-    `clientID=${encodeURIComponent(clientId)}` +
-    `&code=${encodeURIComponent(pin.code)}` +
-    `&context%5Bdevice%5D%5Bproduct%5D=Comparr` +
-    (forwardUrl ? `&forwardUrl=${encodeURIComponent(forwardUrl)}` : '')
+  const authFragmentParams = new URLSearchParams({
+    clientID: clientId,
+    code: pin.code,
+    'context[device][product]': 'Comparr',
+    'context[device][platform]': 'Web',
+    'context[device][device]': 'Browser',
+    'context[device][layout]': 'desktop',
+  })
+  if (forwardUrl) authFragmentParams.set('forwardUrl', forwardUrl)
+  const fallbackAuthUrl = `${PLEX_AUTH_URL}/#!?${authFragmentParams.toString()}`
   log.info(
     `[plex-auth][${traceId}] [step 6b] Constructed fallback auth URL (includesForwardUrl=${Boolean(
       forwardUrl
