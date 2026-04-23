@@ -3428,7 +3428,7 @@ function createFirstRunGuideModal() {
       renderRequirementCopy('')
       title.textContent = 'User Authentication'
       copy.textContent =
-        "Let users sign in with their Plex account. Once your media server is configured, you'll sign in to claim admin access."
+        'Let users sign in with their Plex account. You can claim admin access after setup from the Sign in button in the main app header.'
 
       const currentPlexRestrict =
         window.PLEX_RESTRICT_TO_SERVER === true ||
@@ -3918,47 +3918,14 @@ function createFirstRunGuideModal() {
           index: nextIndex,
         }
       }
-      const userAuthEnabled =
-        window.USER_AUTH_ENABLED === true || window.USER_AUTH_ENABLED === 'true'
-      const canUseAdminSignIn = selectedState.sources.includes('plex')
-      if (userAuthEnabled && canUseAdminSignIn) {
-        try {
-          const { user } = await api.getAuthUser()
-          if (user) {
-            selectedState.adminLoggedIn = true
-            selectedState.adminLoginUser = user
-            window.COMPARR_USER = user
-            return selectedState.flow === 'combined'
-              ? { type: 'tmdb' }
-              : { type: 'setup-complete' }
-          }
-        } catch {
-          // no auth session yet
-        }
-        return { type: 'admin-login' }
-      }
       return selectedState.flow === 'combined'
         ? { type: 'tmdb' }
         : { type: 'setup-complete' }
     }
 
     if (current.type === 'admin-login') {
-      if (!selectedState.adminLoggedIn) {
-        try {
-          const { user } = await api.getAuthUser()
-          if (user) {
-            selectedState.adminLoggedIn = true
-            selectedState.adminLoginUser = user
-            window.COMPARR_USER = user
-          }
-        } catch {
-          // no auth session yet
-        }
-      }
-      if (!selectedState.adminLoggedIn) {
-        setWizardStatus('Please sign in to continue.', 'error')
-        return null
-      }
+      // Legacy recovery path: older persisted wizard state may still contain
+      // the removed admin-login screen. Skip it and continue setup.
       return selectedState.flow === 'combined'
         ? { type: 'tmdb' }
         : { type: 'setup-complete' }
