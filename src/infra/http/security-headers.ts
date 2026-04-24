@@ -34,7 +34,7 @@ export const addSecurityHeaders = (
   headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
   headers.set(
     'Content-Security-Policy',
-    `default-src 'self'; script-src 'self'; style-src 'self'; style-src-elem 'self' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' https://image.tmdb.org data: blob:; connect-src 'self' ws: wss:; frame-src https://www.youtube.com https://www.youtube-nocookie.com; frame-ancestors ${frameAncestors};`
+    `default-src 'self'; script-src 'self'; style-src 'self'; style-src-elem 'self' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' https://image.tmdb.org data: blob:; connect-src 'self' ws: wss: https://plex.tv; frame-src https://www.youtube.com https://www.youtube-nocookie.com; frame-ancestors ${frameAncestors};`
   )
   if (isSecureTransport(req)) {
     headers.set(

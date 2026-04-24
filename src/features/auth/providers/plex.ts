@@ -184,13 +184,10 @@ export async function requestPlexPin(
 /** Poll plex.tv for the status of a PIN. Returns pending, expired, or an authToken. */
 export async function pollPlexPin(
   pinId: number,
-  clientId: string,
-  code?: string
+  clientId: string
 ): Promise<PlexPinStatus> {
   const traceId = `${pinId}-${Date.now().toString(36)}`
-  const pollOnce = async (
-    useCode: boolean
-  ): Promise<{
+  const pollOnce = async (): Promise<{
     authToken: string | null
     rawExpiresAt: string
     statusOk: boolean
@@ -198,7 +195,6 @@ export async function pollPlexPin(
     contentType: string
   }> => {
     const pinUrl = new URL(`${PLEX_API_BASE}/pins/${pinId}`)
-    if (useCode && code) pinUrl.searchParams.set('code', code)
     const res = await fetchWithTimeout(pinUrl.toString(), {
       headers: {
         ...plexHeaders(clientId),
@@ -208,7 +204,7 @@ export async function pollPlexPin(
     const contentType = res.headers.get('content-type') || ''
     if (PLEX_AUTH_DEBUG) {
       log.info(
-        `[plex-auth][${traceId}] [debug] pollOnce request (pinId=${pinId}, useCode=${useCode}, url=${pinUrl.toString()})`
+        `[plex-auth][${traceId}] [debug] pollOnce request (pinId=${pinId}, url=${pinUrl.toString()})`
       )
     }
     if (!res.ok) {
@@ -228,7 +224,7 @@ export async function pollPlexPin(
           (typeof data?.auth_token === 'string' && data.auth_token) ||
           ''
         log.info(
-          `[plex-auth][${traceId}] [debug] pollOnce JSON payload (pinId=${pinId}, useCode=${useCode}, hasAuthToken=${Boolean(
+          `[plex-auth][${traceId}] [debug] pollOnce JSON payload (pinId=${pinId}, hasAuthToken=${Boolean(
             token
           )}, authToken=${redactAuthToken(token)}, expiresAt=${
             data?.expiresAt || data?.expires_at || ''
@@ -260,7 +256,7 @@ export async function pollPlexPin(
         (_m, key, token) => `${key}="${redactAuthToken(token)}"`
       )
       log.info(
-        `[plex-auth][${traceId}] [debug] pollOnce non-JSON payload (pinId=${pinId}, useCode=${useCode}, body=${redactedText})`
+        `[plex-auth][${traceId}] [debug] pollOnce non-JSON payload (pinId=${pinId}, body=${redactedText})`
       )
     }
     const getAttr = (name: string): string => {
@@ -277,11 +273,9 @@ export async function pollPlexPin(
   }
 
   log.info(
-    `[plex-auth][${traceId}] [step 1] Polling PIN status (pinId=${pinId}, hasCode=${Boolean(
-      code
-    )})`
+    `[plex-auth][${traceId}] [step 1] Polling PIN status (pinId=${pinId})`
   )
-  let pollResult = await pollOnce(Boolean(code))
+  const pollResult = await pollOnce()
   log.info(
     `[plex-auth][${traceId}] [step 2] PIN poll returned status=${pollResult.status}`
   )
@@ -294,19 +288,6 @@ export async function pollPlexPin(
     throw new Error(
       `[plex-auth] transient PIN poll failure: ${pollResult.status}`
     )
-  }
-
-  // Some Plex environments return token data only when code is omitted.
-  if (!pollResult.authToken && code) {
-    log.info(
-      `[plex-auth][${traceId}] [step 2b] Retrying PIN poll without code parameter`
-    )
-    const noCodeResult = await pollOnce(false)
-    if (noCodeResult.statusOk && noCodeResult.authToken) {
-      pollResult = noCodeResult
-    } else if (noCodeResult.statusOk && !pollResult.rawExpiresAt) {
-      pollResult = noCodeResult
-    }
   }
 
   const { authToken, rawExpiresAt, contentType } = pollResult
