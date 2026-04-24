@@ -276,6 +276,95 @@ export async function handleAuthRoutes(
     })
   }
 
+  // ── POST /api/auth/plex ──────────────────────────────────────────────────
+  // Seerr-style flow: frontend completes Plex PIN polling and sends authToken.
+  if (pathname === '/api/auth/plex' && req.method === 'POST') {
+    const ip = getClientIp(req)
+    if (!loginRateLimiter.check(ip)) {
+      return new Response(JSON.stringify({ error: 'Too many attempts. Please wait.' }), {
+        status: 429,
+        headers: makeJson(req),
+      })
+    }
+
+    try {
+      const body = await req.json<{ authToken?: string }>()
+      const authToken = String(body?.authToken || '').trim()
+      if (!authToken) {
+        return new Response(JSON.stringify({ error: 'Missing Plex auth token.' }), {
+          status: 400,
+          headers: makeJson(req),
+        })
+      }
+
+      const clientId = await ensurePlexClientId()
+      const plexUser = await getPlexUserInfo(authToken, clientId)
+
+      let hasServerAccess = true
+      if (getPlexUrl() && getPlexToken()) {
+        hasServerAccess = await isUserOnPlexServer(
+          authToken,
+          getPlexUrl(),
+          getPlexToken()
+        )
+      }
+      if (isPlexRestrictedToServer() && !hasServerAccess) {
+        return new Response(
+          JSON.stringify({
+            status: 'denied',
+            error: 'You do not have access to this Plex server.',
+          }),
+          { status: 200, headers: makeJson(req) }
+        )
+      }
+
+      const user = upsertUser({
+        provider: 'plex',
+        providerUserId: plexUser.id,
+        username: plexUser.username,
+        email: plexUser.email,
+        avatarUrl: plexUser.thumb,
+      })
+      const inviteCode = getOrCreateInviteCode(user.id)
+      const roomCode = `U${String(user.id).padStart(3, '0')}`
+
+      const sessionToken = createUserSession({
+        userId: user.id,
+        provider: user.provider,
+        providerUserId: user.providerUserId,
+        username: user.username,
+        avatarUrl: user.avatarUrl,
+        isAdmin: user.isAdmin,
+        hasServerAccess,
+      })
+
+      const headers = makeJson(req)
+      setUserSessionCookie(headers, sessionToken, req)
+      return new Response(
+        JSON.stringify({
+          status: 'success',
+          user: {
+            id: user.id,
+            username: user.username,
+            avatarUrl: user.avatarUrl,
+            isAdmin: user.isAdmin,
+            hasServerAccess,
+            provider: 'plex',
+            roomCode,
+            inviteCode,
+          },
+        }),
+        { status: 200, headers }
+      )
+    } catch (err) {
+      log.warn(`[auth] Plex token login failed: ${err}`)
+      return new Response(JSON.stringify({ error: 'Plex login failed.' }), {
+        status: 401,
+        headers: makeJson(req),
+      })
+    }
+  }
+
   // ── POST /api/auth/plex/pin ──────────────────────────────────────────────
   // Plex auth always works — no server required, just a plex.tv account.
   if (pathname === '/api/auth/plex/pin' && req.method === 'POST') {
