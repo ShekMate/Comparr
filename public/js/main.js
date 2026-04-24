@@ -691,6 +691,19 @@ function initTabs() {
       if (typeof window.initSettingsTab === 'function') {
         window.initSettingsTab()
       }
+    } else if (tabId === 'tab-swipe') {
+      if (
+        swipeSessionRefreshPending &&
+        typeof window.triggerNewBatch === 'function'
+      ) {
+        swipeSessionRefreshPending = false
+        window.triggerNewBatch().catch(err => {
+          console.warn(
+            'Failed to refresh swipe session after settings update:',
+            err
+          )
+        })
+      }
     } else if (tabId === 'tab-stats') {
       if (typeof window.refreshStatsTab === 'function') {
         window.refreshStatsTab()
@@ -2709,6 +2722,7 @@ async function saveSettingsForm() {
       window.PERSONAL_MEDIA_SOURCES = data.settings.PERSONAL_MEDIA_SOURCES
     }
     await loadClientConfig()
+    swipeSessionRefreshPending = true
     document.dispatchEvent(new CustomEvent('comparr:source-config-updated'))
     updateHostManagedSubscriptionServiceOptions()
     updateSwipeAvailabilityUI()
@@ -2729,6 +2743,7 @@ async function saveSettingsForm() {
 
 let settingsUiHydrated = false
 let settingsHydratedWithAdminAccess = false
+let swipeSessionRefreshPending = false
 
 function hasConfiguredPersonalMediaSource() {
   return Boolean(
