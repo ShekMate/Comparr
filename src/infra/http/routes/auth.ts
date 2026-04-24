@@ -607,8 +607,8 @@ export async function handleAuthRoutes(
         `[auth][${traceId}] [step X] Plex PIN poll error: pinId=${pinId} err=${err}`
       )
       return new Response(
-        JSON.stringify({ error: 'Authentication failed. Please try again.' }),
-        { status: 500, headers: makeJson(req) }
+        JSON.stringify({ status: 'pending' }),
+        { status: 200, headers: makeJson(req) }
       )
     }
   }
