@@ -12,9 +12,15 @@ services:
       # - DATA_DIR=/data         # Path inside the container where data is stored
 
       # Reverse proxy / network (uncomment if running behind Nginx, Caddy, etc.)
-      # - TRUST_PROXY=false      # Set true if behind a trusted reverse proxy
+      # - TRUST_PROXY=true       # REQUIRED when behind Nginx/Caddy/Traefik — enables
+      #                          # X-Forwarded-Host/For header trust so origin checks
+      #                          # use the public hostname instead of the internal one.
+      #                          # Without this, POST requests and WebSocket connections
+      #                          # will be blocked (403) when the proxy doesn't rewrite
+      #                          # the Host header to match the public domain.
       # - ALLOWED_ORIGINS=*      # Comma-separated allowed origins; restrict in production
       # - MAX_BODY_SIZE=1048576  # Max HTTP request body in bytes (default 1 MB)
       # - FRAME_ANCESTORS='none' # CSP frame-ancestors; set to your domain if embedding
+      # - ALLOW_REMOTE_BOOTSTRAP=true  # Allow setup-wizard completion from non-LAN IPs
     volumes:
       - ./data-dev:/data

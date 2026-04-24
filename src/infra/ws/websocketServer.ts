@@ -1,6 +1,6 @@
 import type { CompatRequest } from '../http/compat-request.ts'
 import { EventEmitter } from 'node:events'
-import { getAllowedOrigins } from '../../core/config.ts'
+import { getAllowedOrigins, getTrustProxy } from '../../core/config.ts'
 
 export class WebSocketError extends Error {}
 
@@ -47,9 +47,16 @@ export class WebSocketServer {
     if (!origin) return false
 
     const allowed = getAllowedOrigins()
-    const host = String(req.headers.get('host') || '')
-      .trim()
-      .toLowerCase()
+    // Respect X-Forwarded-Host when behind a trusted reverse proxy so that
+    // the origin comparison uses the public hostname, not the internal one.
+    let host = String(req.headers.get('host') || '').trim().toLowerCase()
+    if (getTrustProxy()) {
+      const xfh = String(req.headers.get('x-forwarded-host') || '')
+        .split(',')[0]
+        .trim()
+        .toLowerCase()
+      if (xfh) host = xfh
+    }
 
     if (allowed.length > 0) {
       const target = origin.toLowerCase()

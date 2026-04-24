@@ -18,7 +18,28 @@ export const isPrivateNetwork = (hostname: string) => {
     const octet = Number(hostname.split('.')[1] ?? '0')
     return octet >= 16 && octet <= 31
   }
+  // IPv6 unique-local (fc00::/7) and link-local (fe80::/10)
+  const lower = hostname.toLowerCase()
+  if (lower.startsWith('fc') || lower.startsWith('fd')) return true
+  if (lower.startsWith('fe8') || lower.startsWith('fe9') ||
+      lower.startsWith('fea') || lower.startsWith('feb')) return true
   return false
+}
+
+// When behind a trusted reverse proxy the effective public host may be carried
+// in X-Forwarded-Host rather than the Host header (which would still contain
+// the internal container hostname/port). Use that header when TRUST_PROXY=true.
+const getEffectiveHost = (req: {
+  headers?: { get?: (name: string) => string | null }
+}): string => {
+  if (getTrustProxy()) {
+    const xfh = String(req?.headers?.get?.('x-forwarded-host') || '')
+      .split(',')[0]
+      .trim()
+      .toLowerCase()
+    if (xfh) return xfh
+  }
+  return String(req?.headers?.get?.('host') || '').trim().toLowerCase()
 }
 
 const stripIpFormatting = (value: string) => {
@@ -88,9 +109,7 @@ export const isValidHost = (req: {
   const allowedOrigins = getAllowedOrigins()
   if (allowedOrigins.length === 0) return true
 
-  const host = String(req?.headers?.get?.('host') || '')
-    .trim()
-    .toLowerCase()
+  const host = getEffectiveHost(req)
   if (!host) return false
 
   return allowedOrigins.some(candidate =>
@@ -106,9 +125,7 @@ export const isValidOrigin = (req: {
     .toLowerCase()
   if (!origin) return true
 
-  const host = String(req?.headers?.get?.('host') || '')
-    .trim()
-    .toLowerCase()
+  const host = getEffectiveHost(req)
   if (!host) return false
 
   const allowedOrigins = getAllowedOrigins()
