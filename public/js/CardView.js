@@ -17,7 +17,9 @@ function openTrailerModal(trailerKey) {
       <div class="trailer-modal-iframe-wrap">
         <iframe
           class="trailer-modal-iframe"
-          src="https://www.youtube.com/embed/${encodeURIComponent(trailerKey)}?autoplay=1&rel=0&enablejsapi=1&origin=${origin}"
+          src="https://www.youtube.com/embed/${encodeURIComponent(
+            trailerKey
+          )}?autoplay=1&rel=0&enablejsapi=1&origin=${origin}"
           allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
           allowfullscreen
           referrerpolicy="strict-origin-when-cross-origin"
@@ -34,7 +36,9 @@ function openTrailerModal(trailerKey) {
         <i class="fas fa-lock"></i>
         <p>This trailer can't be embedded because it's age-restricted on YouTube.</p>
         <a class="trailer-modal-yt-link"
-           href="https://www.youtube.com/watch?v=${encodeURIComponent(trailerKey)}"
+           href="https://www.youtube.com/watch?v=${encodeURIComponent(
+             trailerKey
+           )}"
            target="_blank" rel="noopener noreferrer">
           <i class="fab fa-youtube"></i> Watch on YouTube
         </a>
@@ -46,7 +50,10 @@ function openTrailerModal(trailerKey) {
     if (e.origin !== 'https://www.youtube.com') return
     try {
       const data = JSON.parse(e.data)
-      if (data.event === 'onError' && (data.info === 101 || data.info === 150)) {
+      if (
+        data.event === 'onError' &&
+        (data.info === 101 || data.info === 150)
+      ) {
         showFallback()
       }
     } catch {}
@@ -60,9 +67,13 @@ function openTrailerModal(trailerKey) {
     window.removeEventListener('message', onMessage)
   }
 
-  const onEsc = e => { if (e.key === 'Escape') close() }
+  const onEsc = e => {
+    if (e.key === 'Escape') close()
+  }
 
-  modal.addEventListener('click', e => { if (e.target === modal) close() })
+  modal.addEventListener('click', e => {
+    if (e.target === modal) close()
+  })
   modal.querySelector('.trailer-modal-close').addEventListener('click', close)
   document.addEventListener('keydown', onEsc)
   window.addEventListener('message', onMessage)
@@ -89,6 +100,31 @@ function getLanguageDisplayName(value) {
   } catch {
     return raw
   }
+}
+
+function normalizeArt(u) {
+  if (!u) return u
+
+  const isPlexThumbCore = value => /^\/\d+\/thumb\/\d+/.test(value || '')
+
+  // Strip known local prefixes to inspect the core path
+  let core = u
+  if (core.startsWith('/tmdb-poster/')) core = core.slice('/tmdb-poster'.length)
+  if (core.startsWith('/poster/')) core = core.slice('/poster'.length)
+
+  // If the core path is a Plex thumb id, do NOT request it
+  if (isPlexThumbCore(core)) return ''
+
+  // Already-final or full URLs
+  if (u.startsWith('/cached-poster/') || u.startsWith('/tmdb-poster/')) return u
+  if (u.startsWith('http://') || u.startsWith('https://')) return u
+
+  // Legacy -> canonical
+  if (u.startsWith('/poster/'))
+    return '/tmdb-poster/' + u.slice('/poster/'.length)
+
+  // Raw TMDB path like "/h7wJ...jpg"
+  return '/tmdb-poster' + (u.startsWith('/') ? u : '/' + u)
 }
 
 export default class CardView {
@@ -131,38 +167,6 @@ export default class CardView {
       genres = [],
     } = this.movieData
     node.dataset.guid = guid
-
-    // Treat "/<digits>/thumb/<digits>" as a Plex-only path (not a real image file)
-    const isPlexThumb = u => !!u && /^\/\d+\/thumb\/\d+/.test(u)
-
-    // Treat "/<digits>/thumb/<digits>" as a Plex-only path (not a real image file)
-    const isPlexThumbCore = u => /^\/\d+\/thumb\/\d+/.test(u || '')
-
-    // Normalize any legacy or partial poster path into a canonical, loadable URL
-    const normalizeArt = u => {
-      if (!u) return u
-
-      // Strip known local prefixes to inspect the core path
-      let core = u
-      if (core.startsWith('/tmdb-poster/'))
-        core = core.slice('/tmdb-poster'.length)
-      if (core.startsWith('/poster/')) core = core.slice('/poster'.length)
-
-      // If the core path is a Plex thumb id, do NOT request it
-      if (isPlexThumbCore(core)) return ''
-
-      // Already-final or full URLs
-      if (u.startsWith('/cached-poster/') || u.startsWith('/tmdb-poster/'))
-        return u
-      if (u.startsWith('http://') || u.startsWith('https://')) return u
-
-      // Legacy -> canonical
-      if (u.startsWith('/poster/'))
-        return '/tmdb-poster/' + u.slice('/poster/'.length)
-
-      // Raw TMDB path like "/h7wJ...jpg"
-      return '/tmdb-poster' + (u.startsWith('/') ? u : '/' + u)
-    }
 
     const finalArt = normalizeArt(art)
 
@@ -527,13 +531,15 @@ export default class CardView {
     // IMDb/TMDb ratings + trailer button on same row
     if (rating || trailerKey) {
       const trailerBtnHtml = trailerKey
-        ? `<button class="card-trailer-btn" type="button" data-trailer-key="${escapeHtml(trailerKey)}"><i class="fas fa-play"></i> Trailer</button>`
+        ? `<button class="card-trailer-btn" type="button" data-trailer-key="${escapeHtml(
+            trailerKey
+          )}"><i class="fas fa-play"></i> Trailer</button>`
         : ''
       lines.push(
         `<div class="card-ratings-row" onclick="event.stopPropagation()">` +
-        (rating ? `<div class="card-ratings">${rating}</div>` : '') +
-        trailerBtnHtml +
-        `</div>`
+          (rating ? `<div class="card-ratings">${rating}</div>` : '') +
+          trailerBtnHtml +
+          `</div>`
       )
     }
 
