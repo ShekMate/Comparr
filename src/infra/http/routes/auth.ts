@@ -38,7 +38,7 @@ const PIN_TTL_MS = 6 * 60 * 1000
 // Active Plex PIN requests (memory cache mirrored to DATA_DIR).
 const _pendingPins = new Map<
   number,
-  { clientId: string; code: string; nonce: string; expiresAt: number }
+  { clientId: string; nonce: string; expiresAt: number }
 >()
 const PENDING_PINS_FILE = `${getDataDir()}/pending-plex-pins.json`
 const PENDING_PINS_LOCK_DIR = `${getDataDir()}/pending-plex-pins.lock`
@@ -96,17 +96,15 @@ const loadPendingPinsFromDisk = (): void => {
       if (!value || typeof value !== 'object') continue
       const record = value as {
         clientId?: string
-        code?: string
         nonce?: string
         expiresAt?: number
       }
       const expiresAt = Number(record.expiresAt || 0)
-      if (!record.clientId || !record.code || !record.nonce || now > expiresAt) {
+      if (!record.clientId || !record.nonce || now > expiresAt) {
         continue
       }
       _pendingPins.set(pinId, {
         clientId: String(record.clientId),
-        code: String(record.code),
         nonce: String(record.nonce),
         expiresAt,
       })
@@ -389,7 +387,6 @@ export async function handleAuthRoutes(
         }
         _pendingPins.set(pin.id, {
           clientId,
-          code: pin.code,
           nonce: loginNonce,
           expiresAt: pinExpiresAt,
         })
@@ -463,12 +460,12 @@ export async function handleAuthRoutes(
       `[auth][${traceId}] [step 4] Pending entry loaded (pinId=${pinId}, expiresInMs=${Math.max(
         0,
         pending.expiresAt - Date.now()
-      )}, hasCode=${Boolean(pending.code)})`
+      )})`
     )
 
     try {
       log.info(`[auth][${traceId}] [step 5] Checking status with plex.tv`)
-      const status = await pollPlexPin(pinId, pending.clientId, pending.code)
+      const status = await pollPlexPin(pinId, pending.clientId)
       log.info(
         `[auth][${traceId}] [step 6] Poll evaluated (pinId=${pinId}, expired=${
           status.expired
@@ -607,8 +604,8 @@ export async function handleAuthRoutes(
         `[auth][${traceId}] [step X] Plex PIN poll error: pinId=${pinId} err=${err}`
       )
       return new Response(
-        JSON.stringify({ error: 'Authentication failed. Please try again.' }),
-        { status: 500, headers: makeJson(req) }
+        JSON.stringify({ status: 'pending' }),
+        { status: 200, headers: makeJson(req) }
       )
     }
   }
