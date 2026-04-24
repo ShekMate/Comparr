@@ -184,6 +184,17 @@ export class ComparrAPI extends EventTarget {
     return data
   }
 
+  async loginWithPlex(authToken) {
+    const res = await fetch(`${this._basePath}/api/auth/plex`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ authToken: String(authToken || '') }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || 'Plex login failed.')
+    return data
+  }
+
   async loginWithJellyfin(username, password) {
     const res = await fetch(`${this._basePath}/api/auth/jellyfin`, {
       method: 'POST',

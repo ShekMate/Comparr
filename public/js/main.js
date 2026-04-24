@@ -2728,6 +2728,75 @@ function hasConfiguredMovieSource() {
   return hasConfiguredPersonalMediaSource() || Boolean(window.TMDB_CONFIGURED)
 }
 
+function getPlexClientIdentifier() {
+  const key = 'comparr_plex_client_identifier'
+  const existing = localStorage.getItem(key)
+  if (existing) return existing
+  const created =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `comparr-${Date.now().toString(36)}-${Math.random()
+          .toString(36)
+          .slice(2, 10)}`
+  localStorage.setItem(key, created)
+  return created
+}
+
+async function plexOAuthLogin(popup) {
+  const clientId = getPlexClientIdentifier()
+  const pinRes = await fetch('https://plex.tv/api/v2/pins?strong=true', {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-Plex-Client-Identifier': clientId,
+      'X-Plex-Product': 'Comparr',
+      'X-Plex-Version': '1.0',
+      'X-Plex-Device': 'Web',
+      'X-Plex-Platform': 'Web',
+    },
+    body: '',
+  })
+  const pinData = await pinRes.json().catch(() => ({}))
+  if (!pinRes.ok || !pinData?.id || !pinData?.code) {
+    throw new Error('Could not start Plex login.')
+  }
+
+  const authUrl =
+    `https://app.plex.tv/auth#?` +
+    `clientID=${encodeURIComponent(clientId)}` +
+    `&code=${encodeURIComponent(pinData.code)}` +
+    `&context%5Bdevice%5D%5Bproduct%5D=Comparr`
+  popup.location.href = authUrl
+
+  const startedAt = Date.now()
+  const maxMs = 6 * 60 * 1000
+  while (Date.now() - startedAt < maxMs) {
+    const pollRes = await fetch(`https://plex.tv/api/v2/pins/${pinData.id}`, {
+      headers: {
+        Accept: 'application/json',
+        'X-Plex-Client-Identifier': clientId,
+        'X-Plex-Product': 'Comparr',
+        'X-Plex-Version': '1.0',
+        'X-Plex-Device': 'Web',
+        'X-Plex-Platform': 'Web',
+      },
+    })
+    if (pollRes.ok) {
+      const pollData = await pollRes.json().catch(() => ({}))
+      const authToken = String(
+        pollData?.authToken || pollData?.auth_token || ''
+      ).trim()
+      if (authToken) {
+        if (!popup.closed) popup.close()
+        return authToken
+      }
+    }
+    await new Promise(resolve => setTimeout(resolve, 1000))
+  }
+  throw new Error('Plex login expired. Please try again.')
+}
+
 function createFirstRunGuideModal() {
   const existing = document.getElementById('first-run-guide-modal')
   if (existing) return existing
@@ -3512,12 +3581,9 @@ function createFirstRunGuideModal() {
         nextButton.disabled = false
       }
 
-      // ── Plex PIN flow ────────────────────────────────────────────
+      // ── Plex OAuth flow (Seerr-style) ────────────────────────────
       const plexBtn = body.querySelector('.js-wizard-admin-plex-btn')
       const plexStatus = body.querySelector('.js-wizard-admin-plex-status')
-      let activeAdminPinId = null
-      let activeAdminPopup = null
-      let pollAdminPinNow = null
       stopAdminSessionWatcher()
       adminSessionWatcher = setInterval(async () => {
         if (selectedState.adminLoggedIn) {
@@ -3533,63 +3599,7 @@ function createFirstRunGuideModal() {
         }
       }, 2500)
       stopAdminLoginMessageListener()
-      const onAdminLoginMessage = async event => {
-        if (event.data?.type !== 'comparr-plex-auth-complete') return
-        if (event.origin !== window.location.origin) return
-        if (activeAdminPopup && event.source !== activeAdminPopup) return
-        console.info(
-          '[wizard][admin-login] Received completion message from Plex callback',
-          {
-            eventOrigin: event.origin,
-            pageOrigin: window.location.origin,
-            data: event.data,
-          }
-        )
-        if (activeAdminPinId) {
-          console.info(
-            '[wizard][admin-login] Running callback-triggered PIN verification loop',
-            {
-              pinId: activeAdminPinId,
-            }
-          )
-
-          for (let attempt = 1; attempt <= 15; attempt++) {
-            const result = await api.pollPlexPin(activeAdminPinId).catch(() => null)
-            console.debug(
-              '[wizard][admin-login] Callback verification poll attempt',
-              {
-                pinId: activeAdminPinId,
-                attempt,
-                status: result?.status || 'error',
-                hasUser: Boolean(result?.user),
-              }
-            )
-
-            if (result?.status === 'success' || result?.user?.username) {
-              handleAdminLoggedIn(result.user)
-              return
-            }
-
-            if (result?.status === 'denied' || result?.status === 'expired') {
-              if (plexStatus) {
-                plexStatus.textContent =
-                  result.status === 'denied'
-                    ? result.error || 'Access denied.'
-                    : 'Plex login expired. Please try again.'
-                plexStatus.hidden = false
-              }
-              break
-            }
-
-            await new Promise(resolve => setTimeout(resolve, 1000))
-          }
-        }
-        const authState = await api.getAuthUser().catch(() => ({ user: null }))
-        if (authState?.user) handleAdminLoggedIn(authState.user)
-      }
-      window.addEventListener('message', onAdminLoginMessage)
-      detachAdminLoginMessageListener = () =>
-        window.removeEventListener('message', onAdminLoginMessage)
+      detachAdminLoginMessageListener = () => {}
 
       plexBtn?.addEventListener('click', async () => {
         console.info('[wizard][admin-login] Starting Plex PIN login flow')
@@ -3615,146 +3625,27 @@ function createFirstRunGuideModal() {
         }
         console.info('[wizard][admin-login] Popup opened successfully')
 
-        let pollTimer = null
-        let popupClosedAt = null
-        let consecutivePollErrors = 0
-        let transientExpiredResponses = 0
-        const pollStartedAt = Date.now()
-
-        const cleanupPoll = () => {
-          if (pollTimer) clearInterval(pollTimer)
-          pollTimer = null
-          if (!popup.closed) popup.close()
-          activeAdminPinId = null
-          activeAdminPopup = null
-          pollAdminPinNow = null
-        }
-        const recoverFromExistingSession = async () => {
-          const authState = await api.getAuthUser().catch(() => ({ user: null }))
-          if (!authState?.user) return false
-          console.info(
-            '[wizard][admin-login] Recovered login via existing auth session'
-          )
-          cleanupPoll()
-          handleAdminLoggedIn(authState.user)
-          return true
-        }
-
         try {
-          const { pinId, authUrl } = await api.requestPlexPin()
-          console.info('[wizard][admin-login] Received PIN payload', { pinId })
-          activeAdminPinId = pinId
-          activeAdminPopup = popup
-          popup.location.href = authUrl
-          console.debug('[wizard][admin-login] Popup redirected to Plex auth URL')
-
-          if (plexStatus)
-            plexStatus.textContent = 'Waiting for Plex approval…'
-
-          pollAdminPinNow = async () => {
-            try {
-              const result = await api.pollPlexPin(pinId)
-              console.debug('[wizard][admin-login] PIN poll response', {
-                pinId,
-                status: result?.status || 'unknown',
-                hasUser: Boolean(result?.user),
-              })
-              consecutivePollErrors = 0
-              if (result.status !== 'expired') {
-                transientExpiredResponses = 0
-              }
-              // Accept either explicit success status or a user payload.
-              // Some reverse-proxy setups may drop/transform status while
-              // still returning a valid authenticated user object.
-              if (result.status === 'success' || result?.user?.username) {
-                console.info('[wizard][admin-login] PIN poll success', {
-                  status: result.status || null,
-                  hasUser: Boolean(result?.user?.username),
-                })
-                cleanupPoll()
-                handleAdminLoggedIn(result.user)
-              } else if (result.status === 'denied') {
-                console.warn('[wizard][admin-login] PIN poll denied', {
-                  error: result.error || null,
-                })
-                cleanupPoll()
-                plexBtn.disabled = false
-                if (plexStatus)
-                  plexStatus.textContent = result.error || 'Access denied.'
-              } else if (result.status === 'expired') {
-                transientExpiredResponses += 1
-                const withinGraceWindow = Date.now() - pollStartedAt < 120000
-                const keepRetrying =
-                  transientExpiredResponses < 6 && withinGraceWindow
-
-                console.warn('[wizard][admin-login] PIN poll expired response', {
-                  transientExpiredResponses,
-                  withinGraceWindow,
-                  keepRetrying,
-                })
-
-                if (await recoverFromExistingSession()) return
-                if (keepRetrying) {
-                  if (plexStatus) {
-                    plexStatus.textContent = 'Still verifying login…'
-                    plexStatus.hidden = false
-                  }
-                  return
-                }
-
-                cleanupPoll()
-                plexBtn.disabled = false
-                if (plexStatus)
-                  plexStatus.textContent = 'Plex login expired. Please try again.'
-              } else if (popup.closed) {
-                console.debug('[wizard][admin-login] Popup closed while pending')
-                if (!popupClosedAt) {
-                  popupClosedAt = Date.now()
-                  if (plexStatus) {
-                    plexStatus.textContent =
-                      'Finishing sign in… This can take a few seconds.'
-                  }
-                }
-                if (await recoverFromExistingSession()) return
-                // Do not treat a closed popup as cancellation right away.
-                // Plex may need extra time to finalize approval and issue the
-                // auth token, especially when proxied.
-                if (Date.now() - popupClosedAt >= 120000) {
-                  cleanupPoll()
-                  plexBtn.disabled = false
-                  if (plexStatus) {
-                    plexStatus.textContent =
-                      'Login was not completed. Please click "Sign in with Plex" and finish approval.'
-                  }
-                }
-              }
-            } catch {
-              consecutivePollErrors += 1
-              console.warn('[wizard][admin-login] PIN poll error', {
-                consecutivePollErrors,
-              })
-              if (await recoverFromExistingSession()) return
-              if (consecutivePollErrors >= 3) {
-                cleanupPoll()
-                plexBtn.disabled = false
-                if (plexStatus) {
-                  plexStatus.textContent =
-                    'Unable to verify Plex login right now. Please try again.'
-                }
-              }
+          if (plexStatus) plexStatus.textContent = 'Waiting for Plex approval…'
+          const authToken = await plexOAuthLogin(popup)
+          const result = await api.loginWithPlex(authToken)
+          if (result?.status === 'denied') {
+            plexBtn.disabled = false
+            if (plexStatus) {
+              plexStatus.textContent = result.error || 'Access denied.'
+              plexStatus.hidden = false
             }
+            return
           }
-
-          // Trigger one poll immediately so we don't rely on the first interval tick.
-          await pollAdminPinNow()
-          pollTimer = setInterval(pollAdminPinNow, 2000)
+          if (!popup.closed) popup.close()
+          handleAdminLoggedIn(result.user)
         } catch (err) {
-          console.error('[wizard][admin-login] Failed to start Plex PIN flow', err)
-          cleanupPoll()
+          console.error('[wizard][admin-login] Failed Plex OAuth login', err)
+          if (!popup.closed) popup.close()
           plexBtn.disabled = false
           if (plexStatus)
             plexStatus.textContent =
-              err.message || 'Could not start Plex login.'
+              err.message || 'Could not complete Plex login.'
         }
       })
 
@@ -4954,138 +4845,27 @@ async function login(api) {
           }
           console.info('[auth][user-login] Popup opened successfully')
 
-          let pinId = null
-          let pollTimer = null
-          let popupClosedAt = null
-
-          const cleanupPoll = () => {
-            if (pollTimer) clearInterval(pollTimer)
-            pollTimer = null
-            if (!popup.closed) popup.close()
-          }
-
           try {
-            const { pinId: id, authUrl } = await api.requestPlexPin()
-            pinId = id
-            popup.location.href = authUrl
-            console.debug('[auth][user-login] Popup redirected to Plex auth URL')
-
-            if (plexStatus)
-              plexStatus.textContent = 'Waiting for Plex approval…'
-
-            let consecutivePollErrors = 0
-            pollTimer = setInterval(async () => {
-              try {
-                const result = await api.pollPlexPin(pinId)
-                console.debug('[auth][user-login] PIN poll response', {
-                  pinId,
-                  status: result?.status || 'unknown',
-                  hasUser: Boolean(result?.user),
-                })
-                consecutivePollErrors = 0
-
-                // Accept either explicit success status or a user payload.
-                // Some proxy/error edge-cases can strip status while still
-                // returning a usable authenticated user object.
-                if (result.status === 'success' || result?.user?.username) {
-                  console.info('[auth][user-login] PIN poll success', {
-                    pinId,
-                    status: result.status || null,
-                    hasUser: Boolean(result?.user?.username),
-                  })
-                  cleanupPoll()
-                  if (plexStatus) plexStatus.hidden = true
-                  handleUserLoggedIn(result.user)
-                } else if (
-                  result.status === 'expired' ||
-                  result.status === 'denied'
-                ) {
-                  console.warn('[auth][user-login] PIN poll terminal status', {
-                    pinId,
-                    status: result.status,
-                    error: result.error || null,
-                  })
-                  cleanupPoll()
-                  plexSigninBtn.disabled = false
-                  if (plexStatus) {
-                    plexStatus.textContent =
-                      result.status === 'denied'
-                        ? result.error || 'Access denied.'
-                        : 'Plex login expired. Please try again.'
-                  }
-                } else if (popup.closed) {
-                  console.info('[auth][user-login] Popup closed while poll pending', {
-                    pinId,
-                  })
-                  if (!popupClosedAt) {
-                    popupClosedAt = Date.now()
-                    if (plexStatus) {
-                      plexStatus.textContent =
-                        'Finishing sign in… This can take a few seconds.'
-                    }
-                  }
-                  // A closed popup is not always a cancellation. Keep polling
-                  // for a while so slower Plex approvals still succeed.
-                  if (Date.now() - popupClosedAt >= 120000) {
-                    console.warn('[auth][user-login] Popup closed timeout reached', {
-                      pinId,
-                      waitedMs: Date.now() - popupClosedAt,
-                    })
-                    cleanupPoll()
-                    plexSigninBtn.disabled = false
-                    if (plexStatus) {
-                      plexStatus.textContent =
-                        'Login was not completed. Please click "Sign in with Plex" and finish approval.'
-                    }
-                  }
-                }
-              } catch {
-                consecutivePollErrors += 1
-                console.warn('[auth][user-login] PIN poll threw error', {
-                  pinId,
-                  consecutivePollErrors,
-                })
-
-                // If the auth cookie was set but the poll response payload is
-                // malformed/blocked by a proxy, /api/auth/me can still confirm
-                // the session and let us continue.
-                try {
-                  const me = await api.getAuthUser()
-                  console.debug('[auth][user-login] Fallback /api/auth/me check', {
-                    hasUser: Boolean(me?.user),
-                  })
-                  if (me?.user) {
-                    cleanupPoll()
-                    if (plexStatus) plexStatus.hidden = true
-                    handleUserLoggedIn(me.user)
-                    return
-                  }
-                } catch {
-                  console.warn(
-                    '[auth][user-login] Fallback /api/auth/me check failed'
-                  )
-                  // continue retrying below
-                }
-
-                // Keep retrying transient failures, but don't spin forever.
-                if (consecutivePollErrors >= 5) {
-                  cleanupPoll()
-                  plexSigninBtn.disabled = false
-                  if (plexStatus) {
-                    plexStatus.textContent =
-                      'Could not verify Plex login. Please try again.'
-                    plexStatus.hidden = false
-                  }
-                }
+            if (plexStatus) plexStatus.textContent = 'Waiting for Plex approval…'
+            const authToken = await plexOAuthLogin(popup)
+            const result = await api.loginWithPlex(authToken)
+            if (result?.status === 'denied') {
+              plexSigninBtn.disabled = false
+              if (plexStatus) {
+                plexStatus.textContent = result.error || 'Access denied.'
+                plexStatus.hidden = false
               }
-            }, 2000)
+              return
+            }
+            if (plexStatus) plexStatus.hidden = true
+            handleUserLoggedIn(result.user)
           } catch (err) {
-            console.error('[auth][user-login] Failed to start Plex PIN flow', err)
-            cleanupPoll()
+            console.error('[auth][user-login] Failed Plex OAuth login', err)
+            if (!popup.closed) popup.close()
             plexSigninBtn.disabled = false
             if (plexStatus) {
               plexStatus.textContent =
-                err.message || 'Could not start Plex login.'
+                err.message || 'Could not complete Plex login.'
             }
           }
         })
