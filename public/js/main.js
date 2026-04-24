@@ -2789,7 +2789,7 @@ async function plexOAuthLogin(popup) {
       ).trim()
       if (authToken) {
         if (!popup.closed) popup.close()
-        return authToken
+        return { authToken, clientId }
       }
     }
     await new Promise(resolve => setTimeout(resolve, 1000))
@@ -3627,8 +3627,8 @@ function createFirstRunGuideModal() {
 
         try {
           if (plexStatus) plexStatus.textContent = 'Waiting for Plex approval…'
-          const authToken = await plexOAuthLogin(popup)
-          const result = await api.loginWithPlex(authToken)
+          const { authToken, clientId } = await plexOAuthLogin(popup)
+          const result = await api.loginWithPlex(authToken, clientId)
           if (result?.status === 'denied') {
             plexBtn.disabled = false
             if (plexStatus) {
@@ -4847,8 +4847,8 @@ async function login(api) {
 
           try {
             if (plexStatus) plexStatus.textContent = 'Waiting for Plex approval…'
-            const authToken = await plexOAuthLogin(popup)
-            const result = await api.loginWithPlex(authToken)
+            const { authToken, clientId } = await plexOAuthLogin(popup)
+            const result = await api.loginWithPlex(authToken, clientId)
             if (result?.status === 'denied') {
               plexSigninBtn.disabled = false
               if (plexStatus) {

@@ -288,8 +288,9 @@ export async function handleAuthRoutes(
     }
 
     try {
-      const body = await req.json<{ authToken?: string }>()
+      const body = await req.json<{ authToken?: string; clientId?: string }>()
       const authToken = String(body?.authToken || '').trim()
+      const providedClientId = String(body?.clientId || '').trim()
       if (!authToken) {
         return new Response(JSON.stringify({ error: 'Missing Plex auth token.' }), {
           status: 400,
@@ -297,7 +298,7 @@ export async function handleAuthRoutes(
         })
       }
 
-      const clientId = await ensurePlexClientId()
+      const clientId = providedClientId || (await ensurePlexClientId())
       const plexUser = await getPlexUserInfo(authToken, clientId)
 
       let hasServerAccess = true
