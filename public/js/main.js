@@ -2732,7 +2732,12 @@ function getPlexClientIdentifier() {
   const key = 'comparr_plex_client_identifier'
   const existing = localStorage.getItem(key)
   if (existing) return existing
-  const created = crypto.randomUUID()
+  const created =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `comparr-${Date.now().toString(36)}-${Math.random()
+          .toString(36)
+          .slice(2, 10)}`
   localStorage.setItem(key, created)
   return created
 }
