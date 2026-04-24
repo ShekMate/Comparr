@@ -98,18 +98,6 @@ function ensureComparrScore(movie: any): void {
       return
     }
 
-    /*
-    // Calculate Comparr score if missing (requires at least 2 ratings)
-    const ratings = [];
-    if (hasImdb) ratings.push(movie.rating_imdb);
-    if (hasTmdb) ratings.push(movie.rating_tmdb);
-
-    if (ratings.length >= 2 && (movie.rating_comparr === null || movie.rating_comparr === undefined)) {
-      const sum = ratings.reduce((acc, val) => acc + val, 0);
-      movie.rating_comparr = Math.round((sum / ratings.length) * 10) / 10;
-    }
-    */
-
     // Rebuild rating HTML string if we have a Comparr score
     if (movie.rating_comparr !== null && movie.rating_comparr !== undefined) {
       const basePath = getRootPath() || ''

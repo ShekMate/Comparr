@@ -94,12 +94,6 @@ function generateCode(): string {
   }).join('')
 }
 
-export function isValidUserCode(code: string): boolean {
-  return new RegExp(`^[A-Z0-9]{${USER_CODE_LENGTH}}$`).test(
-    String(code || '').trim().toUpperCase()
-  )
-}
-
 // ── Public API ─────────────────────────────────────────────────────────────
 
 /**

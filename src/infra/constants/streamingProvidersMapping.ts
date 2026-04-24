@@ -161,23 +161,6 @@ export function normalizeProviderName(name: string): string {
 }
 
 /**
- * Get all unique parent provider names
- */
-export function getParentProviders(): string[] {
-  const parents = new Set<string>(Object.values(PROVIDER_MAPPINGS))
-  return Array.from(parents).sort()
-}
-
-/**
- * Get all child variants for a parent provider
- */
-export function getChildVariants(parentName: string): string[] {
-  return Object.entries(PROVIDER_MAPPINGS)
-    .filter(([_, parent]) => parent === parentName)
-    .map(([child, _]) => child)
-}
-
-/**
  * Check if a provider name is a parent or child variant
  */
 export function isKnownProvider(name: string): boolean {
