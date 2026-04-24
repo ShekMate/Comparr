@@ -400,14 +400,14 @@ export async function handleAuthRoutes(
     )
 
     if (!pending) {
-      log.warn(`[auth][${traceId}] [step 2] pinId=${pinId} missing`)
-      return new Response(JSON.stringify({ status: 'expired' }), {
-        status: 200,
-        headers: makeJson(req),
-      })
+      log.warn(
+        `[auth][${traceId}] [step 2] pinId=${pinId} missing from local pending store; falling back to Plex poll`
+      )
     }
 
-    if (Date.now() > pending.expiresAt) {
+    const pollClientId = pending?.clientId || (await ensurePlexClientId())
+
+    if (pending && Date.now() > pending.expiresAt) {
       withPendingPinsLock(() => {
         loadPendingPinsFromDisk()
         _pendingPins.delete(pinId)
@@ -422,13 +422,13 @@ export async function handleAuthRoutes(
     log.info(
       `[auth][${traceId}] [step 4] Pending entry loaded (pinId=${pinId}, expiresInMs=${Math.max(
         0,
-        pending.expiresAt - Date.now()
+        (pending?.expiresAt || Date.now()) - Date.now()
       )})`
     )
 
     try {
       log.info(`[auth][${traceId}] [step 5] Checking status with plex.tv`)
-      const status = await pollPlexPin(pinId, pending.clientId)
+      const status = await pollPlexPin(pinId, pollClientId)
       log.info(
         `[auth][${traceId}] [step 6] Poll evaluated (pinId=${pinId}, expired=${
           status.expired
@@ -459,7 +459,7 @@ export async function handleAuthRoutes(
       }
       log.info(`[auth][${traceId}] [step 9] pinId=${pinId} received auth token`)
 
-      const plexUser = await getPlexUserInfo(status.authToken, pending.clientId)
+      const plexUser = await getPlexUserInfo(status.authToken, pollClientId)
       log.info(
         `[auth] Plex user info fetched from auth token (pinId=${pinId}, plexUserId=${plexUser.id}, username=${plexUser.username})`
       )
