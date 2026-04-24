@@ -707,10 +707,11 @@ export default class CardView {
         .filter(member => member?.name)
         .map(member => {
           const profilePath = member.profilePath || ''
-          const profileUrl = profilePath
-            ? `${this.basePath || ''}/tmdb-poster${
-                profilePath.startsWith('/') ? profilePath : `/${profilePath}`
-              }`
+          const normalizedProfileUrl = normalizeArt(profilePath)
+          const profileUrl = normalizedProfileUrl
+            ? normalizedProfileUrl.startsWith('http')
+              ? normalizedProfileUrl
+              : `${this.basePath || ''}${normalizedProfileUrl}`
             : ''
           return `<article class="cast-card" title="${escapeHtml(member.name)}">
             <div class="cast-card-photo-wrap">
