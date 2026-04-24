@@ -248,6 +248,10 @@ export interface UpsertUserParams {
 export function upsertUser(params: UpsertUserParams): User {
   const now = new Date().toISOString()
   const shouldBeAdmin = !adminExists() ? 1 : 0
+  const providerUserId = String(params.providerUserId || '').trim()
+  const username = String(params.username || '').trim() || 'Plex User'
+  const email = String(params.email || '')
+  const avatarUrl = String(params.avatarUrl || '')
 
   getDb().exec(
     `INSERT INTO users (provider, provider_user_id, username, email, avatar_url, is_admin, created_at, last_login)
@@ -258,18 +262,32 @@ export function upsertUser(params: UpsertUserParams): User {
        avatar_url = excluded.avatar_url,
        last_login = excluded.last_login`,
     params.provider,
-    params.providerUserId,
-    params.username,
-    params.email,
-    params.avatarUrl,
+    providerUserId,
+    username,
+    email,
+    avatarUrl,
     shouldBeAdmin,
     now,
     now
   )
 
-  const saved = findUser(params.provider, params.providerUserId)
-  if (!saved) throw new Error('[auth] upsertUser: failed to retrieve saved user')
-  return saved
+  const saved = findUser(params.provider, providerUserId)
+  if (saved) return saved
+
+  // Fallback for rare SQLite type-affinity or legacy-row mismatches where
+  // provider_user_id lookup misses immediately after upsert.
+  try {
+    const stmt = getDb().prepare(
+      `${USER_SELECT} WHERE provider = ? AND username = ? ORDER BY last_login DESC LIMIT 1`
+    )
+    const fallbackRow = stmt.value<unknown[]>(params.provider, username)
+    stmt.finalize()
+    if (fallbackRow) return rowToUser(fallbackRow)
+  } catch (err) {
+    log.warn(`[auth] upsertUser fallback lookup failed: ${err}`)
+  }
+
+  throw new Error('[auth] upsertUser: failed to retrieve saved user')
 }
 
 /**
