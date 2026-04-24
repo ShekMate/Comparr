@@ -42,6 +42,7 @@ const _pendingPins = new Map<
 >()
 const PENDING_PINS_FILE = `${getDataDir()}/pending-plex-pins.json`
 const PENDING_PINS_LOCK_DIR = `${getDataDir()}/pending-plex-pins.lock`
+const PENDING_PINS_LOCK_STALE_MS = 30_000
 
 const sleepSync = (ms: number): void => {
   const signal = new Int32Array(new SharedArrayBuffer(4))
@@ -62,6 +63,16 @@ const withPendingPinsLock = <T>(fn: () => T): T => {
       const lockErr = err as { name?: string; code?: string }
       if (lockErr?.name !== 'AlreadyExists' && lockErr?.code !== 'EEXIST') {
         throw err
+      }
+      try {
+        const stat = Deno.statSync(PENDING_PINS_LOCK_DIR)
+        const lockAgeMs = stat.mtime ? Date.now() - stat.mtime.getTime() : 0
+        if (lockAgeMs > PENDING_PINS_LOCK_STALE_MS) {
+          Deno.removeSync(PENDING_PINS_LOCK_DIR, { recursive: true })
+          continue
+        }
+      } catch {
+        // Ignore races where another process removed/recreated the lock.
       }
       sleepSync(10)
     }
