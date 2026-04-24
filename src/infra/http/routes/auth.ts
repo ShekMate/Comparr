@@ -32,13 +32,12 @@ import {
 } from '../../../features/auth/providers/plex.ts'
 
 const USER_SESSION_COOKIE = 'comparr_user'
-const PLEX_LOGIN_NONCE_COOKIE_PREFIX = 'comparr_plex_login'
 const PIN_TTL_MS = 6 * 60 * 1000
 
 // Active Plex PIN requests (memory cache mirrored to DATA_DIR).
 const _pendingPins = new Map<
   number,
-  { clientId: string; code: string; nonce: string; expiresAt: number }
+  { clientId: string; expiresAt: number }
 >()
 const PENDING_PINS_FILE = `${getDataDir()}/pending-plex-pins.json`
 const PENDING_PINS_LOCK_DIR = `${getDataDir()}/pending-plex-pins.lock`
@@ -80,9 +79,6 @@ const withPendingPinsLock = <T>(fn: () => T): T => {
   throw new Error('[auth] timed out waiting for pending PIN store lock')
 }
 
-const getPlexLoginNonceCookieName = (pinId: number): string =>
-  `${PLEX_LOGIN_NONCE_COOKIE_PREFIX}_${pinId}`
-
 const loadPendingPinsFromDisk = (): void => {
   try {
     const text = Deno.readTextFileSync(PENDING_PINS_FILE)
@@ -96,18 +92,14 @@ const loadPendingPinsFromDisk = (): void => {
       if (!value || typeof value !== 'object') continue
       const record = value as {
         clientId?: string
-        code?: string
-        nonce?: string
         expiresAt?: number
       }
       const expiresAt = Number(record.expiresAt || 0)
-      if (!record.clientId || !record.code || !record.nonce || now > expiresAt) {
+      if (!record.clientId || now > expiresAt) {
         continue
       }
       _pendingPins.set(pinId, {
         clientId: String(record.clientId),
-        code: String(record.code),
-        nonce: String(record.nonce),
         expiresAt,
       })
     }
@@ -204,20 +196,6 @@ const setUserSessionCookie = (
   )
 }
 
-const setPlexLoginNonceCookie = (
-  headers: Headers,
-  pinId: number,
-  nonce: string,
-  req: CompatRequest,
-  maxAgeSeconds: number
-): void => {
-  const secure = shouldUseSecureCookies(req) ? '; Secure' : ''
-  headers.append(
-    'set-cookie',
-    `${getPlexLoginNonceCookieName(pinId)}=${nonce}; Path=/; SameSite=Strict; HttpOnly${secure}; Max-Age=${maxAgeSeconds}`
-  )
-}
-
 /** Ensure a persistent PLEX_CLIENT_ID exists, generating one on first use. */
 async function ensurePlexClientId(): Promise<string> {
   let clientId = getPlexClientId()
@@ -298,6 +276,97 @@ export async function handleAuthRoutes(
     })
   }
 
+  // ── POST /api/auth/plex ──────────────────────────────────────────────────
+  // Seerr-style flow: frontend completes Plex PIN polling and sends authToken.
+  if (pathname === '/api/auth/plex' && req.method === 'POST') {
+    const ip = getClientIp(req)
+    if (!loginRateLimiter.check(ip)) {
+      return new Response(JSON.stringify({ error: 'Too many attempts. Please wait.' }), {
+        status: 429,
+        headers: makeJson(req),
+      })
+    }
+
+    try {
+      const body = await req.json<{ authToken?: string; clientId?: string }>()
+      const authToken = String(body?.authToken || '').trim()
+      const providedClientId = String(body?.clientId || '').trim()
+      if (!authToken) {
+        return new Response(JSON.stringify({ error: 'Missing Plex auth token.' }), {
+          status: 400,
+          headers: makeJson(req),
+        })
+      }
+
+      const clientId = providedClientId || (await ensurePlexClientId())
+      const plexUser = await getPlexUserInfo(authToken, clientId)
+
+      let hasServerAccess = true
+      if (getPlexUrl() && getPlexToken()) {
+        hasServerAccess = await isUserOnPlexServer(
+          authToken,
+          getPlexUrl(),
+          getPlexToken()
+        )
+      }
+      if (isPlexRestrictedToServer() && !hasServerAccess) {
+        return new Response(
+          JSON.stringify({
+            status: 'denied',
+            error: 'You do not have access to this Plex server.',
+          }),
+          { status: 200, headers: makeJson(req) }
+        )
+      }
+
+      const user = upsertUser({
+        provider: 'plex',
+        providerUserId: plexUser.id,
+        username: plexUser.username,
+        email: plexUser.email,
+        avatarUrl: plexUser.thumb,
+      })
+      const inviteCode = getOrCreateInviteCode(user.id)
+      const roomCode = `U${String(user.id).padStart(3, '0')}`
+
+      const sessionToken = createUserSession({
+        userId: user.id,
+        provider: user.provider,
+        providerUserId: user.providerUserId,
+        username: user.username,
+        avatarUrl: user.avatarUrl,
+        isAdmin: user.isAdmin,
+        hasServerAccess,
+      })
+
+      const headers = makeJson(req)
+      setUserSessionCookie(headers, sessionToken, req)
+      return new Response(
+        JSON.stringify({
+          status: 'success',
+          user: {
+            id: user.id,
+            username: user.username,
+            avatarUrl: user.avatarUrl,
+            isAdmin: user.isAdmin,
+            hasServerAccess,
+            provider: 'plex',
+            roomCode,
+            inviteCode,
+          },
+        }),
+        { status: 200, headers }
+      )
+    } catch (err) {
+      log.warn(`[auth] Plex token login failed: ${err}`)
+      const message = err instanceof Error ? err.message : 'Plex login failed.'
+      return new Response(JSON.stringify({ error: message }), {
+        status: 401,
+        headers: makeJson(req),
+      })
+    }
+  }
+
   // ── POST /api/auth/plex/pin ──────────────────────────────────────────────
   // Plex auth always works — no server required, just a plex.tv account.
   if (pathname === '/api/auth/plex/pin' && req.method === 'POST') {
@@ -375,12 +444,6 @@ export async function handleAuthRoutes(
         Number.isFinite(parsedPinExpiresAt) && parsedPinExpiresAt > Date.now()
           ? parsedPinExpiresAt
           : Date.now() + PIN_TTL_MS
-      const maxAgeSeconds = Math.max(
-        1,
-        Math.ceil((pinExpiresAt - Date.now()) / 1000)
-      )
-      const loginNonce = crypto.randomUUID()
-
       withPendingPinsLock(() => {
         loadPendingPinsFromDisk()
         const now = Date.now()
@@ -389,8 +452,6 @@ export async function handleAuthRoutes(
         }
         _pendingPins.set(pin.id, {
           clientId,
-          code: pin.code,
-          nonce: loginNonce,
           expiresAt: pinExpiresAt,
         })
         persistPendingPinsToDisk()
@@ -401,11 +462,9 @@ export async function handleAuthRoutes(
         } expiresInMs=${Math.max(0, pinExpiresAt - Date.now())}`
       )
 
-      const headers = makeJson(req)
-      setPlexLoginNonceCookie(headers, pin.id, loginNonce, req, maxAgeSeconds)
       return new Response(JSON.stringify({ pinId: pin.id, authUrl }), {
         status: 200,
-        headers,
+        headers: makeJson(req),
       })
     } catch (err) {
       log.error(`[auth] Plex PIN request failed: ${err}`)
@@ -427,48 +486,40 @@ export async function handleAuthRoutes(
       if (!hit) return null
       return { ...hit }
     })
-    const loginNonce =
-      parseCookies(req).get(getPlexLoginNonceCookieName(pinId)) || ''
     log.info(
       `[auth][${traceId}] [step 1] Plex PIN poll request received (pinId=${pinId})`
     )
 
-    if (!pending || !loginNonce || pending.nonce !== loginNonce) {
+    if (!pending) {
       log.warn(
-        `[auth][${traceId}] [step 2] pinId=${pinId} missing or nonce mismatch`
+        `[auth][${traceId}] [step 2] pinId=${pinId} missing from local pending store; falling back to Plex poll`
       )
-      const headers = makeJson(req)
-      setPlexLoginNonceCookie(headers, pinId, '', req, 0)
-      return new Response(JSON.stringify({ status: 'expired' }), {
-        status: 200,
-        headers,
-      })
     }
 
-    if (Date.now() > pending.expiresAt) {
+    const pollClientId = pending?.clientId || (await ensurePlexClientId())
+
+    if (pending && Date.now() > pending.expiresAt) {
       withPendingPinsLock(() => {
         loadPendingPinsFromDisk()
         _pendingPins.delete(pinId)
         persistPendingPinsToDisk()
       })
       log.warn(`[auth][${traceId}] [step 3] pinId=${pinId} expired by TTL`)
-      const headers = makeJson(req)
-      setPlexLoginNonceCookie(headers, pinId, '', req, 0)
       return new Response(JSON.stringify({ status: 'expired' }), {
         status: 200,
-        headers,
+        headers: makeJson(req),
       })
     }
     log.info(
       `[auth][${traceId}] [step 4] Pending entry loaded (pinId=${pinId}, expiresInMs=${Math.max(
         0,
-        pending.expiresAt - Date.now()
-      )}, hasCode=${Boolean(pending.code)})`
+        (pending?.expiresAt || Date.now()) - Date.now()
+      )})`
     )
 
     try {
       log.info(`[auth][${traceId}] [step 5] Checking status with plex.tv`)
-      const status = await pollPlexPin(pinId, pending.clientId, pending.code)
+      const status = await pollPlexPin(pinId, pollClientId)
       log.info(
         `[auth][${traceId}] [step 6] Poll evaluated (pinId=${pinId}, expired=${
           status.expired
@@ -484,11 +535,9 @@ export async function handleAuthRoutes(
         log.warn(
           `[auth][${traceId}] [step 7] pinId=${pinId} reported expired by Plex`
         )
-        const headers = makeJson(req)
-        setPlexLoginNonceCookie(headers, pinId, '', req, 0)
         return new Response(JSON.stringify({ status: 'expired' }), {
           status: 200,
-          headers,
+          headers: makeJson(req),
         })
       }
 
@@ -501,7 +550,7 @@ export async function handleAuthRoutes(
       }
       log.info(`[auth][${traceId}] [step 9] pinId=${pinId} received auth token`)
 
-      const plexUser = await getPlexUserInfo(status.authToken, pending.clientId)
+      const plexUser = await getPlexUserInfo(status.authToken, pollClientId)
       log.info(
         `[auth] Plex user info fetched from auth token (pinId=${pinId}, plexUserId=${plexUser.id}, username=${plexUser.username})`
       )
@@ -527,14 +576,12 @@ export async function handleAuthRoutes(
           _pendingPins.delete(pinId)
           persistPendingPinsToDisk()
         })
-        const headers = makeJson(req)
-        setPlexLoginNonceCookie(headers, pinId, '', req, 0)
         return new Response(
           JSON.stringify({
             status: 'denied',
             error: 'You do not have access to this Plex server.',
           }),
-          { status: 200, headers }
+          { status: 200, headers: makeJson(req) }
         )
       }
 
@@ -568,7 +615,6 @@ export async function handleAuthRoutes(
 
       const headers = makeJson(req)
       setUserSessionCookie(headers, sessionToken, req)
-      setPlexLoginNonceCookie(headers, pinId, '', req, 0)
       log.info(
         `[auth][${traceId}] [step 10] User session established (pinId=${pinId}, userId=${user.id}, username=${user.username}, hasServerAccess=${hasServerAccess})`
       )
@@ -607,8 +653,8 @@ export async function handleAuthRoutes(
         `[auth][${traceId}] [step X] Plex PIN poll error: pinId=${pinId} err=${err}`
       )
       return new Response(
-        JSON.stringify({ error: 'Authentication failed. Please try again.' }),
-        { status: 500, headers: makeJson(req) }
+        JSON.stringify({ status: 'pending' }),
+        { status: 200, headers: makeJson(req) }
       )
     }
   }

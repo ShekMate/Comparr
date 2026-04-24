@@ -84,11 +84,22 @@ export function initUserDatabase(): Database {
       )
     `)
 
-    // Add invite_code column to existing databases that predate this schema
+    // Add invite_code column to existing databases that predate this schema.
+    // SQLite cannot add a UNIQUE column via ALTER TABLE directly, so add the
+    // column first, then create a unique index.
     try {
-      db.exec(`ALTER TABLE users ADD COLUMN invite_code TEXT UNIQUE`)
-    } catch {
-      // Column already exists — ignore
+      const colStmt = db.prepare(`PRAGMA table_info(users)`)
+      const columns = colStmt.all<unknown[]>()
+      colStmt.finalize()
+      const hasInviteCode = columns.some(
+        row => String(row?.[1] || '') === 'invite_code'
+      )
+      if (!hasInviteCode) {
+        db.exec(`ALTER TABLE users ADD COLUMN invite_code TEXT`)
+      }
+      db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_invite_code ON users(invite_code)`)
+    } catch (err) {
+      log.warn(`[auth] invite_code migration warning: ${err}`)
     }
 
     // Add subscriptions column to existing user_settings tables
@@ -182,11 +193,35 @@ function rowToUser(row: unknown[]): User {
   }
 }
 
-const USER_SELECT = 'SELECT id, provider, provider_user_id, username, email, avatar_url, is_admin, invite_code, created_at, last_login FROM users'
+let _usersHasInviteCodeColumn: boolean | null = null
+
+function usersHasInviteCodeColumn(): boolean {
+  if (_usersHasInviteCodeColumn !== null) return _usersHasInviteCodeColumn
+  try {
+    const stmt = getDb().prepare(`PRAGMA table_info(users)`)
+    const rows = stmt.all<unknown[]>()
+    stmt.finalize()
+    _usersHasInviteCodeColumn = rows.some(row => String(row?.[1] || '') === 'invite_code')
+  } catch {
+    _usersHasInviteCodeColumn = false
+  }
+  return _usersHasInviteCodeColumn
+}
+
+function getUserSelect(): string {
+  // Older databases may not have invite_code due SQLite ALTER limitations.
+  // Use a synthetic empty column so row mapping stays stable.
+  if (!usersHasInviteCodeColumn()) {
+    return `SELECT id, provider, provider_user_id, username, email, avatar_url, is_admin, '' as invite_code, created_at, last_login FROM users`
+  }
+  return `SELECT id, provider, provider_user_id, username, email, avatar_url, is_admin, invite_code, created_at, last_login FROM users`
+}
 
 export function findUser(provider: AuthProvider, providerUserId: string): User | null {
   try {
-    const stmt = getDb().prepare(`${USER_SELECT} WHERE provider = ? AND provider_user_id = ? LIMIT 1`)
+    const stmt = getDb().prepare(
+      `${getUserSelect()} WHERE provider = ? AND provider_user_id = ? LIMIT 1`
+    )
     const row = stmt.value<unknown[]>(provider, providerUserId)
     stmt.finalize()
     return row ? rowToUser(row) : null
@@ -198,7 +233,7 @@ export function findUser(provider: AuthProvider, providerUserId: string): User |
 
 export function findUserById(id: number): User | null {
   try {
-    const stmt = getDb().prepare(`${USER_SELECT} WHERE id = ? LIMIT 1`)
+    const stmt = getDb().prepare(`${getUserSelect()} WHERE id = ? LIMIT 1`)
     const row = stmt.value<unknown[]>(id)
     stmt.finalize()
     return row ? rowToUser(row) : null
@@ -210,7 +245,8 @@ export function findUserById(id: number): User | null {
 
 export function findUserByInviteCode(inviteCode: string): User | null {
   try {
-    const stmt = getDb().prepare(`${USER_SELECT} WHERE invite_code = ? LIMIT 1`)
+    if (!usersHasInviteCodeColumn()) return null
+    const stmt = getDb().prepare(`${getUserSelect()} WHERE invite_code = ? LIMIT 1`)
     const row = stmt.value<unknown[]>(inviteCode.toUpperCase())
     stmt.finalize()
     return row ? rowToUser(row) : null
@@ -248,6 +284,10 @@ export interface UpsertUserParams {
 export function upsertUser(params: UpsertUserParams): User {
   const now = new Date().toISOString()
   const shouldBeAdmin = !adminExists() ? 1 : 0
+  const providerUserId = String(params.providerUserId || '').trim()
+  const username = String(params.username || '').trim() || 'Plex User'
+  const email = String(params.email || '')
+  const avatarUrl = String(params.avatarUrl || '')
 
   getDb().exec(
     `INSERT INTO users (provider, provider_user_id, username, email, avatar_url, is_admin, created_at, last_login)
@@ -258,18 +298,32 @@ export function upsertUser(params: UpsertUserParams): User {
        avatar_url = excluded.avatar_url,
        last_login = excluded.last_login`,
     params.provider,
-    params.providerUserId,
-    params.username,
-    params.email,
-    params.avatarUrl,
+    providerUserId,
+    username,
+    email,
+    avatarUrl,
     shouldBeAdmin,
     now,
     now
   )
 
-  const saved = findUser(params.provider, params.providerUserId)
-  if (!saved) throw new Error('[auth] upsertUser: failed to retrieve saved user')
-  return saved
+  const saved = findUser(params.provider, providerUserId)
+  if (saved) return saved
+
+  // Fallback for rare SQLite type-affinity or legacy-row mismatches where
+  // provider_user_id lookup misses immediately after upsert.
+  try {
+    const stmt = getDb().prepare(
+      `${getUserSelect()} WHERE provider = ? AND username = ? ORDER BY last_login DESC LIMIT 1`
+    )
+    const fallbackRow = stmt.value<unknown[]>(params.provider, username)
+    stmt.finalize()
+    if (fallbackRow) return rowToUser(fallbackRow)
+  } catch (err) {
+    log.warn(`[auth] upsertUser fallback lookup failed: ${err}`)
+  }
+
+  throw new Error('[auth] upsertUser: failed to retrieve saved user')
 }
 
 /**
