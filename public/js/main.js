@@ -3516,6 +3516,7 @@ function createFirstRunGuideModal() {
       const plexBtn = body.querySelector('.js-wizard-admin-plex-btn')
       const plexStatus = body.querySelector('.js-wizard-admin-plex-status')
       let activeAdminPinId = null
+      let activeAdminPopup = null
       let pollAdminPinNow = null
       stopAdminSessionWatcher()
       adminSessionWatcher = setInterval(async () => {
@@ -3534,6 +3535,8 @@ function createFirstRunGuideModal() {
       stopAdminLoginMessageListener()
       const onAdminLoginMessage = async event => {
         if (event.data?.type !== 'comparr-plex-auth-complete') return
+        if (event.origin !== window.location.origin) return
+        if (activeAdminPopup && event.source !== activeAdminPopup) return
         console.info(
           '[wizard][admin-login] Received completion message from Plex callback',
           {
@@ -3608,6 +3611,7 @@ function createFirstRunGuideModal() {
           pollTimer = null
           if (popup && !popup.closed) popup.close()
           activeAdminPinId = null
+          activeAdminPopup = null
           pollAdminPinNow = null
         }
         const recoverFromExistingSession = async () => {
@@ -3638,6 +3642,7 @@ function createFirstRunGuideModal() {
             plexBtn.disabled = false
             return
           }
+          activeAdminPopup = popup
           console.info('[wizard][admin-login] Popup opened successfully')
           popup.location.href = authUrl
           console.debug('[wizard][admin-login] Popup redirected to Plex auth URL')

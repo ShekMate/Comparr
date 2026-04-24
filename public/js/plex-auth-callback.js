@@ -8,9 +8,7 @@
     }
 
     if (window.opener && !window.opener.closed) {
-      // Use wildcard target so slight host/proxy origin mismatches do not
-      // silently break callback handoff. Parent validates payload shape.
-      window.opener.postMessage(payload, '*')
+      window.opener.postMessage(payload, window.location.origin)
     }
   } catch (err) {
     console.error('[plex-callback] postMessage failed', err)
