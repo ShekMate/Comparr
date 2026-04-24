@@ -1989,6 +1989,14 @@ function updateAdminOnlySettingsVisibility() {
     el.toggleAttribute('hidden', !canSeeAdmin)
   })
 
+  document
+    .querySelectorAll(
+      '.mobile-settings-item[data-settings-target="settings-admin"], .sidebar-subitem[data-settings-target="settings-admin"]'
+    )
+    .forEach(trigger => {
+      trigger.toggleAttribute('hidden', !canSeeAdmin)
+    })
+
   applyAdminSettingsTabVisibility()
 }
 
@@ -2569,12 +2577,15 @@ async function hydrateSettingsForm({ _retryCount = 0 } = {}) {
       _retryCount
     )
 
+    const hadAdminAccess = hasAdminSettingsAccess
+    hasAdminSettingsAccess = data?.isAdmin === true
+
     // If the server says admin auth failed but the frontend believes it has
     // admin access, clear the access flag and require a fresh entry through the
     // regular access guard.
     if (
       data?.isAdmin === false &&
-      hasAdminSettingsAccess &&
+      hadAdminAccess &&
       _retryCount < MAX_RETRIES
     ) {
       clearCachedAdminPassword()
@@ -4219,9 +4230,10 @@ function bindSettingsAccessGuards() {
           return
         }
 
-        hasAdminSettingsAccess = true
+        const adminSuccess = await hydrateSettingsForm()
+        hasAdminSettingsAccess = Boolean(adminSuccess)
+        settingsHydratedWithAdminAccess = Boolean(adminSuccess)
         updateAdminOnlySettingsVisibility()
-        await hydrateSettingsUiIfAuthorized()
       },
       true
     )
@@ -4237,7 +4249,7 @@ async function setupSettingsUI() {
     return
   }
 
-  hasAdminSettingsAccess = !settingsAccessState.requiresAdminPassword
+  hasAdminSettingsAccess = false
   updateAdminOnlySettingsVisibility()
   bindSettingsAccessGuards()
 
