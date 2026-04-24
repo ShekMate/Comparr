@@ -25,6 +25,7 @@ export interface UserSession {
 const _sessions = new Map<string, UserSession>()
 const SESSION_STORE_FILE = `${getDataDir()}/user-sessions.json`
 const SESSION_STORE_LOCK_DIR = `${getDataDir()}/user-sessions.lock`
+const SESSION_STORE_LOCK_STALE_MS = 30_000
 
 const sleepSync = (ms: number): void => {
   const signal = new Int32Array(new SharedArrayBuffer(4))
@@ -45,6 +46,16 @@ const withSessionStoreLock = <T>(fn: () => T): T => {
       const lockErr = err as { name?: string; code?: string }
       if (lockErr?.name !== 'AlreadyExists' && lockErr?.code !== 'EEXIST') {
         throw err
+      }
+      try {
+        const stat = Deno.statSync(SESSION_STORE_LOCK_DIR)
+        const lockAgeMs = stat.mtime ? Date.now() - stat.mtime.getTime() : 0
+        if (lockAgeMs > SESSION_STORE_LOCK_STALE_MS) {
+          Deno.removeSync(SESSION_STORE_LOCK_DIR, { recursive: true })
+          continue
+        }
+      } catch {
+        // Ignore races where another process removed/recreated the lock.
       }
       sleepSync(10)
     }

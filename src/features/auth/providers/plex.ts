@@ -11,7 +11,15 @@ import { fetchWithTimeout } from '../../../infra/http/fetch-with-timeout.ts'
 const PLEX_API_BASE = 'https://plex.tv/api/v2'
 const PLEX_AUTH_URL = 'https://app.plex.tv/auth'
 const PIN_POLL_TTL_MS = 5 * 60 * 1000 // Plex pins are valid for ~5 min
-const PLEX_AUTH_DEBUG = Deno.env.get('PLEX_AUTH_DEBUG') === 'true'
+const getPlexAuthDebugFlag = (): boolean => {
+  try {
+    return Deno.env.get('PLEX_AUTH_DEBUG') === 'true'
+  } catch {
+    // In restricted runtimes (no --allow-env), default to non-debug behavior.
+    return false
+  }
+}
+const PLEX_AUTH_DEBUG = getPlexAuthDebugFlag()
 
 export interface PlexPin {
   id: number
