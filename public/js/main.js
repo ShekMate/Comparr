@@ -1247,14 +1247,15 @@ function saveUserSubscriptions(userId, subscriptions) {
 
 function applyUserSubscriptions(services) {
   const normalized = Array.isArray(services)
-    ? Array.from(
-        new Set(services.map(v => String(v).trim()).filter(Boolean))
-      )
+    ? Array.from(new Set(services.map(v => String(v).trim()).filter(Boolean)))
     : []
 
-  const availability = normalizeAvailabilityState(window.filterState?.availability, {
-    enforceSelection: false,
-  })
+  const availability = normalizeAvailabilityState(
+    window.filterState?.availability,
+    {
+      enforceSelection: false,
+    }
+  )
   const { paidServices, personalSources } = getAvailableSubscriptionOptions()
   const availableSet = new Set([...paidServices, ...personalSources])
   const nextSelected = normalized.filter(service => availableSet.has(service))
@@ -1288,8 +1289,10 @@ async function maybeRunUserOnboardingWizard(currentUser) {
   const completionKey = getUserOnboardingStorageKey(currentUser.id)
   if (localStorage.getItem(completionKey) === 'complete') return
 
-  const { paidServices = [], personalSources = [] } =
-    getAvailableSubscriptionOptions()
+  const {
+    paidServices = [],
+    personalSources = [],
+  } = getAvailableSubscriptionOptions()
   const allOptions = [...paidServices, ...personalSources]
   const existingSubs = loadUserSubscriptions(currentUser.id)
   const existingDisplayPrefs = loadDisplayPreferences()
@@ -3040,6 +3043,8 @@ function createFirstRunGuideModal() {
       nextButton.textContent = 'Start Swiping'
     } else if (screen.type === 'defaults') {
       nextButton.textContent = 'Finish'
+    } else if (screen.type === 'admin-login') {
+      nextButton.textContent = 'Finish'
     } else {
       nextButton.textContent = 'Next'
     }
@@ -3496,8 +3501,7 @@ function createFirstRunGuideModal() {
     if (screen.type === 'user-auth') {
       renderRequirementCopy('')
       title.textContent = 'User Authentication'
-      copy.textContent =
-        'Let users sign in with their Plex account. You can claim admin access after setup from the Sign in button in the main app header.'
+      copy.textContent = 'Let users sign in with their Plex account.'
 
       const currentPlexRestrict =
         window.PLEX_RESTRICT_TO_SERVER === true ||
@@ -3537,6 +3541,7 @@ function createFirstRunGuideModal() {
       title.textContent = 'Claim Admin Access'
       copy.textContent =
         'Sign in with your media server account to be set as the admin. As the person setting this up, that should be you.'
+      nextButton.disabled = !selectedState.adminLoggedIn
 
       if (selectedState.adminLoggedIn) {
         body.textContent = ''
@@ -3739,10 +3744,7 @@ function createFirstRunGuideModal() {
           err?.message === 'Failed to fetch'
             ? 'Could not reach the server to save this setting. Please check your connection and try again.'
             : err?.message || 'Failed to save authentication settings.'
-        setWizardStatus(
-          friendlyMessage,
-          'error'
-        )
+        setWizardStatus(friendlyMessage, 'error')
         return null
       }
 
@@ -3817,15 +3819,18 @@ function createFirstRunGuideModal() {
       }
       return selectedState.flow === 'combined'
         ? { type: 'tmdb' }
-        : { type: 'setup-complete' }
+        : { type: 'admin-login' }
     }
 
     if (current.type === 'admin-login') {
-      // Legacy recovery path: older persisted wizard state may still contain
-      // the removed admin-login screen. Skip it and continue setup.
-      return selectedState.flow === 'combined'
-        ? { type: 'tmdb' }
-        : { type: 'setup-complete' }
+      if (!selectedState.adminLoggedIn) {
+        setWizardStatus(
+          'Please sign in with Plex to claim admin access.',
+          'error'
+        )
+        return null
+      }
+      return { type: 'setup-complete' }
     }
 
     if (current.type === 'tmdb') {
@@ -3857,7 +3862,7 @@ function createFirstRunGuideModal() {
       ) {
         return { type: 'subscriptions' }
       }
-      return { type: 'setup-complete' }
+      return { type: 'admin-login' }
     }
 
     if (current.type === 'subscriptions') {
@@ -3936,7 +3941,7 @@ function createFirstRunGuideModal() {
         if (!shouldContinue) return null
       }
       leaveDefaultsEditor()
-      return { type: 'setup-complete' }
+      return { type: 'admin-login' }
     }
 
     if (current.type === 'setup-complete') {
@@ -4846,7 +4851,8 @@ async function login(api) {
           console.info('[auth][user-login] Popup opened successfully')
 
           try {
-            if (plexStatus) plexStatus.textContent = 'Waiting for Plex approval…'
+            if (plexStatus)
+              plexStatus.textContent = 'Waiting for Plex approval…'
             const { authToken, clientId } = await plexOAuthLogin(popup)
             const result = await api.loginWithPlex(authToken, clientId)
             if (result?.status === 'denied') {
@@ -6686,7 +6692,7 @@ const main = async () => {
 
   // Kick off profile settings fetch so subscriptions can be applied once filterState is ready
   const _profileSettingsFetch = fetch('/api/profile/settings')
-    .then(r => r.ok ? r.json() : null)
+    .then(r => (r.ok ? r.json() : null))
     .catch(() => null)
 
   // Track movies this user has already rated (to prevent showing them again)
@@ -7250,9 +7256,15 @@ const main = async () => {
 
   const profileInviteCode = document.querySelector('.js-settings-invite-code')
   const profileCopyInvite = document.querySelector('.js-settings-copy-invite')
-  const profileSubCheckboxes = document.querySelectorAll('.js-profile-sub-checkbox')
-  const profileSubSaveBtn = document.querySelector('.js-profile-subscriptions-save')
-  const profileSubStatus = document.querySelector('.js-profile-subscriptions-status')
+  const profileSubCheckboxes = document.querySelectorAll(
+    '.js-profile-sub-checkbox'
+  )
+  const profileSubSaveBtn = document.querySelector(
+    '.js-profile-subscriptions-save'
+  )
+  const profileSubStatus = document.querySelector(
+    '.js-profile-subscriptions-status'
+  )
 
   // Populate invite code from already-loaded currentUser or fetch it
   const hydrateInviteCode = code => {
@@ -7270,7 +7282,9 @@ const main = async () => {
         const icon = profileCopyInvite.querySelector('i')
         if (icon) {
           icon.className = 'fas fa-check'
-          setTimeout(() => { icon.className = 'fas fa-copy' }, 1500)
+          setTimeout(() => {
+            icon.className = 'fas fa-copy'
+          }, 1500)
         }
       } catch {
         // clipboard not available; silently ignore
@@ -7295,7 +7309,9 @@ const main = async () => {
       if (settings?.subscriptions) {
         try {
           hydrateProfileSubscriptions(JSON.parse(settings.subscriptions))
-        } catch { /* ignore parse errors */ }
+        } catch {
+          /* ignore parse errors */
+        }
       }
     } catch (err) {
       console.warn('[profile] Failed to load profile settings:', err.message)
@@ -7326,7 +7342,9 @@ const main = async () => {
         if (profileSubStatus) {
           profileSubStatus.textContent = '✅ Saved!'
           profileSubStatus.hidden = false
-          setTimeout(() => { if (profileSubStatus) profileSubStatus.hidden = true }, 2500)
+          setTimeout(() => {
+            if (profileSubStatus) profileSubStatus.hidden = true
+          }, 2500)
         }
       } catch (err) {
         if (profileSubStatus) {
@@ -8068,7 +8086,9 @@ const main = async () => {
     try {
       const subs = JSON.parse(data.settings.subscriptions)
       if (Array.isArray(subs) && subs.length) applyUserSubscriptions(subs)
-    } catch { /* ignore parse errors */ }
+    } catch {
+      /* ignore parse errors */
+    }
   })
 
   // Filter UI elements
