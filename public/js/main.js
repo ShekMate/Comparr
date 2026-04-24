@@ -4845,7 +4845,10 @@ async function login(api) {
   let isGuest = false
 
   if (passwordForm && loginForm && modeForm) {
-    passwordForm.style.display = 'flex'
+    // Keep the access password form hidden until we know one is required.
+    // This prevents a brief flash before the Plex auth screen when no
+    // access password is configured.
+    passwordForm.style.display = 'none'
     modeForm.style.display = 'none'
     loginForm.style.display = 'none'
     if (userAuthForm) userAuthForm.style.display = 'none'
@@ -4870,6 +4873,8 @@ async function login(api) {
   }
 
   if (!skipPasswordPrompt) {
+    if (passwordForm) passwordForm.style.display = 'flex'
+
     // Handle password verification first
     await new Promise(resolve => {
       const handlePasswordSubmit = async e => {
