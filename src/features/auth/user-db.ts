@@ -182,11 +182,35 @@ function rowToUser(row: unknown[]): User {
   }
 }
 
-const USER_SELECT = 'SELECT id, provider, provider_user_id, username, email, avatar_url, is_admin, invite_code, created_at, last_login FROM users'
+let _usersHasInviteCodeColumn: boolean | null = null
+
+function usersHasInviteCodeColumn(): boolean {
+  if (_usersHasInviteCodeColumn !== null) return _usersHasInviteCodeColumn
+  try {
+    const stmt = getDb().prepare(`PRAGMA table_info(users)`)
+    const rows = stmt.all<unknown[]>()
+    stmt.finalize()
+    _usersHasInviteCodeColumn = rows.some(row => String(row?.[1] || '') === 'invite_code')
+  } catch {
+    _usersHasInviteCodeColumn = false
+  }
+  return _usersHasInviteCodeColumn
+}
+
+function getUserSelect(): string {
+  // Older databases may not have invite_code due SQLite ALTER limitations.
+  // Use a synthetic empty column so row mapping stays stable.
+  if (!usersHasInviteCodeColumn()) {
+    return `SELECT id, provider, provider_user_id, username, email, avatar_url, is_admin, '' as invite_code, created_at, last_login FROM users`
+  }
+  return `SELECT id, provider, provider_user_id, username, email, avatar_url, is_admin, invite_code, created_at, last_login FROM users`
+}
 
 export function findUser(provider: AuthProvider, providerUserId: string): User | null {
   try {
-    const stmt = getDb().prepare(`${USER_SELECT} WHERE provider = ? AND provider_user_id = ? LIMIT 1`)
+    const stmt = getDb().prepare(
+      `${getUserSelect()} WHERE provider = ? AND provider_user_id = ? LIMIT 1`
+    )
     const row = stmt.value<unknown[]>(provider, providerUserId)
     stmt.finalize()
     return row ? rowToUser(row) : null
@@ -198,7 +222,7 @@ export function findUser(provider: AuthProvider, providerUserId: string): User |
 
 export function findUserById(id: number): User | null {
   try {
-    const stmt = getDb().prepare(`${USER_SELECT} WHERE id = ? LIMIT 1`)
+    const stmt = getDb().prepare(`${getUserSelect()} WHERE id = ? LIMIT 1`)
     const row = stmt.value<unknown[]>(id)
     stmt.finalize()
     return row ? rowToUser(row) : null
@@ -210,7 +234,8 @@ export function findUserById(id: number): User | null {
 
 export function findUserByInviteCode(inviteCode: string): User | null {
   try {
-    const stmt = getDb().prepare(`${USER_SELECT} WHERE invite_code = ? LIMIT 1`)
+    if (!usersHasInviteCodeColumn()) return null
+    const stmt = getDb().prepare(`${getUserSelect()} WHERE invite_code = ? LIMIT 1`)
     const row = stmt.value<unknown[]>(inviteCode.toUpperCase())
     stmt.finalize()
     return row ? rowToUser(row) : null
@@ -278,7 +303,7 @@ export function upsertUser(params: UpsertUserParams): User {
   // provider_user_id lookup misses immediately after upsert.
   try {
     const stmt = getDb().prepare(
-      `${USER_SELECT} WHERE provider = ? AND username = ? ORDER BY last_login DESC LIMIT 1`
+      `${getUserSelect()} WHERE provider = ? AND username = ? ORDER BY last_login DESC LIMIT 1`
     )
     const fallbackRow = stmt.value<unknown[]>(params.provider, username)
     stmt.finalize()
