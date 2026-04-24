@@ -3599,8 +3599,23 @@ function createFirstRunGuideModal() {
           plexStatus.hidden = false
         }
 
+        // Open popup synchronously before any async work so browsers don't block it.
+        const popup = window.open(
+          'about:blank',
+          '_blank',
+          'width=800,height=700,left=100,top=100'
+        )
+
+        if (!popup || popup === window || popup.closed) {
+          if (plexStatus)
+            plexStatus.textContent =
+              'Popup blocked. Please allow popups and try again.'
+          plexBtn.disabled = false
+          return
+        }
+        console.info('[wizard][admin-login] Popup opened successfully')
+
         let pollTimer = null
-        let popup = null
         let popupClosedAt = null
         let consecutivePollErrors = 0
         let transientExpiredResponses = 0
@@ -3609,7 +3624,7 @@ function createFirstRunGuideModal() {
         const cleanupPoll = () => {
           if (pollTimer) clearInterval(pollTimer)
           pollTimer = null
-          if (popup && !popup.closed) popup.close()
+          if (!popup.closed) popup.close()
           activeAdminPinId = null
           activeAdminPopup = null
           pollAdminPinNow = null
@@ -3629,21 +3644,7 @@ function createFirstRunGuideModal() {
           const { pinId, authUrl } = await api.requestPlexPin()
           console.info('[wizard][admin-login] Received PIN payload', { pinId })
           activeAdminPinId = pinId
-          popup = window.open(
-            'about:blank',
-            '_blank',
-            'width=800,height=700,left=100,top=100'
-          )
-
-          if (!popup || popup === window || popup.closed) {
-            if (plexStatus)
-              plexStatus.textContent =
-                'Popup blocked. Please allow popups and try again.'
-            plexBtn.disabled = false
-            return
-          }
           activeAdminPopup = popup
-          console.info('[wizard][admin-login] Popup opened successfully')
           popup.location.href = authUrl
           console.debug('[wizard][admin-login] Popup redirected to Plex auth URL')
 
@@ -4931,35 +4932,36 @@ async function login(api) {
             plexStatus.hidden = false
           }
 
+          // Open popup synchronously before any async work so browsers don't block it.
+          const popup = window.open(
+            'about:blank',
+            '_blank',
+            'width=800,height=700,left=100,top=100'
+          )
+
+          if (!popup || popup === window || popup.closed) {
+            if (plexStatus) {
+              plexStatus.textContent =
+                'Popup blocked. Please allow popups and try again.'
+            }
+            plexSigninBtn.disabled = false
+            return
+          }
+          console.info('[auth][user-login] Popup opened successfully')
+
           let pinId = null
-          let popup = null
           let pollTimer = null
           let popupClosedAt = null
 
           const cleanupPoll = () => {
             if (pollTimer) clearInterval(pollTimer)
             pollTimer = null
-            if (popup && !popup.closed) popup.close()
+            if (!popup.closed) popup.close()
           }
 
           try {
             const { pinId: id, authUrl } = await api.requestPlexPin()
             pinId = id
-            popup = window.open(
-              'about:blank',
-              '_blank',
-              'width=800,height=700,left=100,top=100'
-            )
-
-            if (!popup || popup === window || popup.closed) {
-              if (plexStatus) {
-                plexStatus.textContent =
-                  'Popup blocked. Please allow popups and try again.'
-              }
-              plexSigninBtn.disabled = false
-              return
-            }
-            console.info('[auth][user-login] Popup opened successfully')
             popup.location.href = authUrl
             console.debug('[auth][user-login] Popup redirected to Plex auth URL')
 
