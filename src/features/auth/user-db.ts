@@ -84,11 +84,22 @@ export function initUserDatabase(): Database {
       )
     `)
 
-    // Add invite_code column to existing databases that predate this schema
+    // Add invite_code column to existing databases that predate this schema.
+    // SQLite cannot add a UNIQUE column via ALTER TABLE directly, so add the
+    // column first, then create a unique index.
     try {
-      db.exec(`ALTER TABLE users ADD COLUMN invite_code TEXT UNIQUE`)
-    } catch {
-      // Column already exists — ignore
+      const colStmt = db.prepare(`PRAGMA table_info(users)`)
+      const columns = colStmt.all<unknown[]>()
+      colStmt.finalize()
+      const hasInviteCode = columns.some(
+        row => String(row?.[1] || '') === 'invite_code'
+      )
+      if (!hasInviteCode) {
+        db.exec(`ALTER TABLE users ADD COLUMN invite_code TEXT`)
+      }
+      db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_invite_code ON users(invite_code)`)
+    } catch (err) {
+      log.warn(`[auth] invite_code migration warning: ${err}`)
     }
 
     // Add subscriptions column to existing user_settings tables
