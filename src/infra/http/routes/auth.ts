@@ -32,7 +32,7 @@ import {
 } from '../../../features/auth/providers/plex.ts'
 
 const USER_SESSION_COOKIE = 'comparr_user'
-const PLEX_LOGIN_NONCE_COOKIE = 'comparr_plex_login'
+const PLEX_LOGIN_NONCE_COOKIE_PREFIX = 'comparr_plex_login'
 const PIN_TTL_MS = 6 * 60 * 1000
 
 // Active Plex PIN requests (memory cache mirrored to DATA_DIR).
@@ -41,6 +41,36 @@ const _pendingPins = new Map<
   { clientId: string; code: string; nonce: string; expiresAt: number }
 >()
 const PENDING_PINS_FILE = `${getDataDir()}/pending-plex-pins.json`
+const PENDING_PINS_LOCK_DIR = `${getDataDir()}/pending-plex-pins.lock`
+
+const sleepSync = (ms: number): void => {
+  const signal = new Int32Array(new SharedArrayBuffer(4))
+  Atomics.wait(signal, 0, 0, ms)
+}
+
+const withPendingPinsLock = <T>(fn: () => T): T => {
+  const maxAttempts = 200
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      Deno.mkdirSync(PENDING_PINS_LOCK_DIR)
+      try {
+        return fn()
+      } finally {
+        Deno.removeSync(PENDING_PINS_LOCK_DIR)
+      }
+    } catch (err) {
+      const lockErr = err as { name?: string; code?: string }
+      if (lockErr?.name !== 'AlreadyExists' && lockErr?.code !== 'EEXIST') {
+        throw err
+      }
+      sleepSync(10)
+    }
+  }
+  throw new Error('[auth] timed out waiting for pending PIN store lock')
+}
+
+const getPlexLoginNonceCookieName = (pinId: number): string =>
+  `${PLEX_LOGIN_NONCE_COOKIE_PREFIX}_${pinId}`
 
 const loadPendingPinsFromDisk = (): void => {
   try {
@@ -85,19 +115,6 @@ const persistPendingPinsToDisk = (): void => {
   } catch {
     // ignore persistence failures; best-effort durability
   }
-}
-
-function pruneExpiredPins(): void {
-  loadPendingPinsFromDisk()
-  const now = Date.now()
-  let changed = false
-  for (const [id, pin] of _pendingPins) {
-    if (now > pin.expiresAt) {
-      _pendingPins.delete(id)
-      changed = true
-    }
-  }
-  if (changed) persistPendingPinsToDisk()
 }
 
 const makeJson = (req: CompatRequest) => makeHeaders(req, 'application/json')
@@ -178,6 +195,7 @@ const setUserSessionCookie = (
 
 const setPlexLoginNonceCookie = (
   headers: Headers,
+  pinId: number,
   nonce: string,
   req: CompatRequest,
   maxAgeSeconds: number
@@ -185,7 +203,7 @@ const setPlexLoginNonceCookie = (
   const secure = shouldUseSecureCookies(req) ? '; Secure' : ''
   headers.append(
     'set-cookie',
-    `${PLEX_LOGIN_NONCE_COOKIE}=${nonce}; Path=/; SameSite=Strict; HttpOnly${secure}; Max-Age=${maxAgeSeconds}`
+    `${getPlexLoginNonceCookieName(pinId)}=${nonce}; Path=/; SameSite=Strict; HttpOnly${secure}; Max-Age=${maxAgeSeconds}`
   )
 }
 
@@ -352,14 +370,20 @@ export async function handleAuthRoutes(
       )
       const loginNonce = crypto.randomUUID()
 
-      pruneExpiredPins()
-      _pendingPins.set(pin.id, {
-        clientId,
-        code: pin.code,
-        nonce: loginNonce,
-        expiresAt: pinExpiresAt,
+      withPendingPinsLock(() => {
+        loadPendingPinsFromDisk()
+        const now = Date.now()
+        for (const [id, pendingPin] of _pendingPins) {
+          if (now > pendingPin.expiresAt) _pendingPins.delete(id)
+        }
+        _pendingPins.set(pin.id, {
+          clientId,
+          code: pin.code,
+          nonce: loginNonce,
+          expiresAt: pinExpiresAt,
+        })
+        persistPendingPinsToDisk()
       })
-      persistPendingPinsToDisk()
       log.info(
         `[auth] Plex PIN created: pinId=${pin.id} codeLength=${
           pin.code?.length ?? 0
@@ -367,7 +391,7 @@ export async function handleAuthRoutes(
       )
 
       const headers = makeJson(req)
-      setPlexLoginNonceCookie(headers, loginNonce, req, maxAgeSeconds)
+      setPlexLoginNonceCookie(headers, pin.id, loginNonce, req, maxAgeSeconds)
       return new Response(JSON.stringify({ pinId: pin.id, authUrl }), {
         status: 200,
         headers,
@@ -386,9 +410,14 @@ export async function handleAuthRoutes(
   if (plexPinMatch && req.method === 'GET') {
     const pinId = Number(plexPinMatch[1])
     const traceId = `pin-${pinId}-${Date.now().toString(36)}`
-    loadPendingPinsFromDisk()
-    const pending = _pendingPins.get(pinId)
-    const loginNonce = parseCookies(req).get(PLEX_LOGIN_NONCE_COOKIE) || ''
+    const pending = withPendingPinsLock(() => {
+      loadPendingPinsFromDisk()
+      const hit = _pendingPins.get(pinId)
+      if (!hit) return null
+      return { ...hit }
+    })
+    const loginNonce =
+      parseCookies(req).get(getPlexLoginNonceCookieName(pinId)) || ''
     log.info(
       `[auth][${traceId}] [step 1] Plex PIN poll request received (pinId=${pinId})`
     )
@@ -398,7 +427,7 @@ export async function handleAuthRoutes(
         `[auth][${traceId}] [step 2] pinId=${pinId} missing or nonce mismatch`
       )
       const headers = makeJson(req)
-      setPlexLoginNonceCookie(headers, '', req, 0)
+      setPlexLoginNonceCookie(headers, pinId, '', req, 0)
       return new Response(JSON.stringify({ status: 'expired' }), {
         status: 200,
         headers,
@@ -406,11 +435,14 @@ export async function handleAuthRoutes(
     }
 
     if (Date.now() > pending.expiresAt) {
-      _pendingPins.delete(pinId)
-      persistPendingPinsToDisk()
+      withPendingPinsLock(() => {
+        loadPendingPinsFromDisk()
+        _pendingPins.delete(pinId)
+        persistPendingPinsToDisk()
+      })
       log.warn(`[auth][${traceId}] [step 3] pinId=${pinId} expired by TTL`)
       const headers = makeJson(req)
-      setPlexLoginNonceCookie(headers, '', req, 0)
+      setPlexLoginNonceCookie(headers, pinId, '', req, 0)
       return new Response(JSON.stringify({ status: 'expired' }), {
         status: 200,
         headers,
@@ -433,13 +465,16 @@ export async function handleAuthRoutes(
       )
 
       if (status.expired) {
-        _pendingPins.delete(pinId)
-        persistPendingPinsToDisk()
+        withPendingPinsLock(() => {
+          loadPendingPinsFromDisk()
+          _pendingPins.delete(pinId)
+          persistPendingPinsToDisk()
+        })
         log.warn(
           `[auth][${traceId}] [step 7] pinId=${pinId} reported expired by Plex`
         )
         const headers = makeJson(req)
-        setPlexLoginNonceCookie(headers, '', req, 0)
+        setPlexLoginNonceCookie(headers, pinId, '', req, 0)
         return new Response(JSON.stringify({ status: 'expired' }), {
           status: 200,
           headers,
@@ -476,10 +511,13 @@ export async function handleAuthRoutes(
         )
       }
       if (isPlexRestrictedToServer() && !hasServerAccess) {
-        _pendingPins.delete(pinId)
-        persistPendingPinsToDisk()
+        withPendingPinsLock(() => {
+          loadPendingPinsFromDisk()
+          _pendingPins.delete(pinId)
+          persistPendingPinsToDisk()
+        })
         const headers = makeJson(req)
-        setPlexLoginNonceCookie(headers, '', req, 0)
+        setPlexLoginNonceCookie(headers, pinId, '', req, 0)
         return new Response(
           JSON.stringify({
             status: 'denied',
@@ -519,7 +557,7 @@ export async function handleAuthRoutes(
 
       const headers = makeJson(req)
       setUserSessionCookie(headers, sessionToken, req)
-      setPlexLoginNonceCookie(headers, '', req, 0)
+      setPlexLoginNonceCookie(headers, pinId, '', req, 0)
       log.info(
         `[auth][${traceId}] [step 10] User session established (pinId=${pinId}, userId=${user.id}, username=${user.username}, hasServerAccess=${hasServerAccess})`
       )
@@ -528,8 +566,11 @@ export async function handleAuthRoutes(
       // Delete only after the full login + session creation path succeeds.
       // If another poll arrives while we're still creating the user/session,
       // keeping the pin prevents false "expired" responses.
-      _pendingPins.delete(pinId)
-      persistPendingPinsToDisk()
+      withPendingPinsLock(() => {
+        loadPendingPinsFromDisk()
+        _pendingPins.delete(pinId)
+        persistPendingPinsToDisk()
+      })
       log.info(
         `[auth][${traceId}] [step 11] pinId=${pinId} completed successfully`
       )

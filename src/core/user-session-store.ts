@@ -24,6 +24,33 @@ export interface UserSession {
 
 const _sessions = new Map<string, UserSession>()
 const SESSION_STORE_FILE = `${getDataDir()}/user-sessions.json`
+const SESSION_STORE_LOCK_DIR = `${getDataDir()}/user-sessions.lock`
+
+const sleepSync = (ms: number): void => {
+  const signal = new Int32Array(new SharedArrayBuffer(4))
+  Atomics.wait(signal, 0, 0, ms)
+}
+
+const withSessionStoreLock = <T>(fn: () => T): T => {
+  const maxAttempts = 200
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      Deno.mkdirSync(SESSION_STORE_LOCK_DIR)
+      try {
+        return fn()
+      } finally {
+        Deno.removeSync(SESSION_STORE_LOCK_DIR)
+      }
+    } catch (err) {
+      const lockErr = err as { name?: string; code?: string }
+      if (lockErr?.name !== 'AlreadyExists' && lockErr?.code !== 'EEXIST') {
+        throw err
+      }
+      sleepSync(10)
+    }
+  }
+  throw new Error('[session-store] timed out waiting for session store lock')
+}
 
 const loadSessionsFromDisk = (): void => {
   try {
@@ -64,29 +91,23 @@ const persistSessionsToDisk = (): void => {
   }
 }
 
-const pruneExpired = (): void => {
-  loadSessionsFromDisk()
-  const now = Date.now()
-  let changed = false
-  for (const [token, session] of _sessions) {
-    if (now > session.expiresAt) {
-      _sessions.delete(token)
-      changed = true
-    }
-  }
-  if (changed) persistSessionsToDisk()
-}
-
 /** Issue a new user session token. Returns the token to store in the cookie. */
 export const createUserSession = (user: Omit<UserSession, 'expiresAt'>): string => {
-  loadSessionsFromDisk()
-  if (_sessions.size > 500) pruneExpired()
-  const token =
-    crypto.randomUUID().replace(/-/g, '') +
-    crypto.randomUUID().replace(/-/g, '')
-  _sessions.set(token, { ...user, expiresAt: Date.now() + SESSION_TTL_MS })
-  persistSessionsToDisk()
-  return token
+  return withSessionStoreLock(() => {
+    loadSessionsFromDisk()
+    const now = Date.now()
+    if (_sessions.size > 500) {
+      for (const [token, session] of _sessions) {
+        if (now > session.expiresAt) _sessions.delete(token)
+      }
+    }
+    const token =
+      crypto.randomUUID().replace(/-/g, '') +
+      crypto.randomUUID().replace(/-/g, '')
+    _sessions.set(token, { ...user, expiresAt: now + SESSION_TTL_MS })
+    persistSessionsToDisk()
+    return token
+  })
 }
 
 /** Returns the session if the token exists and has not expired, otherwise null. */
@@ -96,8 +117,11 @@ export const getUserSession = (token: string): UserSession | null => {
   const session = _sessions.get(token)
   if (!session) return null
   if (Date.now() > session.expiresAt) {
-    _sessions.delete(token)
-    persistSessionsToDisk()
+    withSessionStoreLock(() => {
+      loadSessionsFromDisk()
+      _sessions.delete(token)
+      persistSessionsToDisk()
+    })
     return null
   }
   return session
@@ -105,9 +129,11 @@ export const getUserSession = (token: string): UserSession | null => {
 
 /** Invalidate a single session token (e.g. on logout). */
 export const invalidateUserSession = (token: string): void => {
-  loadSessionsFromDisk()
-  _sessions.delete(token)
-  persistSessionsToDisk()
+  withSessionStoreLock(() => {
+    loadSessionsFromDisk()
+    _sessions.delete(token)
+    persistSessionsToDisk()
+  })
 }
 
 /** Find the most-recent valid session for a given userId (used to refresh hasServerAccess). */
@@ -125,7 +151,9 @@ export const findSessionByUserId = (userId: number): UserSession | null => {
 
 /** Invalidate all active user sessions (e.g. when user auth is disabled). */
 export const clearUserSessions = (): void => {
-  loadSessionsFromDisk()
-  _sessions.clear()
-  persistSessionsToDisk()
+  withSessionStoreLock(() => {
+    loadSessionsFromDisk()
+    _sessions.clear()
+    persistSessionsToDisk()
+  })
 }
