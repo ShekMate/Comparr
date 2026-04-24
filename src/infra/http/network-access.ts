@@ -98,7 +98,7 @@ export const isValidHost = (req: {
   )
 }
 
-export const isValidOrigin = (req: {
+const isValidOrigin = (req: {
   headers?: { get?: (name: string) => string | null }
 }) => {
   const origin = String(req?.headers?.get?.('origin') || '')
