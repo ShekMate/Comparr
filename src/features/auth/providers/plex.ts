@@ -347,6 +347,46 @@ export async function getPlexUserInfo(
   }
 
   if (!res.ok) {
+    // Legacy fallback for environments that still expose account payloads
+    // through plex.tv/users/account with token query auth.
+    const legacyRes = await fetchWithTimeout(
+      `https://plex.tv/users/account?X-Plex-Token=${encodeURIComponent(
+        authToken
+      )}`,
+      {
+        headers: {
+          Accept: 'application/xml,text/xml,application/json',
+        },
+      }
+    )
+    if (legacyRes.ok) {
+      const contentType = legacyRes.headers.get('content-type') || ''
+      if (contentType.includes('application/json')) {
+        const legacyJson = await legacyRes.json().catch(() => ({}))
+        return {
+          id: String(legacyJson.id || ''),
+          username:
+            legacyJson.username || legacyJson.title || legacyJson.email || 'Plex User',
+          email: legacyJson.email || '',
+          thumb: legacyJson.thumb || '',
+        }
+      }
+      const text = await legacyRes.text().catch(() => '')
+      const attr = (name: string): string => {
+        const match = text.match(new RegExp(`${name}="([^"]*)"`, 'i'))
+        return match?.[1] || ''
+      }
+      const id = attr('id')
+      if (id) {
+        return {
+          id,
+          username: attr('username') || attr('title') || attr('email') || 'Plex User',
+          email: attr('email') || '',
+          thumb: attr('thumb') || '',
+        }
+      }
+    }
+
     throw new Error(`[plex-auth] Failed to get user info: ${res.status}`)
   }
 
