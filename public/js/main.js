@@ -6677,6 +6677,7 @@ const main = async () => {
     roomCode,
     appMode = 'group',
   } = loginData
+  const currentUser = window.COMPARR_USER || null
 
   document.body.classList.add('is-logged-in')
   document.body.dataset.appMode = appMode
