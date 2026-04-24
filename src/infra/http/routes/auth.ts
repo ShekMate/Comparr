@@ -468,7 +468,7 @@ export async function handleAuthRoutes(
 
     try {
       log.info(`[auth][${traceId}] [step 5] Checking status with plex.tv`)
-      const status = await pollPlexPin(pinId, pending.clientId, pending.code)
+      const status = await pollPlexPin(pinId, pending.clientId)
       log.info(
         `[auth][${traceId}] [step 6] Poll evaluated (pinId=${pinId}, expired=${
           status.expired
@@ -607,8 +607,8 @@ export async function handleAuthRoutes(
         `[auth][${traceId}] [step X] Plex PIN poll error: pinId=${pinId} err=${err}`
       )
       return new Response(
-        JSON.stringify({ error: 'Authentication failed. Please try again.' }),
-        { status: 500, headers: makeJson(req) }
+        JSON.stringify({ status: 'pending' }),
+        { status: 200, headers: makeJson(req) }
       )
     }
   }
