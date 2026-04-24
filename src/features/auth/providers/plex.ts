@@ -328,12 +328,23 @@ export async function getPlexUserInfo(
   authToken: string,
   clientId: string
 ): Promise<PlexUserInfo> {
-  const res = await fetchWithTimeout(`${PLEX_API_BASE}/user`, {
+  let res = await fetchWithTimeout(`${PLEX_API_BASE}/user`, {
     headers: {
       ...plexHeaders(clientId),
       'X-Plex-Token': authToken,
     },
   })
+
+  if (!res.ok) {
+    // Seerr/Overseerr-style token exchange can still succeed with a minimal
+    // header set even when richer client headers are rejected by plex.tv.
+    res = await fetchWithTimeout(`${PLEX_API_BASE}/user`, {
+      headers: {
+        Accept: 'application/json',
+        'X-Plex-Token': authToken,
+      },
+    })
+  }
 
   if (!res.ok) {
     throw new Error(`[plex-auth] Failed to get user info: ${res.status}`)
