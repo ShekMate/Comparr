@@ -6061,6 +6061,23 @@ footer {
   margin: 0;
 }
 
+@media (max-width: 768px) {
+  #first-run-defaults-inline-editor .filter-modal .modal-body {
+    max-height: min(56vh, 520px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-right: 0.25rem;
+  }
+
+  #first-run-defaults-inline-editor .filter-modal .dropdown-list {
+    max-height: min(36vh, 260px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 /* ─── Wizard User-Auth Screen ───────────────────────────────── */
 
 .first-run-user-auth-row {
@@ -6984,8 +7001,6 @@ footer {
 .u-icon-accent-primary {
   color: var(--color-primary-light);
 }
-
-
 /* ===== Profile subscriptions ===== */
 .settings-profile-subscriptions {
   margin-top: 1rem;
@@ -6997,8 +7012,6 @@ footer {
   gap: 0.4rem 0.75rem;
   margin-top: 0.5rem;
 }
-
-
 /* ===== User onboarding wizard subscription grid ===== */
 .wizard-subscription-grid {
   display: grid;
