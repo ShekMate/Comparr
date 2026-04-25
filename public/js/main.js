@@ -3086,7 +3086,15 @@ async function plexOAuthLogin(popup) {
     `clientID=${encodeURIComponent(clientId)}` +
     `&code=${encodeURIComponent(pinData.code)}` +
     `&context%5Bdevice%5D%5Bproduct%5D=Comparr`
-  popup.location.href = authUrl
+  try {
+    popup.location.assign(authUrl)
+  } catch (err) {
+    console.error('[auth][plex] Could not navigate popup to Plex auth URL', err)
+    if (!popup.closed) popup.close()
+    throw new Error(
+      'Could not open Plex login in the popup. Please retry and ensure you are using the same http/https URL for this site.'
+    )
+  }
 
   const startedAt = Date.now()
   const maxMs = 6 * 60 * 1000
