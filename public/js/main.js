@@ -10528,7 +10528,16 @@ function syncFreeStreamingOptionVisibility() {
 
 function syncSubscriptionOptionVisibility() {
   const { paidServices, personalSources } = getAvailableSubscriptionOptions()
-  const availableSet = new Set([...paidServices, ...personalSources])
+  const selected = Array.isArray(
+    window.filterState?.availability?.subscriptionServices
+  )
+    ? window.filterState.availability.subscriptionServices
+    : []
+  const availableSet = new Set([
+    ...paidServices,
+    ...personalSources,
+    ...selected,
+  ])
 
   document
     .querySelectorAll(
@@ -10543,19 +10552,7 @@ function syncSubscriptionOptionVisibility() {
       if (!isAvailable) input.checked = false
     })
 
-  const selected = Array.isArray(
-    window.filterState?.availability?.subscriptionServices
-  )
-    ? window.filterState.availability.subscriptionServices
-    : []
-
-  const visibleOptionSet = new Set(
-    Array.from(
-      document.querySelectorAll(
-        '#swipe-subscriptions-options input[type="checkbox"][value]'
-      )
-    ).map(input => String(input.value || '').trim())
-  )
+  const visibleOptionSet = new Set(getVisibleSubscriptionOptions())
 
   const nextSelected = selected.filter(service => visibleOptionSet.has(service))
   if (window.filterState?.availability) {
