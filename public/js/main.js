@@ -1460,6 +1460,29 @@ async function maybeRunUserOnboardingWizard(currentUser) {
       return true
     }
 
+    const enterDefaultsForOnboarding = () => {
+      const container = body.querySelector('#first-run-defaults-inline-editor')
+      if (!swipeFilterModal || !container || !window.filterState) return
+
+      swipeFilterMode = 'defaults'
+      liveSwipeFilterStateRef = window.filterState
+      const baseState =
+        loadSavedSwipeFilterDefaults() ||
+        normalizeFilterStateForDefaults(liveSwipeFilterStateRef)
+      window.filterState = cloneFilterStateValue(baseState)
+
+      container.appendChild(swipeFilterModal)
+      swipeFilterModal.classList.add('active', 'inline-defaults-mode')
+      swipeFilterOverlay?.classList.remove('active')
+      updateSwipeFilterModalModeUI()
+      syncSwipeFilterModalWithState()
+    }
+
+    const leaveDefaultsForOnboarding = () => {
+      if (swipeFilterMode !== 'defaults') return
+      exitDefaultsInlineEditor()
+    }
+
     const applySubscriptionSelectionToDefaults = () => {
       if (state.subscriptionsAppliedToDefaults || !window.filterState) return
 
@@ -1521,8 +1544,7 @@ async function maybeRunUserOnboardingWizard(currentUser) {
         body.innerHTML = '<div id="first-run-defaults-inline-editor"></div>'
 
         applySubscriptionSelectionToDefaults()
-        enterDefaultsInlineEditor()
-        syncSwipeFilterModalWithState()
+        enterDefaultsForOnboarding()
         return
       }
 
@@ -1552,7 +1574,7 @@ async function maybeRunUserOnboardingWizard(currentUser) {
         // non-fatal: onboarding completion is still tracked locally
       }
 
-      leaveDefaultsEditor()
+      leaveDefaultsForOnboarding()
       localStorage.setItem(completionKey, 'complete')
       modal.remove()
       resolve()
@@ -1560,7 +1582,7 @@ async function maybeRunUserOnboardingWizard(currentUser) {
 
     backBtn.addEventListener('click', () => {
       if (steps[idx] === 'defaults') {
-        leaveDefaultsEditor()
+        leaveDefaultsForOnboarding()
       }
       idx = Math.max(0, idx - 1)
       render()
@@ -1594,7 +1616,7 @@ async function maybeRunUserOnboardingWizard(currentUser) {
       }
 
       if (step === 'defaults') {
-        leaveDefaultsEditor()
+        leaveDefaultsForOnboarding()
       }
 
       if (idx === steps.length - 1) {
