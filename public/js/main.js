@@ -1306,6 +1306,17 @@ async function maybeRunUserOnboardingWizard(currentUser) {
     paidServices = [],
     personalSources = [],
   } = getAvailableSubscriptionOptions()
+  const allPaidServiceOptions = Array.from(
+    document.querySelectorAll(
+      '#setting-paid-streaming-services-list input[type="checkbox"][value]'
+    )
+  )
+    .map(input => String(input.value || '').trim())
+    .filter(Boolean)
+  const paidServiceOptions =
+    allPaidServiceOptions.length > 0
+      ? Array.from(new Set(allPaidServiceOptions))
+      : paidServices
   const existingSubs = loadUserSubscriptions(currentUser.id)
 
   await new Promise(resolve => {
@@ -1337,7 +1348,7 @@ async function maybeRunUserOnboardingWizard(currentUser) {
     const state = {
       subscriptions: existingSubs.length
         ? normalizeServices(existingSubs)
-        : normalizeServices(paidServices),
+        : normalizeServices(paidServiceOptions),
       defaultsLastSavedSnapshot: JSON.stringify(
         normalizeFilterStateForDefaults(
           loadSavedSwipeFilterDefaults() || window.filterState
@@ -1409,7 +1420,7 @@ async function maybeRunUserOnboardingWizard(currentUser) {
 
       const normalized = normalizeServices(state.subscriptions)
       const personalSet = new Set(personalSources)
-      const paidSet = new Set(paidServices)
+      const paidSet = new Set(paidServiceOptions)
 
       const nextSelected = normalizeServices([
         ...normalized,
@@ -1443,8 +1454,8 @@ async function maybeRunUserOnboardingWizard(currentUser) {
       if (step === 'subscriptions') {
         title.textContent = 'Step 1: My Subscriptions'
         copy.textContent = 'Select your streaming subscriptions'
-        body.innerHTML = paidServices.length
-          ? paidServices
+        body.innerHTML = paidServiceOptions.length
+          ? paidServiceOptions
               .map(
                 option => `<label class="first-run-user-auth-row">
               <input type="checkbox" class="user-onboarding-sub" value="${option}" ${
