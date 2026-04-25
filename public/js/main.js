@@ -1511,6 +1511,7 @@ async function maybeRunUserOnboardingWizard(currentUser) {
       window.filterState.availability.anywhere = nextSelected.length === 0
 
       state.subscriptionsAppliedToDefaults = true
+      syncSwipeFilterModalWithState()
     }
 
     const render = () => {
@@ -1543,8 +1544,8 @@ async function maybeRunUserOnboardingWizard(currentUser) {
           'Set your default Swipe filters. These save to Settings → Defaults.'
         body.innerHTML = '<div id="first-run-defaults-inline-editor"></div>'
 
-        applySubscriptionSelectionToDefaults()
         enterDefaultsForOnboarding()
+        applySubscriptionSelectionToDefaults()
         return
       }
 
@@ -1599,6 +1600,7 @@ async function maybeRunUserOnboardingWizard(currentUser) {
         state.subscriptions = Array.from(
           body.querySelectorAll('.user-onboarding-sub:checked')
         ).map(input => String(input.value))
+        state.subscriptionsAppliedToDefaults = false
       }
 
       if (step === 'defaults' && hasUnsavedDefaultsChanges()) {
