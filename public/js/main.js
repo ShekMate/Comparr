@@ -5131,7 +5131,10 @@ async function login(api) {
     if (userAuthPlex) userAuthPlex.style.display = 'flex'
 
     await new Promise(resolve => {
+      let sessionWatcher = null
       const handleUserLoggedIn = user => {
+        if (sessionWatcher) clearInterval(sessionWatcher)
+        sessionWatcher = null
         currentUser = user
         window.COMPARR_USER = user
         window.USER_HAS_SERVER_ACCESS = user.hasServerAccess !== false
@@ -5140,6 +5143,16 @@ async function login(api) {
           .catch(() => {})
         resolve()
       }
+
+      // Some browsers can complete Plex auth/session updates while the popup
+      // closes before this page receives the normal success path. Polling
+      // /api/auth/me prevents the login UI from getting stuck until refresh.
+      sessionWatcher = setInterval(async () => {
+        const authState = await api.getAuthUser().catch(() => ({ user: null }))
+        if (authState?.user) {
+          handleUserLoggedIn(authState.user)
+        }
+      }, 1500)
 
       // ── Plex PIN flow ────────────────────────────────────────────────────
       if (plexSigninBtn) {
