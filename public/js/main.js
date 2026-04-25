@@ -5134,11 +5134,13 @@ async function login(api) {
     await new Promise(resolve => {
       let sessionWatcher = null
       let popupCloseWatcher = null
+      let plexLoginSettled = false
       const handleUserLoggedIn = user => {
         if (sessionWatcher) clearInterval(sessionWatcher)
         sessionWatcher = null
         if (popupCloseWatcher) clearInterval(popupCloseWatcher)
         popupCloseWatcher = null
+        plexLoginSettled = true
         if (plexContinueBtn) plexContinueBtn.hidden = true
         currentUser = user
         window.COMPARR_USER = user
@@ -5225,6 +5227,8 @@ async function login(api) {
             if (!popup.closed) return
             clearInterval(popupCloseWatcher)
             popupCloseWatcher = null
+            if (plexLoginSettled) return
+            plexSigninBtn.disabled = false
             showPlexContinue(
               'Plex login window closed. Click Continue to finish sign in.'
             )
@@ -5236,6 +5240,9 @@ async function login(api) {
             const { authToken, clientId } = await plexOAuthLogin(popup)
             const result = await api.loginWithPlex(authToken, clientId)
             if (result?.status === 'denied') {
+              plexLoginSettled = true
+              if (popupCloseWatcher) clearInterval(popupCloseWatcher)
+              popupCloseWatcher = null
               plexSigninBtn.disabled = false
               if (plexStatus) {
                 plexStatus.textContent = result.error || 'Access denied.'
@@ -5243,10 +5250,14 @@ async function login(api) {
               }
               return
             }
+            plexLoginSettled = true
+            if (popupCloseWatcher) clearInterval(popupCloseWatcher)
+            popupCloseWatcher = null
             if (plexStatus) plexStatus.hidden = true
             handleUserLoggedIn(result.user)
           } catch (err) {
             console.error('[auth][user-login] Failed Plex OAuth login', err)
+            plexLoginSettled = true
             if (popupCloseWatcher) clearInterval(popupCloseWatcher)
             popupCloseWatcher = null
             if (!popup.closed) popup.close()
