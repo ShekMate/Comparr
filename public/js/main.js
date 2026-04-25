@@ -1356,6 +1356,11 @@ async function maybeRunUserOnboardingWizard(currentUser) {
             value,
             label: formatServiceLabel(value),
           }))
+  paidServiceOptions.sort((a, b) =>
+    String(a.label || '').localeCompare(String(b.label || ''), undefined, {
+      sensitivity: 'base',
+    })
+  )
   const paidServiceValues = paidServiceOptions.map(option => option.value)
   const existingSubs = loadUserSubscriptions(currentUser.id)
 
@@ -1388,7 +1393,7 @@ async function maybeRunUserOnboardingWizard(currentUser) {
     const state = {
       subscriptions: existingSubs.length
         ? normalizeServices(existingSubs)
-        : normalizeServices(paidServiceValues),
+        : [],
       defaultsLastSavedSnapshot: JSON.stringify(
         normalizeFilterStateForDefaults(
           loadSavedSwipeFilterDefaults() || window.filterState
