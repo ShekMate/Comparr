@@ -1511,6 +1511,7 @@ async function maybeRunUserOnboardingWizard(currentUser) {
       window.filterState.availability.anywhere = nextSelected.length === 0
 
       state.subscriptionsAppliedToDefaults = true
+      syncSwipeFilterModalWithState()
     }
 
     const render = () => {
@@ -1543,8 +1544,8 @@ async function maybeRunUserOnboardingWizard(currentUser) {
           'Set your default Swipe filters. These save to Settings → Defaults.'
         body.innerHTML = '<div id="first-run-defaults-inline-editor"></div>'
 
-        applySubscriptionSelectionToDefaults()
         enterDefaultsForOnboarding()
+        applySubscriptionSelectionToDefaults()
         return
       }
 
@@ -1599,6 +1600,7 @@ async function maybeRunUserOnboardingWizard(currentUser) {
         state.subscriptions = Array.from(
           body.querySelectorAll('.user-onboarding-sub:checked')
         ).map(input => String(input.value))
+        state.subscriptionsAppliedToDefaults = false
       }
 
       if (step === 'defaults' && hasUnsavedDefaultsChanges()) {
@@ -10526,7 +10528,16 @@ function syncFreeStreamingOptionVisibility() {
 
 function syncSubscriptionOptionVisibility() {
   const { paidServices, personalSources } = getAvailableSubscriptionOptions()
-  const availableSet = new Set([...paidServices, ...personalSources])
+  const selected = Array.isArray(
+    window.filterState?.availability?.subscriptionServices
+  )
+    ? window.filterState.availability.subscriptionServices
+    : []
+  const availableSet = new Set([
+    ...paidServices,
+    ...personalSources,
+    ...selected,
+  ])
 
   document
     .querySelectorAll(
@@ -10541,19 +10552,7 @@ function syncSubscriptionOptionVisibility() {
       if (!isAvailable) input.checked = false
     })
 
-  const selected = Array.isArray(
-    window.filterState?.availability?.subscriptionServices
-  )
-    ? window.filterState.availability.subscriptionServices
-    : []
-
-  const visibleOptionSet = new Set(
-    Array.from(
-      document.querySelectorAll(
-        '#swipe-subscriptions-options input[type="checkbox"][value]'
-      )
-    ).map(input => String(input.value || '').trim())
-  )
+  const visibleOptionSet = new Set(getVisibleSubscriptionOptions())
 
   const nextSelected = selected.filter(service => visibleOptionSet.has(service))
   if (window.filterState?.availability) {
