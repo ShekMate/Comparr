@@ -1306,17 +1306,57 @@ async function maybeRunUserOnboardingWizard(currentUser) {
     paidServices = [],
     personalSources = [],
   } = getAvailableSubscriptionOptions()
-  const allPaidServiceOptions = Array.from(
+  const formatServiceLabel = value => {
+    const normalized = String(value || '').trim().toLowerCase()
+    const knownLabels = {
+      'amazon-prime': 'Amazon Prime Video',
+      'apple-tv-plus': 'Apple TV+',
+      'disney-plus': 'Disney+',
+      'hbo-max': 'Max',
+      'paramount-plus': 'Paramount+',
+    }
+    if (knownLabels[normalized]) return knownLabels[normalized]
+    return normalized
+      .split('-')
+      .filter(Boolean)
+      .map(segment => segment.charAt(0).toUpperCase() + segment.slice(1))
+      .join(' ')
+  }
+
+  const allPaidServiceOptionsFromDom = Array.from(
     document.querySelectorAll(
-      '#setting-paid-streaming-services-list input[type="checkbox"][value]'
+      '#setting-paid-streaming-services-list input[type="checkbox"][data-paid-streaming-service][value]'
     )
   )
-    .map(input => String(input.value || '').trim())
+    .map(input => {
+      const value = String(input.value || '').trim()
+      if (!value) return null
+      const labelText = String(input.closest('label')?.textContent || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+      return {
+        value,
+        label: labelText || formatServiceLabel(value),
+      }
+    })
     .filter(Boolean)
+
   const paidServiceOptions =
-    allPaidServiceOptions.length > 0
-      ? Array.from(new Set(allPaidServiceOptions))
-      : paidServices
+    allPaidServiceOptionsFromDom.length > 0
+      ? Array.from(
+          new Map(
+            allPaidServiceOptionsFromDom.map(option => [option.value, option])
+          ).values()
+        )
+      : Array.from(
+          new Set((paidServices || []).map(value => String(value || '').trim()))
+        )
+          .filter(Boolean)
+          .map(value => ({
+            value,
+            label: formatServiceLabel(value),
+          }))
+  const paidServiceValues = paidServiceOptions.map(option => option.value)
   const existingSubs = loadUserSubscriptions(currentUser.id)
 
   await new Promise(resolve => {
@@ -1348,7 +1388,7 @@ async function maybeRunUserOnboardingWizard(currentUser) {
     const state = {
       subscriptions: existingSubs.length
         ? normalizeServices(existingSubs)
-        : normalizeServices(paidServiceOptions),
+        : normalizeServices(paidServiceValues),
       defaultsLastSavedSnapshot: JSON.stringify(
         normalizeFilterStateForDefaults(
           loadSavedSwipeFilterDefaults() || window.filterState
@@ -1420,7 +1460,7 @@ async function maybeRunUserOnboardingWizard(currentUser) {
 
       const normalized = normalizeServices(state.subscriptions)
       const personalSet = new Set(personalSources)
-      const paidSet = new Set(paidServiceOptions)
+      const paidSet = new Set(paidServiceValues)
 
       const nextSelected = normalizeServices([
         ...normalized,
@@ -1458,10 +1498,10 @@ async function maybeRunUserOnboardingWizard(currentUser) {
           ? paidServiceOptions
               .map(
                 option => `<label class="first-run-user-auth-row">
-              <input type="checkbox" class="user-onboarding-sub" value="${option}" ${
-                  state.subscriptions.includes(option) ? 'checked' : ''
+              <input type="checkbox" class="user-onboarding-sub" value="${option.value}" ${
+                  state.subscriptions.includes(option.value) ? 'checked' : ''
                 } />
-              <div><strong>${option}</strong></div>
+              <div><strong>${option.label}</strong></div>
             </label>`
               )
               .join('')
