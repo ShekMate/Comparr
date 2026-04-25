@@ -1306,9 +1306,63 @@ async function maybeRunUserOnboardingWizard(currentUser) {
     paidServices = [],
     personalSources = [],
   } = getAvailableSubscriptionOptions()
-  const allOptions = [...paidServices, ...personalSources]
+  const formatServiceLabel = value => {
+    const normalized = String(value || '').trim().toLowerCase()
+    const knownLabels = {
+      'amazon-prime': 'Amazon Prime Video',
+      'apple-tv-plus': 'Apple TV+',
+      'disney-plus': 'Disney+',
+      'hbo-max': 'Max',
+      'paramount-plus': 'Paramount+',
+    }
+    if (knownLabels[normalized]) return knownLabels[normalized]
+    return normalized
+      .split('-')
+      .filter(Boolean)
+      .map(segment => segment.charAt(0).toUpperCase() + segment.slice(1))
+      .join(' ')
+  }
+
+  const allPaidServiceOptionsFromDom = Array.from(
+    document.querySelectorAll(
+      '#setting-paid-streaming-services-list input[type="checkbox"][data-paid-streaming-service][value]'
+    )
+  )
+    .map(input => {
+      const value = String(input.value || '').trim()
+      if (!value) return null
+      const labelText = String(input.closest('label')?.textContent || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+      return {
+        value,
+        label: labelText || formatServiceLabel(value),
+      }
+    })
+    .filter(Boolean)
+
+  const paidServiceOptions =
+    allPaidServiceOptionsFromDom.length > 0
+      ? Array.from(
+          new Map(
+            allPaidServiceOptionsFromDom.map(option => [option.value, option])
+          ).values()
+        )
+      : Array.from(
+          new Set((paidServices || []).map(value => String(value || '').trim()))
+        )
+          .filter(Boolean)
+          .map(value => ({
+            value,
+            label: formatServiceLabel(value),
+          }))
+  paidServiceOptions.sort((a, b) =>
+    String(a.label || '').localeCompare(String(b.label || ''), undefined, {
+      sensitivity: 'base',
+    })
+  )
+  const paidServiceValues = paidServiceOptions.map(option => option.value)
   const existingSubs = loadUserSubscriptions(currentUser.id)
-  const existingDisplayPrefs = loadDisplayPreferences()
 
   await new Promise(resolve => {
     const modal = document.createElement('div')
@@ -1321,87 +1375,187 @@ async function maybeRunUserOnboardingWizard(currentUser) {
         <div id="user-onboarding-body"></div>
         <div class="first-run-guide-actions" style="margin-top:1rem">
           <button type="button" id="user-onboarding-back" class="submit-button first-run-guide-secondary">Back</button>
-          <button type="button" id="user-onboarding-skip" class="submit-button first-run-guide-secondary">Skip</button>
+          <button type="button" id="user-onboarding-save" class="submit-button first-run-guide-secondary">Save</button>
           <button type="button" id="user-onboarding-next" class="submit-button">Next</button>
         </div>
       </div>
     `
     document.body.appendChild(modal)
 
-    const steps = ['preferences', 'subscriptions', 'friends']
+    const steps = ['subscriptions', 'defaults', 'friends']
     let idx = 0
+
+    const normalizeServices = list =>
+      Array.from(
+        new Set((list || []).map(value => String(value).trim()).filter(Boolean))
+      )
+
     const state = {
-      showSeenList: existingDisplayPrefs.showSeenList !== false,
-      showPassList: existingDisplayPrefs.showPassList !== false,
-      subscriptions: existingSubs.length ? existingSubs : paidServices,
+      subscriptions: existingSubs.length
+        ? normalizeServices(existingSubs)
+        : [],
+      defaultsLastSavedSnapshot: JSON.stringify(
+        normalizeFilterStateForDefaults(
+          loadSavedSwipeFilterDefaults() || window.filterState
+        )
+      ),
+      subscriptionsAppliedToDefaults: false,
     }
 
     const title = modal.querySelector('#user-onboarding-title')
     const copy = modal.querySelector('#user-onboarding-copy')
     const body = modal.querySelector('#user-onboarding-body')
     const backBtn = modal.querySelector('#user-onboarding-back')
-    const skipBtn = modal.querySelector('#user-onboarding-skip')
+    const saveBtn = modal.querySelector('#user-onboarding-save')
     const nextBtn = modal.querySelector('#user-onboarding-next')
+
+    const hasUnsavedDefaultsChanges = () => {
+      if (swipeFilterMode !== 'defaults' || !window.filterState) return false
+      const currentSnapshot = JSON.stringify(
+        normalizeFilterStateForDefaults(window.filterState)
+      )
+      return currentSnapshot !== state.defaultsLastSavedSnapshot
+    }
+
+    const promptDefaultsUnsavedChanges = () =>
+      new Promise(promptResolve => {
+        const overlay = document.createElement('div')
+        overlay.className = 'first-run-guide-confirm-overlay'
+        overlay.innerHTML = `
+          <div class="first-run-guide-confirm-card" role="dialog" aria-modal="true">
+            <p>You have unsaved default filter changes. Save them before continuing?</p>
+            <div class="first-run-guide-actions">
+              <button type="button" class="submit-button first-run-guide-secondary" data-action="no">No</button>
+              <button type="button" class="submit-button" data-action="yes">Yes</button>
+            </div>
+          </div>
+        `
+        overlay
+          .querySelector('[data-action="yes"]')
+          ?.addEventListener('click', () => {
+            overlay.remove()
+            promptResolve('yes')
+          })
+        overlay
+          .querySelector('[data-action="no"]')
+          ?.addEventListener('click', () => {
+            overlay.remove()
+            promptResolve('no')
+          })
+        modal.appendChild(overlay)
+      })
+
+    const saveDefaultsForOnboarding = () => {
+      if (swipeFilterMode !== 'defaults' || !window.filterState) return false
+
+      const normalized = normalizeFilterStateForDefaults(window.filterState)
+      const snapshot = JSON.stringify(normalized)
+      localStorage.setItem(SWIPE_DEFAULTS_STORAGE_KEY, snapshot)
+      state.defaultsLastSavedSnapshot = snapshot
+      document.dispatchEvent(
+        new CustomEvent('comparr:wizard-defaults-saved', {
+          detail: { snapshot },
+        })
+      )
+      return true
+    }
+
+    const enterDefaultsForOnboarding = () => {
+      const container = body.querySelector('#first-run-defaults-inline-editor')
+      if (!swipeFilterModal || !container || !window.filterState) return
+
+      swipeFilterMode = 'defaults'
+      liveSwipeFilterStateRef = window.filterState
+      const baseState =
+        loadSavedSwipeFilterDefaults() ||
+        normalizeFilterStateForDefaults(liveSwipeFilterStateRef)
+      window.filterState = cloneFilterStateValue(baseState)
+
+      container.appendChild(swipeFilterModal)
+      swipeFilterModal.classList.add('active', 'inline-defaults-mode')
+      swipeFilterOverlay?.classList.remove('active')
+      updateSwipeFilterModalModeUI()
+      syncSwipeFilterModalWithState()
+    }
+
+    const leaveDefaultsForOnboarding = () => {
+      if (swipeFilterMode !== 'defaults') return
+      exitDefaultsInlineEditor()
+    }
+
+    const applySubscriptionSelectionToDefaults = () => {
+      if (state.subscriptionsAppliedToDefaults || !window.filterState) return
+
+      const normalized = normalizeServices(state.subscriptions)
+      const personalSet = new Set(personalSources)
+      const paidSet = new Set(paidServiceValues)
+
+      const nextSelected = normalizeServices([
+        ...normalized,
+        ...personalSources,
+      ])
+
+      window.filterState.availability = normalizeAvailabilityState(
+        window.filterState.availability,
+        {
+          enforceSelection: false,
+        }
+      )
+      window.filterState.availability.subscriptionServices = nextSelected
+      window.filterState.availability.roomPersonalMedia = nextSelected.some(
+        service => personalSet.has(service)
+      )
+      window.filterState.availability.paidSubscriptions = nextSelected.some(
+        service => paidSet.has(service)
+      )
+      window.filterState.availability.anywhere = nextSelected.length === 0
+
+      state.subscriptionsAppliedToDefaults = true
+    }
 
     const render = () => {
       const step = steps[idx]
       backBtn.hidden = idx === 0
+      saveBtn.hidden = step !== 'defaults'
       nextBtn.textContent = idx === steps.length - 1 ? 'Finish' : 'Next'
 
-      if (step === 'preferences') {
-        title.textContent = 'Step 1: Display Preferences'
-        copy.textContent = 'Choose which personal lists you want visible.'
-        body.innerHTML = `
-          <label class="first-run-user-auth-row">
-            <input type="checkbox" id="user-onboarding-seen" ${
-              state.showSeenList ? 'checked' : ''
-            } />
-            <div><strong>Show Seen list</strong></div>
-          </label>
-          <label class="first-run-user-auth-row">
-            <input type="checkbox" id="user-onboarding-pass" ${
-              state.showPassList ? 'checked' : ''
-            } />
-            <div><strong>Show Pass list</strong></div>
-          </label>
-        `
-        return
-      }
-
       if (step === 'subscriptions') {
-        title.textContent = 'Step 2: My Subscriptions'
-        copy.textContent =
-          'Pick the services you want pre-selected while filtering.'
-        body.innerHTML = allOptions.length
-          ? allOptions
+        title.textContent = 'Step 1: My Subscriptions'
+        copy.textContent = 'Select your streaming subscriptions'
+        body.innerHTML = paidServiceOptions.length
+          ? paidServiceOptions
               .map(
                 option => `<label class="first-run-user-auth-row">
-              <input type="checkbox" class="user-onboarding-sub" value="${option}" ${
-                  state.subscriptions.includes(option) ? 'checked' : ''
+              <input type="checkbox" class="user-onboarding-sub" value="${option.value}" ${
+                  state.subscriptions.includes(option.value) ? 'checked' : ''
                 } />
-              <div><strong>${option}</strong></div>
+              <div><strong>${option.label}</strong></div>
             </label>`
               )
               .join('')
-          : `<p class="first-run-guide-instruction">No host-managed subscriptions are available yet.</p>`
+          : `<p class="first-run-guide-instruction">No paid streaming subscriptions are available yet.</p>`
         return
       }
 
-      title.textContent = 'Step 3: Connect Friends'
+      if (step === 'defaults') {
+        title.textContent = 'Step 2: Default Filters'
+        copy.textContent =
+          'Set your default Swipe filters. These save to Settings → Defaults.'
+        body.innerHTML = '<div id="first-run-defaults-inline-editor"></div>'
+
+        applySubscriptionSelectionToDefaults()
+        enterDefaultsForOnboarding()
+        return
+      }
+
+      title.textContent = 'Step 3: Match with Others'
       copy.textContent =
-        'Use your invite code and add friends in the Compare tab to unlock shared matching.'
-      body.innerHTML = `
-        <p class="first-run-guide-instruction">Open <strong>Compare</strong> to add or accept friend invites.</p>
-        <p class="first-run-guide-instruction">You can update all of these preferences later in Settings.</p>
-      `
+        'Head to the Matches tab to find your invite code or add a friend’s. Once you’re connected, you’ll both see your matches—movies you’ve each marked as “Watch.”'
+      body.innerHTML =
+        '<p class="first-run-guide-instruction">You can update all of these preferences later in Settings.</p>'
     }
 
     const saveAndFinish = async () => {
-      saveDisplayPreferences({
-        showSeenList: state.showSeenList,
-        showPassList: state.showPassList,
-      })
-      applyDisplayPreferencesToNavigation(loadDisplayPreferences())
       saveUserSubscriptions(currentUser.id, state.subscriptions)
       applyUserSubscriptions(state.subscriptions)
 
@@ -1420,35 +1574,49 @@ async function maybeRunUserOnboardingWizard(currentUser) {
         // non-fatal: onboarding completion is still tracked locally
       }
 
+      leaveDefaultsForOnboarding()
       localStorage.setItem(completionKey, 'complete')
       modal.remove()
       resolve()
     }
 
     backBtn.addEventListener('click', () => {
+      if (steps[idx] === 'defaults') {
+        leaveDefaultsForOnboarding()
+      }
       idx = Math.max(0, idx - 1)
       render()
     })
 
-    skipBtn.addEventListener('click', async () => {
-      localStorage.setItem(completionKey, 'complete')
-      modal.remove()
-      resolve()
+    saveBtn.addEventListener('click', () => {
+      if (steps[idx] !== 'defaults') return
+      saveDefaultsForOnboarding()
     })
 
     nextBtn.addEventListener('click', async () => {
       const step = steps[idx]
-      if (step === 'preferences') {
-        state.showSeenList = Boolean(
-          body.querySelector('#user-onboarding-seen')?.checked
-        )
-        state.showPassList = Boolean(
-          body.querySelector('#user-onboarding-pass')?.checked
-        )
-      } else if (step === 'subscriptions') {
+      if (step === 'subscriptions') {
         state.subscriptions = Array.from(
           body.querySelectorAll('.user-onboarding-sub:checked')
         ).map(input => String(input.value))
+      }
+
+      if (step === 'defaults' && hasUnsavedDefaultsChanges()) {
+        const decision = await promptDefaultsUnsavedChanges()
+        if (decision === 'yes') {
+          saveDefaultsForOnboarding()
+        } else {
+          const saved =
+            loadSavedSwipeFilterDefaults() || createDefaultSwipeFilterState()
+          window.filterState = cloneFilterStateValue(saved)
+          state.defaultsLastSavedSnapshot = JSON.stringify(
+            normalizeFilterStateForDefaults(saved)
+          )
+        }
+      }
+
+      if (step === 'defaults') {
+        leaveDefaultsForOnboarding()
       }
 
       if (idx === steps.length - 1) {
