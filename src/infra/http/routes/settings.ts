@@ -7,13 +7,21 @@ import {
   invalidateAccessSession,
   validateAccessSession,
 } from '../../../core/access-session-store.ts'
-import { getUserSession } from '../../../core/user-session-store.ts'
+import {
+  getUserSession,
+  invalidateUserSessionsByUserId,
+} from '../../../core/user-session-store.ts'
 import { getUserTokenFromCookie } from './auth.ts'
 import { apiRateLimiter, loginRateLimiter } from '../ip-rate-limiter.ts'
 import { addSecurityHeaders } from '../security-headers.ts'
 import { isValidStateChangingOrigin } from '../network-access.ts'
 import { tmdbFetch } from '../../../api/tmdb.ts'
 import { fetchWithTimeout } from '../fetch-with-timeout.ts'
+import {
+  deleteUserById,
+  findUserById,
+  listUsers,
+} from '../../../features/auth/user-db.ts'
 
 export type SettingsRouteDeps = {
   buildPlexCache: () => Promise<void>
@@ -32,6 +40,7 @@ export type SettingsRouteDeps = {
   clearAllRooms: () => void
   clearRooms: (roomCodes: string[]) => void
   clearUsersFromRoom: (roomCode: string, userNames: string[]) => void
+  clearUsersFromAllRooms: (userNames: string[]) => void
   onWizardComplete: () => Promise<void> | void
 }
 
@@ -237,7 +246,9 @@ const isAdminAuthorized = (
   if (token) {
     const session = getUserSession(token)
     if (session?.isAdmin) {
-      log.debug(`[admin-auth] Authorized via Plex session (user=${session.username})`)
+      log.debug(
+        `[admin-auth] Authorized via Plex session (user=${session.username})`
+      )
       return true
     }
   }
@@ -323,6 +334,7 @@ export async function handleSettingsRoutes(
     clearAllRooms,
     clearRooms,
     clearUsersFromRoom,
+    clearUsersFromAllRooms,
     onWizardComplete,
   } = deps
 
@@ -816,6 +828,110 @@ export async function handleSettingsRoutes(
         JSON.stringify({
           success: false,
           message: 'Failed to clear user history.',
+        }),
+        { status: 500, headers: makeJsonHeaders(req) }
+      )
+    }
+  }
+
+  if (pathname === '/api/admin/users' && req.method === 'GET') {
+    const settings = getSettings()
+    if (isSetupWizardActive(settings) && !isLocalRequest(req)) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: getSetupModeFailureMessage(),
+        }),
+        { status: 403, headers: makeJsonHeaders(req) }
+      )
+    }
+    if (
+      !isSetupWizardActive(settings) &&
+      !(await isAdminAuthorized(req, settings, isLocalRequest))
+    ) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: getAdminAuthFailureMessage(req, settings, isLocalRequest),
+        }),
+        { status: 403, headers: makeJsonHeaders(req) }
+      )
+    }
+
+    return new Response(JSON.stringify({ success: true, users: listUsers() }), {
+      status: 200,
+      headers: makeJsonHeaders(req),
+    })
+  }
+
+  if (pathname === '/api/admin/delete-user' && req.method === 'POST') {
+    if (!isValidStateChangingOrigin(req)) {
+      return new Response(
+        JSON.stringify({ success: false, message: 'Invalid request origin.' }),
+        { status: 403, headers: makeJsonHeaders(req) }
+      )
+    }
+    const settings = getSettings()
+    if (isSetupWizardActive(settings) && !isLocalRequest(req)) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: getSetupModeFailureMessage(),
+        }),
+        { status: 403, headers: makeJsonHeaders(req) }
+      )
+    }
+    if (
+      !isSetupWizardActive(settings) &&
+      !(await isAdminAuthorized(req, settings, isLocalRequest))
+    ) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: getAdminAuthFailureMessage(req, settings, isLocalRequest),
+        }),
+        { status: 403, headers: makeJsonHeaders(req) }
+      )
+    }
+    try {
+      const bodyText = await req.text()
+      const body = bodyText ? JSON.parse(bodyText) : {}
+      const userId = Number(body.userId)
+      if (!Number.isFinite(userId) || userId <= 0) {
+        return new Response(
+          JSON.stringify({ success: false, message: 'Invalid user id.' }),
+          { status: 400, headers: makeJsonHeaders(req) }
+        )
+      }
+
+      const user = findUserById(userId)
+      if (!user) {
+        return new Response(
+          JSON.stringify({ success: false, message: 'User not found.' }),
+          { status: 404, headers: makeJsonHeaders(req) }
+        )
+      }
+
+      clearUsersFromAllRooms([user.username])
+      invalidateUserSessionsByUserId(user.id)
+      const deleted = deleteUserById(user.id)
+      if (!deleted) {
+        return new Response(
+          JSON.stringify({ success: false, message: 'Failed to delete user.' }),
+          { status: 500, headers: makeJsonHeaders(req) }
+        )
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: makeJsonHeaders(req),
+      })
+    } catch (err) {
+      log.error(`Delete user failed: ${err}`)
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: 'Failed to delete user.',
         }),
         { status: 500, headers: makeJsonHeaders(req) }
       )

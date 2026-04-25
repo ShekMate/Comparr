@@ -103,7 +103,9 @@ const persistSessionsToDisk = (): void => {
 }
 
 /** Issue a new user session token. Returns the token to store in the cookie. */
-export const createUserSession = (user: Omit<UserSession, 'expiresAt'>): string => {
+export const createUserSession = (
+  user: Omit<UserSession, 'expiresAt'>
+): string => {
   return withSessionStoreLock(() => {
     loadSessionsFromDisk()
     const now = Date.now()
@@ -165,6 +167,19 @@ export const clearUserSessions = (): void => {
   withSessionStoreLock(() => {
     loadSessionsFromDisk()
     _sessions.clear()
+    persistSessionsToDisk()
+  })
+}
+
+/** Invalidate all active session tokens for one user. */
+export const invalidateUserSessionsByUserId = (userId: number): void => {
+  withSessionStoreLock(() => {
+    loadSessionsFromDisk()
+    for (const [token, session] of _sessions.entries()) {
+      if (session.userId === userId) {
+        _sessions.delete(token)
+      }
+    }
     persistSessionsToDisk()
   })
 }

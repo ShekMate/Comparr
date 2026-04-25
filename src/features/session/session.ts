@@ -3283,10 +3283,14 @@ export const handleLogin = (
           })
 
           if (!hasUnratedMoviesForUser) {
-            await session.sendNextBatch(undefined, {
-              suppressBroadcast: true,
-              softTimeoutMs: LOGIN_PREFETCH_SOFT_TIMEOUT_MS,
-            }, user)
+            await session.sendNextBatch(
+              undefined,
+              {
+                suppressBroadcast: true,
+                softTimeoutMs: LOGIN_PREFETCH_SOFT_TIMEOUT_MS,
+              },
+              user
+            )
           }
 
           let responsesMutated = dedupeUserResponses(user, session)
@@ -3926,7 +3930,15 @@ export async function processImdbImportBackground(
         type: 'imdbImportMovie',
         payload: {
           movie: movieWithExtras,
-          progress: { total, processed, imported, skipped, notFoundOnTmdb, duplicates, apiErrors },
+          progress: {
+            total,
+            processed,
+            imported,
+            skipped,
+            notFoundOnTmdb,
+            duplicates,
+            apiErrors,
+          },
         },
       })
 
@@ -3967,7 +3979,16 @@ export async function processImdbImportBackground(
   // Send completion message
   sendToUser(roomCode, userName, {
     type: 'imdbImportProgress',
-    payload: { status: 'completed', total, processed, imported, skipped, notFoundOnTmdb, duplicates, apiErrors },
+    payload: {
+      status: 'completed',
+      total,
+      processed,
+      imported,
+      skipped,
+      notFoundOnTmdb,
+      duplicates,
+      apiErrors,
+    },
   })
 
   log.info(
@@ -4000,7 +4021,11 @@ export function clearAllRooms(): void {
   // reconnecting login cannot call upsertRoomUser and re-persist the cleared data.
   for (const [code, session] of activeSessions.entries()) {
     for (const ws of session.users.values()) {
-      try { ws?.close(1001, 'Room cleared by admin') } catch { /* no-op */ }
+      try {
+        ws?.close(1001, 'Room cleared by admin')
+      } catch {
+        /* no-op */
+      }
     }
     activeSessions.delete(code)
   }
@@ -4017,7 +4042,11 @@ export function clearRooms(roomCodes: string[]): void {
     const session = activeSessions.get(code)
     if (session) {
       for (const ws of session.users.values()) {
-        try { ws?.close(1001, 'Room cleared by admin') } catch { /* no-op */ }
+        try {
+          ws?.close(1001, 'Room cleared by admin')
+        } catch {
+          /* no-op */
+        }
       }
       activeSessions.delete(code)
     }
@@ -4044,7 +4073,11 @@ export function clearUsersFromRoom(
   if (session) {
     for (const [user, ws] of session.users.entries()) {
       if (userNames.includes(user.name)) {
-        try { ws?.close(1001, 'User history cleared by admin') } catch { /* no-op */ }
+        try {
+          ws?.close(1001, 'User history cleared by admin')
+        } catch {
+          /* no-op */
+        }
         session.users.delete(user)
       }
     }
@@ -4065,6 +4098,17 @@ export function clearUsersFromRoom(
   saveState(persistedState).catch(err =>
     log.warn(`Failed to save state after clearUsersFromRoom: ${err}`)
   )
+}
+
+export function clearUsersFromAllRooms(userNames: string[]): void {
+  if (!Array.isArray(userNames) || userNames.length === 0) return
+  const targetNames = Array.from(
+    new Set(userNames.map(name => String(name || '').trim()).filter(Boolean))
+  )
+  if (targetNames.length === 0) return
+  for (const roomCode of Object.keys(persistedState.rooms)) {
+    clearUsersFromRoom(roomCode, targetNames)
+  }
 }
 
 /**

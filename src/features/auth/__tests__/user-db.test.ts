@@ -19,7 +19,9 @@ async function withTempDb<T>(
   Deno.env.set('DATA_DIR', dataDir)
 
   // Force the module to re-initialize with the new DATA_DIR
-  const mod = await import(uniqueDbModulePath()) as typeof import('../user-db.ts')
+  const mod = (await import(
+    uniqueDbModulePath()
+  )) as typeof import('../user-db.ts')
   // Init DB explicitly
   mod.initUserDatabase()
 
@@ -42,7 +44,11 @@ async function withTempDb<T>(
 
 Deno.test('user-db: first upserted user becomes admin', async () => {
   await withTempDb(async mod => {
-    assertEquals(mod.adminExists(), false, 'no admin before any user is created')
+    assertEquals(
+      mod.adminExists(),
+      false,
+      'no admin before any user is created'
+    )
 
     const user = mod.upsertUser({
       provider: 'plex',
@@ -53,7 +59,11 @@ Deno.test('user-db: first upserted user becomes admin', async () => {
     })
 
     assertEquals(user.isAdmin, true, 'first user should be admin')
-    assertEquals(mod.adminExists(), true, 'adminExists() should return true now')
+    assertEquals(
+      mod.adminExists(),
+      true,
+      'adminExists() should return true now'
+    )
   })
 })
 
@@ -79,33 +89,36 @@ Deno.test('user-db: second upserted user is not admin', async () => {
   })
 })
 
-Deno.test('user-db: upsert updates username/email but preserves is_admin', async () => {
-  await withTempDb(async mod => {
-    const first = mod.upsertUser({
-      provider: 'jellyfin',
-      providerUserId: 'jf-100',
-      username: 'Charlie',
-      email: 'charlie@example.com',
-      avatarUrl: '',
-    })
-    assertEquals(first.isAdmin, true)
+Deno.test(
+  'user-db: upsert updates username/email but preserves is_admin',
+  async () => {
+    await withTempDb(async mod => {
+      const first = mod.upsertUser({
+        provider: 'jellyfin',
+        providerUserId: 'jf-100',
+        username: 'Charlie',
+        email: 'charlie@example.com',
+        avatarUrl: '',
+      })
+      assertEquals(first.isAdmin, true)
 
-    // Upsert again with changed username — admin flag must survive
-    const updated = mod.upsertUser({
-      provider: 'jellyfin',
-      providerUserId: 'jf-100',
-      username: 'CharlieUpdated',
-      email: 'charlie+new@example.com',
-      avatarUrl: 'https://example.com/charlie.jpg',
-    })
+      // Upsert again with changed username — admin flag must survive
+      const updated = mod.upsertUser({
+        provider: 'jellyfin',
+        providerUserId: 'jf-100',
+        username: 'CharlieUpdated',
+        email: 'charlie+new@example.com',
+        avatarUrl: 'https://example.com/charlie.jpg',
+      })
 
-    assertEquals(updated.username, 'CharlieUpdated')
-    assertEquals(updated.email, 'charlie+new@example.com')
-    assertEquals(updated.avatarUrl, 'https://example.com/charlie.jpg')
-    assertEquals(updated.isAdmin, true, 'is_admin must survive upsert')
-    assertEquals(updated.id, first.id, 'same row — ID unchanged')
-  })
-})
+      assertEquals(updated.username, 'CharlieUpdated')
+      assertEquals(updated.email, 'charlie+new@example.com')
+      assertEquals(updated.avatarUrl, 'https://example.com/charlie.jpg')
+      assertEquals(updated.isAdmin, true, 'is_admin must survive upsert')
+      assertEquals(updated.id, first.id, 'same row — ID unchanged')
+    })
+  }
+)
 
 Deno.test('user-db: findUser returns null for unknown user', async () => {
   await withTempDb(async mod => {
@@ -156,25 +169,74 @@ Deno.test('user-db: findUserById returns null for unknown id', async () => {
   })
 })
 
-Deno.test('user-db: provider isolation — same providerUserId on different providers are separate users', async () => {
+Deno.test(
+  'user-db: provider isolation — same providerUserId on different providers are separate users',
+  async () => {
+    await withTempDb(async mod => {
+      const plexUser = mod.upsertUser({
+        provider: 'plex',
+        providerUserId: 'shared-id',
+        username: 'PlexFrank',
+        email: '',
+        avatarUrl: '',
+      })
+      const jellyfinUser = mod.upsertUser({
+        provider: 'jellyfin',
+        providerUserId: 'shared-id',
+        username: 'JellyFrank',
+        email: '',
+        avatarUrl: '',
+      })
+
+      assertEquals(
+        plexUser.id !== jellyfinUser.id,
+        true,
+        'should be different rows'
+      )
+      assertEquals(plexUser.isAdmin, true)
+      assertEquals(jellyfinUser.isAdmin, false)
+    })
+  }
+)
+
+Deno.test('user-db: listUsers returns inserted usernames', async () => {
   await withTempDb(async mod => {
-    const plexUser = mod.upsertUser({
+    mod.upsertUser({
       provider: 'plex',
-      providerUserId: 'shared-id',
-      username: 'PlexFrank',
+      providerUserId: 'plex-a1',
+      username: 'Alice',
       email: '',
       avatarUrl: '',
     })
-    const jellyfinUser = mod.upsertUser({
-      provider: 'jellyfin',
-      providerUserId: 'shared-id',
-      username: 'JellyFrank',
+    mod.upsertUser({
+      provider: 'plex',
+      providerUserId: 'plex-b2',
+      username: 'Bob',
       email: '',
       avatarUrl: '',
     })
 
-    assertEquals(plexUser.id !== jellyfinUser.id, true, 'should be different rows')
-    assertEquals(plexUser.isAdmin, true)
-    assertEquals(jellyfinUser.isAdmin, false)
+    const users = mod.listUsers()
+    assertEquals(users.length, 2)
+    assertEquals(
+      users.map(u => u.username),
+      ['Alice', 'Bob']
+    )
+  })
+})
+
+Deno.test('user-db: deleteUserById removes user record', async () => {
+  await withTempDb(async mod => {
+    const created = mod.upsertUser({
+      provider: 'plex',
+      providerUserId: 'plex-z9',
+      username: 'Zed',
+      email: '',
+      avatarUrl: '',
+    })
+
+    const removed = mod.deleteUserById(created.id)
+    assertEquals(removed, true)
+    assertEquals(mod.findUserById(created.id), null)
   })
 })

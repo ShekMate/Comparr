@@ -24,11 +24,12 @@ import {
 import { getDataDir } from './core/env.ts'
 import { getSettings, updateSettings, resetSettings } from './core/settings.ts'
 import { timingSafeEqual, verifyPassword } from './core/security.ts'
-import {
-  validateAccessSession,
-} from './core/access-session-store.ts'
+import { validateAccessSession } from './core/access-session-store.ts'
 import { getUserSession } from './core/user-session-store.ts'
-import { handleAuthRoutes, getUserTokenFromCookie } from './infra/http/routes/auth.ts'
+import {
+  handleAuthRoutes,
+  getUserTokenFromCookie,
+} from './infra/http/routes/auth.ts'
 import { getLinkTypeForRequest } from './core/i18n.ts'
 import {
   handleLogin,
@@ -37,6 +38,7 @@ import {
   clearAllRooms,
   clearRooms,
   clearUsersFromRoom,
+  clearUsersFromAllRooms,
 } from './features/session/session.ts'
 import { serveFile } from './infra/http/staticFileServer.ts'
 import {
@@ -477,7 +479,10 @@ for await (const req of server) {
         responseStatus = 401
         await req.respond({
           status: responseStatus,
-          body: JSON.stringify({ error: 'Authentication required.', code: 'USER_AUTH_REQUIRED' }),
+          body: JSON.stringify({
+            error: 'Authentication required.',
+            code: 'USER_AUTH_REQUIRED',
+          }),
           headers: makeHeaders(req, 'application/json'),
         })
         continue
@@ -520,6 +525,7 @@ for await (const req of server) {
       clearAllRooms,
       clearRooms,
       clearUsersFromRoom,
+      clearUsersFromAllRooms,
       onWizardComplete: () => {
         startBackgroundUpdateJob()
       },
@@ -725,7 +731,12 @@ for await (const req of server) {
       const filename = p.slice('/cached-poster/'.length)
       // Reject path traversal: filenames must be a single path component
       // with only safe characters. Any '..' or '/' is an attack attempt.
-      if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\0')) {
+      if (
+        !filename ||
+        filename.includes('..') ||
+        filename.includes('/') ||
+        filename.includes('\0')
+      ) {
         await req.respond({ status: 400, body: 'Bad Request' })
         continue
       }

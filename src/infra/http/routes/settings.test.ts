@@ -54,6 +54,7 @@ const makeDeps = (
   clearAllRooms: () => {},
   clearRooms: () => {},
   clearUsersFromRoom: () => {},
+  clearUsersFromAllRooms: () => {},
   onWizardComplete: () => {
     calls.wizardComplete += 1
   },
