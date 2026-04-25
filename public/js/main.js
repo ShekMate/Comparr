@@ -5036,6 +5036,7 @@ async function login(api) {
   const userAuthEmby = document.querySelector('.js-user-auth-emby')
   const plexSigninBtn = document.querySelector('.js-plex-signin-btn')
   const plexStatus = document.querySelector('.js-plex-status')
+  const plexContinueBtn = document.querySelector('.js-plex-continue-btn')
   const jellyfinSigninBtn = document.querySelector('.js-jellyfin-signin-btn')
   const jellyfinStatus = document.querySelector('.js-jellyfin-status')
   const embySigninBtn = document.querySelector('.js-emby-signin-btn')
@@ -5131,7 +5132,14 @@ async function login(api) {
     if (userAuthPlex) userAuthPlex.style.display = 'flex'
 
     await new Promise(resolve => {
+      let sessionWatcher = null
+      let popupCloseWatcher = null
       const handleUserLoggedIn = user => {
+        if (sessionWatcher) clearInterval(sessionWatcher)
+        sessionWatcher = null
+        if (popupCloseWatcher) clearInterval(popupCloseWatcher)
+        popupCloseWatcher = null
+        if (plexContinueBtn) plexContinueBtn.hidden = true
         currentUser = user
         window.COMPARR_USER = user
         window.USER_HAS_SERVER_ACCESS = user.hasServerAccess !== false
@@ -5141,10 +5149,56 @@ async function login(api) {
         resolve()
       }
 
+      // Some browsers can complete Plex auth/session updates while the popup
+      // closes before this page receives the normal success path. Polling
+      // /api/auth/me prevents the login UI from getting stuck until refresh.
+      sessionWatcher = setInterval(async () => {
+        const authState = await api.getAuthUser().catch(() => ({ user: null }))
+        if (authState?.user) {
+          handleUserLoggedIn(authState.user)
+        }
+      }, 1500)
+
+      const showPlexContinue = message => {
+        if (plexContinueBtn) {
+          plexContinueBtn.hidden = false
+          plexContinueBtn.disabled = false
+        }
+        if (plexStatus) {
+          plexStatus.textContent =
+            message || 'Plex sign-in window closed. Click Continue.'
+          plexStatus.hidden = false
+        }
+      }
+
+      const hidePlexContinue = () => {
+        if (plexContinueBtn) {
+          plexContinueBtn.hidden = true
+          plexContinueBtn.disabled = false
+        }
+      }
+
+      plexContinueBtn?.addEventListener('click', async () => {
+        plexContinueBtn.disabled = true
+        if (plexStatus) {
+          plexStatus.textContent = 'Checking sign-in status…'
+          plexStatus.hidden = false
+        }
+        const authState = await api.getAuthUser().catch(() => ({ user: null }))
+        if (authState?.user) {
+          handleUserLoggedIn(authState.user)
+          return
+        }
+        showPlexContinue(
+          'No active session yet. Finish Plex sign-in, then click Continue again.'
+        )
+      })
+
       // ── Plex PIN flow ────────────────────────────────────────────────────
       if (plexSigninBtn) {
         plexSigninBtn.addEventListener('click', async () => {
           plexSigninBtn.disabled = true
+          hidePlexContinue()
           if (plexStatus) {
             plexStatus.textContent = 'Opening Plex login…'
             plexStatus.hidden = false
@@ -5166,6 +5220,15 @@ async function login(api) {
             return
           }
           console.info('[auth][user-login] Popup opened successfully')
+          if (popupCloseWatcher) clearInterval(popupCloseWatcher)
+          popupCloseWatcher = setInterval(() => {
+            if (!popup.closed) return
+            clearInterval(popupCloseWatcher)
+            popupCloseWatcher = null
+            showPlexContinue(
+              'Plex login window closed. Click Continue to finish sign in.'
+            )
+          }, 400)
 
           try {
             if (plexStatus)
@@ -5184,12 +5247,15 @@ async function login(api) {
             handleUserLoggedIn(result.user)
           } catch (err) {
             console.error('[auth][user-login] Failed Plex OAuth login', err)
+            if (popupCloseWatcher) clearInterval(popupCloseWatcher)
+            popupCloseWatcher = null
             if (!popup.closed) popup.close()
             plexSigninBtn.disabled = false
             if (plexStatus) {
               plexStatus.textContent =
                 err.message || 'Could not complete Plex login.'
             }
+            showPlexContinue()
           }
         })
       }
