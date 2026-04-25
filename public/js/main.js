@@ -1307,7 +1307,9 @@ async function maybeRunUserOnboardingWizard(currentUser) {
     personalSources = [],
   } = getAvailableSubscriptionOptions()
   const formatServiceLabel = value => {
-    const normalized = String(value || '').trim().toLowerCase()
+    const normalized = String(value || '')
+      .trim()
+      .toLowerCase()
     const knownLabels = {
       'amazon-prime': 'Amazon Prime Video',
       'apple-tv-plus': 'Apple TV+',
@@ -1391,9 +1393,7 @@ async function maybeRunUserOnboardingWizard(currentUser) {
       )
 
     const state = {
-      subscriptions: existingSubs.length
-        ? normalizeServices(existingSubs)
-        : [],
+      subscriptions: existingSubs.length ? normalizeServices(existingSubs) : [],
       defaultsLastSavedSnapshot: JSON.stringify(
         normalizeFilterStateForDefaults(
           loadSavedSwipeFilterDefaults() || window.filterState
@@ -1527,7 +1527,9 @@ async function maybeRunUserOnboardingWizard(currentUser) {
           ? paidServiceOptions
               .map(
                 option => `<label class="first-run-user-auth-row">
-              <input type="checkbox" class="user-onboarding-sub" value="${option.value}" ${
+              <input type="checkbox" class="user-onboarding-sub" value="${
+                option.value
+              }" ${
                   state.subscriptions.includes(option.value) ? 'checked' : ''
                 } />
               <div><strong>${option.label}</strong></div>
@@ -5162,6 +5164,11 @@ async function login(api) {
     )
 
     initTabs()
+    // Run first-time user onboarding only after the main app is visible, so
+    // finishing onboarding keeps users in-app.
+    if (currentUser) {
+      await maybeRunUserOnboardingWizard(currentUser)
+    }
     return { ...loginApiData, user: name, roomCode: code, appMode: 'personal' }
   }
 
@@ -5169,7 +5176,6 @@ async function login(api) {
     await loadClientConfig().catch(() => {})
     updateHostManagedSubscriptionServiceOptions()
     applyUserSubscriptions(loadUserSubscriptions(currentUser.id))
-    await maybeRunUserOnboardingWizard(currentUser)
   }
 
   // ── Auto-login: always runs after Plex auth ──────────────────────────────
