@@ -736,6 +736,7 @@ function initTabs() {
       'settings-metadata',
       'settings-request-services',
       'settings-security',
+      'settings-users',
     ])
 
     currentSettingsTarget = targetId
@@ -1775,6 +1776,9 @@ function initializeAdminSettingsTabs() {
       if (target === 'settings-reset') {
         initializeResetTab()
         loadUserHistory()
+      } else if (target === 'settings-users') {
+        initializeUsersAdminTab()
+        loadAdminUsers()
       }
     })
   })
@@ -1879,6 +1883,7 @@ async function handleResetSettings() {
 }
 
 let userHistoryData = []
+let adminUsersData = []
 
 async function loadUserHistory() {
   const listEl = document.getElementById('user-history-list')
@@ -2162,6 +2167,119 @@ function initializeResetTab() {
   if (refresh && !refresh.dataset.boundRefresh) {
     refresh.addEventListener('click', loadUserHistory)
     refresh.dataset.boundRefresh = 'true'
+  }
+}
+
+async function loadAdminUsers() {
+  const listEl = document.getElementById('settings-users-list')
+  if (!listEl) return
+  listEl.innerHTML =
+    '<div class="settings-users-empty"><i class="fas fa-circle-notch fa-spin"></i> Loading…</div>'
+  const base = document.body.dataset.basePath || ''
+
+  try {
+    const res = await fetch(`${base}/api/admin/users`, {
+      headers: { ...getAdminHeaders() },
+    })
+    if (res.status === 403) {
+      listEl.innerHTML =
+        '<div class="settings-users-empty"><i class="fas fa-exclamation-circle"></i> Admin access required. Please close and re-open Admin Settings.</div>'
+      return
+    }
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || `Failed to load users (${res.status})`)
+    }
+    adminUsersData = Array.isArray(data.users) ? data.users : []
+    renderAdminUsers()
+  } catch (err) {
+    listEl.innerHTML = `<div class="settings-users-empty"><i class="fas fa-exclamation-circle"></i> ${
+      err?.message || 'Failed to load users'
+    }</div>`
+  }
+}
+
+function renderAdminUsers() {
+  const listEl = document.getElementById('settings-users-list')
+  if (!listEl) return
+  if (!adminUsersData.length) {
+    listEl.innerHTML =
+      '<div class="settings-users-empty"><i class="fas fa-check-circle"></i> No users found.</div>'
+    return
+  }
+
+  listEl.innerHTML = ''
+  adminUsersData.forEach(user => {
+    const row = document.createElement('div')
+    row.className = 'settings-users-row'
+
+    const name = document.createElement('span')
+    name.className = 'settings-users-name'
+    name.textContent = user.username || '(unknown)'
+    row.appendChild(name)
+
+    const deleteBtn = document.createElement('button')
+    deleteBtn.type = 'button'
+    deleteBtn.className = 'settings-users-delete-btn'
+    deleteBtn.textContent = 'Delete'
+    deleteBtn.addEventListener('click', () => handleDeleteAdminUser(user))
+    row.appendChild(deleteBtn)
+    listEl.appendChild(row)
+  })
+}
+
+async function handleDeleteAdminUser(user) {
+  if (!user || !user.id) return
+  openResetModal({
+    title: `Delete "${user.username}"?`,
+    body:
+      'This will permanently remove this user from users.db, clear their room history, and invalidate their active sessions. This cannot be undone.',
+    confirmLabel: 'Delete',
+    confirmClass: 'reset-modal__confirm--warn',
+    onConfirm: async () => {
+      const base = document.body.dataset.basePath || ''
+      try {
+        const res = await fetch(`${base}/api/admin/delete-user`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...getAdminHeaders() },
+          body: JSON.stringify({ userId: user.id }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.success) {
+          throw new Error(data.message || `Delete failed (${res.status})`)
+        }
+        setSettingsStatus(`Deleted user "${user.username}".`)
+        pulseSettingsStatus('success')
+        const currentSessionUserId = Number(
+          sessionStorage.getItem('userId') ||
+            localStorage.getItem('userId') ||
+            0
+        )
+        if (currentSessionUserId && currentSessionUserId === Number(user.id)) {
+          localStorage.removeItem('user')
+          localStorage.removeItem('roomCode')
+          localStorage.removeItem('personalUser')
+          localStorage.removeItem('personalRoomCode')
+          localStorage.removeItem('userId')
+          sessionStorage.clear()
+          window.location.reload()
+          return
+        }
+        await Promise.all([loadAdminUsers(), loadUserHistory()])
+      } catch (err) {
+        const msg = `Failed to delete user: ${err?.message || err}`
+        setSettingsStatus(msg)
+        pulseSettingsStatus('error')
+      }
+    },
+  })
+}
+
+function initializeUsersAdminTab() {
+  const refresh = document.getElementById('settings-users-refresh')
+  if (refresh && !refresh.dataset.boundUsersRefresh) {
+    refresh.addEventListener('click', loadAdminUsers)
+    refresh.dataset.boundUsersRefresh = 'true'
   }
 }
 

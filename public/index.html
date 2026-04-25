@@ -2389,6 +2389,13 @@
               </button>
               <button
                 type="button"
+                class="settings-admin-tab"
+                data-admin-tab-target="settings-users"
+              >
+                Users
+              </button>
+              <button
+                type="button"
                 class="settings-admin-tab settings-admin-tab--danger"
                 data-admin-tab-target="settings-reset"
               >
@@ -3140,6 +3147,37 @@
               >
                 Test Seerr connection
               </button>
+            </div>
+          </div>
+
+          <div
+            class="settings-section"
+            id="settings-users"
+            data-admin-section="true"
+            data-admin-tab-panel="true"
+          >
+            <h4>Users</h4>
+            <div class="settings-field">
+              <p>
+                Manage Plex users that have signed in to Comparr. Deleting a
+                user removes them from users.db and clears their room history.
+              </p>
+              <div class="settings-users-toolbar">
+                <button
+                  type="button"
+                  class="user-history-refresh-btn"
+                  id="settings-users-refresh"
+                  title="Refresh users"
+                >
+                  <i class="fas fa-sync-alt"></i>
+                </button>
+              </div>
+              <div id="settings-users-list" class="settings-users-list">
+                <div class="settings-users-empty">
+                  <i class="fas fa-circle-notch fa-spin"></i>
+                  Loading…
+                </div>
+              </div>
             </div>
           </div>
 

@@ -21,6 +21,12 @@ export interface User {
   lastLogin: string
 }
 
+export interface AdminUserSummary {
+  id: number
+  username: string
+  isAdmin: boolean
+}
+
 export interface UserSettings {
   userId: number
   plexUrl: string
@@ -97,14 +103,18 @@ export function initUserDatabase(): Database {
       if (!hasInviteCode) {
         db.exec(`ALTER TABLE users ADD COLUMN invite_code TEXT`)
       }
-      db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_invite_code ON users(invite_code)`)
+      db.exec(
+        `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_invite_code ON users(invite_code)`
+      )
     } catch (err) {
       log.warn(`[auth] invite_code migration warning: ${err}`)
     }
 
     // Add subscriptions column to existing user_settings tables
     try {
-      db.exec(`ALTER TABLE user_settings ADD COLUMN subscriptions TEXT NOT NULL DEFAULT '[]'`)
+      db.exec(
+        `ALTER TABLE user_settings ADD COLUMN subscriptions TEXT NOT NULL DEFAULT '[]'`
+      )
     } catch {
       // Column already exists — ignore
     }
@@ -176,8 +186,28 @@ function generateInviteCode(): string {
 }
 
 function rowToUser(row: unknown[]): User {
-  const [id, provider, providerUserId, username, email, avatarUrl, isAdmin, inviteCode, createdAt, lastLogin] = row as [
-    number, string, string, string, string, string, number, string | null, string, string
+  const [
+    id,
+    provider,
+    providerUserId,
+    username,
+    email,
+    avatarUrl,
+    isAdmin,
+    inviteCode,
+    createdAt,
+    lastLogin,
+  ] = row as [
+    number,
+    string,
+    string,
+    string,
+    string,
+    string,
+    number,
+    string | null,
+    string,
+    string
   ]
   return {
     id,
@@ -201,7 +231,9 @@ function usersHasInviteCodeColumn(): boolean {
     const stmt = getDb().prepare(`PRAGMA table_info(users)`)
     const rows = stmt.all<unknown[]>()
     stmt.finalize()
-    _usersHasInviteCodeColumn = rows.some(row => String(row?.[1] || '') === 'invite_code')
+    _usersHasInviteCodeColumn = rows.some(
+      row => String(row?.[1] || '') === 'invite_code'
+    )
   } catch {
     _usersHasInviteCodeColumn = false
   }
@@ -217,7 +249,10 @@ function getUserSelect(): string {
   return `SELECT id, provider, provider_user_id, username, email, avatar_url, is_admin, invite_code, created_at, last_login FROM users`
 }
 
-export function findUser(provider: AuthProvider, providerUserId: string): User | null {
+export function findUser(
+  provider: AuthProvider,
+  providerUserId: string
+): User | null {
   try {
     const stmt = getDb().prepare(
       `${getUserSelect()} WHERE provider = ? AND provider_user_id = ? LIMIT 1`
@@ -243,10 +278,43 @@ export function findUserById(id: number): User | null {
   }
 }
 
+export function listUsers(): AdminUserSummary[] {
+  try {
+    const stmt = getDb().prepare(
+      'SELECT id, username, is_admin FROM users ORDER BY created_at ASC'
+    )
+    const rows = stmt.values<[number, string, number][]>()
+    stmt.finalize()
+    return rows.map(([id, username, isAdmin]) => ({
+      id,
+      username: String(username || ''),
+      isAdmin: isAdmin === 1,
+    }))
+  } catch (err) {
+    log.error(`[auth] listUsers error: ${err}`)
+    return []
+  }
+}
+
+export function deleteUserById(id: number): boolean {
+  try {
+    const existing = findUserById(id)
+    if (!existing) return false
+    getDb().exec('DELETE FROM users WHERE id = ?', id)
+    log.info(`[auth] Deleted user id=${id} username=${existing.username}`)
+    return true
+  } catch (err) {
+    log.error(`[auth] deleteUserById error: ${err}`)
+    return false
+  }
+}
+
 export function findUserByInviteCode(inviteCode: string): User | null {
   try {
     if (!usersHasInviteCodeColumn()) return null
-    const stmt = getDb().prepare(`${getUserSelect()} WHERE invite_code = ? LIMIT 1`)
+    const stmt = getDb().prepare(
+      `${getUserSelect()} WHERE invite_code = ? LIMIT 1`
+    )
     const row = stmt.value<unknown[]>(inviteCode.toUpperCase())
     stmt.finalize()
     return row ? rowToUser(row) : null
@@ -259,7 +327,9 @@ export function findUserByInviteCode(inviteCode: string): User | null {
 /** Return true if at least one admin user exists. */
 export function adminExists(): boolean {
   try {
-    const stmt = getDb().prepare('SELECT 1 FROM users WHERE is_admin = 1 LIMIT 1')
+    const stmt = getDb().prepare(
+      'SELECT 1 FROM users WHERE is_admin = 1 LIMIT 1'
+    )
     const row = stmt.value<unknown[]>()
     stmt.finalize()
     return row !== undefined
@@ -332,7 +402,8 @@ export function upsertUser(params: UpsertUserParams): User {
  */
 export function getOrCreateInviteCode(userId: number): string {
   const user = findUserById(userId)
-  if (!user) throw new Error(`[auth] getOrCreateInviteCode: user ${userId} not found`)
+  if (!user)
+    throw new Error(`[auth] getOrCreateInviteCode: user ${userId} not found`)
   if (user.inviteCode) return user.inviteCode
 
   let code: string
@@ -351,7 +422,8 @@ export function refreshInviteCode(userId: number): string {
   // Remove all friend connections for this user (both directions)
   getDb().exec(
     'DELETE FROM friend_connections WHERE user_id = ? OR friend_user_id = ?',
-    userId, userId
+    userId,
+    userId
   )
 
   let code: string
@@ -375,16 +447,40 @@ const USER_SETTINGS_SELECT = `
   FROM user_settings`
 
 function rowToUserSettings(row: unknown[]): UserSettings {
-  const [userId, plexUrl, plexToken, plexLibraryName, embyUrl, embyApiKey, embyLibraryName,
-    jellyfinUrl, jellyfinApiKey, jellyfinLibraryName, radarrUrl, radarrApiKey,
-    seerrUrl, seerrApiKey, defaultFilters, subscriptions, updatedAt] = row as string[]
+  const [
+    userId,
+    plexUrl,
+    plexToken,
+    plexLibraryName,
+    embyUrl,
+    embyApiKey,
+    embyLibraryName,
+    jellyfinUrl,
+    jellyfinApiKey,
+    jellyfinLibraryName,
+    radarrUrl,
+    radarrApiKey,
+    seerrUrl,
+    seerrApiKey,
+    defaultFilters,
+    subscriptions,
+    updatedAt,
+  ] = row as string[]
   return {
     userId: Number(userId),
-    plexUrl, plexToken, plexLibraryName,
-    embyUrl, embyApiKey, embyLibraryName,
-    jellyfinUrl, jellyfinApiKey, jellyfinLibraryName,
-    radarrUrl, radarrApiKey,
-    seerrUrl, seerrApiKey,
+    plexUrl,
+    plexToken,
+    plexLibraryName,
+    embyUrl,
+    embyApiKey,
+    embyLibraryName,
+    jellyfinUrl,
+    jellyfinApiKey,
+    jellyfinLibraryName,
+    radarrUrl,
+    radarrApiKey,
+    seerrUrl,
+    seerrApiKey,
     defaultFilters,
     subscriptions: subscriptions ?? '[]',
     updatedAt,
@@ -393,7 +489,9 @@ function rowToUserSettings(row: unknown[]): UserSettings {
 
 export function getUserSettings(userId: number): UserSettings | null {
   try {
-    const stmt = getDb().prepare(`${USER_SETTINGS_SELECT} WHERE user_id = ? LIMIT 1`)
+    const stmt = getDb().prepare(
+      `${USER_SETTINGS_SELECT} WHERE user_id = ? LIMIT 1`
+    )
     const row = stmt.value<unknown[]>(userId)
     stmt.finalize()
     return row ? rowToUserSettings(row) : null
@@ -403,7 +501,10 @@ export function getUserSettings(userId: number): UserSettings | null {
   }
 }
 
-export function upsertUserSettings(userId: number, updates: Partial<Omit<UserSettings, 'userId' | 'updatedAt'>>): void {
+export function upsertUserSettings(
+  userId: number,
+  updates: Partial<Omit<UserSettings, 'userId' | 'updatedAt'>>
+): void {
   const now = new Date().toISOString()
   const existing = getUserSettings(userId)
 
@@ -442,11 +543,22 @@ export function upsertUserSettings(userId: number, updates: Partial<Omit<UserSet
         radarr_url = ?, radarr_api_key = ?, seerr_url = ?, seerr_api_key = ?,
         default_filters = ?, subscriptions = ?, updated_at = ?
        WHERE user_id = ?`,
-      merged.plexUrl, merged.plexToken, merged.plexLibraryName,
-      merged.embyUrl, merged.embyApiKey, merged.embyLibraryName,
-      merged.jellyfinUrl, merged.jellyfinApiKey, merged.jellyfinLibraryName,
-      merged.radarrUrl, merged.radarrApiKey, merged.seerrUrl, merged.seerrApiKey,
-      merged.defaultFilters, merged.subscriptions ?? '[]', now,
+      merged.plexUrl,
+      merged.plexToken,
+      merged.plexLibraryName,
+      merged.embyUrl,
+      merged.embyApiKey,
+      merged.embyLibraryName,
+      merged.jellyfinUrl,
+      merged.jellyfinApiKey,
+      merged.jellyfinLibraryName,
+      merged.radarrUrl,
+      merged.radarrApiKey,
+      merged.seerrUrl,
+      merged.seerrApiKey,
+      merged.defaultFilters,
+      merged.subscriptions ?? '[]',
+      now,
       userId
     )
   }
@@ -454,10 +566,21 @@ export function upsertUserSettings(userId: number, updates: Partial<Omit<UserSet
 
 // ── Friend connections ─────────────────────────────────────────────────────
 
-function rowToFriendConnection(row: unknown[], friendUsername: string, friendInviteCode: string): FriendConnection {
-  const [id, userId, friendUserId, status, sharesServer, serverPromptPending, createdAt, updatedAt] = row as [
-    number, number, number, string, number, number, string, string
-  ]
+function rowToFriendConnection(
+  row: unknown[],
+  friendUsername: string,
+  friendInviteCode: string
+): FriendConnection {
+  const [
+    id,
+    userId,
+    friendUserId,
+    status,
+    sharesServer,
+    serverPromptPending,
+    createdAt,
+    updatedAt,
+  ] = row as [number, number, number, string, number, number, string, string]
   return {
     id,
     userId,
@@ -482,7 +605,10 @@ export function sendFriendRequest(
 ): { success: boolean; friendName?: string; error?: string } {
   const recipient = findUserByInviteCode(recipientInviteCode)
   if (!recipient) {
-    return { success: false, error: 'Invite code not found. Ask your friend to check their code.' }
+    return {
+      success: false,
+      error: 'Invite code not found. Ask your friend to check their code.',
+    }
   }
   if (recipient.id === requesterId) {
     return { success: false, error: 'That is your own invite code.' }
@@ -495,21 +621,29 @@ export function sendFriendRequest(
       `INSERT INTO friend_connections (user_id, friend_user_id, status, shares_server, server_prompt_pending, created_at, updated_at)
        VALUES (?, ?, 'pending', 0, 0, ?, ?)
        ON CONFLICT(user_id, friend_user_id) DO NOTHING`,
-      requesterId, recipient.id, now, now
+      requesterId,
+      recipient.id,
+      now,
+      now
     )
     // Recipient → requester row (pending, recipient needs to accept)
     getDb().exec(
       `INSERT INTO friend_connections (user_id, friend_user_id, status, shares_server, server_prompt_pending, created_at, updated_at)
        VALUES (?, ?, 'pending', 0, 0, ?, ?)
        ON CONFLICT(user_id, friend_user_id) DO NOTHING`,
-      recipient.id, requesterId, now, now
+      recipient.id,
+      requesterId,
+      now,
+      now
     )
   } catch (err) {
     log.error(`[auth] sendFriendRequest error: ${err}`)
     return { success: false, error: 'Failed to create connection.' }
   }
 
-  log.info(`[auth] Friend request: user ${requesterId} → user ${recipient.id} (${recipient.username})`)
+  log.info(
+    `[auth] Friend request: user ${requesterId} → user ${recipient.id} (${recipient.username})`
+  )
   return { success: true, friendName: recipient.username }
 }
 
@@ -528,14 +662,19 @@ export function acceptFriendRequest(
   const r1 = getDb().exec(
     `UPDATE friend_connections SET status = 'accepted', shares_server = ?, updated_at = ?
      WHERE user_id = ? AND friend_user_id = ? AND status = 'pending'`,
-    sharesServer ? 1 : 0, now, recipientId, requesterId
+    sharesServer ? 1 : 0,
+    now,
+    recipientId,
+    requesterId
   )
 
   // Mark requester → recipient as accepted too
   getDb().exec(
     `UPDATE friend_connections SET status = 'accepted', updated_at = ?
      WHERE user_id = ? AND friend_user_id = ?`,
-    now, requesterId, recipientId
+    now,
+    requesterId,
+    recipientId
   )
 
   // If recipient chose to share their server, set prompt flag for requester
@@ -543,11 +682,15 @@ export function acceptFriendRequest(
     getDb().exec(
       `UPDATE friend_connections SET server_prompt_pending = 1, updated_at = ?
        WHERE user_id = ? AND friend_user_id = ?`,
-      now, requesterId, recipientId
+      now,
+      requesterId,
+      recipientId
     )
   }
 
-  log.info(`[auth] Friend request accepted: user ${recipientId} ← user ${requesterId}`)
+  log.info(
+    `[auth] Friend request accepted: user ${recipientId} ← user ${requesterId}`
+  )
   return { success: true }
 }
 
@@ -560,17 +703,26 @@ export function declineFriendRequest(
 ): void {
   getDb().exec(
     'DELETE FROM friend_connections WHERE (user_id = ? AND friend_user_id = ?) OR (user_id = ? AND friend_user_id = ?)',
-    recipientId, requesterId, requesterId, recipientId
+    recipientId,
+    requesterId,
+    requesterId,
+    recipientId
   )
 }
 
 /**
  * Remove an existing (accepted) friend connection from both sides.
  */
-export function removeFriendConnection(userId: number, friendUserId: number): void {
+export function removeFriendConnection(
+  userId: number,
+  friendUserId: number
+): void {
   getDb().exec(
     'DELETE FROM friend_connections WHERE (user_id = ? AND friend_user_id = ?) OR (user_id = ? AND friend_user_id = ?)',
-    userId, friendUserId, friendUserId, userId
+    userId,
+    friendUserId,
+    friendUserId,
+    userId
   )
 }
 
@@ -587,7 +739,10 @@ export function updateFriendSharing(
   getDb().exec(
     `UPDATE friend_connections SET shares_server = ?, updated_at = ?
      WHERE user_id = ? AND friend_user_id = ? AND status = 'accepted'`,
-    sharesServer ? 1 : 0, now, userId, friendUserId
+    sharesServer ? 1 : 0,
+    now,
+    userId,
+    friendUserId
   )
 
   if (sharesServer) {
@@ -595,7 +750,9 @@ export function updateFriendSharing(
     getDb().exec(
       `UPDATE friend_connections SET server_prompt_pending = 1, updated_at = ?
        WHERE user_id = ? AND friend_user_id = ? AND status = 'accepted'`,
-      now, friendUserId, userId
+      now,
+      friendUserId,
+      userId
     )
   }
 }
@@ -614,14 +771,18 @@ export function resolveServerPrompt(
   getDb().exec(
     `UPDATE friend_connections SET server_prompt_pending = 0, updated_at = ?
      WHERE user_id = ? AND friend_user_id = ?`,
-    now, userId, friendUserId
+    now,
+    userId,
+    friendUserId
   )
   // If they declined, turn off sharing on the friend's side for this user
   if (!acceptsServer) {
     getDb().exec(
       `UPDATE friend_connections SET shares_server = 0, updated_at = ?
        WHERE user_id = ? AND friend_user_id = ?`,
-      now, friendUserId, userId
+      now,
+      friendUserId,
+      userId
     )
   }
 }
@@ -643,8 +804,28 @@ export function getFriendConnections(userId: number): FriendConnection[] {
     const rows = stmt.values<unknown[][]>(userId)
     stmt.finalize()
     return rows.map(row => {
-      const [id, uid, friendId, status, sharesServer, serverPromptPending, createdAt, updatedAt, friendUsername, friendInviteCode] = row as [
-        number, number, number, string, number, number, string, string, string, string
+      const [
+        id,
+        uid,
+        friendId,
+        status,
+        sharesServer,
+        serverPromptPending,
+        createdAt,
+        updatedAt,
+        friendUsername,
+        friendInviteCode,
+      ] = row as [
+        number,
+        number,
+        number,
+        string,
+        number,
+        number,
+        string,
+        string,
+        string,
+        string
       ]
       return {
         id,

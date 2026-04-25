@@ -6410,6 +6410,62 @@ footer {
   color: var(--color-text-secondary);
 }
 
+/* ─── Admin Users List ──────────────────────────────────────── */
+
+.settings-users-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+
+.settings-users-list {
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.settings-users-empty {
+  padding: 1rem;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.settings-users-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.settings-users-row:last-child {
+  border-bottom: none;
+}
+
+.settings-users-name {
+  color: var(--color-text-primary);
+  font-size: 0.85rem;
+  word-break: break-word;
+}
+
+.settings-users-delete-btn {
+  border: 1px solid rgba(220, 38, 38, 0.45);
+  background: rgba(220, 38, 38, 0.12);
+  color: #fecaca;
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.6rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.settings-users-delete-btn:hover {
+  background: rgba(220, 38, 38, 0.2);
+}
+
 /* ─── Reset Confirmation Modal ───────────────────────────────── */
 
 .reset-modal-overlay {
