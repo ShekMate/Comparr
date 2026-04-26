@@ -508,15 +508,7 @@ export async function handleAuthRoutes(
   // can load it without CSP violations (img-src 'self' only).
   // Query param: url (URL-encoded absolute avatar URL from Plex/Jellyfin/Emby)
   if (pathname === '/api/auth/avatar' && req.method === 'GET') {
-    let requestUrl: URL
-    try {
-      requestUrl = new URL(req.url)
-    } catch {
-      // Some runtimes/middleware may provide a path-only request URL.
-      requestUrl = new URL(req.url, 'http://localhost')
-    }
-
-    const rawUrl = requestUrl.searchParams.get('url') || ''
+    const rawUrl = new URL(req.url).searchParams.get('url') || ''
     if (!rawUrl) {
       return new Response('Missing url parameter', { status: 400 })
     }
