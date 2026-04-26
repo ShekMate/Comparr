@@ -662,7 +662,18 @@ export async function handleAuthRoutes(
   // ── GET /api/auth/avatar ─────────────────────────────────────────────────
   // Proxy avatar images from allowed origins to avoid CSP violations.
   if (pathname === '/api/auth/avatar' && req.method === 'GET') {
-    const rawUrl = new URL(req.url).searchParams.get('url') || ''
+    let rawUrl = ''
+    try {
+      // CompatRequest.url is path-only (e.g. /api/auth/avatar?...), so we
+      // parse from rawRequest.url first and fall back to a localhost base.
+      rawUrl = new URL(req.rawRequest.url).searchParams.get('url') || ''
+    } catch {
+      try {
+        rawUrl = new URL(req.url, 'http://localhost').searchParams.get('url') || ''
+      } catch {
+        rawUrl = ''
+      }
+    }
     if (!rawUrl) {
       return new Response('Missing url parameter', { status: 400 })
     }

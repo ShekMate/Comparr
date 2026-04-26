@@ -587,7 +587,12 @@ async function ensureDataDir() {
     // Test write permissions
     const testFile = `${DATA_DIR}/.write-test`
     await Deno.writeTextFile(testFile, 'test')
-    await Deno.remove(testFile)
+    try {
+      await Deno.remove(testFile)
+    } catch (err) {
+      // If another process already cleaned up the probe file, that's okay.
+      if (!(err instanceof Deno.errors.NotFound)) throw err
+    }
 
     log.info(`Data directory confirmed: ${DATA_DIR}`)
   } catch (err) {
