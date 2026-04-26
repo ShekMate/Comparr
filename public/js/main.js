@@ -5270,11 +5270,24 @@ async function login(api) {
             popupCloseWatcher = null
             if (!popup.closed) popup.close()
             plexSigninBtn.disabled = false
-            if (plexStatus) {
-              plexStatus.textContent =
-                err.message || 'Could not complete Plex login.'
+
+            // On mobile browsers, the popup/new tab flow can race the local
+            // polling loop. Before surfacing an error, do a final session
+            // check in case login actually succeeded.
+            const authState = await api
+              .getAuthUser()
+              .catch(() => ({ user: null }))
+            if (authState?.user) {
+              handleUserLoggedIn(authState.user)
+              return
             }
-            showPlexContinue()
+
+            const errorMessage =
+              err?.message || 'Could not complete Plex login.'
+            if (plexStatus) {
+              plexStatus.textContent = errorMessage
+            }
+            showPlexContinue(errorMessage)
           }
         })
       }
