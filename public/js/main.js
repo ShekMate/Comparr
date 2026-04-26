@@ -5258,23 +5258,28 @@ async function login(api) {
             clearInterval(popupCloseWatcher)
             popupCloseWatcher = null
             if (plexLoginSettled) return
-            // On mobile the popup is a new tab — auth may have completed just
-            // before the tab closed. Check session immediately before falling
-            // back to the manual Continue prompt.
-            api
-              .getAuthUser()
-              .catch(() => ({ user: null }))
-              .then(authState => {
-                if (plexLoginSettled) return
-                if (authState?.user) {
-                  handleUserLoggedIn(authState.user)
-                  return
-                }
-                plexSigninBtn.disabled = false
-                showPlexContinue(
-                  'Plex login window closed. Click Continue to finish sign in.'
-                )
-              })
+            // On desktop plexOAuthLogin closes the popup itself only after
+            // getting the token, so plexLoginSettled is already true by the
+            // time we get here. On mobile the auth tab is closed by the
+            // callback page before the main (backgrounded/throttled) tab has
+            // gotten the token. plexOAuthLogin is still polling plex.tv and
+            // will resolve within a second or two once the main tab is
+            // foregrounded. Show a passive waiting message — do NOT show a
+            // "Click Continue" prompt that would make the user think they need
+            // to act and interrupt the flow.
+            if (plexStatus) {
+              plexStatus.textContent = 'Completing Plex sign-in…'
+              plexStatus.hidden = false
+            }
+            // Only surface a manual Continue after a long delay, as a
+            // genuine stuck-flow fallback (e.g. user closed the tab early).
+            setTimeout(() => {
+              if (plexLoginSettled) return
+              plexSigninBtn.disabled = false
+              showPlexContinue(
+                'Sign-in is taking longer than expected. Tap Continue to check.'
+              )
+            }, 25000)
           }, 400)
 
           // On mobile, switching tabs suspends setInterval timers. When the
