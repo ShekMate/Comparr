@@ -3098,29 +3098,46 @@ async function plexOAuthLogin(popup) {
 
   const startedAt = Date.now()
   const maxMs = 6 * 60 * 1000
+  let sawTransientPollFailure = false
+
   while (Date.now() - startedAt < maxMs) {
-    const pollRes = await fetch(`https://plex.tv/api/v2/pins/${pinData.id}`, {
-      headers: {
-        Accept: 'application/json',
-        'X-Plex-Client-Identifier': clientId,
-        'X-Plex-Product': 'Comparr',
-        'X-Plex-Version': '1.0',
-        'X-Plex-Device': 'Web',
-        'X-Plex-Platform': 'Web',
-      },
-    })
-    if (pollRes.ok) {
-      const pollData = await pollRes.json().catch(() => ({}))
-      const authToken = String(
-        pollData?.authToken || pollData?.auth_token || ''
-      ).trim()
-      if (authToken) {
-        if (!popup.closed) popup.close()
-        return { authToken, clientId }
+    try {
+      const pollRes = await fetch(`https://plex.tv/api/v2/pins/${pinData.id}`, {
+        headers: {
+          Accept: 'application/json',
+          'X-Plex-Client-Identifier': clientId,
+          'X-Plex-Product': 'Comparr',
+          'X-Plex-Version': '1.0',
+          'X-Plex-Device': 'Web',
+          'X-Plex-Platform': 'Web',
+        },
+      })
+      if (pollRes.ok) {
+        const pollData = await pollRes.json().catch(() => ({}))
+        const authToken = String(
+          pollData?.authToken || pollData?.auth_token || ''
+        ).trim()
+        if (authToken) {
+          if (!popup.closed) popup.close()
+          return { authToken, clientId }
+        }
       }
+    } catch (err) {
+      // Mobile browsers can briefly suspend/background network activity while
+      // the Plex tab is active. Treat poll failures as transient until timeout.
+      sawTransientPollFailure = true
+      console.debug('[auth][plex] transient PIN poll failure', err)
     }
+
     await new Promise(resolve => setTimeout(resolve, 1000))
   }
+
+  if (sawTransientPollFailure) {
+    throw new Error(
+      'Plex login timed out after network interruptions. Please tap Sign in with Plex and try again.'
+    )
+  }
+
   throw new Error('Plex login expired. Please try again.')
 }
 
