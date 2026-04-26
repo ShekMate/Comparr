@@ -5159,12 +5159,17 @@ async function login(api) {
     await new Promise(resolve => {
       let sessionWatcher = null
       let popupCloseWatcher = null
+      let visibilityHandler = null
       let plexLoginSettled = false
       const handleUserLoggedIn = user => {
         if (sessionWatcher) clearInterval(sessionWatcher)
         sessionWatcher = null
         if (popupCloseWatcher) clearInterval(popupCloseWatcher)
         popupCloseWatcher = null
+        if (visibilityHandler) {
+          document.removeEventListener('visibilitychange', visibilityHandler)
+          visibilityHandler = null
+        }
         plexLoginSettled = true
         if (plexContinueBtn) plexContinueBtn.hidden = true
         currentUser = user
@@ -5253,11 +5258,42 @@ async function login(api) {
             clearInterval(popupCloseWatcher)
             popupCloseWatcher = null
             if (plexLoginSettled) return
-            plexSigninBtn.disabled = false
-            showPlexContinue(
-              'Plex login window closed. Click Continue to finish sign in.'
-            )
+            // On mobile the popup is a new tab — auth may have completed just
+            // before the tab closed. Check session immediately before falling
+            // back to the manual Continue prompt.
+            api
+              .getAuthUser()
+              .catch(() => ({ user: null }))
+              .then(authState => {
+                if (plexLoginSettled) return
+                if (authState?.user) {
+                  handleUserLoggedIn(authState.user)
+                  return
+                }
+                plexSigninBtn.disabled = false
+                showPlexContinue(
+                  'Plex login window closed. Click Continue to finish sign in.'
+                )
+              })
           }, 400)
+
+          // On mobile, switching tabs suspends setInterval timers. When the
+          // user returns to this tab after completing Plex auth, the page
+          // becomes visible again — check the session immediately so the
+          // wizard loads without a manual refresh.
+          if (visibilityHandler) {
+            document.removeEventListener('visibilitychange', visibilityHandler)
+          }
+          visibilityHandler = async () => {
+            if (document.visibilityState !== 'visible' || plexLoginSettled) return
+            const authState = await api
+              .getAuthUser()
+              .catch(() => ({ user: null }))
+            if (authState?.user && !plexLoginSettled) {
+              handleUserLoggedIn(authState.user)
+            }
+          }
+          document.addEventListener('visibilitychange', visibilityHandler)
 
           try {
             if (plexStatus)
