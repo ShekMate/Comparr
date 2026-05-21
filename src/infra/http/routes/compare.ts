@@ -273,6 +273,7 @@ export async function handleCompareRoutes(
         friendName: conn.friendUsername,
         friendInviteCode: conn.friendInviteCode,
         status: conn.status,
+        isOutgoing: conn.isInitiator,
         sharesServer: conn.sharesServer,
         friendSharesServerWithMe,
         serverPromptPending: conn.serverPromptPending,
@@ -327,11 +328,8 @@ export async function handleCompareRoutes(
     upsertUserSettings(session.userId, {
       defaultFilters:
         typeof body.defaultFilters === 'string' ? body.defaultFilters : undefined,
-<<<<<<< codex/task-title-ucuzdd
-=======
       subscriptions:
         typeof body.subscriptions === 'string' ? body.subscriptions : undefined,
->>>>>>> dev
     })
 
     return new Response(JSON.stringify({ success: true }), {

@@ -56,6 +56,7 @@ export interface FriendConnection {
   friendUsername: string
   friendInviteCode: string
   status: FriendStatus
+  isInitiator: boolean
   sharesServer: boolean
   serverPromptPending: boolean
   createdAt: string
@@ -142,6 +143,7 @@ export function initUserDatabase(): Database {
     `)
 
     // Two rows per friendship — one for each direction.
+    // is_initiator: 1 on the row belonging to whoever sent the friend request.
     // shares_server: does THIS user share their server with friend?
     // server_prompt_pending: friend recently turned on sharing; THIS user hasn't been prompted yet.
     db.exec(`
@@ -150,6 +152,7 @@ export function initUserDatabase(): Database {
         user_id               INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         friend_user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         status                TEXT    NOT NULL DEFAULT 'pending',
+        is_initiator          INTEGER NOT NULL DEFAULT 0,
         shares_server         INTEGER NOT NULL DEFAULT 0,
         server_prompt_pending INTEGER NOT NULL DEFAULT 0,
         created_at            TEXT    NOT NULL,
@@ -157,6 +160,21 @@ export function initUserDatabase(): Database {
         UNIQUE(user_id, friend_user_id)
       )
     `)
+
+    // Add is_initiator column to existing databases that predate this schema.
+    try {
+      const fcCols = db.prepare(`PRAGMA table_info(friend_connections)`)
+      const fcColRows = fcCols.all<unknown[]>()
+      fcCols.finalize()
+      const hasIsInitiator = fcColRows.some(
+        row => String(row?.[1] || '') === 'is_initiator'
+      )
+      if (!hasIsInitiator) {
+        db.exec(`ALTER TABLE friend_connections ADD COLUMN is_initiator INTEGER NOT NULL DEFAULT 0`)
+      }
+    } catch (err) {
+      log.warn(`[auth] is_initiator migration warning: ${err}`)
+    }
 
     log.info(`[auth] User database ready at ${DB_PATH}`)
     return db
@@ -576,11 +594,12 @@ function rowToFriendConnection(
     userId,
     friendUserId,
     status,
+    isInitiator,
     sharesServer,
     serverPromptPending,
     createdAt,
     updatedAt,
-  ] = row as [number, number, number, string, number, number, string, string]
+  ] = row as [number, number, number, string, number, number, number, string, string]
   return {
     id,
     userId,
@@ -588,6 +607,7 @@ function rowToFriendConnection(
     friendUsername,
     friendInviteCode,
     status: status as FriendStatus,
+    isInitiator: isInitiator === 1,
     sharesServer: sharesServer === 1,
     serverPromptPending: serverPromptPending === 1,
     createdAt,
@@ -616,20 +636,20 @@ export function sendFriendRequest(
 
   const now = new Date().toISOString()
   try {
-    // Requester → recipient row (pending)
+    // Requester → recipient row (pending, is_initiator=1 marks the sender)
     getDb().exec(
-      `INSERT INTO friend_connections (user_id, friend_user_id, status, shares_server, server_prompt_pending, created_at, updated_at)
-       VALUES (?, ?, 'pending', 0, 0, ?, ?)
+      `INSERT INTO friend_connections (user_id, friend_user_id, status, is_initiator, shares_server, server_prompt_pending, created_at, updated_at)
+       VALUES (?, ?, 'pending', 1, 0, 0, ?, ?)
        ON CONFLICT(user_id, friend_user_id) DO NOTHING`,
       requesterId,
       recipient.id,
       now,
       now
     )
-    // Recipient → requester row (pending, recipient needs to accept)
+    // Recipient → requester row (pending, is_initiator=0 marks the receiver)
     getDb().exec(
-      `INSERT INTO friend_connections (user_id, friend_user_id, status, shares_server, server_prompt_pending, created_at, updated_at)
-       VALUES (?, ?, 'pending', 0, 0, ?, ?)
+      `INSERT INTO friend_connections (user_id, friend_user_id, status, is_initiator, shares_server, server_prompt_pending, created_at, updated_at)
+       VALUES (?, ?, 'pending', 0, 0, 0, ?, ?)
        ON CONFLICT(user_id, friend_user_id) DO NOTHING`,
       recipient.id,
       requesterId,
@@ -793,7 +813,7 @@ export function resolveServerPrompt(
 export function getFriendConnections(userId: number): FriendConnection[] {
   try {
     const stmt = getDb().prepare(`
-      SELECT fc.id, fc.user_id, fc.friend_user_id, fc.status, fc.shares_server,
+      SELECT fc.id, fc.user_id, fc.friend_user_id, fc.status, fc.is_initiator, fc.shares_server,
              fc.server_prompt_pending, fc.created_at, fc.updated_at,
              u.username, u.invite_code
       FROM friend_connections fc
@@ -809,6 +829,7 @@ export function getFriendConnections(userId: number): FriendConnection[] {
         uid,
         friendId,
         status,
+        isInitiator,
         sharesServer,
         serverPromptPending,
         createdAt,
@@ -820,6 +841,7 @@ export function getFriendConnections(userId: number): FriendConnection[] {
         number,
         number,
         string,
+        number,
         number,
         number,
         string,
@@ -834,6 +856,7 @@ export function getFriendConnections(userId: number): FriendConnection[] {
         friendUsername,
         friendInviteCode: friendInviteCode ?? '',
         status: status as FriendStatus,
+        isInitiator: isInitiator === 1,
         sharesServer: sharesServer === 1,
         serverPromptPending: serverPromptPending === 1,
         createdAt,
