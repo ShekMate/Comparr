@@ -7438,19 +7438,26 @@ const main = async () => {
 
   const renderPendingRequests = connections => {
     if (!matchesPendingSection || !matchesPendingList) return
-    const pending = connections.filter(
-      c => c.status === 'pending' && c.friendUserId
-    )
-    const incomingPending = connections.filter(c => c.status === 'pending')
-    matchesPendingSection.hidden = !incomingPending.length
-    if (!incomingPending.length) {
+    const allPending = connections.filter(c => c.status === 'pending')
+    matchesPendingSection.hidden = !allPending.length
+    if (!allPending.length) {
       matchesPendingList.innerHTML = ''
       return
     }
 
-    matchesPendingList.innerHTML = incomingPending
-      .map(
-        conn => `
+    matchesPendingList.innerHTML = allPending
+      .map(conn => {
+        if (conn.isOutgoing) {
+          return `
+      <div class="matches-pending-card matches-pending-card--outgoing" data-friend-id="${conn.friendUserId}">
+        <span class="matches-pending-name">${conn.friendName}</span>
+        <div class="matches-pending-actions">
+          <span class="matches-pending-waiting">Waiting for them to accept…</span>
+          <button type="button" class="btn-ghost js-pending-cancel" data-friend-id="${conn.friendUserId}">Cancel</button>
+        </div>
+      </div>`
+        }
+        return `
       <div class="matches-pending-card" data-friend-id="${conn.friendUserId}">
         <span class="matches-pending-name">${conn.friendName}</span>
         <div class="matches-pending-actions">
@@ -7462,7 +7469,7 @@ const main = async () => {
           <button type="button" class="btn-ghost js-pending-decline" data-friend-id="${conn.friendUserId}">Decline</button>
         </div>
       </div>`
-      )
+      })
       .join('')
 
     matchesPendingList.querySelectorAll('.js-pending-accept').forEach(btn => {
@@ -7487,6 +7494,23 @@ const main = async () => {
     })
 
     matchesPendingList.querySelectorAll('.js-pending-decline').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const friendId = Number(btn.dataset.friendId)
+        btn.disabled = true
+        try {
+          await fetch(`${basePath}/api/matches/decline`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ requesterId: friendId }),
+          })
+          await loadMatchesData()
+        } catch {
+          btn.disabled = false
+        }
+      })
+    })
+
+    matchesPendingList.querySelectorAll('.js-pending-cancel').forEach(btn => {
       btn.addEventListener('click', async () => {
         const friendId = Number(btn.dataset.friendId)
         btn.disabled = true
