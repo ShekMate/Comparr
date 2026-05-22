@@ -7673,15 +7673,33 @@ const main = async () => {
     matchesCopyBtn.addEventListener('click', () => {
       const code = matchesMyCodeEl?.textContent?.trim() || ''
       if (!code || code === '——' || code === '······') return
-      navigator.clipboard
-        .writeText(code)
-        .then(() => {
-          matchesCopyBtn.innerHTML = '<i class="fas fa-check"></i>'
-          setTimeout(() => {
-            matchesCopyBtn.innerHTML = '<i class="fas fa-copy"></i>'
-          }, 2000)
-        })
-        .catch(() => {})
+
+      const showSuccess = () => {
+        matchesCopyBtn.innerHTML = '<i class="fas fa-check"></i>'
+        setTimeout(() => {
+          matchesCopyBtn.innerHTML = '<i class="fas fa-copy"></i>'
+        }, 2000)
+      }
+
+      const fallbackCopy = () => {
+        const ta = document.createElement('textarea')
+        ta.value = code
+        ta.style.position = 'fixed'
+        ta.style.opacity = '0'
+        document.body.appendChild(ta)
+        ta.focus()
+        ta.select()
+        const ok = document.execCommand('copy')
+        document.body.removeChild(ta)
+        if (ok) showSuccess()
+        else setMatchesStatus('Could not copy code — please copy it manually.', true)
+      }
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code).then(showSuccess).catch(fallbackCopy)
+      } else {
+        fallbackCopy()
+      }
     })
   }
 
