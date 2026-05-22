@@ -75,6 +75,11 @@ export function initUserDatabase(): Database {
   try {
     db = new Database(DB_PATH)
 
+    // Use WAL journal mode: faster writes, readers never block writers, and
+    // all committed WAL data is automatically checkpointed on db.close().
+    db.exec('PRAGMA journal_mode = WAL')
+    db.exec('PRAGMA synchronous = NORMAL')
+
     db.exec(`
       CREATE TABLE IF NOT EXISTS users (
         id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -245,18 +250,20 @@ function rowToUser(row: unknown[]): User {
 let _usersHasInviteCodeColumn: boolean | null = null
 
 function usersHasInviteCodeColumn(): boolean {
-  if (_usersHasInviteCodeColumn !== null) return _usersHasInviteCodeColumn
+  // Only cache `true` — a false/error result should be retried on the next
+  // call so a transient startup failure doesn't poison the cache for the
+  // lifetime of the process.
+  if (_usersHasInviteCodeColumn === true) return true
   try {
     const stmt = getDb().prepare(`PRAGMA table_info(users)`)
     const rows = stmt.all<unknown[]>()
     stmt.finalize()
-    _usersHasInviteCodeColumn = rows.some(
-      row => String(row?.[1] || '') === 'invite_code'
-    )
+    const has = rows.some(row => String(row?.[1] || '') === 'invite_code')
+    if (has) _usersHasInviteCodeColumn = true
+    return has
   } catch {
-    _usersHasInviteCodeColumn = false
+    return false
   }
-  return _usersHasInviteCodeColumn
 }
 
 function getUserSelect(): string {
@@ -430,7 +437,9 @@ export function getOrCreateInviteCode(userId: number): string {
     code = generateInviteCode()
   } while (findUserByInviteCode(code) !== null)
 
-  getDb().exec('UPDATE users SET invite_code = ? WHERE id = ?', code, userId)
+  const stmt = getDb().prepare('UPDATE users SET invite_code = ? WHERE id = ?')
+  stmt.run(code, userId)
+  stmt.finalize()
   return code
 }
 
@@ -439,18 +448,20 @@ export function getOrCreateInviteCode(userId: number): string {
  */
 export function refreshInviteCode(userId: number): string {
   // Remove all friend connections for this user (both directions)
-  getDb().exec(
-    'DELETE FROM friend_connections WHERE user_id = ? OR friend_user_id = ?',
-    userId,
-    userId
+  const delStmt = getDb().prepare(
+    'DELETE FROM friend_connections WHERE user_id = ? OR friend_user_id = ?'
   )
+  delStmt.run(userId, userId)
+  delStmt.finalize()
 
   let code: string
   do {
     code = generateInviteCode()
   } while (findUserByInviteCode(code) !== null)
 
-  getDb().exec('UPDATE users SET invite_code = ? WHERE id = ?', code, userId)
+  const updStmt = getDb().prepare('UPDATE users SET invite_code = ? WHERE id = ?')
+  updStmt.run(code, userId)
+  updStmt.finalize()
   log.info(`[auth] Refreshed invite code for user ${userId}`)
   return code
 }
