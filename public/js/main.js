@@ -6445,7 +6445,7 @@ async function moveMovieBetweenLists(guid, fromList, toList) {
 
     // Show notification
     const listNames = {
-      watch: 'Watch List',
+      watch: 'Watchlist',
       pass: 'Pass List',
       seen: 'Seen List',
     }
