@@ -72,6 +72,7 @@ import {
   startBackgroundUpdateJob,
   stopBackgroundUpdateJob,
 } from './features/catalog/imdb-datasets.ts'
+import { closeUserDatabase } from './features/auth/user-db.ts'
 import { buildPlexCache } from './integrations/plex/cache.ts'
 import { bootstrapApplication } from './app/bootstrap.ts'
 
@@ -363,6 +364,7 @@ if (Deno.build.os !== 'windows') {
       server.close()
       stopBackgroundUpdateJob()
       closeIMDbDatabase()
+      closeUserDatabase()
       await wss.close().catch(() => {})
       const startedAt = Date.now()
       while (activeRequests > 0 && Date.now() - startedAt < 5_000) {

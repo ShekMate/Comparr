@@ -188,6 +188,7 @@ export function closeUserDatabase(): void {
   if (db) {
     db.close()
     db = null
+    _usersHasInviteCodeColumn = null
   }
 }
 
