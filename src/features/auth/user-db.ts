@@ -100,20 +100,16 @@ export function initUserDatabase(): Database {
     // SQLite cannot add a UNIQUE column via ALTER TABLE directly, so add the
     // column first, then create a unique index.
     try {
-      const colStmt = db.prepare(`PRAGMA table_info(users)`)
-      const columns = colStmt.all<unknown[]>()
-      colStmt.finalize()
-      const hasInviteCode = columns.some(
-        row => String(row?.[1] || '') === 'invite_code'
-      )
-      if (!hasInviteCode) {
-        db.exec(`ALTER TABLE users ADD COLUMN invite_code TEXT`)
-      }
+      db.exec(`ALTER TABLE users ADD COLUMN invite_code TEXT`)
+    } catch {
+      // Column already exists — ignore
+    }
+    try {
       db.exec(
         `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_invite_code ON users(invite_code)`
       )
     } catch (err) {
-      log.warn(`[auth] invite_code migration warning: ${err}`)
+      log.warn(`[auth] invite_code index warning: ${err}`)
     }
 
     // Add subscriptions column to existing user_settings tables
@@ -168,17 +164,9 @@ export function initUserDatabase(): Database {
 
     // Add is_initiator column to existing databases that predate this schema.
     try {
-      const fcCols = db.prepare(`PRAGMA table_info(friend_connections)`)
-      const fcColRows = fcCols.all<unknown[]>()
-      fcCols.finalize()
-      const hasIsInitiator = fcColRows.some(
-        row => String(row?.[1] || '') === 'is_initiator'
-      )
-      if (!hasIsInitiator) {
-        db.exec(`ALTER TABLE friend_connections ADD COLUMN is_initiator INTEGER NOT NULL DEFAULT 0`)
-      }
-    } catch (err) {
-      log.warn(`[auth] is_initiator migration warning: ${err}`)
+      db.exec(`ALTER TABLE friend_connections ADD COLUMN is_initiator INTEGER NOT NULL DEFAULT 0`)
+    } catch {
+      // Column already exists — ignore
     }
 
     log.info(`[auth] User database ready at ${DB_PATH}`)
@@ -250,17 +238,15 @@ function rowToUser(row: unknown[]): User {
 let _usersHasInviteCodeColumn: boolean | null = null
 
 function usersHasInviteCodeColumn(): boolean {
-  // Only cache `true` — a false/error result should be retried on the next
-  // call so a transient startup failure doesn't poison the cache for the
-  // lifetime of the process.
   if (_usersHasInviteCodeColumn === true) return true
   try {
-    const stmt = getDb().prepare(`PRAGMA table_info(users)`)
-    const rows = stmt.all<unknown[]>()
+    // Probe by selecting the column. SQLite throws "no such column" if it
+    // doesn't exist. LIMIT 0 returns no rows so this is essentially free.
+    const stmt = getDb().prepare(`SELECT invite_code FROM users LIMIT 0`)
+    stmt.values<unknown[][]>()
     stmt.finalize()
-    const has = rows.some(row => String(row?.[1] || '') === 'invite_code')
-    if (has) _usersHasInviteCodeColumn = true
-    return has
+    _usersHasInviteCodeColumn = true
+    return true
   } catch {
     return false
   }
