@@ -7350,6 +7350,12 @@ const main = async () => {
   }
 
   const checkMatchesNotification = async () => {
+    // Skip while the user is already viewing the Matches tab — no need to
+    // badge a tab the user is currently looking at, and this eliminates any
+    // race between the interval and loadMatchesData.
+    const matchesPanel = document.getElementById('tab-matches')
+    if (matchesPanel && !matchesPanel.hidden) return
+
     try {
       const res = await fetch(`${basePath}/api/matches/connections`)
       if (!res.ok) return
@@ -7360,6 +7366,11 @@ const main = async () => {
   }
 
   const loadMatchesData = async () => {
+    // Clear the badge immediately (synchronous, before any awaits) so the
+    // red dot disappears the instant the user opens the tab, regardless of
+    // how long the fetch takes or what the background interval is doing.
+    setMatchesNotification(false)
+
     try {
       // Fetch user code
       const codeRes = await fetch(`${basePath}/api/user/code`)
@@ -7372,11 +7383,11 @@ const main = async () => {
       const connections = connData.connections || []
       renderFriends(connections)
 
-      // Only update seen state on a successful response to avoid wiping the
-      // cache on transient errors and causing everything to re-appear as new
+      // Persist seen state so the badge stays gone on future polls/reloads.
+      // Only write on a successful response to avoid overwriting a valid
+      // cached set with an empty one on transient backend errors.
       if (connRes.ok) {
         setSeenConns(new Set(connections.map(c => c.code)))
-        setMatchesNotification(false)
       }
     } catch (err) {
       console.warn('[matches] Failed to load matches data:', err)
