@@ -7327,7 +7327,7 @@ const main = async () => {
   // Track which connection codes the current user has already seen, so we
   // can show a notification badge on the Matches nav button when a new
   // connection appears (e.g. someone added their code).
-  const MATCHES_SEEN_KEY = `comparr_seen_conns_${userName}`
+  const MATCHES_SEEN_KEY = `comparr_seen_conns_${userName}_${roomCode}`
 
   const getSeenConns = () => {
     try {
@@ -7368,13 +7368,16 @@ const main = async () => {
 
       // Fetch connections + matches
       const connRes = await fetch(`${basePath}/api/matches/connections`)
-      const connData = await connRes.json().catch(() => ({}))
+      const connData = connRes.ok ? await connRes.json().catch(() => ({})) : {}
       const connections = connData.connections || []
       renderFriends(connections)
 
-      // Mark all current connections as seen and clear the notification badge
-      setSeenConns(new Set(connections.map(c => c.code)))
-      setMatchesNotification(false)
+      // Only update seen state on a successful response to avoid wiping the
+      // cache on transient errors and causing everything to re-appear as new
+      if (connRes.ok) {
+        setSeenConns(new Set(connections.map(c => c.code)))
+        setMatchesNotification(false)
+      }
     } catch (err) {
       console.warn('[matches] Failed to load matches data:', err)
     }
