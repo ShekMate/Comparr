@@ -7324,6 +7324,41 @@ const main = async () => {
     })
   }
 
+  // Track which connection codes the current user has already seen, so we
+  // can show a notification badge on the Matches nav button when a new
+  // connection appears (e.g. someone added their code).
+  const MATCHES_SEEN_KEY = `comparr_seen_conns_${userName}`
+
+  const getSeenConns = () => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(MATCHES_SEEN_KEY) || '[]'))
+    } catch {
+      return new Set()
+    }
+  }
+
+  const setSeenConns = codes => {
+    try {
+      localStorage.setItem(MATCHES_SEEN_KEY, JSON.stringify([...codes]))
+    } catch {}
+  }
+
+  const setMatchesNotification = show => {
+    document.querySelectorAll('[data-tab="tab-matches"]').forEach(b =>
+      b.classList.toggle('has-notification', show)
+    )
+  }
+
+  const checkMatchesNotification = async () => {
+    try {
+      const res = await fetch(`${basePath}/api/matches/connections`)
+      if (!res.ok) return
+      const { connections = [] } = await res.json().catch(() => ({}))
+      const seen = getSeenConns()
+      setMatchesNotification(connections.some(c => !seen.has(c.code)))
+    } catch {}
+  }
+
   const loadMatchesData = async () => {
     try {
       // Fetch user code
@@ -7334,7 +7369,12 @@ const main = async () => {
       // Fetch connections + matches
       const connRes = await fetch(`${basePath}/api/matches/connections`)
       const connData = await connRes.json().catch(() => ({}))
-      renderFriends(connData.connections || [])
+      const connections = connData.connections || []
+      renderFriends(connections)
+
+      // Mark all current connections as seen and clear the notification badge
+      setSeenConns(new Set(connections.map(c => c.code)))
+      setMatchesNotification(false)
     } catch (err) {
       console.warn('[matches] Failed to load matches data:', err)
     }
@@ -7411,12 +7451,14 @@ const main = async () => {
     })
   }
 
-  // Load data when matches tab becomes active
+  // Load data whenever the Matches tab becomes active
   window.initCompareTab = () => {
-    if (window._matchesTabInitialized) return
-    window._matchesTabInitialized = true
     loadMatchesData()
   }
+
+  // Check for new connections on page load and every 2 minutes in background
+  checkMatchesNotification()
+  setInterval(checkMatchesNotification, 120_000)
 
   // ===== RECOMMENDATIONS TAB =====
   let recommendationsLoaded = false
