@@ -1793,6 +1793,25 @@ body[data-user-type='guest'] .compare-ui {
   gap: 0.75rem;
 }
 
+.matches-friends-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.matches-friends-heading::before,
+.matches-friends-heading::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border, #333);
+}
+
 .matches-friends-list {
   display: flex;
   flex-direction: column;
@@ -1810,6 +1829,8 @@ body[data-user-type='guest'] .compare-ui {
   align-items: center;
   gap: 0.6rem;
   padding: 0.75rem 1rem;
+}
+.matches-friend-header.has-movies {
   border-bottom: 1px solid var(--color-border, #333);
 }
 
@@ -1825,16 +1846,20 @@ body[data-user-type='guest'] .compare-ui {
 
 .matches-remove-btn {
   background: none;
-  border: none;
+  border: 1px solid var(--color-border, #333);
   color: var(--color-text-muted);
   cursor: pointer;
-  padding: 0.2rem 0.4rem;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  transition: color 0.15s;
+  padding: 0.25rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
 .matches-remove-btn:hover {
   color: var(--color-accent-danger, #f87171);
+  border-color: var(--color-accent-danger, #f87171);
+  background: rgba(248, 113, 113, 0.06);
 }
 .matches-remove-btn:disabled {
   opacity: 0.4;

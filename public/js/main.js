@@ -7272,10 +7272,10 @@ const main = async () => {
             : `${matchCount} matches`
         const moviesHtml = matchCount
           ? matches.map(m => renderMatchMovie(m, friendName)).join('')
-          : `<p class="matches-empty-note">No matches yet — keep swiping!</p>`
+          : ''
         return `
           <div class="matches-friend-card" data-friend-code="${code}">
-            <div class="matches-friend-header">
+            <div class="matches-friend-header${matchCount ? ' has-movies' : ''}">
               <span class="matches-friend-name">${friendName}</span>
               <span class="matches-friend-count">${matchLabel}</span>
               <button
@@ -7284,9 +7284,9 @@ const main = async () => {
                 data-friend-code="${code}"
                 title="Remove ${friendName}"
                 aria-label="Remove ${friendName}"
-              ><i class="fas fa-times"></i></button>
+              >Remove</button>
             </div>
-            <div class="matches-friend-movies">${moviesHtml}</div>
+            ${matchCount ? `<div class="matches-friend-movies">${moviesHtml}</div>` : ''}
           </div>`
       })
       .join('')
