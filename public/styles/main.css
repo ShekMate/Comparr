@@ -1803,6 +1803,104 @@ body[data-user-type='guest'] .compare-ui {
   color: var(--color-text-muted);
 }
 
+.matches-pending-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.matches-pending-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.matches-pending-card {
+  background: var(--color-surface, #1e1e2e);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.matches-pending-name {
+  display: block;
+  font-weight: 600;
+  padding: 0.75rem 1rem 0.6rem;
+  border-bottom: 1px solid var(--color-border, #333);
+}
+
+.matches-pending-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 1rem;
+  flex-wrap: wrap;
+}
+
+.matches-pending-share-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  flex: 1;
+}
+
+.matches-pending-share-label input[type='checkbox'] {
+  accent-color: var(--color-accent-primary, #e5534b);
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+}
+
+.matches-pending-waiting {
+  flex: 1;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.matches-pending-card .btn-primary {
+  background: var(--color-accent-primary, #e5534b);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.38rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+.matches-pending-card .btn-primary:hover {
+  opacity: 0.88;
+}
+.matches-pending-card .btn-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.matches-pending-card .btn-ghost {
+  background: none;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border, #333);
+  border-radius: 6px;
+  padding: 0.38rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.matches-pending-card .btn-ghost:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+.matches-pending-card .btn-ghost:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .matches-friends-section {
   display: flex;
   flex-direction: column;
