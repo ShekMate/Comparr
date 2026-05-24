@@ -4,7 +4,7 @@ function uniqueSettingsModulePath() {
   return `../settings.ts?ts=${Date.now()}-${Math.random()}`
 }
 
-Deno.test('settings include streaming profile defaults', async () => {
+Deno.test('settings include expected defaults', async () => {
   const dataDir = await Deno.makeTempDir({
     prefix: 'comparr-settings-defaults-',
   })
@@ -16,7 +16,6 @@ Deno.test('settings include streaming profile defaults', async () => {
     const settingsModule = await import(uniqueSettingsModulePath())
     const settings = settingsModule.getSettings()
 
-    assertEquals(settings.STREAMING_PROFILE_MODE, 'anywhere')
     assertEquals(settings.ACCESS_PASSWORD, '')
     assertEquals(settings.PAID_STREAMING_SERVICES, '[]')
     assertEquals(settings.PERSONAL_MEDIA_SOURCES, '[]')
@@ -31,7 +30,7 @@ Deno.test('settings include streaming profile defaults', async () => {
   }
 })
 
-Deno.test('settings can persist streaming profile updates', async () => {
+Deno.test('settings can persist updates', async () => {
   const dataDir = await Deno.makeTempDir({ prefix: 'comparr-settings-update-' })
   const originalDataDir = Deno.env.get('DATA_DIR')
 
@@ -41,7 +40,6 @@ Deno.test('settings can persist streaming profile updates', async () => {
     const settingsModule = await import(uniqueSettingsModulePath())
 
     await settingsModule.updateSettings({
-      STREAMING_PROFILE_MODE: 'my_subscriptions',
       ACCESS_PASSWORD: 'secret-access',
       PAID_STREAMING_SERVICES: '["netflix","hulu"]',
       PERSONAL_MEDIA_SOURCES: '["plex","jellyfin"]',
@@ -51,7 +49,6 @@ Deno.test('settings can persist streaming profile updates', async () => {
     const reloaded = await import(uniqueSettingsModulePath())
     const settings = reloaded.getSettings()
 
-    assertEquals(settings.STREAMING_PROFILE_MODE, 'my_subscriptions')
     assertEquals(settings.ACCESS_PASSWORD, 'secret-access')
     assertEquals(settings.PAID_STREAMING_SERVICES, '["netflix","hulu"]')
     assertEquals(settings.PERSONAL_MEDIA_SOURCES, '["plex","jellyfin"]')
@@ -66,7 +63,7 @@ Deno.test('settings can persist streaming profile updates', async () => {
   }
 })
 
-Deno.test('settings normalize streaming profile values', async () => {
+Deno.test('settings normalize service list values', async () => {
   const dataDir = await Deno.makeTempDir({
     prefix: 'comparr-settings-normalize-',
   })
@@ -78,14 +75,12 @@ Deno.test('settings normalize streaming profile values', async () => {
     const settingsModule = await import(uniqueSettingsModulePath())
 
     await settingsModule.updateSettings({
-      STREAMING_PROFILE_MODE: 'MY_SUBSCRIPTIONS',
       PAID_STREAMING_SERVICES: '["Netflix", " hulu ", "netflix"]',
       PERSONAL_MEDIA_SOURCES: '["Plex", " jellyfin ", "plex"]',
     })
 
     const settings = settingsModule.getSettings()
 
-    assertEquals(settings.STREAMING_PROFILE_MODE, 'my_subscriptions')
     assertEquals(settings.ACCESS_PASSWORD, '')
     assertEquals(settings.PAID_STREAMING_SERVICES, '["netflix","hulu"]')
     assertEquals(settings.PERSONAL_MEDIA_SOURCES, '["plex","jellyfin"]')
@@ -100,7 +95,7 @@ Deno.test('settings normalize streaming profile values', async () => {
   }
 })
 
-Deno.test('settings reject invalid streaming profile values', async () => {
+Deno.test('settings reject invalid service values', async () => {
   const dataDir = await Deno.makeTempDir({
     prefix: 'comparr-settings-invalid-',
   })
@@ -110,14 +105,6 @@ Deno.test('settings reject invalid streaming profile values', async () => {
 
   try {
     const settingsModule = await import(uniqueSettingsModulePath())
-
-    await assertRejects(
-      () =>
-        settingsModule.updateSettings({
-          STREAMING_PROFILE_MODE: 'something_else',
-        }),
-      Error
-    )
 
     await assertRejects(
       () =>
