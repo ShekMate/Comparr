@@ -10,13 +10,6 @@ export class SettingsValidationError extends Error {
   }
 }
 
-const VALID_STREAMING_PROFILE_MODES = new Set([
-  'anywhere',
-  'my_subscriptions',
-  'my_libraries',
-  'my_availability',
-])
-
 const VALID_PAID_STREAMING_SERVICES = new Set([
   'netflix',
   'amazon-prime',
@@ -72,16 +65,6 @@ export const validateAndNormalizeStreamingSettings = (
   touchedKeys: Set<SettingsKey>
 ) => {
   const errors: Record<string, string> = {}
-
-  if (touchedKeys.has('STREAMING_PROFILE_MODE')) {
-    const mode = settings.STREAMING_PROFILE_MODE.trim().toLowerCase()
-    settings.STREAMING_PROFILE_MODE = mode
-
-    if (!VALID_STREAMING_PROFILE_MODES.has(mode)) {
-      errors.STREAMING_PROFILE_MODE =
-        'Must be one of: anywhere, my_subscriptions, my_libraries, my_availability.'
-    }
-  }
 
   if (touchedKeys.has('PAID_STREAMING_SERVICES')) {
     try {
