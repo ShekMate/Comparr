@@ -7250,11 +7250,6 @@ const main = async () => {
       showMatchPopup(matchData)
       shownMatchGuids.add(matchData.movie.guid)
     }
-    // Increment badge if matches tab isn't active
-    if (document.getElementById('tab-matches')?.hidden !== false) {
-      _matchesNotif.incrementMatch()
-      _matchesNotif.render()
-    }
     // Browser notification when tab is in background
     if (
       document.visibilityState === 'hidden' &&
@@ -7331,88 +7326,6 @@ const main = async () => {
   api.addEventListener('roomMembers', e => {
     updateRoomMembers(e.data?.members ?? [])
   })
-
-  // ===== MATCHES NOTIFICATION BADGE =====
-  const _matchesNotif = (() => {
-    const KNOWN_KEY = 'comparr_notif_known_pending'
-    const UNSEEN_PENDING_KEY = 'comparr_notif_unseen_pending'
-    const UNSEEN_MATCH_KEY = 'comparr_notif_unseen_matches'
-
-    const getKnown = () => {
-      try { return new Set(JSON.parse(localStorage.getItem(KNOWN_KEY) || '[]')) }
-      catch { return new Set() }
-    }
-    const setKnown = ids => {
-      try { localStorage.setItem(KNOWN_KEY, JSON.stringify([...ids])) }
-      catch {}
-    }
-    const getUnseenPending = () => parseInt(localStorage.getItem(UNSEEN_PENDING_KEY) || '0', 10)
-    const setUnseenPending = n => {
-      try { localStorage.setItem(UNSEEN_PENDING_KEY, String(Math.max(0, n))) }
-      catch {}
-    }
-    const getUnseenMatches = () => parseInt(localStorage.getItem(UNSEEN_MATCH_KEY) || '0', 10)
-    const setUnseenMatches = n => {
-      try { localStorage.setItem(UNSEEN_MATCH_KEY, String(Math.max(0, n))) }
-      catch {}
-    }
-
-    const incomingIds = connections =>
-      new Set(
-        connections
-          .filter(c => c.status === 'pending' && !c.isOutgoing)
-          .map(c => String(c.friendUserId))
-      )
-
-    return {
-      updateFromConnections(connections) {
-        const known = getKnown()
-        const current = incomingIds(connections)
-        let newCount = 0
-        current.forEach(id => { if (!known.has(id)) newCount++ })
-        if (newCount > 0) setUnseenPending(getUnseenPending() + newCount)
-        setKnown(current)
-      },
-      clearFromConnections(connections) {
-        setUnseenPending(0)
-        setKnown(incomingIds(connections))
-      },
-      clearCounts() {
-        setUnseenPending(0)
-        setUnseenMatches(0)
-      },
-      incrementMatch() {
-        setUnseenMatches(getUnseenMatches() + 1)
-      },
-      clearMatches() {
-        setUnseenMatches(0)
-      },
-      render() {
-        const hasActivity = getUnseenPending() + getUnseenMatches() > 0
-        document.querySelectorAll('[data-tab="tab-matches"] .nav-notif-badge').forEach(el => {
-          el.hidden = !hasActivity
-        })
-      },
-    }
-  })()
-
-  // Render badge from localStorage immediately on load
-  _matchesNotif.render()
-
-  // Poll for new friend requests every 2 minutes when not on the matches tab
-  setInterval(async () => {
-    if (document.getElementById('tab-matches')?.hidden !== false) {
-      try {
-        const r = await fetch(`${basePath}/api/matches/connections`)
-        const d = await r.json().catch(() => ({}))
-        // Re-check after fetch: user may have navigated to the tab while in-flight
-        if (document.getElementById('tab-matches')?.hidden !== false) {
-          _matchesNotif.updateFromConnections(d.connections || [])
-          _matchesNotif.render()
-        }
-      } catch { /* ignore */ }
-    }
-  }, 2 * 60 * 1000)
 
   // ===== MATCHES TAB =====
   // Each user has a stable invite code. Enter a friend's code to send a
@@ -7750,14 +7663,6 @@ const main = async () => {
       const connections = connData.connections || []
       renderPendingRequests(connections)
       renderFriends(connections)
-
-      if (document.getElementById('tab-matches')?.hidden === false) {
-        _matchesNotif.clearFromConnections(connections)
-        _matchesNotif.clearMatches()
-      } else {
-        _matchesNotif.updateFromConnections(connections)
-      }
-      _matchesNotif.render()
     } catch (err) {
       console.warn('[matches] Failed to load matches data:', err)
     }
@@ -7857,9 +7762,6 @@ const main = async () => {
 
   // Load data when matches tab becomes active
   window.initCompareTab = () => {
-    // Clear the bell immediately — don't wait for the async fetch to complete
-    _matchesNotif.clearCounts()
-    _matchesNotif.render()
     loadMatchesData()
   }
 
