@@ -312,6 +312,23 @@ body:not(.is-logged-in) .card-stack:empty::after {
   font-size: 1rem;
 }
 
+/* Notification badge on Matches tab nav button */
+[data-tab="tab-matches"].has-notification {
+  position: relative;
+}
+
+[data-tab="tab-matches"].has-notification::after {
+  content: '';
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: #ef4444;
+  pointer-events: none;
+}
+
 /* Desktop: Show sidebar, hide tabbar */
 
 /* Mobile: Show tabbar, hide sidebar */
