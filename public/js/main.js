@@ -7384,14 +7384,9 @@ const main = async () => {
         setUnseenMatches(0)
       },
       render() {
-        const total = getUnseenPending() + getUnseenMatches()
+        const hasActivity = getUnseenPending() + getUnseenMatches() > 0
         document.querySelectorAll('[data-tab="tab-matches"] .nav-notif-badge').forEach(el => {
-          if (total > 0) {
-            el.textContent = total > 99 ? '99+' : String(total)
-            el.hidden = false
-          } else {
-            el.hidden = true
-          }
+          el.hidden = !hasActivity
         })
       },
     }
