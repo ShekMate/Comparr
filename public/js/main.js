@@ -7377,6 +7377,10 @@ const main = async () => {
         setUnseenPending(0)
         setKnown(incomingIds(connections))
       },
+      clearCounts() {
+        setUnseenPending(0)
+        setUnseenMatches(0)
+      },
       incrementMatch() {
         setUnseenMatches(getUnseenMatches() + 1)
       },
@@ -7401,8 +7405,11 @@ const main = async () => {
       try {
         const r = await fetch(`${basePath}/api/matches/connections`)
         const d = await r.json().catch(() => ({}))
-        _matchesNotif.updateFromConnections(d.connections || [])
-        _matchesNotif.render()
+        // Re-check after fetch: user may have navigated to the tab while in-flight
+        if (document.getElementById('tab-matches')?.hidden !== false) {
+          _matchesNotif.updateFromConnections(d.connections || [])
+          _matchesNotif.render()
+        }
       } catch { /* ignore */ }
     }
   }, 2 * 60 * 1000)
@@ -7850,6 +7857,9 @@ const main = async () => {
 
   // Load data when matches tab becomes active
   window.initCompareTab = () => {
+    // Clear the bell immediately — don't wait for the async fetch to complete
+    _matchesNotif.clearCounts()
+    _matchesNotif.render()
     loadMatchesData()
   }
 
