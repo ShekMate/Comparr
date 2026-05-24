@@ -7652,13 +7652,13 @@ const main = async () => {
             : `${matchCount} matches`
         const moviesHtml = matchCount
           ? matches.map(m => renderMatchMovie(m, friendName)).join('')
-          : `<p class="matches-empty-note">No matches yet — keep swiping!</p>`
+          : ''
         const sharingBadge = friendSharesServerWithMe
           ? `<span class="matches-friend-sharing-badge" title="Sharing their library with you"><i class="fas fa-server"></i></span>`
           : ''
         return `
         <div class="matches-friend-card" data-friend-id="${friendUserId}">
-          <div class="matches-friend-header">
+          <div class="matches-friend-header${matchCount ? ' has-movies' : ''}">
             <span class="matches-friend-name">${friendName}</span>
             ${sharingBadge}
             <span class="matches-friend-count">${matchLabel}</span>
@@ -7670,10 +7670,10 @@ const main = async () => {
             </label>
             <button class="matches-remove-btn" type="button" data-friend-id="${friendUserId}"
               title="Remove ${friendName}" aria-label="Remove ${friendName}">
-              <i class="fas fa-times"></i>
+              Remove
             </button>
           </div>
-          <div class="matches-friend-movies">${moviesHtml}</div>
+          ${matchCount ? `<div class="matches-friend-movies">${moviesHtml}</div>` : ''}
         </div>`
       })
       .join('')
