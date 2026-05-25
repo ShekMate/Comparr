@@ -28,6 +28,12 @@
       href="${ROOT_PATH}/assets/icons/apple-touch-icon.png"
     />
     <link rel="manifest" href="${ROOT_PATH}/manifest.json" />
+    <script>
+      ;(function () {
+        var t = localStorage.getItem('comparrTheme')
+        document.documentElement.dataset.theme = t === 'light' ? 'light' : 'dark'
+      })()
+    </script>
   </head>
 
   <body
@@ -2630,6 +2636,71 @@
 
           <div class="settings-section" id="settings-display" hidden>
             <h4>Display</h4>
+
+            <div class="settings-field">
+              <label for="setting-display-theme">
+                <i class="fas fa-moon" aria-hidden="true"></i>
+                Theme
+              </label>
+              <select id="setting-display-theme">
+                <option value="dark">Dark</option>
+                <option value="light">Light</option>
+              </select>
+              <p>Choose between dark and light interface themes.</p>
+            </div>
+
+            <div class="settings-field">
+              <label for="setting-display-default-tab">
+                <i class="fas fa-home" aria-hidden="true"></i>
+                Default Tab
+              </label>
+              <select id="setting-display-default-tab">
+                <option value="tab-swipe">Swipe</option>
+                <option value="tab-matches">Matches</option>
+                <option value="tab-likes">Watch List</option>
+                <option value="tab-recommendations">Recommended</option>
+                <option value="tab-stats">Stats</option>
+              </select>
+              <p>Which tab opens when you log in.</p>
+            </div>
+
+            <div class="settings-field">
+              <label for="setting-display-card-rating">
+                <i class="fas fa-star" aria-hidden="true"></i>
+                Card Ratings
+              </label>
+              <select id="setting-display-card-rating">
+                <option value="both">IMDb &amp; TMDb</option>
+                <option value="imdb">IMDb only</option>
+                <option value="tmdb">TMDb only</option>
+              </select>
+              <p>Which rating source to show on movie cards.</p>
+            </div>
+
+            <div class="settings-field">
+              <button
+                type="button"
+                class="settings-mode-toggle settings-display-toggle"
+                id="setting-display-show-recommendations"
+                aria-pressed="true"
+              >
+                Hide Recommended
+              </button>
+              <p>Show or hide the Recommended tab in the main menu.</p>
+            </div>
+
+            <div class="settings-field">
+              <button
+                type="button"
+                class="settings-mode-toggle settings-display-toggle"
+                id="setting-display-show-stats"
+                aria-pressed="true"
+              >
+                Hide Stats
+              </button>
+              <p>Show or hide the Stats tab in the main menu.</p>
+            </div>
+
             <div class="settings-field">
               <button
                 type="button"
@@ -2641,6 +2712,7 @@
               </button>
               <p>Show or hide your Seen List tab in the main menu.</p>
             </div>
+
             <div class="settings-field">
               <button
                 type="button"

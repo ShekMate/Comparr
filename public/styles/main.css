@@ -37,6 +37,7 @@ p {
   --color-surface: #1e293b;
   --color-surface-light: #334155;
   --color-surface-lighter: #475569;
+  --color-surface-alt: rgba(255, 255, 255, 0.04);
 
   /* Text Colors */
   --color-text-primary: #f8fafc;
@@ -1086,6 +1087,29 @@ body:not(.is-logged-in) .card-stack:empty::after {
   font-weight: normal;
   opacity: 0.7;
   font-size: 0.85em;
+}
+
+.rating-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.rating-group + .rating-group::before {
+  content: '\00b7';
+  color: var(--color-text-muted);
+  opacity: 0.7;
+  margin-right: 0.1rem;
+}
+
+body[data-card-rating='imdb'] .rating-tmdb-group,
+body[data-card-rating='tmdb'] .rating-imdb-group {
+  display: none;
+}
+
+body[data-card-rating='imdb'] .rating-group + .rating-group::before,
+body[data-card-rating='tmdb'] .rating-group + .rating-group::before {
+  display: none;
 }
 
 .where-to-watch-section {
@@ -7209,4 +7233,117 @@ footer {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 0.5rem 0.75rem;
+}
+
+/* =========================================================
+   LIGHT MODE
+   ========================================================= */
+
+[data-theme='light'] {
+  --color-background: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-light: #f1f5f9;
+  --color-surface-lighter: #e2e8f0;
+  --color-surface-alt: rgba(0, 0, 0, 0.03);
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94a3b8;
+  --color-line: #e2e8f0;
+  --color-brand: var(--color-text-primary);
+  --color-brand-alt: var(--color-surface-light);
+  --color-border: rgba(0, 0, 0, 0.08);
+  --color-input-bg: rgba(0, 0, 0, 0.03);
+  --gradient-surface: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+  --gradient-card: linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.08);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.07);
+}
+
+[data-theme='light'] body::before {
+  background: radial-gradient(
+      circle at 20% 80%,
+      rgba(99, 102, 241, 0.06) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 80% 20%,
+      rgba(99, 102, 241, 0.05) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 40% 40%,
+      rgba(6, 182, 212, 0.04) 0%,
+      transparent 50%
+    );
+}
+
+/* Sidebar nav items */
+[data-theme='light'] .sidebar-subitem {
+  color: var(--color-text-secondary);
+}
+
+[data-theme='light'] .sidebar-subitem:hover {
+  color: var(--color-text-primary);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+[data-theme='light'] .sidebar-subitem.is-active {
+  color: var(--color-primary);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+[data-theme='light'] .sidebar-settings.is-open .sidebar-settings-toggle {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--color-text-primary);
+}
+
+/* Rate controls bar */
+[data-theme='light'] .rate-controls {
+  background: rgba(248, 250, 252, 0.96);
+}
+
+/* Undo button on swipe card */
+[data-theme='light'] .undo-button {
+  background: rgba(0, 0, 0, 0.22);
+}
+
+[data-theme='light'] .undo-button:hover {
+  background: rgba(0, 0, 0, 0.38);
+}
+
+/* Streaming / where-to-watch pills */
+[data-theme='light'] .where-to-watch-pill {
+  border-color: rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+[data-theme='light'] .card-streaming {
+  background: rgba(0, 0, 0, 0.02);
+  border-color: rgba(0, 0, 0, 0.07);
+}
+
+/* Settings selects in light mode */
+[data-theme='light'] .settings-field select option,
+[data-theme='light'] .settings-field select optgroup {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+/* Sign-in buttons */
+[data-theme='light'] .server-signin-btn {
+  --signin-btn-text: #0f172a;
+  --signin-btn-border: rgba(0, 0, 0, 0.12);
+  --signin-btn-hover-border: rgba(0, 0, 0, 0.2);
+  --signin-btn-start: #e2e8f0;
+  --signin-btn-end: #f1f5f9;
+  --signin-btn-hover-start: #cbd5e1;
+  --signin-btn-hover-end: #e2e8f0;
+}
+
+/* Modals / overlays */
+[data-theme='light'] .settings-mode-toggle[aria-pressed='true'] {
+  color: var(--color-primary);
+  border-color: rgba(99, 102, 241, 0.5);
+  background: rgba(99, 102, 241, 0.1);
 }

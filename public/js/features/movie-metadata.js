@@ -47,28 +47,22 @@ export function buildRatingHtml(movie, basePath) {
   const parts = []
   if (comparr != null) {
     parts.push(
-      `<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> <span class="rating-value">${comparr.toFixed(
-        1
-      )}</span>`
+      `<span class="rating-group rating-comparr-group"><img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"><span class="rating-value">${comparr.toFixed(1)}</span></span>`
     )
   }
   if (imdb != null) {
     parts.push(
-      `<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> <span class="rating-value">${imdb.toFixed(
-        1
-      )}</span>`
+      `<span class="rating-group rating-imdb-group"><img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"><span class="rating-value">${imdb.toFixed(1)}</span></span>`
     )
   }
   if (tmdb != null) {
     parts.push(
-      `<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> <span class="rating-value">${tmdb.toFixed(
-        1
-      )}</span>`
+      `<span class="rating-group rating-tmdb-group"><img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"><span class="rating-value">${tmdb.toFixed(1)}</span></span>`
     )
   }
 
   if (parts.length > 0) {
-    return parts.join(' <span class="rating-separator">&bull;</span> ')
+    return parts.join('')
   }
 
   const raw = String(movie?.rating || '').trim()
