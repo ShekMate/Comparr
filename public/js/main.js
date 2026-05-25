@@ -4,7 +4,7 @@
 import { ComparrAPI } from './ComparrAPI.js'
 import CardView from './CardView.js?v=4'
 import { MatchesView } from './MatchesView.js'
-import { buildRatingHtml, formatRuntime } from './features/movie-metadata.js'
+import { buildRatingHtml, formatRuntime, getGenreNames } from './features/movie-metadata.js'
 
 // Global API reference so functions outside main() can access it
 let api
@@ -8155,6 +8155,7 @@ const main = async () => {
     const watchCards = document.querySelectorAll('.likes-list .watch-card')
     const passCards = document.querySelectorAll('.dislikes-list .watch-card')
     const seenCards = document.querySelectorAll('.seen-list .watch-card')
+    const allRatedCards = [...watchCards, ...passCards, ...seenCards]
 
     const watchCount = watchCards.length
     const passCount = passCards.length
@@ -8170,17 +8171,17 @@ const main = async () => {
     setValue('.js-stat-pass-count', passCount)
     setValue('.js-stat-seen-count', seenCount)
 
-    // Genre breakdown from Watch list
+    // Genre breakdown from all rated cards
     const genreBar = document.querySelector('.js-stats-genre-bars')
     if (genreBar) {
       const genreCounts = {}
-      watchCards.forEach(card => {
-        const genreText =
-          card.querySelector('.watch-card-genres')?.textContent || ''
-        genreText.split(',').forEach(g => {
-          const genre = g.trim()
-          if (genre) genreCounts[genre] = (genreCounts[genre] || 0) + 1
-        })
+      allRatedCards.forEach(card => {
+        try {
+          const genreIds = JSON.parse(card.dataset.genres || '[]')
+          getGenreNames(genreIds).forEach(name => {
+            genreCounts[name] = (genreCounts[name] || 0) + 1
+          })
+        } catch (_) {}
       })
 
       const sortedGenres = Object.entries(genreCounts)
@@ -8210,22 +8211,23 @@ const main = async () => {
       }
     }
 
-    // Average ratings from Watch list
+    // Average ratings from all rated cards
     const avgEl = document.querySelector('.js-stats-avg-ratings')
-    if (avgEl && watchCount > 0) {
+    if (avgEl && totalRated > 0) {
       const imdbScores = []
       const tmdbScores = []
 
-      watchCards.forEach(card => {
-        const html = card.innerHTML
-        const imdbMatch =
-          html.match(/imdb\.svg[^>]*>[\s\S]*?<\/img>\s*([\d.]+)/) ||
-          html.match(/imdb[^>]*>\s*([\d.]+)/)
-        const tmdbMatch =
-          html.match(/tmdb\.svg[^>]*>[\s\S]*?<\/img>\s*([\d.]+)/) ||
-          html.match(/tmdb[^>]*>\s*([\d.]+)/)
-        if (imdbMatch) imdbScores.push(parseFloat(imdbMatch[1]))
-        if (tmdbMatch) tmdbScores.push(parseFloat(tmdbMatch[1]))
+      allRatedCards.forEach(card => {
+        const imdbVal = card.querySelector(
+          '.rating-imdb-group .rating-value'
+        )?.textContent
+        const tmdbVal = card.querySelector(
+          '.rating-tmdb-group .rating-value'
+        )?.textContent
+        const imdb = parseFloat(imdbVal)
+        const tmdb = parseFloat(tmdbVal)
+        if (Number.isFinite(imdb)) imdbScores.push(imdb)
+        if (Number.isFinite(tmdb)) tmdbScores.push(tmdb)
       })
 
       const avg = arr =>
@@ -8249,7 +8251,7 @@ const main = async () => {
         ].join('')
       }
     } else if (avgEl) {
-      avgEl.innerHTML = '<p class="stats-empty">No watch list data yet.</p>'
+      avgEl.innerHTML = '<p class="stats-empty">No rated movies yet.</p>'
     }
   }
 
