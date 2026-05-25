@@ -3971,7 +3971,9 @@ body[data-user-type='guest'] .compare-ui {
 
 #tab-likes h3,
 #tab-dislikes h3,
-#tab-seen h3 {
+#tab-seen h3,
+#tab-recommendations h3,
+#tab-stats h3 {
   text-align: center;
   margin: 0.5rem 0rem 0.5rem 0rem;
   color: var(--color-text-primary);
@@ -7107,14 +7109,14 @@ footer {
 .stats-layout {
   display: flex;
   flex-direction: column;
-  padding: 0;
+  padding: 0 2rem 2rem;
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 0.75rem;
-  padding: 1rem;
+  padding: 1rem 0;
 }
 
 .stat-card {
@@ -7141,7 +7143,7 @@ footer {
 }
 
 .stats-section {
-  padding: 0 1rem 1rem;
+  padding: 0 0 1rem;
 }
 
 .stats-section-title {
@@ -7346,4 +7348,9 @@ footer {
   color: var(--color-primary);
   border-color: rgba(99, 102, 241, 0.5);
   background: rgba(99, 102, 241, 0.1);
+}
+
+[data-theme='light'] .sidebar-logo,
+[data-theme='light'] .login-section .logo {
+  filter: invert(1);
 }
