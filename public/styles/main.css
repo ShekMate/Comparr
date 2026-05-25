@@ -7300,6 +7300,10 @@ footer {
   color: var(--color-text-primary);
 }
 
+[data-theme='light'] .sidebar-settings-menu .sidebar-subitem:not(.is-active) {
+  color: var(--color-text-secondary);
+}
+
 /* Rate controls bar */
 [data-theme='light'] .rate-controls {
   background: rgba(248, 250, 252, 0.96);
