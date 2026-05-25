@@ -18,6 +18,7 @@ import { isValidStateChangingOrigin } from '../network-access.ts'
 import { tmdbFetch } from '../../../api/tmdb.ts'
 import { fetchWithTimeout } from '../fetch-with-timeout.ts'
 import {
+  adminExists,
   deleteUserById,
   findUserById,
   listUsers,
@@ -474,6 +475,7 @@ export async function handleSettingsRoutes(
         setupWizardCompleted:
           String(settings.SETUP_WIZARD_COMPLETED || '').toLowerCase() ===
           'true',
+        adminExists: adminExists(),
         accessPasswordSet: Boolean(
           String(settings.ACCESS_PASSWORD ?? '').trim()
         ),
