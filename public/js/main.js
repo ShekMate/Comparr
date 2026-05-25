@@ -239,6 +239,7 @@ const DEFAULT_VOTE_COUNT = 0
 const DEFAULT_LANGUAGES = [] // Start with no language filter to show all movies
 const SWIPE_DEFAULTS_STORAGE_KEY = 'comparrSwipeFilterDefaults'
 const DISPLAY_PREFERENCES_STORAGE_PREFIX = 'comparrDisplayPreferences'
+const THEME_STORAGE_KEY = 'comparrTheme'
 
 function getDisplayPreferencesStorageKey() {
   const userName =
@@ -258,6 +259,10 @@ function getDefaultDisplayPreferences() {
   return {
     showSeenList: false,
     showPassList: false,
+    showRecommendations: true,
+    showStats: true,
+    defaultLandingTab: 'tab-swipe',
+    cardRating: 'both',
   }
 }
 
@@ -276,6 +281,21 @@ function loadDisplayPreferences() {
         typeof parsed?.showPassList === 'boolean'
           ? parsed.showPassList
           : defaults.showPassList,
+      showRecommendations:
+        typeof parsed?.showRecommendations === 'boolean'
+          ? parsed.showRecommendations
+          : defaults.showRecommendations,
+      showStats:
+        typeof parsed?.showStats === 'boolean'
+          ? parsed.showStats
+          : defaults.showStats,
+      defaultLandingTab:
+        typeof parsed?.defaultLandingTab === 'string'
+          ? parsed.defaultLandingTab
+          : defaults.defaultLandingTab,
+      cardRating: ['both', 'imdb', 'tmdb'].includes(parsed?.cardRating)
+        ? parsed.cardRating
+        : defaults.cardRating,
     }
   } catch (err) {
     console.warn('Failed to load display preferences:', err)
@@ -297,6 +317,8 @@ function saveDisplayPreferences(preferences) {
 function applyDisplayPreferencesToNavigation(preferences) {
   const showSeenList = preferences?.showSeenList === true
   const showPassList = preferences?.showPassList === true
+  const showRecommendations = preferences?.showRecommendations !== false
+  const showStats = preferences?.showStats !== false
 
   document.querySelectorAll('[data-tab="tab-seen"]').forEach(el => {
     el.style.display = showSeenList ? '' : 'none'
@@ -304,21 +326,29 @@ function applyDisplayPreferencesToNavigation(preferences) {
   document.querySelectorAll('[data-tab="tab-dislikes"]').forEach(el => {
     el.style.display = showPassList ? '' : 'none'
   })
+  document.querySelectorAll('[data-tab="tab-recommendations"]').forEach(el => {
+    el.style.display = showRecommendations ? '' : 'none'
+  })
+  document.querySelectorAll('[data-tab="tab-stats"]').forEach(el => {
+    el.style.display = showStats ? '' : 'none'
+  })
 
   const seenPanel = document.getElementById('tab-seen')
   const passPanel = document.getElementById('tab-dislikes')
-  if (seenPanel && !showSeenList) {
-    seenPanel.hidden = !showSeenList
-  }
-  if (passPanel && !showPassList) {
-    passPanel.hidden = !showPassList
-  }
+  const recPanel = document.getElementById('tab-recommendations')
+  const statsPanel = document.getElementById('tab-stats')
+  if (seenPanel && !showSeenList) seenPanel.hidden = true
+  if (passPanel && !showPassList) passPanel.hidden = true
+  if (recPanel && !showRecommendations) recPanel.hidden = true
+  if (statsPanel && !showStats) statsPanel.hidden = true
 
   const activePanel = document.querySelector('.tab-panel:not([hidden])')
   const activePanelId = activePanel?.id
   const activePanelHiddenByPreference =
     (activePanelId === 'tab-seen' && !showSeenList) ||
-    (activePanelId === 'tab-dislikes' && !showPassList)
+    (activePanelId === 'tab-dislikes' && !showPassList) ||
+    (activePanelId === 'tab-recommendations' && !showRecommendations) ||
+    (activePanelId === 'tab-stats' && !showStats)
 
   if (activePanelHiddenByPreference) {
     const swipeButtons = document.querySelectorAll('[data-tab="tab-swipe"]')
@@ -330,6 +360,20 @@ function applyDisplayPreferencesToNavigation(preferences) {
     if (swipePanel) {
       swipePanel.hidden = false
     }
+  }
+
+  applyCardRatingPreference(preferences?.cardRating)
+}
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark'
+}
+
+function applyCardRatingPreference(pref) {
+  if (pref === 'imdb' || pref === 'tmdb') {
+    document.body.dataset.cardRating = pref
+  } else {
+    delete document.body.dataset.cardRating
   }
 }
 
@@ -813,6 +857,8 @@ function initTabs() {
   // Mark as initialized
   initMarker.dataset.initialized = 'true'
 
+  window._activateTab = handleTabClick
+
   // Activate first tab by default
   if (allButtons[0]) activate(allButtons[0].dataset.tab)
   if (settingsSubitems[0]) {
@@ -1038,42 +1084,53 @@ function setSettingsDirty(isDirty) {
 
 function hydrateDisplaySettingsForm() {
   displayPreferences = loadDisplayPreferences()
-  const showSeenListInput = document.getElementById(
-    'setting-display-show-seen-list'
-  )
-  const showPassListInput = document.getElementById(
-    'setting-display-show-pass-list'
-  )
+
+  const showSeenListInput = document.getElementById('setting-display-show-seen-list')
+  const showPassListInput = document.getElementById('setting-display-show-pass-list')
+  const showRecInput = document.getElementById('setting-display-show-recommendations')
+  const showStatsInput = document.getElementById('setting-display-show-stats')
+  const defaultTabInput = document.getElementById('setting-display-default-tab')
+  const cardRatingInput = document.getElementById('setting-display-card-rating')
+  const themeInput = document.getElementById('setting-display-theme')
 
   if (showSeenListInput) {
-    showSeenListInput.setAttribute(
-      'aria-pressed',
-      displayPreferences.showSeenList === true ? 'true' : 'false'
-    )
-    showSeenListInput.textContent =
-      displayPreferences.showSeenList === true
-        ? 'Hide Seen List'
-        : 'Show Seen List'
+    const on = displayPreferences.showSeenList === true
+    showSeenListInput.setAttribute('aria-pressed', on ? 'true' : 'false')
+    showSeenListInput.textContent = on ? 'Hide Seen List' : 'Show Seen List'
   }
   if (showPassListInput) {
-    showPassListInput.setAttribute(
-      'aria-pressed',
-      displayPreferences.showPassList === true ? 'true' : 'false'
-    )
-    showPassListInput.textContent =
-      displayPreferences.showPassList === true
-        ? 'Hide Pass List'
-        : 'Show Pass List'
+    const on = displayPreferences.showPassList === true
+    showPassListInput.setAttribute('aria-pressed', on ? 'true' : 'false')
+    showPassListInput.textContent = on ? 'Hide Pass List' : 'Show Pass List'
+  }
+  if (showRecInput) {
+    const on = displayPreferences.showRecommendations !== false
+    showRecInput.setAttribute('aria-pressed', on ? 'true' : 'false')
+    showRecInput.textContent = on ? 'Hide Recommended' : 'Show Recommended'
+  }
+  if (showStatsInput) {
+    const on = displayPreferences.showStats !== false
+    showStatsInput.setAttribute('aria-pressed', on ? 'true' : 'false')
+    showStatsInput.textContent = on ? 'Hide Stats' : 'Show Stats'
+  }
+  if (defaultTabInput) {
+    defaultTabInput.value = displayPreferences.defaultLandingTab || 'tab-swipe'
+  }
+  if (cardRatingInput) {
+    cardRatingInput.value = displayPreferences.cardRating || 'both'
+  }
+  if (themeInput) {
+    themeInput.value = localStorage.getItem(THEME_STORAGE_KEY) || 'dark'
   }
 }
 
 function collectDisplaySettingsForm() {
-  const showSeenListInput = document.getElementById(
-    'setting-display-show-seen-list'
-  )
-  const showPassListInput = document.getElementById(
-    'setting-display-show-pass-list'
-  )
+  const showSeenListInput = document.getElementById('setting-display-show-seen-list')
+  const showPassListInput = document.getElementById('setting-display-show-pass-list')
+  const showRecInput = document.getElementById('setting-display-show-recommendations')
+  const showStatsInput = document.getElementById('setting-display-show-stats')
+  const defaultTabInput = document.getElementById('setting-display-default-tab')
+  const cardRatingInput = document.getElementById('setting-display-card-rating')
 
   return {
     showSeenList: showSeenListInput
@@ -1082,6 +1139,14 @@ function collectDisplaySettingsForm() {
     showPassList: showPassListInput
       ? showPassListInput.getAttribute('aria-pressed') === 'true'
       : false,
+    showRecommendations: showRecInput
+      ? showRecInput.getAttribute('aria-pressed') === 'true'
+      : true,
+    showStats: showStatsInput
+      ? showStatsInput.getAttribute('aria-pressed') === 'true'
+      : true,
+    defaultLandingTab: defaultTabInput?.value || 'tab-swipe',
+    cardRating: cardRatingInput?.value || 'both',
   }
 }
 
@@ -1096,6 +1161,16 @@ function initializeDisplaySettingsToggleButtons() {
       id: 'setting-display-show-pass-list',
       enabledLabel: 'Hide Pass List',
       disabledLabel: 'Show Pass List',
+    },
+    {
+      id: 'setting-display-show-recommendations',
+      enabledLabel: 'Hide Recommended',
+      disabledLabel: 'Show Recommended',
+    },
+    {
+      id: 'setting-display-show-stats',
+      enabledLabel: 'Hide Stats',
+      disabledLabel: 'Show Stats',
     },
   ]
 
@@ -1114,11 +1189,35 @@ function initializeDisplaySettingsToggleButtons() {
   })
 }
 
+function initializeDisplaySettingsSelects() {
+  const themeSelect = document.getElementById('setting-display-theme')
+  const defaultTabSelect = document.getElementById('setting-display-default-tab')
+  const cardRatingSelect = document.getElementById('setting-display-card-rating')
+
+  if (themeSelect && !themeSelect.dataset.displaySelectBound) {
+    themeSelect.addEventListener('change', () => {
+      applyTheme(themeSelect.value)
+      localStorage.setItem(THEME_STORAGE_KEY, themeSelect.value)
+      setSettingsDirty(true)
+    })
+    themeSelect.dataset.displaySelectBound = 'true'
+  }
+  if (defaultTabSelect && !defaultTabSelect.dataset.displaySelectBound) {
+    defaultTabSelect.addEventListener('change', () => setSettingsDirty(true))
+    defaultTabSelect.dataset.displaySelectBound = 'true'
+  }
+  if (cardRatingSelect && !cardRatingSelect.dataset.displaySelectBound) {
+    cardRatingSelect.addEventListener('change', () => setSettingsDirty(true))
+    cardRatingSelect.dataset.displaySelectBound = 'true'
+  }
+}
+
 function saveDisplaySettingsForm() {
   const nextPreferences = collectDisplaySettingsForm()
   displayPreferences = nextPreferences
   saveDisplayPreferences(nextPreferences)
   applyDisplayPreferencesToNavigation(nextPreferences)
+  applyCardRatingPreference(nextPreferences.cardRating)
 }
 
 let settingsAccessState = {
@@ -1129,6 +1228,7 @@ let hasAdminSettingsAccess = false
 let currentSettingsTarget = 'settings-availability'
 let activeAdminSettingsTab = 'settings-core'
 let displayPreferences = loadDisplayPreferences()
+applyTheme(localStorage.getItem(THEME_STORAGE_KEY) || 'dark')
 
 function getAdminHeaders() {
   return {}
@@ -4492,6 +4592,7 @@ async function hydrateSettingsUiIfAuthorized() {
   initializeAdminSettingsTabs()
   initializeIntegrationTestButtons()
   initializeDisplaySettingsToggleButtons()
+  initializeDisplaySettingsSelects()
   await hydrateSettingsForm()
   hydrateDisplaySettingsForm()
 
@@ -7162,6 +7263,18 @@ const main = async () => {
   sessionStorage.setItem('roomCode', roomCode)
   displayPreferences = loadDisplayPreferences()
   applyDisplayPreferencesToNavigation(displayPreferences)
+  applyCardRatingPreference(displayPreferences.cardRating)
+
+  const defaultTab = displayPreferences.defaultLandingTab || 'tab-swipe'
+  if (defaultTab !== 'tab-swipe' && typeof window._activateTab === 'function') {
+    const tabEl = document.getElementById(defaultTab)
+    const navBtn = document.querySelector(
+      `.sidebar-item[data-tab="${defaultTab}"]`
+    )
+    if (tabEl && navBtn && navBtn.style.display !== 'none') {
+      window._activateTab(defaultTab)
+    }
+  }
 
   // Kick off profile settings fetch so subscriptions can be applied once filterState is ready
   const _profileSettingsFetch = fetch('/api/profile/settings')
