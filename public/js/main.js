@@ -1296,6 +1296,9 @@ async function loadClientConfig() {
     if (data?.setupWizardCompleted !== undefined) {
       window.SETUP_WIZARD_COMPLETED = Boolean(data.setupWizardCompleted)
     }
+    if (data?.adminExists !== undefined) {
+      window.ADMIN_EXISTS = Boolean(data.adminExists)
+    }
     if (data?.accessPasswordSet !== undefined) {
       window.ACCESS_PASSWORD_SET = Boolean(data.accessPasswordSet)
     }
@@ -4554,8 +4557,18 @@ function createFirstRunGuideModal() {
   return modal
 }
 
+function isSetupAlreadyDone() {
+  // The explicit flag is the normal case. If it's missing but a media source
+  // is configured AND an admin account already exists, setup was completed on
+  // another device and the flag is stale/lost — don't block with the wizard.
+  return (
+    (hasConfiguredMovieSource() && window.SETUP_WIZARD_COMPLETED) ||
+    (hasConfiguredMovieSource() && window.ADMIN_EXISTS)
+  )
+}
+
 async function ensureInitialSourceSetup() {
-  if (hasConfiguredMovieSource() && window.SETUP_WIZARD_COMPLETED) return
+  if (isSetupAlreadyDone()) return
 
   const modal = createFirstRunGuideModal()
   modal?.classList.add('is-visible')
@@ -4563,7 +4576,7 @@ async function ensureInitialSourceSetup() {
   await new Promise(resolve => {
     const handleRecheck = async () => {
       await loadClientConfig()
-      if (!hasConfiguredMovieSource() || !window.SETUP_WIZARD_COMPLETED) {
+      if (!isSetupAlreadyDone()) {
         return
       }
       modal?.classList.remove('is-visible')
@@ -5553,6 +5566,23 @@ async function login(api) {
   if (currentUser) {
     const name = currentUser.username
     const code = currentUser.roomCode || userRoomCode(currentUser.id)
+
+    // If this user is admin and the wizard-completed flag is missing (e.g. data
+    // was reset, or set up on a different device), heal it silently so future
+    // page loads on any device won't show the wizard again.
+    if (currentUser.isAdmin && !window.SETUP_WIZARD_COMPLETED && hasConfiguredMovieSource()) {
+      try {
+        const apiBase = document.body.dataset.basePath || ''
+        await fetch(`${apiBase}/api/settings`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ settings: { SETUP_WIZARD_COMPLETED: 'true' } }),
+        })
+        await loadClientConfig()
+      } catch {
+        // Non-fatal — the app still works without the flag being saved
+      }
+    }
 
     try {
       let data
