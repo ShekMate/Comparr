@@ -7358,3 +7358,72 @@ footer {
 [data-theme='light'] .login-section .logo {
   filter: invert(1);
 }
+
+/* Swipe card meta bar — background stays near-opaque dark; keep text light */
+[data-theme='light'] .card-meta {
+  background: rgba(248, 250, 252, 0.96);
+}
+
+/* Swipe filter button — semi-transparent dark bg washes out in light mode */
+[data-theme='light'] .swipe-filter-btn {
+  background: rgba(0, 0, 0, 0.07);
+  color: var(--color-text-secondary);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+[data-theme='light'] .swipe-filter-btn:hover {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: var(--color-primary);
+}
+
+[data-theme='light'] .swipe-filter-btn.has-filters {
+  color: var(--color-primary);
+}
+
+/* Undo button icon — bg override exists but icon colour was still white */
+[data-theme='light'] .undo-button i {
+  color: var(--color-text-primary);
+}
+
+/* IMDb import button on Seen tab */
+[data-theme='light'] .imdb-import-btn {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--color-text-secondary);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='light'] .imdb-import-btn:hover {
+  background: rgba(245, 197, 24, 0.1);
+  border-color: rgba(245, 197, 24, 0.3);
+  color: var(--color-text-primary);
+}
+
+/* IMDb import panel — dark container with CSS-variable text that turns dark */
+[data-theme='light'] .imdb-import-panel {
+  background: var(--color-surface-light);
+  border-color: var(--color-line);
+}
+
+[data-theme='light'] .imdb-url-input {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border-color: var(--color-line);
+}
+
+[data-theme='light'] .imdb-url-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* Trailer link button — hover turns white with no background */
+[data-theme='light'] .card-trailer-btn:hover {
+  color: var(--color-primary);
+}
+
+/* Toggle switch — white thumb on #e2e8f0 track is nearly invisible */
+[data-theme='light'] .toggle-slider:before {
+  background-color: #64748b;
+}
+
+[data-theme='light'] .toggle-switch input:checked + .toggle-slider:before {
+  background-color: #ffffff;
+}
