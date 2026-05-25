@@ -3556,6 +3556,14 @@ body[data-user-type='guest'] .compare-ui {
   max-height: none;
   overflow: visible;
   margin-top: 0.75rem;
+  box-shadow: none;
+  backdrop-filter: none;
+  border-radius: 0;
+  border: none;
+}
+
+.filter-modal.inline-defaults-mode .filter-group {
+  backdrop-filter: none;
 }
 
 .filter-modal.inline-defaults-mode .modal-header {
