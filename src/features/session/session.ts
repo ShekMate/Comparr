@@ -1384,9 +1384,12 @@ class Session {
   remove = (user: User, ws: WebSocket) => {
     log.debug(`User ${user?.name} was removed`)
     ws.removeAllListeners()
-    this.users.set(user, null)
+    // Guard: if a forceTakeover registered a new socket for this user before
+    // the old socket's close event fired, don't null out the new socket.
+    if (this.users.get(user) !== ws) return
 
-    const activeUsers = [...this.users.values()].filter(ws => !ws?.isClosed)
+    this.users.set(user, null)
+    const activeUsers = [...this.users.values()].filter(s => !s?.isClosed)
     if (activeUsers.length === 0) {
       this.destroy()
     } else {

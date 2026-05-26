@@ -3,6 +3,7 @@ import * as log from 'jsr:@std/log'
 import type { CompatRequest } from '../compat-request.ts'
 import { makeHeaders } from '../security-headers.ts'
 import { apiRateLimiter } from '../ip-rate-limiter.ts'
+import { resolveClientIp } from '../network-access.ts'
 import { getTmdbApiKey } from '../../../core/config.ts'
 import {
   processImdbImportBackground,
@@ -16,10 +17,7 @@ import {
 } from '../../../features/session/session.ts'
 import { parseImdbCsv } from '../../../features/session/imdb-import.ts'
 
-const getClientIp = (req: CompatRequest): string =>
-  String(
-    (req?.conn?.remoteAddr as Deno.NetAddr | undefined)?.hostname || 'unknown'
-  )
+const getClientIp = (req: CompatRequest): string => resolveClientIp(req)
 
 const sanitizeForLog = (value: string, maxLength = 64) =>
   String(value || '')

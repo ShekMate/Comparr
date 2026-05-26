@@ -31,21 +31,24 @@ export class ComparrAPI extends EventTarget {
         window.isLoadingBatch = false
       }
 
+      // Code 4001 means another device logged in as the same user and took over.
+      const message =
+        event.code === 4001
+          ? 'Logged in from another device. Refresh to reconnect here.'
+          : 'Connection lost. Please refresh the page.'
+
       // Show error to user
       const cardStack = document.querySelector('.js-card-stack')
       if (cardStack) {
         const hasVisibleMovies = cardStack.children.length > 0
         if (!hasVisibleMovies) {
-          cardStack.style.setProperty(
-            '--empty-text',
-            '"Connection lost. Please refresh the page."'
-          )
+          cardStack.style.setProperty('--empty-text', `"${message}"`)
         }
       }
 
       // Show a notification
       if (window.showNotification) {
-        window.showNotification('Connection lost. Please refresh the page.')
+        window.showNotification(message)
       }
     })
 

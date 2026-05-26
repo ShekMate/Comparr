@@ -6,6 +6,7 @@ import type { CompatRequest } from '../compat-request.ts'
 import * as log from 'jsr:@std/log'
 import { makeHeaders } from '../security-headers.ts'
 import { loginRateLimiter } from '../ip-rate-limiter.ts'
+import { resolveClientIp } from '../network-access.ts'
 import {
   getPlexUrl,
   getPlexToken,
@@ -122,8 +123,7 @@ const persistPendingPinsToDisk = (): void => {
 
 const makeJson = (req: CompatRequest) => makeHeaders(req, 'application/json')
 
-const getClientIp = (req: CompatRequest) =>
-  String(req?.conn?.remoteAddr?.hostname || 'unknown')
+const getClientIp = (req: CompatRequest) => resolveClientIp(req)
 
 const parseCookies = (req: CompatRequest): Map<string, string> => {
   const cookies = new Map<string, string>()

@@ -1,6 +1,7 @@
 import type { CompatRequest } from '../http/compat-request.ts'
 import { EventEmitter } from 'node:events'
 import { getAllowedOrigins } from '../../core/config.ts'
+import { resolveClientIp } from '../http/network-access.ts'
 
 export class WebSocketError extends Error {}
 
@@ -66,9 +67,7 @@ export class WebSocketServer {
   }
 
   private getClientIp(req: CompatRequest) {
-    return String(
-      (req.conn.remoteAddr as Deno.NetAddr | undefined)?.hostname || 'unknown'
-    )
+    return resolveClientIp(req)
   }
 
   connect(req: CompatRequest): Promise<Response> {
