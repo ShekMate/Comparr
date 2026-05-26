@@ -146,3 +146,14 @@ export const isLocalRequest = (req: {
 
   return isPrivateNetwork(getSocketIp(req))
 }
+
+export const resolveClientIp = (req: {
+  conn?: { remoteAddr?: Deno.NetAddr }
+  headers?: { get?: (name: string) => string | null }
+}): string => {
+  if (getTrustProxy()) {
+    const forwarded = getForwardedIp(req)
+    if (forwarded) return forwarded
+  }
+  return getSocketIp(req) || 'unknown'
+}

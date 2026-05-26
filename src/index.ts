@@ -45,6 +45,7 @@ import {
   isLocalRequest,
   isValidHost,
   isValidStateChangingOrigin,
+  resolveClientIp,
 } from './infra/http/network-access.ts'
 import { handleSettingsRoutes } from './infra/http/routes/settings.ts'
 import { handleRoutes } from './infra/http/router.ts'
@@ -344,7 +345,7 @@ const wss = new WebSocketServer({
     const userSession = userToken ? getUserSession(userToken) : null
     return handleLogin(
       ws,
-      String((req.conn.remoteAddr as Deno.NetAddr)?.hostname || 'unknown'),
+      resolveClientIp(req),
       parseAccessPassword(req),
       userSession?.hasServerAccess !== false
     )

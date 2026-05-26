@@ -14,7 +14,7 @@ import {
 import { getUserTokenFromCookie } from './auth.ts'
 import { apiRateLimiter, loginRateLimiter } from '../ip-rate-limiter.ts'
 import { addSecurityHeaders } from '../security-headers.ts'
-import { isValidStateChangingOrigin } from '../network-access.ts'
+import { isValidStateChangingOrigin, resolveClientIp } from '../network-access.ts'
 import { tmdbFetch } from '../../../api/tmdb.ts'
 import { fetchWithTimeout } from '../fetch-with-timeout.ts'
 import {
@@ -45,10 +45,7 @@ export type SettingsRouteDeps = {
   onWizardComplete: () => Promise<void> | void
 }
 
-const getClientIp = (req: CompatRequest) => {
-  const hostname = req?.conn?.remoteAddr?.hostname
-  return String(hostname || 'unknown')
-}
+const getClientIp = (req: CompatRequest) => resolveClientIp(req)
 
 const makeJsonHeaders = (req?: CompatRequest) => {
   const headers = new Headers({ 'content-type': 'application/json' })
