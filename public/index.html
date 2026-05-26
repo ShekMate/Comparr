@@ -11,6 +11,7 @@
 
     <!-- Load CSS from site root (/public is web root) -->
     <link rel="stylesheet" href="${ROOT_PATH}/styles/style.css?v=20260413" />
+    <link rel="stylesheet" href="${ROOT_PATH}/styles/view-modes.css?v=20260526" />
     <!-- Font Awesome Icons -->
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
@@ -1033,12 +1034,15 @@
 
           <!-- Connected friends + their matches -->
           <div class="matches-friends-section js-matches-friends-section">
-            <h3
-              class="matches-friends-heading js-matches-friends-heading"
-              hidden
-            >
-              Friends
-            </h3>
+            <div class="matches-friends-header">
+              <h3
+                class="matches-friends-heading js-matches-friends-heading"
+                hidden
+              >
+                Friends
+              </h3>
+              <div class="matches-view-mode-row"></div>
+            </div>
             <div class="matches-friends-list js-matches-friends-list"></div>
           </div>
         </div>

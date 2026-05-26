@@ -5,6 +5,7 @@ import { ComparrAPI } from './ComparrAPI.js'
 import CardView from './CardView.js?v=4'
 import { MatchesView } from './MatchesView.js'
 import { buildRatingHtml, formatRuntime, getGenreNames } from './features/movie-metadata.js'
+import { initViewMode, viewModeAddItem, viewModeRemoveItem, applyViewMode } from './ViewModes.js'
 
 // Global API reference so functions outside main() can access it
 let api
@@ -4706,8 +4707,12 @@ async function setupSettingsUI() {
   await hydrateSettingsUiIfAuthorized()
 }
 
-// Make it globally available
+// Make sort functions globally available
 window.sortWatchList = sortWatchList
+
+// Expose helpers needed by ViewModes.js
+window.comparrMatchMovies = new Map()
+checkRequestServiceStatus().then(v => { window._requestServiceConfigured = v })
 
 function sortPassList(sortBy) {
   const dislikesList = document.querySelector('.dislikes-list')
@@ -5921,6 +5926,8 @@ async function appendRatedRow(
         card.classList.toggle('expanded')
       })
 
+    card._movieData = { ...movie, _isInLibrary: isInPersonalLibrary }
+
     likesList?.appendChild(card)
 
     if (likesList) {
@@ -5932,6 +5939,8 @@ async function appendRatedRow(
       likesList.dataset.originalOrder = filteredOrder.join(',')
       applyCurrentWatchListSort()
     }
+
+    viewModeAddItem('tab-likes', card._movieData)
 
     // Add click handler for Request pill
     if (!isInPersonalLibrary && tmdbId && requestServiceConfigured) {
@@ -6297,6 +6306,8 @@ async function appendRatedRow(
       console.warn('⚠️ No move-to-seen button found for:', movie.title)
     }
 
+    card._movieData = { ...movie }
+
     dislikesList?.appendChild(card)
 
     if (dislikesList) {
@@ -6308,6 +6319,8 @@ async function appendRatedRow(
       dislikesList.dataset.originalOrder = filteredOrder.join(',')
       applyCurrentPassListSort()
     }
+
+    viewModeAddItem('tab-dislikes', card._movieData)
   } else if (wantsToWatch === null) {
     // Create card for Seen tab (same format as Watch tab but no streaming)
     const card = document.createElement('div')
@@ -6428,6 +6441,8 @@ async function appendRatedRow(
       console.warn('⚠️ No move-to-pass button found for:', movie.title)
     }
 
+    card._movieData = { ...movie }
+
     seenList?.appendChild(card)
 
     if (seenList) {
@@ -6439,6 +6454,8 @@ async function appendRatedRow(
       seenList.dataset.originalOrder = filteredOrder.join(',')
       applyCurrentSeenListSort()
     }
+
+    viewModeAddItem('tab-seen', card._movieData)
   }
 }
 
@@ -6552,6 +6569,8 @@ async function moveMovieBetweenLists(guid, fromList, toList) {
       oldList.dataset.originalOrder = updatedOrder.join(',')
     }
 
+    const listToTab = { watch: 'tab-likes', pass: 'tab-dislikes', seen: 'tab-seen' }
+    viewModeRemoveItem(listToTab[fromList], guid)
     oldCard.remove()
 
     // Add to new list
@@ -6771,6 +6790,10 @@ async function handleMovieRequest(tmdbId, movieTitle, buttonElement) {
     alert(`Error requesting "${movieTitle}".`)
   }
 }
+
+window.moveMovieBetweenLists = moveMovieBetweenLists
+window.handleMovieRequest = handleMovieRequest
+window.checkRequestServiceStatus = checkRequestServiceStatus
 
 // Watch List Auto-Refresh System
 let watchListRefreshInterval = null
@@ -7793,6 +7816,24 @@ const main = async () => {
       })
       details.hidden = true
     })
+
+    // Store match movies for view mode system
+    window.comparrMatchMovies = window.comparrMatchMovies || new Map()
+    window.comparrMatchMovies.clear()
+    for (const conn of accepted) {
+      for (const m of (conn.matches || [])) {
+        window.comparrMatchMovies.set(m.guid || m.tmdbId, m)
+      }
+    }
+    // Attach _movieData to each watch-card so ViewModes can read it
+    matchesFriendsList.querySelectorAll('.watch-card').forEach(card => {
+      const guid = card.dataset.guid
+      if (guid && window.comparrMatchMovies.has(guid)) {
+        card._movieData = window.comparrMatchMovies.get(guid)
+      }
+    })
+    // Refresh the view mode alt container
+    applyViewMode('tab-matches')
   }
 
   const loadMatchesData = async () => {
@@ -8043,6 +8084,8 @@ const main = async () => {
       </div>
     `
 
+    card._movieData = { ...movie }
+
     card
       .querySelector('.watch-card-collapsed')
       .addEventListener('click', () => {
@@ -8059,6 +8102,7 @@ const main = async () => {
           movie,
           true
         )
+        viewModeRemoveItem('tab-recommendations', movie.guid)
         card.remove()
       })
 
@@ -8072,6 +8116,7 @@ const main = async () => {
           movie,
           false
         )
+        viewModeRemoveItem('tab-recommendations', movie.guid)
         card.remove()
       })
 
@@ -8084,6 +8129,7 @@ const main = async () => {
           movie,
           null
         )
+        viewModeRemoveItem('tab-recommendations', movie.guid)
         card.remove()
       })
 
@@ -8165,6 +8211,7 @@ const main = async () => {
 
     for (const movie of allMovies.values()) {
       list.appendChild(buildRecommendationCard(movie))
+      viewModeAddItem('tab-recommendations', { ...movie })
     }
     recommendationsLoaded = true
   }
@@ -12268,6 +12315,11 @@ function hideMatchPopup() {
     overlay.classList.remove('active')
   }, 300)
 }
+
+// Initialize view mode controls for all sections
+document.addEventListener('DOMContentLoaded', () => {
+  ;['tab-likes', 'tab-seen', 'tab-dislikes', 'tab-recommendations', 'tab-matches'].forEach(initViewMode)
+})
 
 // Match popup button handlers
 document.addEventListener('DOMContentLoaded', () => {
