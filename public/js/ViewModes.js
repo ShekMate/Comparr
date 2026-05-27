@@ -12,7 +12,7 @@ import { buildRatingHtml, formatRuntime } from './features/movie-metadata.js'
 const SECTION_CONFIGS = {
   'tab-likes':           { listClass: 'likes-list',           hasRequest: true,  expandBtnId: 'toggle-expand-all-btn',                 sortWrapperId: 'watch-sort-controls-wrapper' },
   'tab-seen':            { listClass: 'seen-list',             hasRequest: true,  expandBtnId: 'toggle-expand-all-seen-btn',            sortWrapperId: 'seen-sort-controls-wrapper',   simplified: true },
-  'tab-dislikes':        { listClass: 'dislikes-list',         hasRequest: false, expandBtnId: 'toggle-expand-all-pass-btn',            sortWrapperId: 'pass-sort-controls-wrapper' },
+  'tab-dislikes':        { listClass: 'dislikes-list',         hasRequest: false, expandBtnId: 'toggle-expand-all-pass-btn',            sortWrapperId: 'pass-sort-controls-wrapper',   simplified: true },
   'tab-recommendations': { listClass: 'recommendations-list',  hasRequest: false, expandBtnId: 'toggle-expand-all-recommendations-btn', sortWrapperId: null },
   'tab-matches':         { listClass: null,                    hasRequest: true,  expandBtnId: null,                                    sortWrapperId: null },
 }
