@@ -935,33 +935,21 @@ function sortWatchList(sortBy) {
       b.querySelector('.watch-card-year').textContent.match(/\d+/)?.[0] || 0
     )
 
-    // Extract all three ratings
     const getRatings = card => {
-      const ratingEl = card.querySelector('.watch-card-ratings')
-      if (!ratingEl) return { imdb: 0, rt: 0, tmdb: 0 }
-
-      const innerHTML = ratingEl.innerHTML
-
-      // Extract IMDb rating: <img src="..." alt="IMDb"> 7.5
-      const imdbMatch = innerHTML.match(/imdb\.svg[^>]*>\s*([\d.]+)/i)
-      const imdb = imdbMatch ? parseFloat(imdbMatch[1]) : 0
-
-      // Extract RT rating: <img src="..." alt="RT"> 85%
-      const rt = 0
-
-      // Extract TMDb rating: <img src="..." alt="TMDb"> 7.5
-      const tmdbMatch = innerHTML.match(/tmdb\.svg[^>]*>\s*([\d.]+)/i)
-      const tmdb = tmdbMatch ? parseFloat(tmdbMatch[1]) : 0
-
-      return { imdb, rt, tmdb }
+      const d = card._movieData
+      if (d) return {
+        imdb: parseFloat(d.rating_imdb || 0) || 0,
+        tmdb: parseFloat(d.rating_tmdb || d.vote_average || 0) || 0,
+      }
+      const html = card.querySelector('.watch-card-ratings')?.innerHTML || ''
+      return {
+        imdb: parseFloat(html.match(/rating-imdb[\s\S]*?<span[^>]*>([\d.]+)<\/span>/i)?.[1] || 0) || 0,
+        tmdb: parseFloat(html.match(/rating-tmdb[\s\S]*?<span[^>]*>([\d.]+)<\/span>/i)?.[1] || 0) || 0,
+      }
     }
 
     const ratingsA = getRatings(a)
     const ratingsB = getRatings(b)
-
-    // Get popularity and vote count from data attributes
-    const popularityA = parseFloat(a.dataset.popularity || 0)
-    const popularityB = parseFloat(b.dataset.popularity || 0)
     const votesA = parseInt(a.dataset.voteCount || 0)
     const votesB = parseInt(b.dataset.voteCount || 0)
 
@@ -979,14 +967,8 @@ function sortWatchList(sortBy) {
       case 'imdb':
         result = ratingsA.imdb - ratingsB.imdb
         break
-      case 'rt':
-        result = ratingsA.rt - ratingsB.rt
-        break
       case 'tmdb':
         result = ratingsA.tmdb - ratingsB.tmdb
-        break
-      case 'popularity':
-        result = popularityA - popularityB
         break
       case 'vote_count':
         result = votesA - votesB
@@ -4754,23 +4736,14 @@ function sortPassList(sortBy) {
     )
 
     const getRatings = card => {
-      const ratingEl = card.querySelector('.watch-card-ratings')
-      if (!ratingEl) return { imdb: 0, rt: 0, tmdb: 0 }
-      const innerHTML = ratingEl.innerHTML
-      const imdbMatch = innerHTML.match(/imdb\.svg[^>]*>\s*([\d.]+)/i)
-      const imdb = imdbMatch ? parseFloat(imdbMatch[1]) : 0
-      const rt = 0
-      const tmdbMatch = innerHTML.match(/tmdb\.svg[^>]*>\s*([\d.]+)/i)
-      const tmdb = tmdbMatch ? parseFloat(tmdbMatch[1]) : 0
-      return { imdb, rt, tmdb }
+      const d = card._movieData
+      if (d) return { tmdb: parseFloat(d.rating_tmdb || d.vote_average || 0) || 0 }
+      const html = card.querySelector('.watch-card-ratings')?.innerHTML || ''
+      return { tmdb: parseFloat(html.match(/rating-tmdb[\s\S]*?<span[^>]*>([\d.]+)<\/span>/i)?.[1] || 0) || 0 }
     }
 
     const ratingsA = getRatings(a)
     const ratingsB = getRatings(b)
-    const popularityA = parseFloat(a.dataset.popularity || 0)
-    const popularityB = parseFloat(b.dataset.popularity || 0)
-    const votesA = parseInt(a.dataset.voteCount || 0)
-    const votesB = parseInt(b.dataset.voteCount || 0)
 
     let result = 0
     switch (sortField) {
@@ -4781,20 +4754,8 @@ function sortPassList(sortBy) {
       case 'release_date':
         result = yearA - yearB
         break
-      case 'imdb':
-        result = ratingsA.imdb - ratingsB.imdb
-        break
-      case 'rt':
-        result = ratingsA.rt - ratingsB.rt
-        break
       case 'tmdb':
         result = ratingsA.tmdb - ratingsB.tmdb
-        break
-      case 'popularity':
-        result = popularityA - popularityB
-        break
-      case 'vote_count':
-        result = votesA - votesB
         break
       case 'date':
         const originalOrder = dislikesList.dataset.originalOrder.split(',')
@@ -4851,23 +4812,18 @@ function sortSeenList(sortBy) {
     )
 
     const getRatings = card => {
-      const ratingEl = card.querySelector('.watch-card-ratings')
-      if (!ratingEl) return { imdb: 0, rt: 0, tmdb: 0 }
-      const innerHTML = ratingEl.innerHTML
-      const imdbMatch = innerHTML.match(/imdb\.svg[^>]*>\s*([\d.]+)/i)
-      const imdb = imdbMatch ? parseFloat(imdbMatch[1]) : 0
-      const rt = 0
-      const tmdbMatch = innerHTML.match(/tmdb\.svg[^>]*>\s*([\d.]+)/i)
-      const tmdb = tmdbMatch ? parseFloat(tmdbMatch[1]) : 0
-      return { imdb, rt, tmdb }
+      const d = card._movieData
+      if (d) return {
+        tmdb: parseFloat(d.rating_tmdb || d.vote_average || 0) || 0,
+      }
+      const html = card.querySelector('.watch-card-ratings')?.innerHTML || ''
+      return {
+        tmdb: parseFloat(html.match(/rating-tmdb[\s\S]*?<span[^>]*>([\d.]+)<\/span>/i)?.[1] || 0) || 0,
+      }
     }
 
     const ratingsA = getRatings(a)
     const ratingsB = getRatings(b)
-    const popularityA = parseFloat(a.dataset.popularity || 0)
-    const popularityB = parseFloat(b.dataset.popularity || 0)
-    const votesA = parseInt(a.dataset.voteCount || 0)
-    const votesB = parseInt(b.dataset.voteCount || 0)
 
     let result = 0
     switch (sortField) {
@@ -4878,20 +4834,8 @@ function sortSeenList(sortBy) {
       case 'release_date':
         result = yearA - yearB
         break
-      case 'imdb':
-        result = ratingsA.imdb - ratingsB.imdb
-        break
-      case 'rt':
-        result = ratingsA.rt - ratingsB.rt
-        break
       case 'tmdb':
         result = ratingsA.tmdb - ratingsB.tmdb
-        break
-      case 'popularity':
-        result = popularityA - popularityB
-        break
-      case 'vote_count':
-        result = votesA - votesB
         break
       case 'date':
         const originalOrder = seenList.dataset.originalOrder.split(',')
