@@ -221,6 +221,7 @@
   top: 0;
   z-index: 2;
   cursor: default;
+  text-align: left;
 }
 
 .view-table thead th[data-sort] {
