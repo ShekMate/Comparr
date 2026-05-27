@@ -795,3 +795,79 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── View Modes — Mobile ───────────────────────────────────── */
+
+/* Sort row + view-mode buttons: let them wrap to separate rows */
+@media (max-width: 600px) {
+  .watch-list-header .sort-controls {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  /* Sort dropdown + direction button: grow to fill first row */
+  .watch-list-header .sort-controls-wrapper {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  /* View-mode selector: own row, right-aligned */
+  .watch-list-header .view-mode-controls {
+    flex-basis: 100%;
+    justify-content: flex-end;
+  }
+
+  /* Reduce sort dropdown padding on mobile */
+  .watch-list-header .watch-sort-dropdown {
+    font-size: 0.8rem;
+    padding: 0.35rem 0.5rem;
+  }
+
+  /* Poster grid: full bleed, smaller gap */
+  .view-poster-grid {
+    gap: 0.5rem;
+  }
+
+  /* Poster card info: tighter padding, smaller text */
+  .poster-card-info {
+    padding: 0.3rem 0.4rem 0.4rem;
+    font-size: 0.7rem;
+  }
+
+  .poster-card-title {
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+
+  /* Table wrapper: extend slightly for breathing room */
+  .view-table-wrapper {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    margin: 0 -1rem;
+    width: calc(100% + 2rem);
+  }
+
+  .view-table thead th,
+  .view-table tbody td {
+    font-size: 0.78rem;
+    padding: 0.5rem 0.65rem;
+  }
+
+  .col-title {
+    min-width: 110px;
+    max-width: 160px;
+  }
+
+  .col-actions {
+    min-width: 80px;
+  }
+
+  .vt-action-btn {
+    width: 1.6rem;
+    height: 1.6rem;
+    font-size: 0.72rem;
+  }
+}
