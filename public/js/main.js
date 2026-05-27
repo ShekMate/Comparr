@@ -10241,6 +10241,7 @@ watchSortDropdown?.addEventListener('change', () => {
   const sortField = watchSortDropdown.value
   const direction = watchSortDirectionBtn?.dataset.direction || 'desc'
   window.sortWatchList(`${sortField}-${direction}`)
+  applyViewMode('tab-likes')
 })
 
 // Handle direction button click - toggle between asc/desc
@@ -10256,6 +10257,7 @@ watchSortDirectionBtn?.addEventListener('click', e => {
 
   const sortField = watchSortDropdown?.value || 'date'
   window.sortWatchList(`${sortField}-${newDirection}`)
+  applyViewMode('tab-likes')
 })
 
 // =========================================================
@@ -10308,6 +10310,7 @@ passSortDropdown?.addEventListener('change', () => {
   const sortField = passSortDropdown.value
   const direction = passSortDirectionBtn?.dataset.direction || 'desc'
   window.sortPassList(`${sortField}-${direction}`)
+  applyViewMode('tab-dislikes')
 })
 
 passSortDirectionBtn?.addEventListener('click', e => {
@@ -10322,6 +10325,7 @@ passSortDirectionBtn?.addEventListener('click', e => {
 
   const sortField = passSortDropdown?.value || 'date'
   window.sortPassList(`${sortField}-${newDirection}`)
+  applyViewMode('tab-dislikes')
 })
 
 // =========================================================
@@ -10365,6 +10369,7 @@ seenSortDropdown?.addEventListener('change', () => {
   const sortField = seenSortDropdown.value
   const direction = seenSortDirectionBtn?.dataset.direction || 'desc'
   window.sortSeenList(`${sortField}-${direction}`)
+  applyViewMode('tab-seen')
 })
 
 seenSortDirectionBtn?.addEventListener('click', e => {
@@ -10379,6 +10384,7 @@ seenSortDirectionBtn?.addEventListener('click', e => {
 
   const sortField = seenSortDropdown?.value || 'date'
   window.sortSeenList(`${sortField}-${newDirection}`)
+  applyViewMode('tab-seen')
 })
 
 // =========================================================

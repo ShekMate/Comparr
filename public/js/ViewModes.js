@@ -60,8 +60,21 @@ function getMovieYear(movie) {
 }
 
 function getRatingValue(movie, type) {
-  if (type === 'imdb') return parseFloat(movie.rating_imdb || movie.imdbRating || 0) || null
-  if (type === 'tmdb') return parseFloat(movie.rating_tmdb || movie.tmdbRating || movie.vote_average || 0) || null
+  if (type === 'imdb') {
+    const v = parseFloat(movie.rating_imdb ?? movie.imdbRating ?? 0)
+    if (Number.isFinite(v) && v > 0) return v
+  } else if (type === 'tmdb') {
+    const v = parseFloat(movie.rating_tmdb ?? movie.tmdbRating ?? movie.vote_average ?? 0)
+    if (Number.isFinite(v) && v > 0) return v
+  }
+  const html = String(movie.rating || '')
+  if (html.includes('<img')) {
+    const pattern = type === 'imdb'
+      ? /rating-imdb[\s\S]*?<span[^>]*>([\d.]+)<\/span>/i
+      : /rating-tmdb[\s\S]*?<span[^>]*>([\d.]+)<\/span>/i
+    const m = html.match(pattern)
+    if (m) { const v = parseFloat(m[1]); return v > 0 ? v : null }
+  }
   return null
 }
 
@@ -638,11 +651,16 @@ function _applyViewMode(sectionId) {
   // Show/hide original list
   if (watchList) watchList.style.display = isOverview ? '' : 'none'
 
-  // Expand/collapse btn only relevant in overview
-  if (expandBtn) expandBtn.style.display = isOverview ? '' : 'none'
+  // Expand button is always hidden — overview auto-expands
+  if (expandBtn) expandBtn.style.display = 'none'
 
-  // Sort dropdown only hidden in table mode (column-header sort takes over)
+  // Sort dropdown hidden in table mode (column-header sort takes over)
   if (sortWrapper) sortWrapper.style.display = mode === 'table' ? 'none' : ''
+
+  // In overview, auto-expand all cards
+  if (isOverview && watchList) {
+    watchList.querySelectorAll('.watch-card').forEach(c => c.classList.add('expanded'))
+  }
 
   // Clear and rebuild alt container
   if (altContainer) {
