@@ -830,6 +830,19 @@
     gap: 0.5rem;
   }
 
+  /* Keep all poster size presets mobile-safe */
+  .view-poster-grid.poster-size-small {
+    grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+  }
+
+  .view-poster-grid.poster-size-medium {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+
+  .view-poster-grid.poster-size-large {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+
   /* Poster card info: tighter padding, smaller text */
   .poster-card-info {
     padding: 0.3rem 0.4rem 0.4rem;
@@ -839,6 +852,26 @@
   .poster-card-title {
     font-size: 0.72rem;
     font-weight: 600;
+    line-height: 1.25;
+  }
+
+  .poster-card-field {
+    font-size: 0.66rem;
+    line-height: 1.25;
+  }
+
+  /* Overview mode cards on mobile */
+  .watch-card-title,
+  .watch-card-title-compact {
+    font-size: 0.9rem;
+    line-height: 1.25;
+  }
+
+  .watch-card-info,
+  .watch-card-meta,
+  .watch-card-subtitle {
+    font-size: 0.75rem;
+    line-height: 1.35;
   }
 
   /* Table wrapper: extend slightly for breathing room */
@@ -852,8 +885,12 @@
 
   .view-table thead th,
   .view-table tbody td {
-    font-size: 0.78rem;
-    padding: 0.5rem 0.65rem;
+    font-size: 0.74rem;
+    padding: 0.45rem 0.55rem;
+  }
+
+  .view-table {
+    min-width: 100%;
   }
 
   .col-title {
