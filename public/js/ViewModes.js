@@ -11,7 +11,7 @@ import { buildRatingHtml, formatRuntime } from './features/movie-metadata.js'
 
 const SECTION_CONFIGS = {
   'tab-likes':           { listClass: 'likes-list',           hasRequest: true,  expandBtnId: 'toggle-expand-all-btn',                 sortWrapperId: 'watch-sort-controls-wrapper' },
-  'tab-seen':            { listClass: 'seen-list',             hasRequest: true,  expandBtnId: 'toggle-expand-all-seen-btn',            sortWrapperId: 'seen-sort-controls-wrapper' },
+  'tab-seen':            { listClass: 'seen-list',             hasRequest: true,  expandBtnId: 'toggle-expand-all-seen-btn',            sortWrapperId: 'seen-sort-controls-wrapper',   simplified: true },
   'tab-dislikes':        { listClass: 'dislikes-list',         hasRequest: false, expandBtnId: 'toggle-expand-all-pass-btn',            sortWrapperId: 'pass-sort-controls-wrapper' },
   'tab-recommendations': { listClass: 'recommendations-list',  hasRequest: false, expandBtnId: 'toggle-expand-all-recommendations-btn', sortWrapperId: null },
   'tab-matches':         { listClass: null,                    hasRequest: true,  expandBtnId: null,                                    sortWrapperId: null },
@@ -304,7 +304,12 @@ function applyTableColumnClasses(table, opts) {
 }
 
 function buildTableView(sectionId, movies) {
-  const opts = getTableOptions(sectionId)
+  const config = SECTION_CONFIGS[sectionId] || {}
+  // Simplified sections: only year column, no user-configurable options
+  const opts = config.simplified
+    ? { year: true }
+    : getTableOptions(sectionId)
+
   const wrapper = document.createElement('div')
   wrapper.className = 'view-table-wrapper'
 
@@ -312,10 +317,11 @@ function buildTableView(sectionId, movies) {
   table.className = 'view-table'
   applyTableColumnClasses(table, opts)
 
-  // thead
+  // thead — simplified sections only render the year column
   const thead = document.createElement('thead')
   let thHtml = '<tr><th class="col-title">Title</th>'
   TABLE_COLUMNS.forEach(col => {
+    if (config.simplified && col.key !== 'year') return
     const sortIcon = col.sortable ? `<i class="fas fa-sort vt-sort-icon"></i>` : ''
     thHtml += `<th class="col-${col.key}" ${col.sortable ? `data-sort="${col.key}"` : ''}>${col.label}${sortIcon}</th>`
   })
@@ -362,51 +368,56 @@ function buildTableView(sectionId, movies) {
 // ─── Poster renderer ────────────────────────────────────────────────────────────
 
 function buildPosterCard(movie, sectionId) {
-  const opts = getPosterOptions(sectionId)
+  const config = SECTION_CONFIGS[sectionId] || {}
   const size = getPosterSize(sectionId)
   const posterUrl = getPosterUrl(movie)
   const year = getMovieYear(movie)
-  const genres = getGenreList(movie)
-  const runtime = getRuntimeDisplay(movie)
-  const imdb = getRatingValue(movie, 'imdb')
-  const tmdb = getRatingValue(movie, 'tmdb')
-  const available = isMovieAvailable(movie)
-
-  const config = SECTION_CONFIGS[sectionId] || {}
-  const hasRequest = config.hasRequest
-  const isInLib = movie._isInLibrary || false
-  const tmdbId = movie.tmdbId || movie.tmdb_id || null
-  const requestConfigured = window._requestServiceConfigured || false
-  const showRequestBtn = hasRequest && !isInLib && tmdbId && requestConfigured
 
   const card = document.createElement('div')
   card.className = 'poster-card'
   card.dataset.guid = movie.guid || ''
 
   const infoRows = []
-  if (opts.showTitle) {
-    infoRows.push(`<div class="poster-card-title">${movie.title || ''}${opts.showYear && year ? ` <span class="poster-card-year">(${year})</span>` : ''}</div>`)
-  }
-  if (opts.showContentRating && movie.contentRating) {
-    infoRows.push(`<div class="poster-card-field poster-field-cr">${movie.contentRating}</div>`)
-  }
-  if (opts.showGenres && genres.length) {
-    infoRows.push(`<div class="poster-card-field poster-field-genres">${genres.slice(0, 2).join(', ')}</div>`)
-  }
-  if (opts.showRuntime && runtime) {
-    infoRows.push(`<div class="poster-card-field poster-field-runtime">${runtime}</div>`)
-  }
-  if (opts.showImdb && imdb) {
-    infoRows.push(`<div class="poster-card-field poster-field-rating"><span class="pc-rating-label">IMDb</span> ${imdb.toFixed(1)}</div>`)
-  }
-  if (opts.showTmdb && tmdb) {
-    infoRows.push(`<div class="poster-card-field poster-field-rating"><span class="pc-rating-label">TMDb</span> ${tmdb.toFixed(1)}</div>`)
-  }
-  if (opts.showAvailability) {
-    infoRows.push(`<div class="poster-card-field poster-field-avail ${available ? 'avail-yes' : 'avail-no'}">${available ? 'Available' : 'Not Available'}</div>`)
-  }
-  if (opts.showRequest && showRequestBtn) {
-    infoRows.push(`<button class="poster-card-request-btn provider-pill-add" data-tmdb-id="${tmdbId}" data-title="${escapeAttr(movie.title)}"><i class="fas fa-plus"></i> Request</button>`)
+
+  if (config.simplified) {
+    // Simplified sections: title + year only, no options
+    infoRows.push(`<div class="poster-card-title">${movie.title || ''}${year ? ` <span class="poster-card-year">(${year})</span>` : ''}</div>`)
+  } else {
+    const opts = getPosterOptions(sectionId)
+    const genres = getGenreList(movie)
+    const runtime = getRuntimeDisplay(movie)
+    const imdb = getRatingValue(movie, 'imdb')
+    const tmdb = getRatingValue(movie, 'tmdb')
+    const available = isMovieAvailable(movie)
+    const isInLib = movie._isInLibrary || false
+    const tmdbId = movie.tmdbId || movie.tmdb_id || null
+    const requestConfigured = window._requestServiceConfigured || false
+    const showRequestBtn = config.hasRequest && !isInLib && tmdbId && requestConfigured
+
+    if (opts.showTitle) {
+      infoRows.push(`<div class="poster-card-title">${movie.title || ''}${opts.showYear && year ? ` <span class="poster-card-year">(${year})</span>` : ''}</div>`)
+    }
+    if (opts.showContentRating && movie.contentRating) {
+      infoRows.push(`<div class="poster-card-field poster-field-cr">${movie.contentRating}</div>`)
+    }
+    if (opts.showGenres && genres.length) {
+      infoRows.push(`<div class="poster-card-field poster-field-genres">${genres.slice(0, 2).join(', ')}</div>`)
+    }
+    if (opts.showRuntime && runtime) {
+      infoRows.push(`<div class="poster-card-field poster-field-runtime">${runtime}</div>`)
+    }
+    if (opts.showImdb && imdb) {
+      infoRows.push(`<div class="poster-card-field poster-field-rating"><span class="pc-rating-label">IMDb</span> ${imdb.toFixed(1)}</div>`)
+    }
+    if (opts.showTmdb && tmdb) {
+      infoRows.push(`<div class="poster-card-field poster-field-rating"><span class="pc-rating-label">TMDb</span> ${tmdb.toFixed(1)}</div>`)
+    }
+    if (opts.showAvailability) {
+      infoRows.push(`<div class="poster-card-field poster-field-avail ${available ? 'avail-yes' : 'avail-no'}">${available ? 'Available' : 'Not Available'}</div>`)
+    }
+    if (opts.showRequest && showRequestBtn) {
+      infoRows.push(`<button class="poster-card-request-btn provider-pill-add" data-tmdb-id="${tmdbId}" data-title="${escapeAttr(movie.title)}"><i class="fas fa-plus"></i> Request</button>`)
+    }
   }
 
   card.innerHTML = `
@@ -533,6 +544,7 @@ function buildOptionsPanel(sectionId, onChanged) {
 // ─── View mode selector UI ────────────────────────────────────────────────────
 
 function buildViewModeSelector(sectionId, onModeChange) {
+  const config = SECTION_CONFIGS[sectionId] || {}
   const container = document.createElement('div')
   container.className = 'view-mode-controls'
 
@@ -540,12 +552,16 @@ function buildViewModeSelector(sectionId, onModeChange) {
   selectorWrap.className = 'view-mode-selector'
 
   const modes = [
-    { id: 'poster',   icon: 'fas fa-th-large', title: 'Poster View' },
-    { id: 'table',    icon: 'fas fa-list',      title: 'Table View' },
-    { id: 'overview', icon: 'fas fa-align-justify', title: 'Overview' },
+    { id: 'poster',   icon: 'fas fa-th-large',      title: 'Poster View' },
+    { id: 'table',    icon: 'fas fa-list',           title: 'Table View' },
+    { id: 'overview', icon: 'fas fa-align-justify',  title: 'Overview' },
   ]
 
   const currentMode = getViewMode(sectionId)
+
+  // Noop refresh used when there's no options panel
+  let refreshOptions = () => {}
+
   modes.forEach(m => {
     const btn = document.createElement('button')
     btn.className = 'view-mode-btn' + (m.id === currentMode ? ' active' : '')
@@ -556,7 +572,7 @@ function buildViewModeSelector(sectionId, onModeChange) {
       if (getViewMode(sectionId) === m.id) return
       setViewMode(sectionId, m.id)
       selectorWrap.querySelectorAll('.view-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === m.id))
-      optionsPanel._refresh()
+      refreshOptions()
       onModeChange(m.id)
     })
     selectorWrap.appendChild(btn)
@@ -564,41 +580,43 @@ function buildViewModeSelector(sectionId, onModeChange) {
 
   container.appendChild(selectorWrap)
 
-  // Options button + panel
-  const optionsAnchor = document.createElement('div')
-  optionsAnchor.className = 'view-options-anchor'
+  // Simplified sections have no options panel
+  if (!config.simplified) {
+    const optionsAnchor = document.createElement('div')
+    optionsAnchor.className = 'view-options-anchor'
 
-  const optionsBtn = document.createElement('button')
-  optionsBtn.className = 'view-options-btn watch-list-icon-btn'
-  optionsBtn.title = 'View Options'
-  optionsBtn.innerHTML = '<i class="fas fa-sliders-h"></i>'
+    const optionsBtn = document.createElement('button')
+    optionsBtn.className = 'view-options-btn watch-list-icon-btn'
+    optionsBtn.title = 'View Options'
+    optionsBtn.innerHTML = '<i class="fas fa-sliders-h"></i>'
 
-  const optionsPanel = buildOptionsPanel(sectionId, () => onModeChange(getViewMode(sectionId)))
+    const optionsPanel = buildOptionsPanel(sectionId, () => onModeChange(getViewMode(sectionId)))
+    refreshOptions = () => optionsPanel._refresh()
 
-  optionsBtn.addEventListener('click', e => {
-    e.stopPropagation()
-    const hidden = optionsPanel.hasAttribute('hidden')
-    // Close any other open panels
-    document.querySelectorAll('.view-options-popover:not([hidden])').forEach(p => {
-      if (p !== optionsPanel) p.setAttribute('hidden', '')
+    optionsBtn.addEventListener('click', e => {
+      e.stopPropagation()
+      const hidden = optionsPanel.hasAttribute('hidden')
+      document.querySelectorAll('.view-options-popover:not([hidden])').forEach(p => {
+        if (p !== optionsPanel) p.setAttribute('hidden', '')
+      })
+      if (hidden) {
+        optionsPanel.removeAttribute('hidden')
+        optionsPanel._refresh()
+      } else {
+        optionsPanel.setAttribute('hidden', '')
+      }
     })
-    if (hidden) {
-      optionsPanel.removeAttribute('hidden')
-      optionsPanel._refresh()
-    } else {
-      optionsPanel.setAttribute('hidden', '')
-    }
-  })
 
-  document.addEventListener('click', e => {
-    if (!optionsAnchor.contains(e.target)) {
-      optionsPanel.setAttribute('hidden', '')
-    }
-  })
+    document.addEventListener('click', e => {
+      if (!optionsAnchor.contains(e.target)) {
+        optionsPanel.setAttribute('hidden', '')
+      }
+    })
 
-  optionsAnchor.appendChild(optionsBtn)
-  optionsAnchor.appendChild(optionsPanel)
-  container.appendChild(optionsAnchor)
+    optionsAnchor.appendChild(optionsBtn)
+    optionsAnchor.appendChild(optionsPanel)
+    container.appendChild(optionsAnchor)
+  }
 
   return container
 }
