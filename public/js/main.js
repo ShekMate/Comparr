@@ -936,15 +936,10 @@ function sortWatchList(sortBy) {
     )
 
     const getRatings = card => {
-      const d = card._movieData
-      if (d) return {
-        imdb: parseFloat(d.rating_imdb || 0) || 0,
-        tmdb: parseFloat(d.rating_tmdb || d.vote_average || 0) || 0,
-      }
-      const html = card.querySelector('.watch-card-ratings')?.innerHTML || ''
+      const html = card._movieData?.rating || card.querySelector('.watch-card-ratings')?.innerHTML || ''
       return {
-        imdb: parseFloat(html.match(/rating-imdb[\s\S]*?<span[^>]*>([\d.]+)<\/span>/i)?.[1] || 0) || 0,
-        tmdb: parseFloat(html.match(/rating-tmdb[\s\S]*?<span[^>]*>([\d.]+)<\/span>/i)?.[1] || 0) || 0,
+        imdb: parseFloat(html.match(/imdb\.svg[\s\S]*?<span[^>]*>([\d.]+)<\/span>/i)?.[1] || 0) || 0,
+        tmdb: parseFloat(html.match(/tmdb\.svg[\s\S]*?<span[^>]*>([\d.]+)<\/span>/i)?.[1] || 0) || 0,
       }
     }
 
@@ -4736,10 +4731,8 @@ function sortPassList(sortBy) {
     )
 
     const getRatings = card => {
-      const d = card._movieData
-      if (d) return { tmdb: parseFloat(d.rating_tmdb || d.vote_average || 0) || 0 }
-      const html = card.querySelector('.watch-card-ratings')?.innerHTML || ''
-      return { tmdb: parseFloat(html.match(/rating-tmdb[\s\S]*?<span[^>]*>([\d.]+)<\/span>/i)?.[1] || 0) || 0 }
+      const html = card._movieData?.rating || card.querySelector('.watch-card-ratings')?.innerHTML || ''
+      return { tmdb: parseFloat(html.match(/tmdb\.svg[\s\S]*?<span[^>]*>([\d.]+)<\/span>/i)?.[1] || 0) || 0 }
     }
 
     const ratingsA = getRatings(a)
@@ -4812,14 +4805,8 @@ function sortSeenList(sortBy) {
     )
 
     const getRatings = card => {
-      const d = card._movieData
-      if (d) return {
-        tmdb: parseFloat(d.rating_tmdb || d.vote_average || 0) || 0,
-      }
-      const html = card.querySelector('.watch-card-ratings')?.innerHTML || ''
-      return {
-        tmdb: parseFloat(html.match(/rating-tmdb[\s\S]*?<span[^>]*>([\d.]+)<\/span>/i)?.[1] || 0) || 0,
-      }
+      const html = card._movieData?.rating || card.querySelector('.watch-card-ratings')?.innerHTML || ''
+      return { tmdb: parseFloat(html.match(/tmdb\.svg[\s\S]*?<span[^>]*>([\d.]+)<\/span>/i)?.[1] || 0) || 0 }
     }
 
     const ratingsA = getRatings(a)
