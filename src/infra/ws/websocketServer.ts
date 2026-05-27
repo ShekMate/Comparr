@@ -94,6 +94,10 @@ export class WebSocketServer {
         else this.ipConnections.set(clientIp, current - 1)
       })
 
+      // Prevent the EventEmitter 'error' event from throwing an uncaught
+      // exception and killing the process when the client drops the socket.
+      ws.on('error', err => this.options.onError(err as Error))
+
       this.clients.add(ws)
       this.options.onConnection(ws, req)
       return Promise.resolve(response)
