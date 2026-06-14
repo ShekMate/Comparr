@@ -44,6 +44,8 @@ export interface UserSettings {
   seerrApiKey: string
   defaultFilters: string
   subscriptions: string
+  plexWatchlistSynced: string
+  plexSeenSynced: string
   updatedAt: string
 }
 
@@ -117,6 +119,25 @@ export function initUserDatabase(): Database {
       db.exec(
         `ALTER TABLE user_settings ADD COLUMN subscriptions TEXT NOT NULL DEFAULT '[]'`
       )
+    } catch {
+      // Column already exists — ignore
+    }
+
+    // Add plex_auth_token to users for per-user watchlist/seen sync
+    try {
+      db.exec(`ALTER TABLE users ADD COLUMN plex_auth_token TEXT NOT NULL DEFAULT ''`)
+    } catch {
+      // Column already exists — ignore
+    }
+
+    // Add plex sync state columns to user_settings
+    try {
+      db.exec(`ALTER TABLE user_settings ADD COLUMN plex_watchlist_synced TEXT NOT NULL DEFAULT '{}'`)
+    } catch {
+      // Column already exists — ignore
+    }
+    try {
+      db.exec(`ALTER TABLE user_settings ADD COLUMN plex_seen_synced TEXT NOT NULL DEFAULT '{}'`)
     } catch {
       // Column already exists — ignore
     }
@@ -357,6 +378,7 @@ export interface UpsertUserParams {
   username: string
   email: string
   avatarUrl: string
+  plexAuthToken?: string
 }
 
 /**
@@ -371,20 +393,24 @@ export function upsertUser(params: UpsertUserParams): User {
   const email = String(params.email || '')
   const avatarUrl = String(params.avatarUrl || '')
 
+  const plexAuthToken = String(params.plexAuthToken || '')
+
   getDb().exec(
-    `INSERT INTO users (provider, provider_user_id, username, email, avatar_url, is_admin, created_at, last_login)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO users (provider, provider_user_id, username, email, avatar_url, is_admin, plex_auth_token, created_at, last_login)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(provider, provider_user_id) DO UPDATE SET
-       username   = excluded.username,
-       email      = excluded.email,
-       avatar_url = excluded.avatar_url,
-       last_login = excluded.last_login`,
+       username        = excluded.username,
+       email           = excluded.email,
+       avatar_url      = excluded.avatar_url,
+       plex_auth_token = CASE WHEN excluded.plex_auth_token != '' THEN excluded.plex_auth_token ELSE plex_auth_token END,
+       last_login      = excluded.last_login`,
     params.provider,
     providerUserId,
     username,
     email,
     avatarUrl,
     shouldBeAdmin,
+    plexAuthToken,
     now,
     now
   )
@@ -406,6 +432,23 @@ export function upsertUser(params: UpsertUserParams): User {
   }
 
   throw new Error('[auth] upsertUser: failed to retrieve saved user')
+}
+
+/**
+ * Get the stored Plex auth token for a user (needed for watchlist/seen sync).
+ */
+export function getUserPlexAuthToken(userId: number): string {
+  try {
+    const stmt = getDb().prepare(
+      `SELECT COALESCE(plex_auth_token, '') FROM users WHERE id = ? LIMIT 1`
+    )
+    const row = stmt.value<[string]>(userId)
+    stmt.finalize()
+    return row ? String(row[0] || '') : ''
+  } catch (err) {
+    log.error(`[auth] getUserPlexAuthToken error: ${err}`)
+    return ''
+  }
 }
 
 /**
@@ -459,7 +502,10 @@ const USER_SETTINGS_SELECT = `
     emby_url, emby_api_key, emby_library_name,
     jellyfin_url, jellyfin_api_key, jellyfin_library_name,
     radarr_url, radarr_api_key, seerr_url, seerr_api_key,
-    default_filters, subscriptions, updated_at
+    default_filters, subscriptions,
+    COALESCE(plex_watchlist_synced, '{}') as plex_watchlist_synced,
+    COALESCE(plex_seen_synced, '{}') as plex_seen_synced,
+    updated_at
   FROM user_settings`
 
 function rowToUserSettings(row: unknown[]): UserSettings {
@@ -480,6 +526,8 @@ function rowToUserSettings(row: unknown[]): UserSettings {
     seerrApiKey,
     defaultFilters,
     subscriptions,
+    plexWatchlistSynced,
+    plexSeenSynced,
     updatedAt,
   ] = row as string[]
   return {
@@ -499,6 +547,8 @@ function rowToUserSettings(row: unknown[]): UserSettings {
     seerrApiKey,
     defaultFilters,
     subscriptions: subscriptions ?? '[]',
+    plexWatchlistSynced: plexWatchlistSynced ?? '{}',
+    plexSeenSynced: plexSeenSynced ?? '{}',
     updatedAt,
   }
 }
@@ -529,8 +579,8 @@ export function upsertUserSettings(
       `INSERT INTO user_settings (user_id, plex_url, plex_token, plex_library_name,
         emby_url, emby_api_key, emby_library_name, jellyfin_url, jellyfin_api_key,
         jellyfin_library_name, radarr_url, radarr_api_key, seerr_url, seerr_api_key,
-        default_filters, subscriptions, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        default_filters, subscriptions, plex_watchlist_synced, plex_seen_synced, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       userId,
       updates.plexUrl ?? '',
       updates.plexToken ?? '',
@@ -547,6 +597,8 @@ export function upsertUserSettings(
       updates.seerrApiKey ?? '',
       updates.defaultFilters ?? '{}',
       updates.subscriptions ?? '[]',
+      updates.plexWatchlistSynced ?? '{}',
+      updates.plexSeenSynced ?? '{}',
       now
     )
   } else {
@@ -557,7 +609,9 @@ export function upsertUserSettings(
         emby_url = ?, emby_api_key = ?, emby_library_name = ?,
         jellyfin_url = ?, jellyfin_api_key = ?, jellyfin_library_name = ?,
         radarr_url = ?, radarr_api_key = ?, seerr_url = ?, seerr_api_key = ?,
-        default_filters = ?, subscriptions = ?, updated_at = ?
+        default_filters = ?, subscriptions = ?,
+        plex_watchlist_synced = ?, plex_seen_synced = ?,
+        updated_at = ?
        WHERE user_id = ?`,
       merged.plexUrl,
       merged.plexToken,
@@ -574,6 +628,8 @@ export function upsertUserSettings(
       merged.seerrApiKey,
       merged.defaultFilters,
       merged.subscriptions ?? '[]',
+      merged.plexWatchlistSynced ?? '{}',
+      merged.plexSeenSynced ?? '{}',
       now,
       userId
     )

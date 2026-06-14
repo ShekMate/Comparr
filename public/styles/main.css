@@ -7435,3 +7435,136 @@ footer {
 [data-theme='light'] .toggle-switch input:checked + .toggle-slider:before {
   background-color: #ffffff;
 }
+
+/* ── Plex Sync Button ────────────────────────────────────────────────────── */
+.plex-sync-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  background: rgba(229, 160, 13, 0.1);
+  border: 1px solid rgba(229, 160, 13, 0.35);
+  border-radius: 6px;
+  color: var(--color-text);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.plex-sync-btn:hover {
+  background: rgba(229, 160, 13, 0.2);
+  border-color: rgba(229, 160, 13, 0.55);
+}
+
+.plex-sync-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.plex-sync-icon {
+  height: 1rem;
+  width: auto;
+  vertical-align: middle;
+}
+
+/* ── Plex Sync Modal ─────────────────────────────────────────────────────── */
+.plex-sync-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.95);
+  width: min(420px, 90vw);
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  z-index: 1001;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.plex-sync-modal.is-open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.plex-sync-modal-content {
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+
+.plex-sync-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.plex-sync-modal-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.plex-sync-progress-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.plex-sync-progress-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--color-line);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.plex-sync-bar {
+  height: 100%;
+  width: 0%;
+  background: #e5a00d;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.plex-sync-pct {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  min-width: 2.5rem;
+  text-align: right;
+}
+
+.plex-sync-status {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.plex-sync-summary {
+  border-top: 1px solid var(--color-line);
+  padding-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.plex-sync-summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+}
+
+.plex-sync-summary-label {
+  color: var(--color-text-muted);
+}
+
+.plex-sync-summary-value {
+  font-weight: 600;
+}

@@ -264,6 +264,8 @@ function getDefaultDisplayPreferences() {
     showStats: true,
     defaultLandingTab: 'tab-swipe',
     cardRating: 'both',
+    plexSyncWatchlist: true,
+    plexSyncSeen: true,
   }
 }
 
@@ -297,6 +299,14 @@ function loadDisplayPreferences() {
       cardRating: ['both', 'imdb', 'tmdb'].includes(parsed?.cardRating)
         ? parsed.cardRating
         : defaults.cardRating,
+      plexSyncWatchlist:
+        typeof parsed?.plexSyncWatchlist === 'boolean'
+          ? parsed.plexSyncWatchlist
+          : defaults.plexSyncWatchlist,
+      plexSyncSeen:
+        typeof parsed?.plexSyncSeen === 'boolean'
+          ? parsed.plexSyncSeen
+          : defaults.plexSyncSeen,
     }
   } catch (err) {
     console.warn('Failed to load display preferences:', err)
@@ -364,6 +374,24 @@ function applyDisplayPreferencesToNavigation(preferences) {
   }
 
   applyCardRatingPreference(preferences?.cardRating)
+  applyPlexSyncButtonVisibility(preferences)
+}
+
+function applyPlexSyncButtonVisibility(preferences) {
+  // Only show Plex sync buttons when the user is a Plex-authenticated user
+  const isPlexUser = window.COMPARR_USER?.provider === 'plex'
+  const watchlistBtn = document.getElementById('plex-sync-watchlist-btn')
+  const seenBtn = document.getElementById('plex-sync-seen-btn')
+  const watchlistField = document.getElementById('setting-plex-sync-watchlist-field')
+  const seenField = document.getElementById('setting-plex-sync-seen-field')
+
+  const showWatchlist = isPlexUser && preferences?.plexSyncWatchlist !== false
+  const showSeen = isPlexUser && preferences?.plexSyncSeen !== false
+
+  if (watchlistBtn) watchlistBtn.style.display = showWatchlist ? '' : 'none'
+  if (seenBtn) seenBtn.style.display = showSeen ? '' : 'none'
+  if (watchlistField) watchlistField.style.display = isPlexUser ? '' : 'none'
+  if (seenField) seenField.style.display = isPlexUser ? '' : 'none'
 }
 
 function applyTheme(theme) {
@@ -1100,6 +1128,18 @@ function hydrateDisplaySettingsForm() {
   if (themeInput) {
     themeInput.value = localStorage.getItem(THEME_STORAGE_KEY) || 'dark'
   }
+  const plexSyncWatchlistInput = document.getElementById('setting-display-plex-sync-watchlist')
+  if (plexSyncWatchlistInput) {
+    const on = displayPreferences.plexSyncWatchlist !== false
+    plexSyncWatchlistInput.setAttribute('aria-pressed', on ? 'true' : 'false')
+    plexSyncWatchlistInput.textContent = on ? 'Hide Plex Watchlist Sync' : 'Show Plex Watchlist Sync'
+  }
+  const plexSyncSeenInput = document.getElementById('setting-display-plex-sync-seen')
+  if (plexSyncSeenInput) {
+    const on = displayPreferences.plexSyncSeen !== false
+    plexSyncSeenInput.setAttribute('aria-pressed', on ? 'true' : 'false')
+    plexSyncSeenInput.textContent = on ? 'Hide Plex Seen Sync' : 'Show Plex Seen Sync'
+  }
 }
 
 function collectDisplaySettingsForm() {
@@ -1109,6 +1149,8 @@ function collectDisplaySettingsForm() {
   const showStatsInput = document.getElementById('setting-display-show-stats')
   const defaultTabInput = document.getElementById('setting-display-default-tab')
   const cardRatingInput = document.getElementById('setting-display-card-rating')
+  const plexSyncWatchlistInput = document.getElementById('setting-display-plex-sync-watchlist')
+  const plexSyncSeenInput = document.getElementById('setting-display-plex-sync-seen')
 
   return {
     showSeenList: showSeenListInput
@@ -1125,6 +1167,12 @@ function collectDisplaySettingsForm() {
       : true,
     defaultLandingTab: defaultTabInput?.value || 'tab-swipe',
     cardRating: cardRatingInput?.value || 'both',
+    plexSyncWatchlist: plexSyncWatchlistInput
+      ? plexSyncWatchlistInput.getAttribute('aria-pressed') === 'true'
+      : true,
+    plexSyncSeen: plexSyncSeenInput
+      ? plexSyncSeenInput.getAttribute('aria-pressed') === 'true'
+      : true,
   }
 }
 
@@ -1149,6 +1197,16 @@ function initializeDisplaySettingsToggleButtons() {
       id: 'setting-display-show-stats',
       enabledLabel: 'Hide Stats',
       disabledLabel: 'Show Stats',
+    },
+    {
+      id: 'setting-display-plex-sync-watchlist',
+      enabledLabel: 'Hide Plex Watchlist Sync',
+      disabledLabel: 'Show Plex Watchlist Sync',
+    },
+    {
+      id: 'setting-display-plex-sync-seen',
+      enabledLabel: 'Hide Plex Seen Sync',
+      disabledLabel: 'Show Plex Seen Sync',
     },
   ]
 
@@ -8575,7 +8633,99 @@ const main = async () => {
         )
       }
     }
+
+    // --- Plex Sync WebSocket handler ---
+    if (data.type === 'plexSyncProgress') {
+      const { syncType, status, total, processed, synced, removed, alreadySynced, skipped, errors } = data.payload
+
+      const plexSyncBar = document.getElementById('plex-sync-bar')
+      const plexSyncPct = document.getElementById('plex-sync-pct')
+      const plexSyncStatus = document.getElementById('plex-sync-status')
+      const plexSyncSummary = document.getElementById('plex-sync-summary')
+      const plexSyncModal = document.getElementById('plex-sync-modal')
+      const plexSyncOverlay = document.getElementById('plex-sync-overlay')
+      const plexSyncTitle = document.getElementById('plex-sync-modal-title')
+
+      if (status === 'started') {
+        if (plexSyncModal) plexSyncModal.classList.add('is-open')
+        if (plexSyncOverlay) plexSyncOverlay.classList.add('is-open')
+        if (plexSyncTitle) plexSyncTitle.innerHTML = `<img src="/assets/logos/plex_logo_button.png" alt="" class="plex-sync-icon" aria-hidden="true"> Syncing ${syncType === 'watchlist' ? 'Watchlist' : 'Seen List'} to Plex…`
+        if (plexSyncBar) plexSyncBar.style.width = '5%'
+        if (plexSyncPct) plexSyncPct.textContent = '5%'
+        if (plexSyncStatus) plexSyncStatus.textContent = 'Starting…'
+        if (plexSyncSummary) plexSyncSummary.style.display = 'none'
+      } else if (status === 'processing') {
+        const pct = total > 0 ? Math.max(5, Math.round((processed / total) * 100)) : 5
+        if (plexSyncBar) plexSyncBar.style.width = `${pct}%`
+        if (plexSyncPct) plexSyncPct.textContent = `${pct}%`
+        if (plexSyncStatus) plexSyncStatus.textContent = `Processing ${processed} of ${total}…`
+      } else if (status === 'completed' || status === 'error') {
+        if (plexSyncBar) plexSyncBar.style.width = '100%'
+        if (plexSyncPct) plexSyncPct.textContent = '100%'
+        if (plexSyncStatus) plexSyncStatus.textContent = status === 'completed' ? 'Done!' : 'Completed with errors.'
+        if (plexSyncTitle) plexSyncTitle.innerHTML = `<img src="/assets/logos/plex_logo_button.png" alt="" class="plex-sync-icon" aria-hidden="true"> Plex Sync Complete`
+        if (plexSyncSummary) {
+          plexSyncSummary.style.display = ''
+          const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val }
+          set('plex-sync-count-synced', synced)
+          set('plex-sync-count-removed', removed)
+          set('plex-sync-count-already', alreadySynced)
+          set('plex-sync-count-skipped', skipped)
+          set('plex-sync-count-errors', errors)
+          const errRow = document.querySelector('.plex-sync-errors-row')
+          if (errRow) errRow.style.display = errors > 0 ? '' : 'none'
+        }
+      }
+    }
   })
+
+  // Plex sync button click handlers
+  const plexSyncWatchlistBtn = document.getElementById('plex-sync-watchlist-btn')
+  const plexSyncSeenBtn = document.getElementById('plex-sync-seen-btn')
+  const plexSyncClose = document.getElementById('plex-sync-close')
+  const plexSyncOverlayEl = document.getElementById('plex-sync-overlay')
+
+  function closePlexSyncModal() {
+    const modal = document.getElementById('plex-sync-modal')
+    const overlay = document.getElementById('plex-sync-overlay')
+    if (modal) modal.classList.remove('is-open')
+    if (overlay) overlay.classList.remove('is-open')
+  }
+
+  async function triggerPlexSync(syncType) {
+    const roomCode = sessionStorage.getItem('roomCode')
+    const userName = sessionStorage.getItem('userName')
+    if (!roomCode || !userName) return
+
+    const _basePath = document.body.dataset.basePath || ''
+    try {
+      const res = await fetch(`${_basePath}/api/plex-sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ syncType, roomCode, userName }),
+        credentials: 'same-origin',
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        alert(`Plex sync failed: ${err.error || res.status}`)
+      }
+    } catch (err) {
+      alert(`Plex sync failed: ${err.message}`)
+    }
+  }
+
+  if (plexSyncWatchlistBtn) {
+    plexSyncWatchlistBtn.addEventListener('click', () => triggerPlexSync('watchlist'))
+  }
+  if (plexSyncSeenBtn) {
+    plexSyncSeenBtn.addEventListener('click', () => triggerPlexSync('seen'))
+  }
+  if (plexSyncClose) {
+    plexSyncClose.addEventListener('click', closePlexSyncModal)
+  }
+  if (plexSyncOverlayEl) {
+    plexSyncOverlayEl.addEventListener('click', closePlexSyncModal)
+  }
 
   const likesList = document.querySelector('.likes-list')
   const dislikesList = document.querySelector('.dislikes-list')

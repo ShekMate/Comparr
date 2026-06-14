@@ -2,10 +2,11 @@
 import * as log from 'jsr:@std/log'
 import { getAllMovies } from '../../api/plex.ts'
 
-interface PlexMovieEntry {
+export interface PlexMovieEntry {
   title: string
   year: number | null
   guid: string
+  ratingKey: string
   tmdbId?: number
   imdbId?: string
 }
@@ -94,6 +95,7 @@ export async function buildPlexCache(): Promise<void> {
         title: movie.title,
         year: Number.isFinite(numericYear) ? numericYear : null,
         guid: movie.guid,
+        ratingKey: movie.ratingKey,
         tmdbId: extractTmdbId(movie.guid),
         imdbId: extractImdbId(movie.guid),
       }
@@ -264,4 +266,38 @@ export function getCacheStats() {
  */
 export async function refreshPlexCache(): Promise<void> {
   await buildPlexCache()
+}
+
+/**
+ * Get the full Plex cache entry (including ratingKey) for sync operations.
+ * Tries TMDb ID, then IMDb ID, then title+year.
+ */
+export function getPlexEntryForSync(params: {
+  tmdbId?: number
+  imdbId?: string
+  title?: string
+  year?: number | null
+}): PlexMovieEntry | undefined {
+  if (params.tmdbId) {
+    const entry = cache.byTmdbId.get(params.tmdbId)
+    if (entry) return entry
+  }
+  if (params.imdbId) {
+    const entry = cache.byImdbId.get(params.imdbId)
+    if (entry) return entry
+  }
+  if (params.title) {
+    const normalizedTitle = normalizeTitle(params.title)
+    if (params.year) {
+      for (let offset = -1; offset <= 1; offset++) {
+        const key = `${normalizedTitle}|${params.year + offset}`
+        const entries = cache.byTitleYear.get(key)
+        if (entries && entries.length > 0) return entries[0]
+      }
+    }
+    for (const [key, entries] of cache.byTitleYear.entries()) {
+      if (key.startsWith(`${normalizedTitle}|`) && entries.length > 0) return entries[0]
+    }
+  }
+  return undefined
 }

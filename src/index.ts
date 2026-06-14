@@ -58,6 +58,7 @@ import { handleMovieRefreshRoute } from './infra/http/routes/movie-refresh.ts'
 import { handleRecommendationsRoute } from './infra/http/routes/recommendations.ts'
 import { handleStreamingRoutes } from './infra/http/routes/streaming.ts'
 import { handleImdbImportRoutes } from './infra/http/routes/imdb-import.ts'
+import { handlePlexSyncRoutes } from './infra/http/routes/plex-sync.ts'
 import { handleSystemRoutes } from './infra/http/routes/system.ts'
 import { WebSocketServer } from './infra/ws/websocketServer.ts'
 import { makeHeaders } from './infra/http/security-headers.ts'
@@ -603,6 +604,13 @@ for await (const req of server) {
     const imdbResponse = await handleImdbImportRoutes(req, p, getMaxBodySize())
     if (imdbResponse) {
       await req.respondWith(imdbResponse)
+      continue
+    }
+
+    // --- API: Plex Watchlist / Seen sync
+    const plexSyncResponse = await handlePlexSyncRoutes(req, p, getMaxBodySize())
+    if (plexSyncResponse) {
+      await req.respondWith(plexSyncResponse)
       continue
     }
 

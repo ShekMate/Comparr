@@ -325,6 +325,7 @@ export async function handleAuthRoutes(
         username: plexUser.username,
         email: plexUser.email,
         avatarUrl: plexUser.thumb,
+        plexAuthToken: authToken,
       })
       const inviteCode = getOrCreateInviteCode(user.id)
       const roomCode = `U${String(user.id).padStart(3, '0')}`
@@ -591,6 +592,7 @@ export async function handleAuthRoutes(
         username: plexUser.username,
         email: plexUser.email,
         avatarUrl: plexUser.thumb,
+        plexAuthToken: status.authToken,
       })
       log.info(`[auth] Upserted auth user (pinId=${pinId}, userId=${user.id})`)
 
