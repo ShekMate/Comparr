@@ -17,6 +17,7 @@ import { isMovieInRadarr } from '../../api/radarr.ts'
 import {
   isMovieInPlex,
   waitForPlexCacheReady,
+  getPlexEntryForSync,
 } from '../../integrations/plex/cache.ts'
 import {
   isMovieInEmby,
@@ -50,6 +51,14 @@ import {
   prefetchPoster,
 } from '../../services/cache/poster-cache.ts'
 import { tmdbRateLimiter } from '../../core/rate-limiter.ts'
+import {
+  addToPlexWatchlist,
+  removeFromPlexWatchlist,
+  extractPlexMetadataKey,
+  scrobbleOnServer,
+  unscrobbleOnServer,
+} from '../../api/plex-sync.ts'
+import { getUserSettings, upsertUserSettings } from '../auth/user-db.ts'
 
 // Genre ID to name mapping (TMDb genre IDs)
 const GENRE_MAP: Record<number, string> = {
@@ -4146,4 +4155,234 @@ export function getCompareMatches(
     .filter(r => r.wantsToWatch === true && likedByA.has(r.guid))
     .map(r => persistedState.movieIndex[r.guid])
     .filter((m): m is MediaItem => Boolean(m))
+}
+
+// ── Plex Watchlist / Seen Sync ────────────────────────────────────────────
+
+export interface PlexSyncProgressPayload {
+  syncType: 'watchlist' | 'seen'
+  status: 'started' | 'processing' | 'completed' | 'error'
+  total: number
+  processed: number
+  synced: number
+  removed: number
+  alreadySynced: number
+  skipped: number
+  errors: number
+}
+
+export function sendPlexSyncProgressUpdate(
+  roomCode: string,
+  userName: string,
+  payload: PlexSyncProgressPayload
+): boolean {
+  return sendToUser(roomCode, userName, { type: 'plexSyncProgress', payload })
+}
+
+/**
+ * Return full movie objects for a user's Watchlist (wantsToWatch === true).
+ */
+export function getUserWatchlistMovies(
+  roomCode: string,
+  userName: string
+): MediaItem[] {
+  const room = persistedState.rooms[roomCode]
+  if (!room) return []
+
+  const userEntry = room.users.find(u => u.name === userName)
+  if (!userEntry) return []
+
+  const movies: MediaItem[] = []
+  const seen = new Set<string>()
+
+  for (const r of userEntry.responses) {
+    if (r.wantsToWatch !== true) continue
+    if (seen.has(r.guid)) continue
+    seen.add(r.guid)
+
+    const movie = persistedState.movieIndex[r.guid]
+    if (!movie) continue
+
+    movies.push(movie)
+  }
+
+  return movies
+}
+
+export interface PlexSyncJob {
+  roomCode: string
+  userName: string
+  userId: number
+  userPlexToken: string
+  serverUrl: string
+}
+
+interface PlexSyncState {
+  [guid: string]: { metadataKey?: string; ratingKey?: string; syncedAt: string }
+}
+
+export async function processPlexWatchlistSyncBackground(
+  job: PlexSyncJob
+): Promise<void> {
+  const { roomCode, userName, userId, userPlexToken } = job
+
+  const currentMovies = getUserWatchlistMovies(roomCode, userName)
+  const total = currentMovies.length
+
+  const emit = (
+    status: PlexSyncProgressPayload['status'],
+    counters: Omit<PlexSyncProgressPayload, 'syncType' | 'status' | 'total'>
+  ) =>
+    sendPlexSyncProgressUpdate(roomCode, userName, {
+      syncType: 'watchlist',
+      status,
+      total,
+      ...counters,
+    })
+
+  emit('started', { processed: 0, synced: 0, removed: 0, alreadySynced: 0, skipped: 0, errors: 0 })
+
+  // Load existing sync state
+  const settings = getUserSettings(userId)
+  const syncState: PlexSyncState = (() => {
+    try { return JSON.parse(settings?.plexWatchlistSynced ?? '{}') } catch { return {} }
+  })()
+
+  const currentGuids = new Set(currentMovies.map(m => m.guid))
+  const previousGuids = new Set(Object.keys(syncState))
+
+  let processed = 0
+  let synced = 0
+  let removed = 0
+  let alreadySynced = 0
+  let skipped = 0
+  let errors = 0
+
+  // Add movies newly on watchlist
+  for (const movie of currentMovies) {
+    processed++
+    const metadataKey = extractPlexMetadataKey(movie.guid)
+    if (!metadataKey) {
+      skipped++
+      emit('processing', { processed, synced, removed, alreadySynced, skipped, errors })
+      continue
+    }
+    if (syncState[movie.guid]) {
+      alreadySynced++
+      emit('processing', { processed, synced, removed, alreadySynced, skipped, errors })
+      continue
+    }
+    const ok = await addToPlexWatchlist(userPlexToken, metadataKey)
+    if (ok) {
+      syncState[movie.guid] = { metadataKey, syncedAt: new Date().toISOString() }
+      synced++
+    } else {
+      errors++
+    }
+    emit('processing', { processed, synced, removed, alreadySynced, skipped, errors })
+  }
+
+  // Remove movies no longer on watchlist
+  for (const guid of previousGuids) {
+    if (currentGuids.has(guid)) continue
+    const entry = syncState[guid]
+    const metadataKey = entry?.metadataKey ?? extractPlexMetadataKey(guid)
+    if (metadataKey) {
+      const ok = await removeFromPlexWatchlist(userPlexToken, metadataKey)
+      if (ok) removed++
+      else errors++
+    }
+    delete syncState[guid]
+  }
+
+  upsertUserSettings(userId, { plexWatchlistSynced: JSON.stringify(syncState) })
+
+  emit('completed', { processed, synced, removed, alreadySynced, skipped, errors })
+
+  log.info(
+    `[plex-sync] Watchlist sync done for ${userName}: synced=${synced} removed=${removed} skipped=${skipped} errors=${errors}`
+  )
+}
+
+export async function processPlexSeenSyncBackground(
+  job: PlexSyncJob
+): Promise<void> {
+  const { roomCode, userName, userId, userPlexToken, serverUrl } = job
+
+  const currentMovies = getUserSeenMovies(roomCode, userName)
+  const total = currentMovies.length
+
+  const emit = (
+    status: PlexSyncProgressPayload['status'],
+    counters: Omit<PlexSyncProgressPayload, 'syncType' | 'status' | 'total'>
+  ) =>
+    sendPlexSyncProgressUpdate(roomCode, userName, {
+      syncType: 'seen',
+      status,
+      total,
+      ...counters,
+    })
+
+  emit('started', { processed: 0, synced: 0, removed: 0, alreadySynced: 0, skipped: 0, errors: 0 })
+
+  const settings = getUserSettings(userId)
+  const syncState: PlexSyncState = (() => {
+    try { return JSON.parse(settings?.plexSeenSynced ?? '{}') } catch { return {} }
+  })()
+
+  const currentGuids = new Set(currentMovies.map(m => m.guid))
+  const previousGuids = new Set(Object.keys(syncState))
+
+  let processed = 0
+  let synced = 0
+  let removed = 0
+  let alreadySynced = 0
+  let skipped = 0
+  let errors = 0
+
+  for (const movie of currentMovies) {
+    processed++
+    if (syncState[movie.guid]) {
+      alreadySynced++
+      emit('processing', { processed, synced, removed, alreadySynced, skipped, errors })
+      continue
+    }
+    const plexEntry = getPlexEntryForSync({
+      tmdbId: movie.tmdbId ?? undefined,
+      title: movie.title,
+      year: movie.year ? Number(movie.year) : undefined,
+    })
+    if (!plexEntry) {
+      skipped++
+      emit('processing', { processed, synced, removed, alreadySynced, skipped, errors })
+      continue
+    }
+    const ok = await scrobbleOnServer(serverUrl, userPlexToken, plexEntry.ratingKey)
+    if (ok) {
+      syncState[movie.guid] = { ratingKey: plexEntry.ratingKey, syncedAt: new Date().toISOString() }
+      synced++
+    } else {
+      errors++
+    }
+    emit('processing', { processed, synced, removed, alreadySynced, skipped, errors })
+  }
+
+  for (const guid of previousGuids) {
+    if (currentGuids.has(guid)) continue
+    const entry = syncState[guid]
+    if (entry?.ratingKey) {
+      const ok = await unscrobbleOnServer(serverUrl, userPlexToken, entry.ratingKey)
+      if (ok) removed++
+      else errors++
+    }
+    delete syncState[guid]
+  }
+
+  upsertUserSettings(userId, { plexSeenSynced: JSON.stringify(syncState) })
+
+  emit('completed', { processed, synced, removed, alreadySynced, skipped, errors })
+
+  log.info(
+    `[plex-sync] Seen sync done for ${userName}: synced=${synced} removed=${removed} skipped=${skipped} errors=${errors}`
+  )
 }

@@ -1091,6 +1091,16 @@
               <i class="fas fa-thumbs-up u-icon-accent-success"></i>
               Watchlist
             </h3>
+            <button
+              id="plex-sync-watchlist-btn"
+              class="plex-sync-btn"
+              type="button"
+              title="Sync to Plex Watchlist"
+              style="display:none"
+            >
+              <img src="/assets/logos/plex_logo_button.png" alt="" class="plex-sync-icon" aria-hidden="true" />
+              Sync to Plex
+            </button>
             <div class="sort-controls">
               <div class="sort-controls-wrapper">
                 <select id="watch-sort" class="watch-sort-dropdown">
@@ -1186,6 +1196,51 @@
             <button class="btn-secondary" id="active-session-cancel-btn">
               Cancel
             </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== Plex Sync Progress Modal ===== -->
+      <div class="modal-overlay" id="plex-sync-overlay"></div>
+      <div class="plex-sync-modal" id="plex-sync-modal">
+        <div class="plex-sync-modal-content">
+          <div class="plex-sync-modal-header">
+            <h3 id="plex-sync-modal-title">
+              <img src="/assets/logos/plex_logo_button.png" alt="" class="plex-sync-icon" aria-hidden="true" />
+              Syncing to Plex…
+            </h3>
+            <button class="close-btn" id="plex-sync-close" type="button" aria-label="Close">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="plex-sync-progress-bar-wrap">
+            <div class="plex-sync-progress-bar">
+              <div id="plex-sync-bar" class="plex-sync-bar"></div>
+            </div>
+            <span id="plex-sync-pct" class="plex-sync-pct">0%</span>
+          </div>
+          <p id="plex-sync-status" class="plex-sync-status">Starting…</p>
+          <div id="plex-sync-summary" class="plex-sync-summary" style="display:none">
+            <div class="plex-sync-summary-row">
+              <span class="plex-sync-summary-label">Synced</span>
+              <span id="plex-sync-count-synced" class="plex-sync-summary-value">0</span>
+            </div>
+            <div class="plex-sync-summary-row">
+              <span class="plex-sync-summary-label">Removed</span>
+              <span id="plex-sync-count-removed" class="plex-sync-summary-value">0</span>
+            </div>
+            <div class="plex-sync-summary-row">
+              <span class="plex-sync-summary-label">Already in sync</span>
+              <span id="plex-sync-count-already" class="plex-sync-summary-value">0</span>
+            </div>
+            <div class="plex-sync-summary-row">
+              <span class="plex-sync-summary-label">Skipped (not in Plex)</span>
+              <span id="plex-sync-count-skipped" class="plex-sync-summary-value">0</span>
+            </div>
+            <div class="plex-sync-summary-row plex-sync-errors-row" style="display:none">
+              <span class="plex-sync-summary-label">Errors</span>
+              <span id="plex-sync-count-errors" class="plex-sync-summary-value">0</span>
+            </div>
           </div>
         </div>
       </div>
@@ -2173,6 +2228,16 @@
               <i class="fas fa-eye u-icon-accent-warning"></i>
               Seen List
             </h3>
+            <button
+              id="plex-sync-seen-btn"
+              class="plex-sync-btn"
+              type="button"
+              title="Sync to Plex as Watched"
+              style="display:none"
+            >
+              <img src="/assets/logos/plex_logo_button.png" alt="" class="plex-sync-icon" aria-hidden="true" />
+              Sync to Plex
+            </button>
             <div class="sort-controls">
               <div class="sort-controls-wrapper">
                 <select id="seen-sort" class="watch-sort-dropdown">
@@ -2703,6 +2768,30 @@
                 Show Pass List
               </button>
               <p>Show or hide your Pass List in the main menu.</p>
+            </div>
+
+            <div class="settings-field" id="setting-plex-sync-watchlist-field" style="display:none">
+              <button
+                type="button"
+                class="settings-mode-toggle settings-display-toggle"
+                id="setting-display-plex-sync-watchlist"
+                aria-pressed="true"
+              >
+                Hide Plex Watchlist Sync
+              </button>
+              <p>Show or hide the Sync to Plex button on your Watchlist.</p>
+            </div>
+
+            <div class="settings-field" id="setting-plex-sync-seen-field" style="display:none">
+              <button
+                type="button"
+                class="settings-mode-toggle settings-display-toggle"
+                id="setting-display-plex-sync-seen"
+                aria-pressed="true"
+              >
+                Hide Plex Seen Sync
+              </button>
+              <p>Show or hide the Sync to Plex button on your Seen List.</p>
             </div>
           </div>
 
