@@ -2,6 +2,7 @@
 // Plex Watchlist and scrobble API calls for per-user sync.
 import * as log from 'jsr:@std/log'
 import { fetchWithTimeout } from '../infra/http/fetch-with-timeout.ts'
+import { getPlexClientId } from '../core/config.ts'
 
 const PLEX_METADATA_BASE = 'https://metadata.provider.plex.tv'
 
@@ -13,6 +14,7 @@ function plexSyncHeaders(userToken: string): HeadersInit {
     'X-Plex-Version': '1.0',
     'X-Plex-Device': 'Web',
     'X-Plex-Platform': 'Web',
+    'X-Plex-Client-Identifier': getPlexClientId() || 'comparr',
   }
 }
 
@@ -34,13 +36,14 @@ export async function addToPlexWatchlist(
   metadataKey: string
 ): Promise<boolean> {
   try {
-    const url = `${PLEX_METADATA_BASE}/actions/addToWatchlist?ratingKey=${encodeURIComponent(metadataKey)}`
+    const url = `${PLEX_METADATA_BASE}/library/metadata/${encodeURIComponent(metadataKey)}/actions/addToWatchlist`
     const res = await fetchWithTimeout(url, {
       method: 'PUT',
       headers: plexSyncHeaders(userToken),
     })
     if (!res.ok && res.status !== 409) {
-      log.warn(`[plex-sync] addToWatchlist failed for ${metadataKey}: ${res.status}`)
+      const body = await res.text().catch(() => '')
+      log.warn(`[plex-sync] addToWatchlist failed for ${metadataKey}: ${res.status} ${body.slice(0, 200)}`)
       return false
     }
     return true
@@ -58,13 +61,14 @@ export async function removeFromPlexWatchlist(
   metadataKey: string
 ): Promise<boolean> {
   try {
-    const url = `${PLEX_METADATA_BASE}/actions/removeFromWatchlist?ratingKey=${encodeURIComponent(metadataKey)}`
+    const url = `${PLEX_METADATA_BASE}/library/metadata/${encodeURIComponent(metadataKey)}/actions/removeFromWatchlist`
     const res = await fetchWithTimeout(url, {
       method: 'DELETE',
       headers: plexSyncHeaders(userToken),
     })
     if (!res.ok && res.status !== 404) {
-      log.warn(`[plex-sync] removeFromWatchlist failed for ${metadataKey}: ${res.status}`)
+      const body = await res.text().catch(() => '')
+      log.warn(`[plex-sync] removeFromWatchlist failed for ${metadataKey}: ${res.status} ${body.slice(0, 200)}`)
       return false
     }
     return true
@@ -87,7 +91,8 @@ export async function scrobbleOnServer(
     const url = `${serverUrl}/:/scrobble?identifier=com.plexapp.plugins.library&key=${encodeURIComponent(`/library/metadata/${ratingKey}`)}&X-Plex-Token=${encodeURIComponent(userToken)}`
     const res = await fetchWithTimeout(url, { method: 'GET' })
     if (!res.ok) {
-      log.warn(`[plex-sync] scrobble failed for ratingKey=${ratingKey}: ${res.status}`)
+      const body = await res.text().catch(() => '')
+      log.warn(`[plex-sync] scrobble failed for ratingKey=${ratingKey}: ${res.status} ${body.slice(0, 200)}`)
       return false
     }
     return true
@@ -109,7 +114,8 @@ export async function unscrobbleOnServer(
     const url = `${serverUrl}/:/unscrobble?identifier=com.plexapp.plugins.library&key=${encodeURIComponent(`/library/metadata/${ratingKey}`)}&X-Plex-Token=${encodeURIComponent(userToken)}`
     const res = await fetchWithTimeout(url, { method: 'GET' })
     if (!res.ok) {
-      log.warn(`[plex-sync] unscrobble failed for ratingKey=${ratingKey}: ${res.status}`)
+      const body = await res.text().catch(() => '')
+      log.warn(`[plex-sync] unscrobble failed for ratingKey=${ratingKey}: ${res.status} ${body.slice(0, 200)}`)
       return false
     }
     return true
