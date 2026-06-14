@@ -7437,35 +7437,14 @@ footer {
 }
 
 /* ── Plex Sync Button ────────────────────────────────────────────────────── */
-.plex-sync-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.3rem 0.65rem;
-  background: rgba(229, 160, 13, 0.1);
-  border: 1px solid rgba(229, 160, 13, 0.35);
-  border-radius: 6px;
-  color: var(--color-text);
-  font-size: 0.78rem;
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.15s, border-color 0.15s;
-  flex-shrink: 0;
+.plex-sync-icon-btn .plex-sync-icon {
+  height: 1.1rem;
+  width: auto;
+  display: block;
 }
 
-.plex-sync-btn:hover {
-  background: rgba(229, 160, 13, 0.2);
-  border-color: rgba(229, 160, 13, 0.55);
-}
-
-.plex-sync-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.plex-sync-icon {
-  height: 1rem;
+.plex-sync-modal .plex-sync-icon {
+  height: 1.1rem;
   width: auto;
   vertical-align: middle;
 }
