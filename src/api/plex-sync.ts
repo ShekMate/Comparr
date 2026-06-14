@@ -38,7 +38,7 @@ export async function addToPlexWatchlist(
 ): Promise<boolean> {
   try {
     const ratingKey = `plex://movie/${metadataKey}`
-    const url = `${PLEX_DISCOVER_BASE}/actions/saveToWatchlist?ratingKey=${encodeURIComponent(ratingKey)}`
+    const url = `${PLEX_DISCOVER_BASE}/actions/addToWatchlist?ratingKey=${encodeURIComponent(ratingKey)}`
     const res = await fetchWithTimeout(url, {
       method: 'PUT',
       headers: plexSyncHeaders(userToken),
