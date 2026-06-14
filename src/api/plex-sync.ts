@@ -29,16 +29,14 @@ export function extractPlexMetadataKey(guid: string): string | undefined {
 
 /**
  * Add a movie to the user's Plex Watchlist via the Discover service.
- * metadataKey is the alphanumeric ID from plex://movie/{key}.
- * The ratingKey sent to Plex must be the full plex://movie/{key} URI.
+ * metadataKey is the bare hex ID from plex://movie/{key}.
  */
 export async function addToPlexWatchlist(
   userToken: string,
   metadataKey: string
 ): Promise<boolean> {
   try {
-    const ratingKey = `plex://movie/${metadataKey}`
-    const url = `${PLEX_DISCOVER_BASE}/actions/addToWatchlist?ratingKey=${encodeURIComponent(ratingKey)}`
+    const url = `${PLEX_DISCOVER_BASE}/actions/addToWatchlist?ratingKey=${encodeURIComponent(metadataKey)}`
     const res = await fetchWithTimeout(url, {
       method: 'PUT',
       headers: plexSyncHeaders(userToken),
@@ -63,8 +61,7 @@ export async function removeFromPlexWatchlist(
   metadataKey: string
 ): Promise<boolean> {
   try {
-    const ratingKey = `plex://movie/${metadataKey}`
-    const url = `${PLEX_DISCOVER_BASE}/actions/removeFromWatchlist?ratingKey=${encodeURIComponent(ratingKey)}`
+    const url = `${PLEX_DISCOVER_BASE}/actions/removeFromWatchlist?ratingKey=${encodeURIComponent(metadataKey)}`
     const res = await fetchWithTimeout(url, {
       method: 'PUT',
       headers: plexSyncHeaders(userToken),
