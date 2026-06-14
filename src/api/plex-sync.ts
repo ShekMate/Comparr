@@ -4,7 +4,7 @@ import * as log from 'jsr:@std/log'
 import { fetchWithTimeout } from '../infra/http/fetch-with-timeout.ts'
 import { getPlexClientId } from '../core/config.ts'
 
-const PLEX_TV_BASE = 'https://plex.tv'
+const PLEX_DISCOVER_BASE = 'https://discover.provider.plex.tv'
 
 function plexSyncHeaders(userToken: string): HeadersInit {
   return {
@@ -28,17 +28,19 @@ export function extractPlexMetadataKey(guid: string): string | undefined {
 }
 
 /**
- * Add a movie to the user's Plex Watchlist via plex.tv account API.
+ * Add a movie to the user's Plex Watchlist via the Discover service.
  * metadataKey is the alphanumeric ID from plex://movie/{key}.
+ * The ratingKey sent to Plex must be the full plex://movie/{key} URI.
  */
 export async function addToPlexWatchlist(
   userToken: string,
   metadataKey: string
 ): Promise<boolean> {
   try {
-    const url = `${PLEX_TV_BASE}/api/v2/watchlist?ratingKey=${encodeURIComponent(metadataKey)}`
+    const ratingKey = `plex://movie/${metadataKey}`
+    const url = `${PLEX_DISCOVER_BASE}/actions/saveToWatchlist?ratingKey=${encodeURIComponent(ratingKey)}`
     const res = await fetchWithTimeout(url, {
-      method: 'POST',
+      method: 'PUT',
       headers: plexSyncHeaders(userToken),
     })
     if (!res.ok && res.status !== 409) {
@@ -54,16 +56,17 @@ export async function addToPlexWatchlist(
 }
 
 /**
- * Remove a movie from the user's Plex Watchlist via plex.tv account API.
+ * Remove a movie from the user's Plex Watchlist via the Discover service.
  */
 export async function removeFromPlexWatchlist(
   userToken: string,
   metadataKey: string
 ): Promise<boolean> {
   try {
-    const url = `${PLEX_TV_BASE}/api/v2/watchlist?ratingKey=${encodeURIComponent(metadataKey)}`
+    const ratingKey = `plex://movie/${metadataKey}`
+    const url = `${PLEX_DISCOVER_BASE}/actions/removeFromWatchlist?ratingKey=${encodeURIComponent(ratingKey)}`
     const res = await fetchWithTimeout(url, {
-      method: 'DELETE',
+      method: 'PUT',
       headers: plexSyncHeaders(userToken),
     })
     if (!res.ok && res.status !== 404) {
