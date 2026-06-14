@@ -4,7 +4,7 @@ import * as log from 'jsr:@std/log'
 import { fetchWithTimeout } from '../infra/http/fetch-with-timeout.ts'
 import { getPlexClientId } from '../core/config.ts'
 
-const PLEX_METADATA_BASE = 'https://metadata.provider.plex.tv'
+const PLEX_TV_BASE = 'https://plex.tv'
 
 function plexSyncHeaders(userToken: string): HeadersInit {
   return {
@@ -28,7 +28,7 @@ export function extractPlexMetadataKey(guid: string): string | undefined {
 }
 
 /**
- * Add a movie to the user's Plex Watchlist.
+ * Add a movie to the user's Plex Watchlist via plex.tv account API.
  * metadataKey is the alphanumeric ID from plex://movie/{key}.
  */
 export async function addToPlexWatchlist(
@@ -36,14 +36,14 @@ export async function addToPlexWatchlist(
   metadataKey: string
 ): Promise<boolean> {
   try {
-    const url = `${PLEX_METADATA_BASE}/library/metadata/${encodeURIComponent(metadataKey)}/actions/addToWatchlist`
+    const url = `${PLEX_TV_BASE}/api/v2/watchlist?ratingKey=${encodeURIComponent(metadataKey)}`
     const res = await fetchWithTimeout(url, {
-      method: 'PUT',
+      method: 'POST',
       headers: plexSyncHeaders(userToken),
     })
     if (!res.ok && res.status !== 409) {
       const body = await res.text().catch(() => '')
-      log.warn(`[plex-sync] addToWatchlist failed for ${metadataKey}: ${res.status} ${body.slice(0, 200)}`)
+      log.warn(`[plex-sync] addToWatchlist failed for ${metadataKey}: ${res.status} ${body.slice(0, 300)}`)
       return false
     }
     return true
@@ -54,21 +54,21 @@ export async function addToPlexWatchlist(
 }
 
 /**
- * Remove a movie from the user's Plex Watchlist.
+ * Remove a movie from the user's Plex Watchlist via plex.tv account API.
  */
 export async function removeFromPlexWatchlist(
   userToken: string,
   metadataKey: string
 ): Promise<boolean> {
   try {
-    const url = `${PLEX_METADATA_BASE}/library/metadata/${encodeURIComponent(metadataKey)}/actions/removeFromWatchlist`
+    const url = `${PLEX_TV_BASE}/api/v2/watchlist?ratingKey=${encodeURIComponent(metadataKey)}`
     const res = await fetchWithTimeout(url, {
       method: 'DELETE',
       headers: plexSyncHeaders(userToken),
     })
     if (!res.ok && res.status !== 404) {
       const body = await res.text().catch(() => '')
-      log.warn(`[plex-sync] removeFromWatchlist failed for ${metadataKey}: ${res.status} ${body.slice(0, 200)}`)
+      log.warn(`[plex-sync] removeFromWatchlist failed for ${metadataKey}: ${res.status} ${body.slice(0, 300)}`)
       return false
     }
     return true
@@ -92,7 +92,7 @@ export async function scrobbleOnServer(
     const res = await fetchWithTimeout(url, { method: 'GET' })
     if (!res.ok) {
       const body = await res.text().catch(() => '')
-      log.warn(`[plex-sync] scrobble failed for ratingKey=${ratingKey}: ${res.status} ${body.slice(0, 200)}`)
+      log.warn(`[plex-sync] scrobble failed for ratingKey=${ratingKey}: ${res.status} ${body.slice(0, 300)}`)
       return false
     }
     return true
@@ -115,7 +115,7 @@ export async function unscrobbleOnServer(
     const res = await fetchWithTimeout(url, { method: 'GET' })
     if (!res.ok) {
       const body = await res.text().catch(() => '')
-      log.warn(`[plex-sync] unscrobble failed for ratingKey=${ratingKey}: ${res.status} ${body.slice(0, 200)}`)
+      log.warn(`[plex-sync] unscrobble failed for ratingKey=${ratingKey}: ${res.status} ${body.slice(0, 300)}`)
       return false
     }
     return true
