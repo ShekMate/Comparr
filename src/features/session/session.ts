@@ -4279,6 +4279,7 @@ export async function processPlexWatchlistSyncBackground(
     let metadataKey = extractPlexMetadataKey(movie.guid)
     if (!metadataKey) {
       const plexEntry = getPlexEntryForSync({
+        plexGuid: movie.guid,
         tmdbId: movie.tmdbId ?? undefined,
         title: movie.title,
         year: movie.year ? Number(movie.year) : undefined,
@@ -4388,6 +4389,7 @@ export async function processPlexSeenSyncBackground(
       continue
     }
     const plexEntry = getPlexEntryForSync({
+      plexGuid: movie.guid,
       tmdbId: movie.tmdbId ?? undefined,
       title: movie.title,
       year: movie.year ? Number(movie.year) : undefined,
