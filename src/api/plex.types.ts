@@ -49,6 +49,7 @@ export interface PlexVideo {
     ratingKey: string
     key: string
     guid: string
+    Guid?: Array<{ id: string }>
     studio: string
     type: 'movie' | 'artist' | 'photo' | 'show'
     title: string
