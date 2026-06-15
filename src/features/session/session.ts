@@ -4397,6 +4397,7 @@ export async function processPlexSeenSyncBackground(
     if (!plexEntry) {
       skipped++
       skippedItems.push(movieTitle(movie))
+      log.warn(`[plex-sync] skip "${movie.title}" guid=${movie.guid} tmdbId=${movie.tmdbId ?? 'null'}`)
       emit('processing', { processed, synced, removed, alreadySynced, skipped, errors })
       continue
     }
