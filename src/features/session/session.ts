@@ -4274,7 +4274,17 @@ export async function processPlexWatchlistSyncBackground(
   // Add movies newly on watchlist
   for (const movie of currentMovies) {
     processed++
-    const metadataKey = extractPlexMetadataKey(movie.guid)
+    // Try direct extraction first; if the stored guid isn't plex://movie/ format
+    // (e.g. imdb:// from an IMDb import), fall back to the Plex cache.
+    let metadataKey = extractPlexMetadataKey(movie.guid)
+    if (!metadataKey) {
+      const plexEntry = getPlexEntryForSync({
+        tmdbId: movie.tmdbId ?? undefined,
+        title: movie.title,
+        year: movie.year ? Number(movie.year) : undefined,
+      })
+      if (plexEntry) metadataKey = extractPlexMetadataKey(plexEntry.guid)
+    }
     if (!metadataKey) {
       skipped++
       skippedItems.push(movieTitle(movie))

@@ -91,13 +91,16 @@ export async function buildPlexCache(): Promise<void> {
 
     for (const movie of movies) {
       const numericYear = Number(movie.year)
+      // Plex now uses plex://movie/{hex} as the primary guid; TMDb/IMDb IDs
+      // live in the Guid[] array. Scan all available guids for external IDs.
+      const allGuids = [movie.guid, ...(movie.Guid?.map(g => g.id) ?? [])]
       const entry: PlexMovieEntry = {
         title: movie.title,
         year: Number.isFinite(numericYear) ? numericYear : null,
         guid: movie.guid,
         ratingKey: movie.ratingKey,
-        tmdbId: extractTmdbId(movie.guid),
-        imdbId: extractImdbId(movie.guid),
+        tmdbId: allGuids.reduce<number | undefined>((acc, g) => acc ?? extractTmdbId(g), undefined),
+        imdbId: allGuids.reduce<string | undefined>((acc, g) => acc ?? extractImdbId(g), undefined),
       }
 
       // Index by title+year
