@@ -4169,6 +4169,12 @@ export interface PlexSyncProgressPayload {
   alreadySynced: number
   skipped: number
   errors: number
+  // Only populated in the 'completed' event
+  syncedItems?: string[]
+  removedItems?: string[]
+  alreadySyncedItems?: string[]
+  skippedItems?: string[]
+  errorItems?: string[]
 }
 
 export function sendPlexSyncProgressUpdate(
@@ -4257,6 +4263,13 @@ export async function processPlexWatchlistSyncBackground(
   let alreadySynced = 0
   let skipped = 0
   let errors = 0
+  const syncedItems: string[] = []
+  const removedItems: string[] = []
+  const alreadySyncedItems: string[] = []
+  const skippedItems: string[] = []
+  const errorItems: string[] = []
+
+  const movieTitle = (m: MediaItem) => m.year ? `${m.title} (${m.year})` : m.title
 
   // Add movies newly on watchlist
   for (const movie of currentMovies) {
@@ -4264,11 +4277,13 @@ export async function processPlexWatchlistSyncBackground(
     const metadataKey = extractPlexMetadataKey(movie.guid)
     if (!metadataKey) {
       skipped++
+      skippedItems.push(movieTitle(movie))
       emit('processing', { processed, synced, removed, alreadySynced, skipped, errors })
       continue
     }
     if (syncState[movie.guid]) {
       alreadySynced++
+      alreadySyncedItems.push(movieTitle(movie))
       emit('processing', { processed, synced, removed, alreadySynced, skipped, errors })
       continue
     }
@@ -4276,8 +4291,10 @@ export async function processPlexWatchlistSyncBackground(
     if (ok) {
       syncState[movie.guid] = { metadataKey, syncedAt: new Date().toISOString() }
       synced++
+      syncedItems.push(movieTitle(movie))
     } else {
       errors++
+      errorItems.push(movieTitle(movie))
     }
     emit('processing', { processed, synced, removed, alreadySynced, skipped, errors })
   }
@@ -4289,15 +4306,20 @@ export async function processPlexWatchlistSyncBackground(
     const metadataKey = entry?.metadataKey ?? extractPlexMetadataKey(guid)
     if (metadataKey) {
       const ok = await removeFromPlexWatchlist(userPlexToken, metadataKey)
-      if (ok) removed++
-      else errors++
+      if (ok) {
+        removed++
+        removedItems.push(guid)
+      } else {
+        errors++
+        errorItems.push(guid)
+      }
     }
     delete syncState[guid]
   }
 
   upsertUserSettings(userId, { plexWatchlistSynced: JSON.stringify(syncState) })
 
-  emit('completed', { processed, synced, removed, alreadySynced, skipped, errors })
+  emit('completed', { processed, synced, removed, alreadySynced, skipped, errors, syncedItems, removedItems, alreadySyncedItems, skippedItems, errorItems })
 
   log.info(
     `[plex-sync] Watchlist sync done for ${userName}: synced=${synced} removed=${removed} skipped=${skipped} errors=${errors}`
@@ -4339,11 +4361,19 @@ export async function processPlexSeenSyncBackground(
   let alreadySynced = 0
   let skipped = 0
   let errors = 0
+  const syncedItems: string[] = []
+  const removedItems: string[] = []
+  const alreadySyncedItems: string[] = []
+  const skippedItems: string[] = []
+  const errorItems: string[] = []
+
+  const movieTitle = (m: MediaItem) => m.year ? `${m.title} (${m.year})` : m.title
 
   for (const movie of currentMovies) {
     processed++
     if (syncState[movie.guid]) {
       alreadySynced++
+      alreadySyncedItems.push(movieTitle(movie))
       emit('processing', { processed, synced, removed, alreadySynced, skipped, errors })
       continue
     }
@@ -4354,6 +4384,7 @@ export async function processPlexSeenSyncBackground(
     })
     if (!plexEntry) {
       skipped++
+      skippedItems.push(movieTitle(movie))
       emit('processing', { processed, synced, removed, alreadySynced, skipped, errors })
       continue
     }
@@ -4361,8 +4392,10 @@ export async function processPlexSeenSyncBackground(
     if (ok) {
       syncState[movie.guid] = { ratingKey: plexEntry.ratingKey, syncedAt: new Date().toISOString() }
       synced++
+      syncedItems.push(movieTitle(movie))
     } else {
       errors++
+      errorItems.push(movieTitle(movie))
     }
     emit('processing', { processed, synced, removed, alreadySynced, skipped, errors })
   }
@@ -4372,15 +4405,20 @@ export async function processPlexSeenSyncBackground(
     const entry = syncState[guid]
     if (entry?.ratingKey) {
       const ok = await unscrobbleOnServer(serverUrl, userPlexToken, entry.ratingKey)
-      if (ok) removed++
-      else errors++
+      if (ok) {
+        removed++
+        removedItems.push(guid)
+      } else {
+        errors++
+        errorItems.push(guid)
+      }
     }
     delete syncState[guid]
   }
 
   upsertUserSettings(userId, { plexSeenSynced: JSON.stringify(syncState) })
 
-  emit('completed', { processed, synced, removed, alreadySynced, skipped, errors })
+  emit('completed', { processed, synced, removed, alreadySynced, skipped, errors, syncedItems, removedItems, alreadySyncedItems, skippedItems, errorItems })
 
   log.info(
     `[plex-sync] Seen sync done for ${userName}: synced=${synced} removed=${removed} skipped=${skipped} errors=${errors}`

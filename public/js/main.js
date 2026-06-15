@@ -8674,6 +8674,29 @@ const main = async () => {
           set('plex-sync-count-errors', errors)
           const errRow = document.querySelector('.plex-sync-errors-row')
           if (errRow) errRow.style.display = errors > 0 ? '' : 'none'
+
+          // Wire up expandable detail lists
+          const payload = data.payload
+          const categories = [
+            { key: 'synced',  items: payload.syncedItems || [] },
+            { key: 'removed', items: payload.removedItems || [] },
+            { key: 'already', items: payload.alreadySyncedItems || [] },
+            { key: 'skipped', items: payload.skippedItems || [] },
+            { key: 'errors',  items: payload.errorItems || [] },
+          ]
+          for (const { key, items } of categories) {
+            const row = document.getElementById(`plex-sync-row-${key}`)
+            const detail = document.getElementById(`plex-sync-detail-${key}`)
+            if (!row || !detail) continue
+            detail.innerHTML = items.map(t => `<div class="plex-sync-detail-item">${t.replace(/</g, '&lt;')}</div>`).join('')
+            if (items.length > 0) {
+              row.disabled = false
+              row.onclick = () => {
+                const isOpen = detail.classList.toggle('is-open')
+                row.classList.toggle('is-open', isOpen)
+              }
+            }
+          }
         }
       }
     }

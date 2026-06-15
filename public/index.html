@@ -1221,25 +1221,55 @@
           </div>
           <p id="plex-sync-status" class="plex-sync-status">Starting…</p>
           <div id="plex-sync-summary" class="plex-sync-summary" style="display:none">
-            <div class="plex-sync-summary-row">
-              <span class="plex-sync-summary-label">Synced</span>
-              <span id="plex-sync-count-synced" class="plex-sync-summary-value">0</span>
+            <div class="plex-sync-summary-item">
+              <button class="plex-sync-summary-row" id="plex-sync-row-synced" type="button" disabled>
+                <span class="plex-sync-summary-label">Synced</span>
+                <span class="plex-sync-summary-right">
+                  <span id="plex-sync-count-synced" class="plex-sync-summary-value">0</span>
+                  <i class="fas fa-chevron-right plex-sync-chevron"></i>
+                </span>
+              </button>
+              <div class="plex-sync-detail-list" id="plex-sync-detail-synced"></div>
             </div>
-            <div class="plex-sync-summary-row">
-              <span class="plex-sync-summary-label">Removed</span>
-              <span id="plex-sync-count-removed" class="plex-sync-summary-value">0</span>
+            <div class="plex-sync-summary-item">
+              <button class="plex-sync-summary-row" id="plex-sync-row-removed" type="button" disabled>
+                <span class="plex-sync-summary-label">Removed</span>
+                <span class="plex-sync-summary-right">
+                  <span id="plex-sync-count-removed" class="plex-sync-summary-value">0</span>
+                  <i class="fas fa-chevron-right plex-sync-chevron"></i>
+                </span>
+              </button>
+              <div class="plex-sync-detail-list" id="plex-sync-detail-removed"></div>
             </div>
-            <div class="plex-sync-summary-row">
-              <span class="plex-sync-summary-label">Already in sync</span>
-              <span id="plex-sync-count-already" class="plex-sync-summary-value">0</span>
+            <div class="plex-sync-summary-item">
+              <button class="plex-sync-summary-row" id="plex-sync-row-already" type="button" disabled>
+                <span class="plex-sync-summary-label">Already in sync</span>
+                <span class="plex-sync-summary-right">
+                  <span id="plex-sync-count-already" class="plex-sync-summary-value">0</span>
+                  <i class="fas fa-chevron-right plex-sync-chevron"></i>
+                </span>
+              </button>
+              <div class="plex-sync-detail-list" id="plex-sync-detail-already"></div>
             </div>
-            <div class="plex-sync-summary-row">
-              <span class="plex-sync-summary-label">Skipped (not in Plex)</span>
-              <span id="plex-sync-count-skipped" class="plex-sync-summary-value">0</span>
+            <div class="plex-sync-summary-item">
+              <button class="plex-sync-summary-row" id="plex-sync-row-skipped" type="button" disabled>
+                <span class="plex-sync-summary-label">Skipped (not in Plex)</span>
+                <span class="plex-sync-summary-right">
+                  <span id="plex-sync-count-skipped" class="plex-sync-summary-value">0</span>
+                  <i class="fas fa-chevron-right plex-sync-chevron"></i>
+                </span>
+              </button>
+              <div class="plex-sync-detail-list" id="plex-sync-detail-skipped"></div>
             </div>
-            <div class="plex-sync-summary-row plex-sync-errors-row" style="display:none">
-              <span class="plex-sync-summary-label">Errors</span>
-              <span id="plex-sync-count-errors" class="plex-sync-summary-value">0</span>
+            <div class="plex-sync-summary-item plex-sync-errors-row" style="display:none">
+              <button class="plex-sync-summary-row" id="plex-sync-row-errors" type="button" disabled>
+                <span class="plex-sync-summary-label">Errors</span>
+                <span class="plex-sync-summary-right">
+                  <span id="plex-sync-count-errors" class="plex-sync-summary-value">0</span>
+                  <i class="fas fa-chevron-right plex-sync-chevron"></i>
+                </span>
+              </button>
+              <div class="plex-sync-detail-list" id="plex-sync-detail-errors"></div>
             </div>
           </div>
         </div>
