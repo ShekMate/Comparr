@@ -108,7 +108,7 @@ const loadAllMovies = async () => {
     log.debug(`Loading movies from ${movieSection.title} library`)
 
     const req = await fetchWithTimeout(
-      `${plexUrl}/library/sections/${movieSection.key}/all`,
+      `${plexUrl}/library/sections/${movieSection.key}/all?includeGuids=1`,
       {
         headers: {
           accept: 'application/json',
