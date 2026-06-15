@@ -88,7 +88,7 @@ export async function scrobbleOnServer(
   ratingKey: string
 ): Promise<boolean> {
   try {
-    const url = `${serverUrl}/:/scrobble?identifier=com.plexapp.plugins.library&key=${encodeURIComponent(`/library/metadata/${ratingKey}`)}&X-Plex-Token=${encodeURIComponent(userToken)}`
+    const url = `${serverUrl}/:/scrobble?identifier=com.plexapp.plugins.library&key=${ratingKey}&X-Plex-Token=${encodeURIComponent(userToken)}`
     const res = await fetchWithTimeout(url, { method: 'GET' })
     if (!res.ok) {
       const body = await res.text().catch(() => '')
@@ -111,7 +111,7 @@ export async function unscrobbleOnServer(
   ratingKey: string
 ): Promise<boolean> {
   try {
-    const url = `${serverUrl}/:/unscrobble?identifier=com.plexapp.plugins.library&key=${encodeURIComponent(`/library/metadata/${ratingKey}`)}&X-Plex-Token=${encodeURIComponent(userToken)}`
+    const url = `${serverUrl}/:/unscrobble?identifier=com.plexapp.plugins.library&key=${ratingKey}&X-Plex-Token=${encodeURIComponent(userToken)}`
     const res = await fetchWithTimeout(url, { method: 'GET' })
     if (!res.ok) {
       const body = await res.text().catch(() => '')
