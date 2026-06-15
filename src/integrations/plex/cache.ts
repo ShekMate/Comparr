@@ -15,6 +15,7 @@ interface PlexAvailabilityCache {
   byTitleYear: Map<string, PlexMovieEntry[]> // key: "title|year"
   byTmdbId: Map<number, PlexMovieEntry>
   byImdbId: Map<string, PlexMovieEntry>
+  byPlexGuid: Map<string, PlexMovieEntry>   // key: plex://movie/{hex}
   lastUpdated: number
 }
 
@@ -22,6 +23,7 @@ const cache: PlexAvailabilityCache = {
   byTitleYear: new Map(),
   byTmdbId: new Map(),
   byImdbId: new Map(),
+  byPlexGuid: new Map(),
   lastUpdated: 0,
 }
 
@@ -31,14 +33,16 @@ let refreshTimerStarted = false
 let initialBuildPromise: Promise<void> | null = null
 
 /**
- * Normalize title for comparison
+ * Normalize title for comparison — strips accents then punctuation
  */
 function normalizeTitle(title: string): string {
   return title
+    .normalize('NFKD')               // decompose accented chars (é → e + combining)
+    .replace(/[̀-ͯ]/g, '') // strip combining accent marks
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s]/g, '') // Remove punctuation
-    .replace(/\s+/g, ' ') // Normalize spaces
+    .replace(/[^\w\s]/g, '')         // remove remaining punctuation
+    .replace(/\s+/g, ' ')
 }
 
 /**
@@ -84,6 +88,7 @@ export async function buildPlexCache(): Promise<void> {
     cache.byTitleYear.clear()
     cache.byTmdbId.clear()
     cache.byImdbId.clear()
+    cache.byPlexGuid.clear()
 
     let processedCount = 0
     let tmdbIdCount = 0
@@ -122,6 +127,11 @@ export async function buildPlexCache(): Promise<void> {
       if (entry.imdbId) {
         cache.byImdbId.set(entry.imdbId, entry)
         imdbIdCount++
+      }
+
+      // Index by primary Plex GUID (plex://movie/{hex})
+      if (entry.guid) {
+        cache.byPlexGuid.set(entry.guid, entry)
       }
 
       processedCount++
@@ -273,14 +283,19 @@ export async function refreshPlexCache(): Promise<void> {
 
 /**
  * Get the full Plex cache entry (including ratingKey) for sync operations.
- * Tries TMDb ID, then IMDb ID, then title+year.
+ * Tries Plex GUID, TMDb ID, IMDb ID, then title+year.
  */
 export function getPlexEntryForSync(params: {
+  plexGuid?: string
   tmdbId?: number
   imdbId?: string
   title?: string
   year?: number | null
 }): PlexMovieEntry | undefined {
+  if (params.plexGuid) {
+    const entry = cache.byPlexGuid.get(params.plexGuid)
+    if (entry) return entry
+  }
   if (params.tmdbId) {
     const entry = cache.byTmdbId.get(params.tmdbId)
     if (entry) return entry
