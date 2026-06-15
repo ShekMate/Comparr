@@ -4224,7 +4224,7 @@ export interface PlexSyncJob {
 }
 
 interface PlexSyncState {
-  [guid: string]: { metadataKey?: string; ratingKey?: string; syncedAt: string }
+  [guid: string]: { metadataKey?: string; ratingKey?: string; syncedAt: string; title?: string }
 }
 
 export async function processPlexWatchlistSyncBackground(
@@ -4289,7 +4289,7 @@ export async function processPlexWatchlistSyncBackground(
     }
     const ok = await addToPlexWatchlist(userPlexToken, metadataKey)
     if (ok) {
-      syncState[movie.guid] = { metadataKey, syncedAt: new Date().toISOString() }
+      syncState[movie.guid] = { metadataKey, syncedAt: new Date().toISOString(), title: movieTitle(movie) }
       synced++
       syncedItems.push(movieTitle(movie))
     } else {
@@ -4308,10 +4308,10 @@ export async function processPlexWatchlistSyncBackground(
       const ok = await removeFromPlexWatchlist(userPlexToken, metadataKey)
       if (ok) {
         removed++
-        removedItems.push(guid)
+        removedItems.push(entry?.title ?? guid)
       } else {
         errors++
-        errorItems.push(guid)
+        errorItems.push(entry?.title ?? guid)
       }
     }
     delete syncState[guid]
@@ -4390,7 +4390,7 @@ export async function processPlexSeenSyncBackground(
     }
     const ok = await scrobbleOnServer(serverUrl, userPlexToken, plexEntry.ratingKey)
     if (ok) {
-      syncState[movie.guid] = { ratingKey: plexEntry.ratingKey, syncedAt: new Date().toISOString() }
+      syncState[movie.guid] = { ratingKey: plexEntry.ratingKey, syncedAt: new Date().toISOString(), title: movieTitle(movie) }
       synced++
       syncedItems.push(movieTitle(movie))
     } else {
@@ -4407,10 +4407,10 @@ export async function processPlexSeenSyncBackground(
       const ok = await unscrobbleOnServer(serverUrl, userPlexToken, entry.ratingKey)
       if (ok) {
         removed++
-        removedItems.push(guid)
+        removedItems.push(entry?.title ?? guid)
       } else {
         errors++
-        errorItems.push(guid)
+        errorItems.push(entry?.title ?? guid)
       }
     }
     delete syncState[guid]
