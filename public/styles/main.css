@@ -7544,16 +7544,88 @@ footer {
   gap: 0.35rem;
 }
 
+.plex-sync-summary-item {
+  display: flex;
+  flex-direction: column;
+}
+
 .plex-sync-summary-row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   font-size: 0.85rem;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0.15rem 0;
+  color: inherit;
+  text-align: left;
+  cursor: default;
+}
+
+.plex-sync-summary-row:not(:disabled) {
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.plex-sync-summary-row:not(:disabled):hover {
+  background: var(--color-hover, rgba(255,255,255,0.06));
 }
 
 .plex-sync-summary-label {
   color: var(--color-text-muted);
 }
 
+.plex-sync-summary-right {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .plex-sync-summary-value {
   font-weight: 600;
+}
+
+.plex-sync-chevron {
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  transition: transform 0.2s;
+  opacity: 0;
+}
+
+.plex-sync-summary-row:not(:disabled) .plex-sync-chevron {
+  opacity: 1;
+}
+
+.plex-sync-summary-row.is-open .plex-sync-chevron {
+  transform: rotate(90deg);
+}
+
+.plex-sync-detail-list {
+  display: none;
+  flex-direction: column;
+  gap: 0.2rem;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 0.35rem 0.5rem 0.35rem 0.75rem;
+  margin-top: 0.2rem;
+  background: var(--color-bg, rgba(0,0,0,0.15));
+  border-radius: 6px;
+  border: 1px solid var(--color-line);
+}
+
+.plex-sync-detail-list.is-open {
+  display: flex;
+}
+
+.plex-sync-detail-item {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  padding: 0.1rem 0;
+  border-bottom: 1px solid var(--color-line);
+  line-height: 1.4;
+}
+
+.plex-sync-detail-item:last-child {
+  border-bottom: none;
 }
