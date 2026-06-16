@@ -8113,14 +8113,29 @@ const main = async () => {
       .querySelector('.rec-action-seen')
       .addEventListener('click', async e => {
         e.stopPropagation()
-        await api.respond({ guid: movie.guid, wantsToWatch: null })
-        await appendRatedRow(
-          { basePath, likesList, dislikesList, seenList },
-          movie,
-          null
-        )
+        console.log('[Rec Seen] clicked for:', movie.title, 'guid:', movie.guid)
+        console.log('[Rec Seen] socket state:', api.socket?.readyState, '(1=OPEN)')
+        try {
+          await api.respond({ guid: movie.guid, wantsToWatch: null })
+          console.log('[Rec Seen] api.respond sent OK')
+        } catch (err) {
+          console.error('[Rec Seen] api.respond FAILED:', err)
+        }
+        const seenListEl = document.querySelector('.seen-list')
+        console.log('[Rec Seen] seenList element:', seenListEl)
+        try {
+          await appendRatedRow(
+            { basePath, likesList, dislikesList, seenList: seenListEl },
+            movie,
+            null
+          )
+          console.log('[Rec Seen] appendRatedRow done, seenList children:', seenListEl?.children.length)
+        } catch (err) {
+          console.error('[Rec Seen] appendRatedRow FAILED:', err)
+        }
         viewModeRemoveItem('tab-recommendations', movie.guid)
         card.remove()
+        console.log('[Rec Seen] card removed from Recommended')
       })
 
     return card
