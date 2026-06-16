@@ -6784,6 +6784,19 @@ window.moveMovieBetweenLists = moveMovieBetweenLists
 window.handleMovieRequest = handleMovieRequest
 window.checkRequestServiceStatus = checkRequestServiceStatus
 
+// Called from ViewModes.js poster-view overlay for recommendation cards
+window.rateRecommendation = async (movie, wantsToWatch) => {
+  const basePath = document.body.dataset.basePath || ''
+  const likesList = document.querySelector('.likes-list')
+  const dislikesList = document.querySelector('.dislikes-list')
+  const seenList = document.querySelector('.seen-list')
+  await api.respond({ guid: movie.guid, wantsToWatch })
+  await appendRatedRow({ basePath, likesList, dislikesList, seenList }, movie, wantsToWatch)
+  viewModeRemoveItem('tab-recommendations', movie.guid)
+  // Remove the card from the recommendations grid if present
+  document.querySelector(`.js-recommendations-list [data-guid="${CSS.escape(movie.guid)}"]`)?.remove()
+}
+
 // Watch List Auto-Refresh System
 let watchListRefreshInterval = null
 

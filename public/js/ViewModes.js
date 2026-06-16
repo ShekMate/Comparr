@@ -188,13 +188,17 @@ function showDetailModal(movie, sectionId) {
   const fromList = listMap[sectionId]
 
   seenBtn?.addEventListener('click', async () => {
-    if (fromList && window.moveMovieBetweenLists) {
+    if (sectionId === 'tab-recommendations' && window.rateRecommendation) {
+      await window.rateRecommendation(movie, null)
+    } else if (fromList && window.moveMovieBetweenLists) {
       await window.moveMovieBetweenLists(movie.guid, fromList, 'seen')
     }
     closeModal()
   })
   passBtn?.addEventListener('click', async () => {
-    if (fromList && window.moveMovieBetweenLists) {
+    if (sectionId === 'tab-recommendations' && window.rateRecommendation) {
+      await window.rateRecommendation(movie, false)
+    } else if (fromList && window.moveMovieBetweenLists) {
       await window.moveMovieBetweenLists(movie.guid, fromList, 'pass')
     }
     closeModal()
