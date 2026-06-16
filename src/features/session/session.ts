@@ -1458,6 +1458,7 @@ class Session {
         }
         case 'response': {
           const { guid, wantsToWatch } = decodedMessage.payload
+          log.info(`[response] ${user.name} rated guid=${guid} wantsToWatch=${wantsToWatch}`)
           assert(
             typeof guid === 'string' &&
               (typeof wantsToWatch === 'boolean' || wantsToWatch === null),
@@ -1465,6 +1466,7 @@ class Session {
           )
 
           const movie = this.movieForGuid(guid)
+          log.info(`[response] movieForGuid result: ${movie ? movie.title : 'NOT FOUND'}, movieListSize=${this.movieList.length}`)
           const resolvedTmdbId =
             movie?.tmdbId ??
             extractTmdbIdFromGuid(movie?.guid) ??
@@ -1540,11 +1542,14 @@ class Session {
             )
             // Still persist the response (e.g. rating a recommended movie that
             // isn't in the session's movie catalog yet)
+            log.info(`[response] responsesMutated=${responsesMutated}, userResponses=${user.responses.length}`)
             if (responsesMutated) {
+              log.info(`[response] persisting unresolved-movie response for guid=${guid}`)
               upsertRoomUser(this.roomCode, user)
               await saveState(persistedState).catch(err =>
                 log.warn(`Failed to save state on response: ${err}`)
               )
+              log.info(`[response] persisted OK`)
             }
             break
           }
