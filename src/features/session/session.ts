@@ -1538,6 +1538,14 @@ class Session {
             log.error(
               `${user.name} rated a movie we can't resolve by guid: ${guid}`
             )
+            // Still persist the response (e.g. rating a recommended movie that
+            // isn't in the session's movie catalog yet)
+            if (responsesMutated) {
+              upsertRoomUser(this.roomCode, user)
+              await saveState(persistedState).catch(err =>
+                log.warn(`Failed to save state on response: ${err}`)
+              )
+            }
             break
           }
 
