@@ -8113,6 +8113,7 @@ const main = async () => {
       .querySelector('.rec-action-seen')
       .addEventListener('click', async e => {
         e.stopPropagation()
+        await api.respond({ guid: movie.guid, wantsToWatch: null })
         await appendRatedRow(
           { basePath, likesList, dislikesList, seenList },
           movie,
