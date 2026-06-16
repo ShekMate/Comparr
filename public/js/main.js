@@ -8017,7 +8017,7 @@ const main = async () => {
     })()
 
     const card = document.createElement('div')
-    card.className = 'watch-card'
+    card.className = 'watch-card expanded'
     card.dataset.tmdbId = String(movie.tmdbId || '')
     card.dataset.guid = movie.guid || ''
 
