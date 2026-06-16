@@ -8084,6 +8084,7 @@ const main = async () => {
     card
       .querySelector('.rec-action-watch')
       .addEventListener('click', async e => {
+        console.log('[Rec Watch] CLICK FIRED for:', movie.title)
         e.stopPropagation()
         await api.respond({ guid: movie.guid, wantsToWatch: true })
         await appendRatedRow(
@@ -8098,6 +8099,7 @@ const main = async () => {
     card
       .querySelector('.rec-action-pass')
       .addEventListener('click', async e => {
+        console.log('[Rec Pass] CLICK FIRED for:', movie.title)
         e.stopPropagation()
         await api.respond({ guid: movie.guid, wantsToWatch: false })
         await appendRatedRow(
@@ -8109,12 +8111,13 @@ const main = async () => {
         card.remove()
       })
 
-    card
-      .querySelector('.rec-action-seen')
+    const seenBtn = card.querySelector('.rec-action-seen')
+    console.log('[Rec buildCard] seenBtn found:', !!seenBtn, 'for:', movie.title)
+    seenBtn
       .addEventListener('click', async e => {
+        console.log('[Rec Seen] CLICK FIRED for:', movie.title)
         e.stopPropagation()
-        console.log('[Rec Seen] clicked for:', movie.title, 'guid:', movie.guid)
-        console.log('[Rec Seen] socket state:', api.socket?.readyState, '(1=OPEN)')
+        console.log('[Rec Seen] guid:', movie.guid, 'socket state:', api.socket?.readyState, '(1=OPEN)')
         try {
           await api.respond({ guid: movie.guid, wantsToWatch: null })
           console.log('[Rec Seen] api.respond sent OK')
