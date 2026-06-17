@@ -533,7 +533,7 @@ th.sorted .vt-sort-icon {
 .view-detail-modal {
   background: var(--color-surface);
   border-radius: var(--radius-xl);
-  max-width: 680px;
+  max-width: 780px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
@@ -582,11 +582,11 @@ th.sorted .vt-sort-icon {
 
 .view-detail-poster {
   flex-shrink: 0;
-  width: 140px;
+  width: 180px;
 }
 
 .view-detail-poster img {
-  width: 140px;
+  width: 180px;
   border-radius: var(--radius-md);
   object-fit: cover;
   box-shadow: var(--shadow-md);
@@ -620,14 +620,10 @@ th.sorted .vt-sort-icon {
 }
 
 .view-detail-summary {
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   line-height: 1.6;
   color: var(--color-text-secondary);
   margin: 0 0 0.75rem;
-  display: -webkit-box;
-  -webkit-line-clamp: 6;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
 .view-detail-ratings {

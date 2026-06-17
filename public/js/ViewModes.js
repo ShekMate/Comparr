@@ -117,16 +117,41 @@ function showDetailModal(movie, sectionId) {
   const config = SECTION_CONFIGS[sectionId] || {}
   const hasRequest = config.hasRequest
 
-  const imdb = getRatingValue(movie, 'imdb')
-  const tmdb = getRatingValue(movie, 'tmdb')
-
   const isInLib = movie._isInLibrary || false
   const tmdbId = movie.tmdbId || movie.tmdb_id || null
   const requestConfigured = window._requestServiceConfigured || false
   const showRequestBtn = hasRequest && !isInLib && tmdbId && requestConfigured
 
-  const availText = isMovieAvailable(movie) ? 'Available' : 'Not Available'
-  const availClass = isMovieAvailable(movie) ? 'avail-yes' : 'avail-no'
+  // Build metadata badges (same order as overview card)
+  const badgesHtml = [
+    movie.contentRating ? `<span class="metadata-badge badge-rating"><i class="fas fa-tag"></i> ${movie.contentRating}</span>` : '',
+    genres.length       ? `<span class="metadata-badge badge-genre"><i class="fas fa-film"></i> ${genres.slice(0, 3).join(', ')}</span>` : '',
+    runtime             ? `<span class="metadata-badge badge-runtime"><i class="fas fa-clock"></i> ${runtime}</span>` : '',
+  ].filter(Boolean).join('')
+
+  // Build WHERE TO WATCH from movie.streamingServices
+  const streaming = movie.streamingServices || {}
+  const allProviders = [...(streaming.subscription || []), ...(streaming.free || [])]
+  const seenProviderNames = new Set()
+  const uniqueProviders = allProviders.filter(p => {
+    if (!p?.name || seenProviderNames.has(p.name)) return false
+    seenProviderNames.add(p.name)
+    return true
+  })
+  const whereToWatchHtml = uniqueProviders.length ? `
+    <div class="where-to-watch">
+      <div class="where-to-watch-title">Where to Watch</div>
+      <div class="provider-pill-list">
+        ${uniqueProviders.map(p => {
+          const logoUrl = p.logo_path
+            ? p.logo_path.startsWith('/assets/')
+              ? `${basePath}${p.logo_path}`
+              : `https://image.tmdb.org/t/p/w92${p.logo_path}`
+            : null
+          return `<span class="provider-pill">${logoUrl ? `<img src="${escapeAttr(logoUrl)}" alt="${escapeAttr(p.name)}" class="provider-pill-logo">` : ''}<span class="provider-pill-name">${p.name}</span></span>`
+        }).join('')}
+      </div>
+    </div>` : ''
 
   const overlay = document.createElement('div')
   overlay.id = 'view-detail-modal-overlay'
@@ -140,13 +165,10 @@ function showDetailModal(movie, sectionId) {
         ${posterUrl ? `<div class="view-detail-poster"><img src="${escapeAttr(posterUrl)}" alt="${escapeAttr(movie.title)}"></div>` : ''}
         <div class="view-detail-info">
           <h2 class="view-detail-title">${movie.title || ''}${year ? ` <span class="view-detail-year">(${year})</span>` : ''}</h2>
-          <div class="view-detail-meta">
-            ${movie.contentRating ? `<span class="metadata-badge badge-rating"><i class="fas fa-tag"></i> ${movie.contentRating}</span>` : ''}
-            ${runtime ? `<span class="metadata-badge badge-runtime"><i class="fas fa-clock"></i> ${runtime}</span>` : ''}
-            ${genres.length ? `<span class="metadata-badge badge-genre"><i class="fas fa-film"></i> ${genres.slice(0, 3).join(', ')}</span>` : ''}
-          </div>
           ${movie.summary ? `<p class="view-detail-summary">${movie.summary}</p>` : ''}
+          ${badgesHtml ? `<div class="view-detail-meta">${badgesHtml}</div>` : ''}
           ${ratingHtml ? `<div class="watch-card-ratings view-detail-ratings">${ratingHtml}</div>` : ''}
+          ${whereToWatchHtml}
           <div class="view-detail-actions">
             ${sectionId === 'tab-seen' ? `
             <button class="list-action-btn btn-unwatched view-detail-unwatched" data-guid="${escapeAttr(movie.guid)}" title="Mark as Unwatched (removes from Seen list)">
