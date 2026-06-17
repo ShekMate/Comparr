@@ -7253,16 +7253,14 @@ function showUndoNotification(message, onUndo) {
   document.body.appendChild(toast)
   requestAnimationFrame(() => toast.classList.add('is-visible'))
 
-  let settled = false
+  let called = false
   const dismiss = () => {
-    if (settled) return
-    settled = true
     toast.classList.remove('is-visible')
     toast.addEventListener('transitionend', () => toast.remove(), { once: true })
   }
 
   toast.querySelector('.undo-toast-btn').addEventListener('click', () => {
-    if (!settled) { settled = true; onUndo() }
+    if (!called) { called = true; onUndo() }
     dismiss()
   })
 
