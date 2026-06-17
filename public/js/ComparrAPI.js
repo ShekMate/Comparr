@@ -470,6 +470,16 @@ export class ComparrAPI extends EventTarget {
     )
   }
 
+  async unrespond({ guid }) {
+    await this._waitOpen()
+    this.socket.send(
+      JSON.stringify({
+        type: 'unrespond',
+        payload: { guid },
+      })
+    )
+  }
+
   async getMatches(roomCode, userName) {
     const base = this._getBasePath()
     const url = `${base}/api/matches?code=${encodeURIComponent(
