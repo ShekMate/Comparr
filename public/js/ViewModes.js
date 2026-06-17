@@ -174,7 +174,13 @@ function showDetailModal(movie, sectionId) {
   document.body.appendChild(overlay)
   requestAnimationFrame(() => overlay.classList.add('is-open'))
 
+  // For Seen tab: track pending unwatch state — removal only fires on close
+  let pendingUnwatch = false
+
   const closeModal = () => {
+    if (pendingUnwatch && window.removeFromSeenList) {
+      window.removeFromSeenList(movie.guid)
+    }
     overlay.classList.remove('is-open')
     overlay.addEventListener('transitionend', () => overlay.remove(), { once: true })
   }
@@ -186,9 +192,9 @@ function showDetailModal(movie, sectionId) {
   }, { once: true })
 
   // Action buttons
-  const watchBtn    = overlay.querySelector('.view-detail-watch')
-  const seenBtn     = overlay.querySelector('.view-detail-seen')
-  const passBtn     = overlay.querySelector('.view-detail-pass')
+  const watchBtn     = overlay.querySelector('.view-detail-watch')
+  const seenBtn      = overlay.querySelector('.view-detail-seen')
+  const passBtn      = overlay.querySelector('.view-detail-pass')
   const unwatchedBtn = overlay.querySelector('.view-detail-unwatched')
   const reqBtn  = overlay.querySelector('.view-detail-request')
   const refBtn  = overlay.querySelector('.view-detail-refresh')
@@ -217,10 +223,26 @@ function showDetailModal(movie, sectionId) {
     }
     closeModal()
   })
-  unwatchedBtn?.addEventListener('click', async () => {
-    if (window.removeFromSeenList) await window.removeFromSeenList(movie.guid)
-    closeModal()
-  })
+  if (unwatchedBtn) {
+    unwatchedBtn.addEventListener('click', () => {
+      pendingUnwatch = !pendingUnwatch
+      const icon  = unwatchedBtn.querySelector('i')
+      const label = unwatchedBtn.querySelector('.list-action-label')
+      if (pendingUnwatch) {
+        unwatchedBtn.classList.remove('btn-unwatched')
+        unwatchedBtn.classList.add('btn-unwatch-pending')
+        icon.className  = 'fas fa-eye-slash'
+        label.textContent = ' Unwatched'
+        unwatchedBtn.title = 'Click again to keep as Watched'
+      } else {
+        unwatchedBtn.classList.remove('btn-unwatch-pending')
+        unwatchedBtn.classList.add('btn-unwatched')
+        icon.className  = 'fas fa-check'
+        label.textContent = ' Watched'
+        unwatchedBtn.title = 'Mark as Unwatched (removes from Seen list)'
+      }
+    })
+  }
   reqBtn?.addEventListener('click', () => {
     if (window.handleMovieRequest) {
       window.handleMovieRequest(parseInt(tmdbId), movie.title, reqBtn)

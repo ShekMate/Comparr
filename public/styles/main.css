@@ -4089,6 +4089,15 @@ body[data-user-type='guest'] .compare-ui {
   filter: brightness(1.3);
 }
 
+.list-action-btn.btn-unwatch-pending {
+  color: var(--color-text-secondary);
+  opacity: 0.6;
+}
+
+.list-action-btn.btn-unwatch-pending:hover {
+  opacity: 0.9;
+}
+
 .list-action-btn.refresh-movie-btn {
   color: #14b8a6;
 }

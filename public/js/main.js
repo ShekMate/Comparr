@@ -6390,22 +6390,44 @@ async function appendRatedRow(
       </div>
     `
 
+    // Track pending unwatch state — removal fires when card collapses
+    let pendingUnwatch = false
+
+    const unwatchedBtn = card.querySelector('.btn-unwatched')
+    if (unwatchedBtn) {
+      unwatchedBtn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        pendingUnwatch = !pendingUnwatch
+        const icon  = unwatchedBtn.querySelector('i')
+        const label = unwatchedBtn.querySelector('.list-action-label')
+        if (pendingUnwatch) {
+          unwatchedBtn.classList.remove('btn-unwatched')
+          unwatchedBtn.classList.add('btn-unwatch-pending')
+          icon.className    = 'fas fa-eye-slash'
+          label.textContent = 'Unwatched'
+          unwatchedBtn.title = 'Click again to keep as Watched'
+        } else {
+          unwatchedBtn.classList.remove('btn-unwatch-pending')
+          unwatchedBtn.classList.add('btn-unwatched')
+          icon.className    = 'fas fa-check'
+          label.textContent = 'Watched'
+          unwatchedBtn.title = 'Mark as Unwatched (removes from Seen list)'
+        }
+      })
+    }
+
     // Add event listeners for seen list actions
     card
       .querySelector('.watch-card-collapsed')
       .addEventListener('click', () => {
-        card.classList.toggle('expanded')
+        if (card.classList.contains('expanded') && pendingUnwatch) {
+          // Collapsing while unwatched pending — commit removal
+          removeFromSeenList(movie.guid, card)
+        } else {
+          card.classList.toggle('expanded')
+        }
       })
-
-    const unwatchedBtn = card.querySelector('.btn-unwatched')
-    if (unwatchedBtn) {
-      unwatchedBtn.addEventListener('click', async e => {
-        e.preventDefault()
-        e.stopPropagation()
-        const guid = unwatchedBtn.dataset.guid
-        await removeFromSeenList(guid, card)
-      })
-    }
 
     card._movieData = { ...movie }
 
