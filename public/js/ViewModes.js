@@ -148,6 +148,9 @@ function showDetailModal(movie, sectionId) {
           ${movie.summary ? `<p class="view-detail-summary">${movie.summary}</p>` : ''}
           ${ratingHtml ? `<div class="watch-card-ratings view-detail-ratings">${ratingHtml}</div>` : ''}
           <div class="view-detail-actions">
+            ${sectionId === 'tab-recommendations' ? `<button class="list-action-btn view-detail-watch" data-guid="${escapeAttr(movie.guid)}" title="Add to Watch list">
+              <i class="fas fa-thumbs-up"></i><span class="list-action-label"> Watch</span>
+            </button>` : ''}
             <button class="list-action-btn view-detail-seen" data-guid="${escapeAttr(movie.guid)}" title="Mark as Seen">
               <i class="fas fa-eye"></i><span class="list-action-label"> Seen</span>
             </button>
@@ -179,10 +182,16 @@ function showDetailModal(movie, sectionId) {
   }, { once: true })
 
   // Action buttons
+  const watchBtn = overlay.querySelector('.view-detail-watch')
   const seenBtn = overlay.querySelector('.view-detail-seen')
   const passBtn = overlay.querySelector('.view-detail-pass')
   const reqBtn  = overlay.querySelector('.view-detail-request')
   const refBtn  = overlay.querySelector('.view-detail-refresh')
+
+  watchBtn?.addEventListener('click', async () => {
+    if (window.rateRecommendation) await window.rateRecommendation(movie, true)
+    closeModal()
+  })
 
   const listMap = { 'tab-likes': 'watch', 'tab-seen': 'seen', 'tab-dislikes': 'pass', 'tab-recommendations': null, 'tab-matches': null }
   const fromList = listMap[sectionId]
