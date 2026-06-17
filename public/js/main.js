@@ -6377,17 +6377,13 @@ async function appendRatedRow(
               : ''
           })()}
         
-          <!-- Move to other lists buttons -->
+          <!-- Watched toggle -->
           <div class="list-actions">
-            <button class="list-action-btn move-to-watch" data-guid="${
+            <button class="list-action-btn btn-unwatched" data-guid="${
               movie.guid
-            }" title="Move to Watch">
-              <i class="fas fa-thumbs-up"></i>
-            </button>
-            <button class="list-action-btn move-to-pass" data-guid="${
-              movie.guid
-            }" title="Move to Pass">
-              <i class="fas fa-thumbs-down"></i>
+            }" title="Mark as Unwatched (removes from Seen list)">
+              <i class="fas fa-check"></i>
+              <span class="list-action-label">Watched</span>
             </button>
           </div>
         </div>
@@ -6401,33 +6397,14 @@ async function appendRatedRow(
         card.classList.toggle('expanded')
       })
 
-    const moveToWatchBtn = card.querySelector('.move-to-watch')
-    const moveToPassBtn = card.querySelector('.move-to-pass')
-
-    if (moveToWatchBtn) {
-      console.log('🧠 Attaching Seen->Watch button handler for:', movie.title)
-      moveToWatchBtn.addEventListener('click', async e => {
+    const unwatchedBtn = card.querySelector('.btn-unwatched')
+    if (unwatchedBtn) {
+      unwatchedBtn.addEventListener('click', async e => {
         e.preventDefault()
         e.stopPropagation()
-        const guid = moveToWatchBtn.dataset.guid
-        console.log('🧠 Seen->Watch button clicked! GUID:', guid)
-        await moveMovieBetweenLists(guid, 'seen', 'watch')
+        const guid = unwatchedBtn.dataset.guid
+        await removeFromSeenList(guid, card)
       })
-    } else {
-      console.warn('⚠️ No move-to-watch button found for:', movie.title)
-    }
-
-    if (moveToPassBtn) {
-      console.log('🧠 Attaching Seen->Pass button handler for:', movie.title)
-      moveToPassBtn.addEventListener('click', async e => {
-        e.preventDefault()
-        e.stopPropagation()
-        const guid = moveToPassBtn.dataset.guid
-        console.log('🧠 Seen->Pass button clicked! GUID:', guid)
-        await moveMovieBetweenLists(guid, 'seen', 'pass')
-      })
-    } else {
-      console.warn('⚠️ No move-to-pass button found for:', movie.title)
     }
 
     card._movieData = { ...movie }
@@ -6447,6 +6424,37 @@ async function appendRatedRow(
     viewModeAddItem('tab-seen', card._movieData)
   }
 }
+
+// Remove a movie from the Seen list entirely (back to unrated)
+async function removeFromSeenList(guid, cardEl) {
+  try {
+    if (!api) {
+      showNotification('Error: API not initialized')
+      return
+    }
+    await api.unrespond({ guid })
+
+    const card = cardEl || document.querySelector(`.watch-card[data-guid="${guid}"]`)
+    if (card) {
+      const seenList = card.closest('.watch-list')
+      if (seenList?.dataset.originalOrder) {
+        seenList.dataset.originalOrder = seenList.dataset.originalOrder
+          .split(',')
+          .filter(Boolean)
+          .filter(g => g !== guid)
+          .join(',')
+      }
+      card.remove()
+    }
+
+    viewModeRemoveItem('tab-seen', guid)
+    showNotification('Removed from Seen list')
+  } catch (err) {
+    console.error('❌ Error removing from Seen list:', err)
+    showNotification('Failed to remove. Please try again.')
+  }
+}
+window.removeFromSeenList = removeFromSeenList
 
 // Function to move movies between lists
 async function moveMovieBetweenLists(guid, fromList, toList) {

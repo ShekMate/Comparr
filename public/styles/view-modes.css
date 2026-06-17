@@ -334,8 +334,10 @@ th.sorted .vt-sort-icon {
   background: var(--color-surface-light);
 }
 
-.vt-seen:hover   { color: var(--color-warning); }
-.vt-pass:hover   { color: var(--color-error); }
+.vt-seen:hover      { color: var(--color-warning); }
+.vt-pass:hover      { color: var(--color-error); }
+.vt-unwatched       { color: var(--color-success); }
+.vt-unwatched:hover { color: var(--color-success); filter: brightness(1.3); }
 .vt-request      { color: var(--color-primary-light); }
 .vt-request:hover { color: var(--color-primary); background: rgba(99,102,241,0.1); }
 .vt-refresh:hover { color: var(--color-accent); }

@@ -1608,6 +1608,35 @@ class Session {
           )
           break
         }
+        case 'unrespond': {
+          const { guid } = decodedMessage.payload
+          assert(typeof guid === 'string', 'unrespond message missing guid')
+          log.info(`[unrespond] ${user.name} removing response for guid=${guid}`)
+
+          const before = user.responses.length
+          user.responses = user.responses.filter(r => r.guid !== guid)
+
+          // Also remove from likedMovies if present
+          for (const [movie, users] of this.likedMovies.entries()) {
+            if (movie.guid === guid) {
+              const next = users.filter(u => u !== user)
+              if (next.length > 0) {
+                this.likedMovies.set(movie, next)
+              } else {
+                this.likedMovies.delete(movie)
+              }
+              break
+            }
+          }
+
+          if (user.responses.length !== before) {
+            upsertRoomUser(this.roomCode, user)
+            await saveState(persistedState).catch(err =>
+              log.warn(`Failed to save state on unrespond: ${err}`)
+            )
+          }
+          break
+        }
       }
     } catch (err) {
       log.error(err, JSON.stringify(msg))

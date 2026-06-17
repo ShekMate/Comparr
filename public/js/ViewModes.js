@@ -148,6 +148,10 @@ function showDetailModal(movie, sectionId) {
           ${movie.summary ? `<p class="view-detail-summary">${movie.summary}</p>` : ''}
           ${ratingHtml ? `<div class="watch-card-ratings view-detail-ratings">${ratingHtml}</div>` : ''}
           <div class="view-detail-actions">
+            ${sectionId === 'tab-seen' ? `
+            <button class="list-action-btn btn-unwatched view-detail-unwatched" data-guid="${escapeAttr(movie.guid)}" title="Mark as Unwatched (removes from Seen list)">
+              <i class="fas fa-check"></i><span class="list-action-label"> Watched</span>
+            </button>` : `
             ${sectionId === 'tab-recommendations' ? `<button class="list-action-btn view-detail-watch" data-guid="${escapeAttr(movie.guid)}" title="Add to Watch list">
               <i class="fas fa-thumbs-up"></i><span class="list-action-label"> Watch</span>
             </button>` : ''}
@@ -156,7 +160,7 @@ function showDetailModal(movie, sectionId) {
             </button>
             <button class="list-action-btn view-detail-pass" data-guid="${escapeAttr(movie.guid)}" title="Pass">
               <i class="fas fa-thumbs-down"></i><span class="list-action-label"> Pass</span>
-            </button>
+            </button>`}
             ${showRequestBtn ? `<button class="list-action-btn view-detail-request provider-pill-add" data-tmdb-id="${tmdbId}" data-title="${escapeAttr(movie.title)}" title="Request"><i class="fas fa-plus"></i><span class="list-action-label"> Request</span></button>` : ''}
             <button class="list-action-btn view-detail-refresh" data-guid="${escapeAttr(movie.guid)}" data-tmdb-id="${tmdbId || ''}" title="Refresh">
               <i class="fas fa-sync-alt"></i>
@@ -182,9 +186,10 @@ function showDetailModal(movie, sectionId) {
   }, { once: true })
 
   // Action buttons
-  const watchBtn = overlay.querySelector('.view-detail-watch')
-  const seenBtn = overlay.querySelector('.view-detail-seen')
-  const passBtn = overlay.querySelector('.view-detail-pass')
+  const watchBtn    = overlay.querySelector('.view-detail-watch')
+  const seenBtn     = overlay.querySelector('.view-detail-seen')
+  const passBtn     = overlay.querySelector('.view-detail-pass')
+  const unwatchedBtn = overlay.querySelector('.view-detail-unwatched')
   const reqBtn  = overlay.querySelector('.view-detail-request')
   const refBtn  = overlay.querySelector('.view-detail-refresh')
 
@@ -210,6 +215,10 @@ function showDetailModal(movie, sectionId) {
     } else if (fromList && window.moveMovieBetweenLists) {
       await window.moveMovieBetweenLists(movie.guid, fromList, 'pass')
     }
+    closeModal()
+  })
+  unwatchedBtn?.addEventListener('click', async () => {
+    if (window.removeFromSeenList) await window.removeFromSeenList(movie.guid)
     closeModal()
   })
   reqBtn?.addEventListener('click', () => {
@@ -275,7 +284,11 @@ function buildTableRow(movie, sectionId, opts) {
     <td class="col-language vt-language">${language}</td>
     <td class="col-releaseDate vt-releaseDate">${releaseDate}</td>
     <td class="col-actions vt-actions">
-      ${fromList === 'pass' ? '' : `<button class="vt-action-btn vt-seen" data-guid="${escapeAttr(movie.guid)}" title="Mark as Seen"><i class="fas fa-eye"></i></button>`}
+      ${fromList === 'seen'
+        ? `<button class="vt-action-btn vt-unwatched btn-unwatched" data-guid="${escapeAttr(movie.guid)}" title="Mark as Unwatched"><i class="fas fa-check"></i></button>`
+        : fromList === 'pass'
+          ? ''
+          : `<button class="vt-action-btn vt-seen" data-guid="${escapeAttr(movie.guid)}" title="Mark as Seen"><i class="fas fa-eye"></i></button>`}
       ${fromList === 'seen' ? '' : `<button class="vt-action-btn vt-pass" data-guid="${escapeAttr(movie.guid)}" title="Pass"><i class="fas fa-thumbs-down"></i></button>`}
       ${showRequestBtn ? `<button class="vt-action-btn vt-request provider-pill-add" data-tmdb-id="${tmdbId}" data-title="${escapeAttr(movie.title)}" title="Request"><i class="fas fa-plus"></i></button>` : ''}
       <button class="vt-action-btn vt-refresh" data-guid="${escapeAttr(movie.guid)}" data-tmdb-id="${tmdbId || ''}" title="Refresh"><i class="fas fa-sync-alt"></i></button>
@@ -286,6 +299,10 @@ function buildTableRow(movie, sectionId, opts) {
   tr.querySelector('.vt-seen')?.addEventListener('click', e => {
     e.stopPropagation()
     if (fromList && window.moveMovieBetweenLists) window.moveMovieBetweenLists(movie.guid, fromList, 'seen')
+  })
+  tr.querySelector('.vt-unwatched')?.addEventListener('click', e => {
+    e.stopPropagation()
+    if (window.removeFromSeenList) window.removeFromSeenList(movie.guid)
   })
   tr.querySelector('.vt-pass')?.addEventListener('click', e => {
     e.stopPropagation()
