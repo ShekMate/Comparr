@@ -338,8 +338,6 @@ th.sorted .vt-sort-icon {
 .vt-pass:hover      { color: var(--color-error); }
 .vt-unwatched       { color: var(--color-success); }
 .vt-unwatched:hover { color: var(--color-success); filter: brightness(1.3); }
-.btn-unwatch-pending       { color: var(--color-text-secondary); opacity: 0.6; }
-.btn-unwatch-pending:hover { opacity: 0.9; }
 .vt-request      { color: var(--color-primary-light); }
 .vt-request:hover { color: var(--color-primary); background: rgba(99,102,241,0.1); }
 .vt-refresh:hover { color: var(--color-accent); }

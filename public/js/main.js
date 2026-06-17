@@ -6390,30 +6390,12 @@ async function appendRatedRow(
       </div>
     `
 
-    // Track pending unwatch state — removal fires when card collapses
-    let pendingUnwatch = false
-
     const unwatchedBtn = card.querySelector('.btn-unwatched')
     if (unwatchedBtn) {
       unwatchedBtn.addEventListener('click', e => {
         e.preventDefault()
         e.stopPropagation()
-        pendingUnwatch = !pendingUnwatch
-        const icon  = unwatchedBtn.querySelector('i')
-        const label = unwatchedBtn.querySelector('.list-action-label')
-        if (pendingUnwatch) {
-          unwatchedBtn.classList.remove('btn-unwatched')
-          unwatchedBtn.classList.add('btn-unwatch-pending')
-          icon.className    = 'fas fa-eye-slash'
-          label.textContent = 'Unwatched'
-          unwatchedBtn.title = 'Click again to keep as Watched'
-        } else {
-          unwatchedBtn.classList.remove('btn-unwatch-pending')
-          unwatchedBtn.classList.add('btn-unwatched')
-          icon.className    = 'fas fa-check'
-          label.textContent = 'Watched'
-          unwatchedBtn.title = 'Mark as Unwatched (removes from Seen list)'
-        }
+        removeFromSeenList(movie.guid, card)
       })
     }
 
@@ -6421,12 +6403,7 @@ async function appendRatedRow(
     card
       .querySelector('.watch-card-collapsed')
       .addEventListener('click', () => {
-        if (card.classList.contains('expanded') && pendingUnwatch) {
-          // Collapsing while unwatched pending — commit removal
-          removeFromSeenList(movie.guid, card)
-        } else {
-          card.classList.toggle('expanded')
-        }
+        card.classList.toggle('expanded')
       })
 
     card._movieData = { ...movie }
@@ -6447,34 +6424,51 @@ async function appendRatedRow(
   }
 }
 
-// Remove a movie from the Seen list entirely (back to unrated)
-async function removeFromSeenList(guid, cardEl) {
-  try {
-    if (!api) {
-      showNotification('Error: API not initialized')
-      return
-    }
-    await api.unrespond({ guid })
-
-    const card = cardEl || document.querySelector(`.watch-card[data-guid="${guid}"]`)
-    if (card) {
-      const seenList = card.closest('.watch-list')
-      if (seenList?.dataset.originalOrder) {
-        seenList.dataset.originalOrder = seenList.dataset.originalOrder
-          .split(',')
-          .filter(Boolean)
-          .filter(g => g !== guid)
-          .join(',')
-      }
-      card.remove()
-    }
-
-    viewModeRemoveItem('tab-seen', guid)
-    showNotification('Removed from Seen list')
-  } catch (err) {
-    console.error('❌ Error removing from Seen list:', err)
-    showNotification('Failed to remove. Please try again.')
+// Remove a movie from the Seen list with a 5-second undo window
+function removeFromSeenList(guid, cardEl) {
+  if (!api) {
+    showNotification('Error: API not initialized')
+    return
   }
+
+  const card = cardEl || document.querySelector(`.watch-card[data-guid="${guid}"]`)
+
+  // Capture position so we can restore on undo
+  const listEl      = card?.closest('.watch-list')
+  const nextSibling = card?.nextSibling
+  const savedOrder  = listEl?.dataset.originalOrder
+  const movieData   = card?._movieData
+
+  // Remove from DOM immediately
+  if (card) {
+    if (listEl?.dataset.originalOrder) {
+      listEl.dataset.originalOrder = listEl.dataset.originalOrder
+        .split(',').filter(Boolean).filter(g => g !== guid).join(',')
+    }
+    card.remove()
+  }
+  viewModeRemoveItem('tab-seen', guid)
+
+  // Show undo toast — API call only fires if user doesn't undo
+  let undone = false
+  showUndoNotification('Removed from Seen list', () => {
+    undone = true
+    if (card && listEl) {
+      if (savedOrder !== undefined) listEl.dataset.originalOrder = savedOrder
+      listEl.insertBefore(card, nextSibling || null)
+    }
+    if (movieData) viewModeAddItem('tab-seen', movieData)
+  })
+
+  setTimeout(async () => {
+    if (undone) return
+    try {
+      await api.unrespond({ guid })
+    } catch (err) {
+      console.error('❌ Error removing from Seen list:', err)
+      showNotification('Failed to remove. Please try again.')
+    }
+  }, 5000)
 }
 window.removeFromSeenList = removeFromSeenList
 
@@ -7250,6 +7244,29 @@ function showNotification(message) {
   setTimeout(() => {
     notification.style.display = 'none'
   }, 3000)
+}
+
+function showUndoNotification(message, onUndo) {
+  const toast = document.createElement('div')
+  toast.className = 'undo-toast'
+  toast.innerHTML = `<span class="undo-toast-msg">${message}</span><button class="undo-toast-btn">Undo</button>`
+  document.body.appendChild(toast)
+  requestAnimationFrame(() => toast.classList.add('is-visible'))
+
+  let settled = false
+  const dismiss = () => {
+    if (settled) return
+    settled = true
+    toast.classList.remove('is-visible')
+    toast.addEventListener('transitionend', () => toast.remove(), { once: true })
+  }
+
+  toast.querySelector('.undo-toast-btn').addEventListener('click', () => {
+    if (!settled) { settled = true; onUndo() }
+    dismiss()
+  })
+
+  setTimeout(dismiss, 5000)
 }
 
 function showNoMoviesNotification() {
