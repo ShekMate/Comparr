@@ -7437,7 +7437,6 @@ const main = async () => {
     try {
       const result = await api.getMatches(roomCode, userName)
       matchesView.matches = result.matches || []
-      matchesView.render()
       return matchesView.matches
     } catch (error) {
       console.error('Failed to refresh matches:', error)
@@ -8401,7 +8400,6 @@ const main = async () => {
       )
       if (matchIndex !== -1) {
         matchesView.matches.splice(matchIndex, 1)
-        matchesView.render()
       }
     }
   })
@@ -8853,7 +8851,6 @@ const main = async () => {
   })
 
   // Filter UI elements
-  // const streamingCheckboxes = document.querySelectorAll('#streaming-checkboxes input[type="checkbox"]')  // COMMENTED OUT
   const currentYear = new Date().getFullYear()
   const yearMinInput = document.getElementById('year-min')
   const yearMaxInput = document.getElementById('year-max')
@@ -8906,21 +8903,6 @@ const main = async () => {
   }
 
   syncFilterUIWithState()
-
-  /* COMMENTED OUT - Streaming services handlers (replaced with Where to Watch toggle)
-  streamingCheckboxes.forEach(checkbox => {
-    checkbox.addEventListener('change', (e) => {
-      const service = e.target.value
-      if (e.target.checked) {
-        if (!filterState.streamingServices.includes(service)) {
-          filterState.streamingServices.push(service)
-        }
-      } else {
-        filterState.streamingServices = filterState.streamingServices.filter(s => s !== service)
-      }
-    })
-  })
-  */
 
   const legacyPlexOnlyToggle = document.getElementById('plex-only-toggle')
 
@@ -9283,22 +9265,6 @@ const main = async () => {
     console.log('Filter sort direction changed:', newValue)
   })
 
-  /* COMMENTED OUT - Old rating checkboxes handler (now in dropdown setup)
-  const ratingCheckboxes = document.querySelectorAll('#rating-checkboxes input[type="checkbox"]')
-  ratingCheckboxes.forEach(checkbox => {
-    checkbox.addEventListener('change', (e) => {
-      const rating = e.target.value
-      if (e.target.checked) {
-        if (!filterState.contentRatings.includes(rating)) {
-          filterState.contentRatings.push(rating)
-        }
-      } else {
-        filterState.contentRatings = filterState.contentRatings.filter(r => r !== rating)
-      }
-    })
-  })
-  */
-
   const imdbRatingSlider = document.getElementById('imdb-rating')
   const imdbRatingValue = document.getElementById('imdb-rating-value')
   imdbRatingSlider?.addEventListener('input', e => {
@@ -9345,9 +9311,6 @@ const main = async () => {
     filterState.voteCount = count
     voteCountValue.textContent = count.toLocaleString()
   })
-
-  /* COMMENTED OUT - RT Rating Filter
-   */
 
   // Apply filters button
   const applyFiltersBtn = document.getElementById('apply-filters')

@@ -39,16 +39,3 @@ export const mockOMDbNotFound = {
   Error: 'Movie not found!',
 }
 
-export const mockOMDbError = {
-  Response: 'False',
-  Error: 'Invalid API key!',
-}
-
-export function createMockOMDbMovie(
-  overrides: Partial<typeof mockOMDbMovie> = {}
-) {
-  return {
-    ...mockOMDbMovie,
-    ...overrides,
-  }
-}

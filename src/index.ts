@@ -102,12 +102,6 @@ async function respondFile(
   }
 }
 
-const _bodyTooLarge = (req: CompatRequest) => {
-  const max = getMaxBodySize()
-  const contentLength = Number(req.headers.get('content-length') || '0')
-  return Number.isFinite(contentLength) && contentLength > max
-}
-
 const isStateChangingMethod = (method: string) =>
   method === 'POST' ||
   method === 'PUT' ||

@@ -114,33 +114,6 @@
     padding: 0 1rem;
   }
 
-  .match-card-header {
-    padding: 0.85rem 1rem;
-  }
-
-  .match-card-title {
-    font-size: 1rem;
-  }
-
-  .match-card-content {
-    padding: 1rem;
-  }
-
-  .match-card-poster img {
-    width: 80px;
-    height: 120px;
-  }
-
-  .match-card-plot {
-    font-size: 0.8rem;
-  }
-
-  .match-card-actions {
-    flex-direction: row;
-    justify-content: flex-start;
-    gap: 0.4rem;
-    flex-wrap: wrap;
-  }
 }
 
 @media (max-width: 600px) {
