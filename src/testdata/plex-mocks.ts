@@ -130,11 +130,3 @@ export const mockPlexMovies = {
 
 export const mockPlexMovie = mockPlexMovies.MediaContainer.Metadata[0]
 
-export function createMockPlexMovie(
-  overrides: Partial<typeof mockPlexMovie> = {}
-) {
-  return {
-    ...mockPlexMovie,
-    ...overrides,
-  }
-}

@@ -71,14 +71,6 @@ Help you and your friends decide what to watch from your Plex library with an in
 
 ---
 
-## Screenshots
-
-_Swipe through your Plex library with beautiful movie posters and comprehensive ratings_
-
-> **Note:** Screenshots coming soon! The interface features a modern card-based design with movie posters, ratings from multiple sources, and an intuitive swipe interface.
-
----
-
 ## Quick Start
 
 ```bash

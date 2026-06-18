@@ -122,29 +122,3 @@ export class MockWebSocket {
   onopen: ((event: any) => void) | null = null
 }
 
-/**
- * Wait for a condition to be true
- */
-export async function waitFor(
-  condition: () => boolean | Promise<boolean>,
-  timeout = 1000,
-  interval = 50
-): Promise<void> {
-  const startTime = Date.now()
-
-  while (Date.now() - startTime < timeout) {
-    if (await condition()) {
-      return
-    }
-    await new Promise(resolve => setTimeout(resolve, interval))
-  }
-
-  throw new Error(`Timeout waiting for condition after ${timeout}ms`)
-}
-
-/**
- * Create a delay promise
- */
-export function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}

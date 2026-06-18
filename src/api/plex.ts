@@ -121,16 +121,6 @@ const loadAllMovies = async () => {
 
     assert(req.ok, `Error loading ${movieSection.title} library`)
 
-    if (!req.ok) {
-      if (req.status === 401) {
-        throw new PlexTokenError(`Authentication error: ${req.url}`)
-      } else {
-        throw new Error(
-          `${req.url} returned ${req.status}: ${await req.text()}`
-        )
-      }
-    }
-
     const libraryData: PlexMediaContainer<PlexVideo> = await req.json()
     let metadata = libraryData.MediaContainer.Metadata
 

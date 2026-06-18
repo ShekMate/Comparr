@@ -530,7 +530,6 @@ export class ComparrAPI extends EventTarget {
         runtimeMax: filters.runtimeRange.max,
         voteCount: filters.voteCount,
         sortBy: filters.sortBy,
-        // rtRating: filters.rtRating  // COMMENTED OUT
       },
     }
 
@@ -547,7 +546,6 @@ export class ComparrAPI extends EventTarget {
     console.log('  Content Ratings:', message.payload.contentRatings)
     console.log('  IMDb Rating:', message.payload.imdbRating)
     console.log('  TMDb Rating:', message.payload.tmdbRating)
-    // console.log('  RT Rating:', message.payload.rtRating);  // COMMENTED OUT
     console.log('  Languages:', message.payload.languages)
     console.log('  Countries:', message.payload.countries)
     console.log(

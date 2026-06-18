@@ -1000,7 +1000,6 @@ body:not(.is-logged-in) .card-stack:empty::after {
   overflow-y: hidden;
   padding: 0.1rem 0.05rem 0.3rem;
   scroll-snap-type: x proximity;
-  -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   scrollbar-color: var(--color-primary) rgb(255 255 255 / 10%);
 }
@@ -2169,10 +2168,6 @@ body[data-user-type='guest'] .compare-ui {
   transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.poster-wrapper:active {
-  cursor: grabbing;
-}
-
 .room-mode-tab.is-active {
   background: var(--color-primary);
   color: #fff;
@@ -2501,10 +2496,6 @@ body[data-user-type='guest'] .compare-ui {
   align-items: center;
   justify-content: center;
   cursor: grab;
-}
-
-.poster-wrapper:active {
-  cursor: grabbing;
 }
 
 .password-visibility-toggle:hover {
@@ -3418,10 +3409,6 @@ body[data-user-type='guest'] .compare-ui {
   outline: none;
   accent-color: var(--color-primary);
   cursor: grab;
-}
-
-.poster-wrapper:active {
-  cursor: grabbing;
 }
 
 #imdb-rating::-webkit-slider-thumb,
@@ -5581,10 +5568,6 @@ footer {
   cursor: grab;
 }
 
-.poster-wrapper:active {
-  cursor: grabbing;
-}
-
 .settings-inline-actions .submit-button {
   background: var(--gradient-primary);
   border: none;
@@ -5605,10 +5588,6 @@ footer {
   font-weight: 600;
   padding: 0.45rem 0.75rem;
   cursor: grab;
-}
-
-.poster-wrapper:active {
-  cursor: grabbing;
 }
 
 .settings-mode-toggle:hover {
@@ -5672,10 +5651,6 @@ footer {
   padding: 0.45rem 0.75rem;
   font-size: 0.85rem;
   cursor: grab;
-}
-
-.poster-wrapper:active {
-  cursor: grabbing;
 }
 
 .settings-admin-tab:hover {
@@ -6261,16 +6236,14 @@ footer {
     max-height: min(56vh, 520px);
     overflow-y: auto;
     overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-    padding-right: 0.25rem;
+      padding-right: 0.25rem;
   }
 
   #first-run-defaults-inline-editor .filter-modal .dropdown-list {
     max-height: min(36vh, 260px);
     overflow-y: auto;
     overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-  }
+    }
 }
 
 /* ─── Wizard User-Auth Screen ───────────────────────────────── */

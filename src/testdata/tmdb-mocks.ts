@@ -97,38 +97,3 @@ export const mockTMDbSearchResults = {
   total_results: 1,
 }
 
-export const mockTMDbDiscoverResults = {
-  page: 1,
-  results: [
-    mockTMDbMovie,
-    {
-      ...mockTMDbMovie,
-      id: 157336,
-      title: 'Interstellar',
-      original_title: 'Interstellar',
-      release_date: '2014-11-07',
-      vote_average: 8.442,
-      vote_count: 33845,
-    },
-    {
-      ...mockTMDbMovie,
-      id: 603,
-      title: 'The Matrix',
-      original_title: 'The Matrix',
-      release_date: '1999-03-31',
-      vote_average: 8.218,
-      vote_count: 24752,
-    },
-  ],
-  total_pages: 100,
-  total_results: 10000,
-}
-
-export function createMockTMDbMovie(
-  overrides: Partial<typeof mockTMDbMovie> = {}
-) {
-  return {
-    ...mockTMDbMovie,
-    ...overrides,
-  }
-}
