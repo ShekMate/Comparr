@@ -180,6 +180,8 @@ interface MediaItem {
   contentRating?: string
   runtime?: number
   rating: string
+  rating_imdb?: number | null
+  rating_tmdb?: number | null
   key: string
   type: 'movie' | 'artist' | 'photo' | 'show'
   streamingServices?: { subscription: any[]; free: any[] }
@@ -2453,6 +2455,8 @@ class Session {
             contentRating: extra?.contentRating || undefined,
             runtime: extra?.runtime || plexMovie.runtime || undefined,
             rating: String(ratingStr),
+            rating_imdb: extra?.rating_imdb ?? null,
+            rating_tmdb: extra?.rating_tmdb ?? null,
             type: plexMovie.type,
             streamingServices: streamingServices,
             streamingLink: extra?.streamingLink || undefined,
@@ -3568,6 +3572,8 @@ export async function bulkImportSeen(
       year: movie.year,
       art: movie.art,
       rating: movie.rating,
+      rating_imdb: (movie as any).rating_imdb ?? null,
+      rating_tmdb: (movie as any).rating_tmdb ?? null,
       key: movie.key,
       type: 'movie',
       tmdbId: tmdbId ?? null,
@@ -3967,6 +3973,8 @@ export async function processImdbImportBackground(
         year: movie.year,
         art: movie.art,
         rating: movie.rating,
+        rating_imdb: null,
+        rating_tmdb: tmdbMovie.vote_average ?? null,
         key: movie.key,
         type: 'movie',
         tmdbId,
