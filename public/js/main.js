@@ -437,73 +437,13 @@ function updateDropdownButtonText(
   }
 }
 
-// Update genre dropdown button
-function updateGenreButton(selectedGenres) {
-  updateDropdownButtonText(
-    'genre-dropdown-toggle',
-    selectedGenres,
-    'Select Genres',
-    genreId => filterDisplayNames[genreId] || 'Unknown'
-  )
-}
-
-// Update language dropdown button
-function updateLanguageButton(selectedLanguages) {
-  updateDropdownButtonText(
-    'language-dropdown-toggle',
-    selectedLanguages,
-    'Select Languages',
-    langCode => filterDisplayNames[langCode] || langCode.toUpperCase()
-  )
-}
-
-// Update country dropdown button
-function updateCountryButton(selectedCountries) {
-  updateDropdownButtonText(
-    'country-dropdown-toggle',
-    selectedCountries,
-    'Select Countries',
-    countryCode => filterDisplayNames[countryCode] || countryCode
-  )
-}
-
-// Watch filter modal button updates
-function updateWatchGenreButton(selectedGenres) {
-  updateDropdownButtonText(
-    'watch-genre-toggle',
-    selectedGenres,
-    'Select Genres',
-    genreId => filterDisplayNames[genreId] || 'Unknown'
-  )
-}
-
-function updateWatchLanguageButton(selectedLanguages) {
-  updateDropdownButtonText(
-    'watch-language-toggle',
-    selectedLanguages,
-    'Select Languages',
-    langCode => filterDisplayNames[langCode] || langCode.toUpperCase()
-  )
-}
-
-function updateWatchCountryButton(selectedCountries) {
-  updateDropdownButtonText(
-    'watch-country-toggle',
-    selectedCountries,
-    'Select Countries',
-    countryCode => filterDisplayNames[countryCode] || countryCode
-  )
-}
-
-// Update content rating dropdown button
-function updateContentRatingButton(selectedRatings) {
-  updateDropdownButtonText(
-    'rating-dropdown-toggle',
-    selectedRatings,
-    'Select Ratings',
-    rating => rating
-  )
-}
+const updateGenreButton = s => updateDropdownButtonText('genre-dropdown-toggle', s, 'Select Genres', id => filterDisplayNames[id] || 'Unknown')
+const updateLanguageButton = s => updateDropdownButtonText('language-dropdown-toggle', s, 'Select Languages', c => filterDisplayNames[c] || c.toUpperCase())
+const updateCountryButton = s => updateDropdownButtonText('country-dropdown-toggle', s, 'Select Countries', c => filterDisplayNames[c] || c)
+const updateWatchGenreButton = s => updateDropdownButtonText('watch-genre-toggle', s, 'Select Genres', id => filterDisplayNames[id] || 'Unknown')
+const updateWatchLanguageButton = s => updateDropdownButtonText('watch-language-toggle', s, 'Select Languages', c => filterDisplayNames[c] || c.toUpperCase())
+const updateWatchCountryButton = s => updateDropdownButtonText('watch-country-toggle', s, 'Select Countries', c => filterDisplayNames[c] || c)
+const updateContentRatingButton = s => updateDropdownButtonText('rating-dropdown-toggle', s, 'Select Ratings', r => r)
 
 function cloneFilterStateValue(value) {
   if (!value || typeof value !== 'object') {
@@ -586,15 +526,7 @@ function loadSavedSwipeFilterDefaults() {
   }
 }
 
-// Watch filter modal content rating button update
-function updateWatchContentRatingButton(selectedRatings) {
-  updateDropdownButtonText(
-    'watch-rating-toggle',
-    selectedRatings,
-    'Select Ratings',
-    rating => rating
-  )
-}
+const updateWatchContentRatingButton = s => updateDropdownButtonText('watch-rating-toggle', s, 'Select Ratings', r => r)
 
 function initializePasswordVisibilityToggles() {
   document.querySelectorAll('input[type="password"]').forEach(input => {
@@ -914,50 +846,27 @@ function initTabs() {
   }
 }
 
-function sortWatchList(sortBy) {
-  console.log('🔧 sortWatchList called with:', sortBy)
-
-  const likesList = document.querySelector('.likes-list')
-  if (!likesList) {
-    console.warn('⚠️ .likes-list not found!')
-    return
+function sortCardList(listEl, sortBy) {
+  const cards = Array.from(listEl.querySelectorAll('.watch-card'))
+  if (!listEl.dataset.originalOrder) {
+    listEl.dataset.originalOrder = cards.map(c => c.dataset.guid).join(',')
   }
 
-  const cards = Array.from(likesList.querySelectorAll('.watch-card'))
-  console.log('🔍 Found cards:', cards.length)
-
-  // Store original order for date sorting
-  if (!likesList.dataset.originalOrder) {
-    likesList.dataset.originalOrder = cards.map(c => c.dataset.guid).join(',')
-  }
-
-  // Parse sortBy into field and direction
   let sortField, sortDirection
   if (sortBy.includes('-')) {
-    // New format: "field-direction"
     const parts = sortBy.split('-')
     sortField = parts[0]
     sortDirection = parts[1]
   } else {
-    // Old format: keep for backwards compatibility
     sortField = sortBy
     sortDirection = 'desc'
   }
 
   cards.sort((a, b) => {
-    const titleA = a
-      .querySelector('.watch-card-title-compact')
-      .textContent.trim()
-    const titleB = b
-      .querySelector('.watch-card-title-compact')
-      .textContent.trim()
-
-    const yearA = parseInt(
-      a.querySelector('.watch-card-year').textContent.match(/\d+/)?.[0] || 0
-    )
-    const yearB = parseInt(
-      b.querySelector('.watch-card-year').textContent.match(/\d+/)?.[0] || 0
-    )
+    const titleA = a.querySelector('.watch-card-title-compact').textContent.trim()
+    const titleB = b.querySelector('.watch-card-title-compact').textContent.trim()
+    const yearA = parseInt(a.querySelector('.watch-card-year').textContent.match(/\d+/)?.[0] || 0)
+    const yearB = parseInt(b.querySelector('.watch-card-year').textContent.match(/\d+/)?.[0] || 0)
 
     const getRatings = card => {
       const html = card._movieData?.rating || card.querySelector('.watch-card-ratings')?.innerHTML || ''
@@ -973,8 +882,6 @@ function sortWatchList(sortBy) {
     const votesB = parseInt(b.dataset.voteCount || 0)
 
     let result = 0
-
-    // Determine sort based on field
     switch (sortField) {
       case 'title':
         result = titleA.localeCompare(titleB)
@@ -992,26 +899,24 @@ function sortWatchList(sortBy) {
       case 'vote_count':
         result = votesA - votesB
         break
-      case 'date':
-        // Use original insertion order
-        const originalOrder = likesList.dataset.originalOrder.split(',')
-        const indexA = originalOrder.indexOf(a.dataset.guid)
-        const indexB = originalOrder.indexOf(b.dataset.guid)
-        result = indexA - indexB
+      case 'date': {
+        const originalOrder = listEl.dataset.originalOrder.split(',')
+        result = originalOrder.indexOf(a.dataset.guid) - originalOrder.indexOf(b.dataset.guid)
         break
+      }
       default:
         result = 0
     }
-
-    // Apply direction (asc = normal, desc = reverse)
     return sortDirection === 'asc' ? result : -result
   })
 
-  // CRITICAL FIX: Remove all cards first, then re-add in sorted order
   cards.forEach(card => card.remove())
-  cards.forEach(card => likesList.appendChild(card))
+  cards.forEach(card => listEl.appendChild(card))
+}
 
-  console.log('✅ Sort complete!')
+function sortWatchList(sortBy) {
+  const listEl = document.querySelector('.likes-list')
+  if (listEl) sortCardList(listEl, sortBy)
 }
 
 /* --------------------- settings --------------------- */
@@ -4746,152 +4651,14 @@ window.comparrMatchMovies = new Map()
 checkRequestServiceStatus().then(v => { window._requestServiceConfigured = v })
 
 function sortPassList(sortBy) {
-  const dislikesList = document.querySelector('.dislikes-list')
-  if (!dislikesList) return
-
-  const cards = Array.from(dislikesList.querySelectorAll('.watch-card'))
-
-  // Store original order for date sorting
-  if (!dislikesList.dataset.originalOrder) {
-    dislikesList.dataset.originalOrder = cards
-      .map(c => c.dataset.guid)
-      .join(',')
-  }
-
-  // Parse sortBy into field and direction
-  let sortField, sortDirection
-  if (sortBy.includes('-')) {
-    const parts = sortBy.split('-')
-    sortField = parts[0]
-    sortDirection = parts[1]
-  } else {
-    sortField = sortBy
-    sortDirection = 'desc'
-  }
-
-  cards.sort((a, b) => {
-    const titleA = a
-      .querySelector('.watch-card-title-compact')
-      .textContent.trim()
-    const titleB = b
-      .querySelector('.watch-card-title-compact')
-      .textContent.trim()
-
-    const yearA = parseInt(
-      a.querySelector('.watch-card-year').textContent.match(/\d+/)?.[0] || 0
-    )
-    const yearB = parseInt(
-      b.querySelector('.watch-card-year').textContent.match(/\d+/)?.[0] || 0
-    )
-
-    const getRatings = card => {
-      const html = card._movieData?.rating || card.querySelector('.watch-card-ratings')?.innerHTML || ''
-      return { tmdb: parseFloat(html.match(/tmdb\.svg[\s\S]*?<span[^>]*>([\d.]+)<\/span>/i)?.[1] || 0) || 0 }
-    }
-
-    const ratingsA = getRatings(a)
-    const ratingsB = getRatings(b)
-
-    let result = 0
-    switch (sortField) {
-      case 'title':
-        result = titleA.localeCompare(titleB)
-        break
-      case 'year':
-      case 'release_date':
-        result = yearA - yearB
-        break
-      case 'tmdb':
-        result = ratingsA.tmdb - ratingsB.tmdb
-        break
-      case 'date':
-        const originalOrder = dislikesList.dataset.originalOrder.split(',')
-        result =
-          originalOrder.indexOf(a.dataset.guid) -
-          originalOrder.indexOf(b.dataset.guid)
-        break
-      default:
-        result = 0
-    }
-    return sortDirection === 'asc' ? result : -result
-  })
-
-  cards.forEach(card => card.remove())
-  cards.forEach(card => dislikesList.appendChild(card))
+  const listEl = document.querySelector('.dislikes-list')
+  if (listEl) sortCardList(listEl, sortBy)
 }
 window.sortPassList = sortPassList
 
 function sortSeenList(sortBy) {
-  const seenList = document.querySelector('.seen-list')
-  if (!seenList) return
-
-  const cards = Array.from(seenList.querySelectorAll('.watch-card'))
-
-  // Store original order for date sorting
-  if (!seenList.dataset.originalOrder) {
-    seenList.dataset.originalOrder = cards.map(c => c.dataset.guid).join(',')
-  }
-
-  // Parse sortBy into field and direction
-  let sortField, sortDirection
-  if (sortBy.includes('-')) {
-    const parts = sortBy.split('-')
-    sortField = parts[0]
-    sortDirection = parts[1]
-  } else {
-    sortField = sortBy
-    sortDirection = 'desc'
-  }
-
-  cards.sort((a, b) => {
-    const titleA = a
-      .querySelector('.watch-card-title-compact')
-      .textContent.trim()
-    const titleB = b
-      .querySelector('.watch-card-title-compact')
-      .textContent.trim()
-
-    const yearA = parseInt(
-      a.querySelector('.watch-card-year').textContent.match(/\d+/)?.[0] || 0
-    )
-    const yearB = parseInt(
-      b.querySelector('.watch-card-year').textContent.match(/\d+/)?.[0] || 0
-    )
-
-    const getRatings = card => {
-      const html = card._movieData?.rating || card.querySelector('.watch-card-ratings')?.innerHTML || ''
-      return { tmdb: parseFloat(html.match(/tmdb\.svg[\s\S]*?<span[^>]*>([\d.]+)<\/span>/i)?.[1] || 0) || 0 }
-    }
-
-    const ratingsA = getRatings(a)
-    const ratingsB = getRatings(b)
-
-    let result = 0
-    switch (sortField) {
-      case 'title':
-        result = titleA.localeCompare(titleB)
-        break
-      case 'year':
-      case 'release_date':
-        result = yearA - yearB
-        break
-      case 'tmdb':
-        result = ratingsA.tmdb - ratingsB.tmdb
-        break
-      case 'date':
-        const originalOrder = seenList.dataset.originalOrder.split(',')
-        result =
-          originalOrder.indexOf(a.dataset.guid) -
-          originalOrder.indexOf(b.dataset.guid)
-        break
-      default:
-        result = 0
-    }
-    return sortDirection === 'asc' ? result : -result
-  })
-
-  cards.forEach(card => card.remove())
-  cards.forEach(card => seenList.appendChild(card))
+  const listEl = document.querySelector('.seen-list')
+  if (listEl) sortCardList(listEl, sortBy)
 }
 window.sortSeenList = sortSeenList
 
