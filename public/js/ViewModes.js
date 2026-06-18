@@ -10,11 +10,11 @@ import { buildRatingHtml, formatRuntime } from './features/movie-metadata.js'
 // ─── Section configs ─────────────────────────────────────────────────────────
 
 const SECTION_CONFIGS = {
-  'tab-likes':           { listClass: 'likes-list',           hasRequest: true,  expandBtnId: 'toggle-expand-all-btn',                 sortWrapperId: 'watch-sort-controls-wrapper' },
-  'tab-seen':            { listClass: 'seen-list',             hasRequest: true,  expandBtnId: 'toggle-expand-all-seen-btn',            sortWrapperId: 'seen-sort-controls-wrapper',   simplified: true },
-  'tab-dislikes':        { listClass: 'dislikes-list',         hasRequest: false, expandBtnId: 'toggle-expand-all-pass-btn',            sortWrapperId: 'pass-sort-controls-wrapper',   simplified: true },
-  'tab-recommendations': { listClass: 'recommendations-list',  hasRequest: false, expandBtnId: 'toggle-expand-all-recommendations-btn', sortWrapperId: null },
-  'tab-matches':         { listClass: null,                    hasRequest: true,  expandBtnId: null,                                    sortWrapperId: null },
+  'tab-likes':           { listClass: 'likes-list',           hasRequest: true,  sortWrapperId: 'watch-sort-controls-wrapper' },
+  'tab-seen':            { listClass: 'seen-list',             hasRequest: true,  sortWrapperId: 'seen-sort-controls-wrapper',   simplified: true },
+  'tab-dislikes':        { listClass: 'dislikes-list',         hasRequest: false, sortWrapperId: 'pass-sort-controls-wrapper',   simplified: true },
+  'tab-recommendations': { listClass: 'recommendations-list',  hasRequest: false, sortWrapperId: null },
+  'tab-matches':         { listClass: null,                    hasRequest: true,  sortWrapperId: null },
 }
 
 // Table column definitions in display order
@@ -724,17 +724,15 @@ function _applyViewMode(sectionId) {
   const section = document.getElementById(sectionId)
   if (!section) return
 
-  let watchList, altContainer, expandBtn, sortWrapper
+  let watchList, altContainer, sortWrapper
 
   if (sectionId === 'tab-matches') {
     watchList = section.querySelector('.js-matches-friends-list')
     altContainer = section.querySelector('.matches-view-alt')
-    expandBtn = null
     sortWrapper = null
   } else {
     watchList = config.listClass ? section.querySelector(`.${config.listClass}`) : null
     altContainer = section.querySelector('.view-alt-container')
-    expandBtn = config.expandBtnId ? document.getElementById(config.expandBtnId) : null
     sortWrapper = section.querySelector('.sort-controls-wrapper')
   }
 
@@ -742,9 +740,6 @@ function _applyViewMode(sectionId) {
 
   // Show/hide original list
   if (watchList) watchList.style.display = isOverview ? '' : 'none'
-
-  // Expand button is always hidden — overview auto-expands
-  if (expandBtn) expandBtn.style.display = 'none'
 
   // Sort dropdown hidden in table mode (column-header sort takes over)
   if (sortWrapper) sortWrapper.style.display = mode === 'table' ? 'none' : ''

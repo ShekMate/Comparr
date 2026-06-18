@@ -3939,42 +3939,6 @@ body[data-user-type='guest'] .compare-ui {
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
-/* Expand/Collapse All Button */
-.expand-collapse-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 1rem;
-  background: transparent;
-  color: var(--color-primary-light);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  font-size: 0.85rem;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-}
-
-.expand-collapse-btn:hover {
-  background: transparent;
-  border-color: transparent;
-  transform: translateY(-1px);
-}
-
-.expand-collapse-btn:active {
-  transform: translateY(0);
-}
-
-.expand-collapse-btn i {
-  font-size: 0.75rem;
-  transition: transform 0.3s ease;
-}
-
-.expand-collapse-btn.all-expanded i {
-  transform: rotate(180deg);
-}
-
 /* Mobile adjustments for sort controls */
 
 #tab-likes h3,

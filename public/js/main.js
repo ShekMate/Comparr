@@ -741,10 +741,6 @@ function initTabs() {
       applyCurrentWatchListSort()
       startWatchListAutoRefresh()
       setTimeout(refreshWatchListStatus, 500)
-      // Reset expand/collapse button state
-      if (typeof resetExpandCollapseButton === 'function') {
-        resetExpandCollapseButton()
-      }
     } else if (tabId === 'tab-dislikes') {
       applyCurrentPassListSort()
     } else if (tabId === 'tab-seen') {
@@ -6975,10 +6971,6 @@ async function refreshWatchListStatus() {
     showNotification('Everything up to date!')
   }
 
-  // Reset expand/collapse button state after refresh
-  if (typeof resetExpandCollapseButton === 'function') {
-    resetExpandCollapseButton()
-  }
 }
 
 // Helper to render service items
@@ -10442,42 +10434,6 @@ watchSortDirectionBtn?.addEventListener('click', e => {
 })
 
 // =========================================================
-// Expand/Collapse All Button
-// =========================================================
-const toggleExpandAllBtn = document.getElementById('toggle-expand-all-btn')
-let allExpanded = false
-
-// Function to reset the expand/collapse button state
-function resetExpandCollapseButton() {
-  allExpanded = false
-  if (toggleExpandAllBtn) {
-    toggleExpandAllBtn.classList.remove('all-expanded')
-    toggleExpandAllBtn.title = 'Expand All'
-  }
-}
-
-toggleExpandAllBtn?.addEventListener('click', () => {
-  const likesList = document.querySelector('.likes-list')
-  if (!likesList) return
-
-  const cards = likesList.querySelectorAll('.watch-card')
-
-  if (allExpanded) {
-    // Collapse all
-    cards.forEach(card => card.classList.remove('expanded'))
-    toggleExpandAllBtn.classList.remove('all-expanded')
-    toggleExpandAllBtn.title = 'Expand All'
-    allExpanded = false
-  } else {
-    // Expand all
-    cards.forEach(card => card.classList.add('expanded'))
-    toggleExpandAllBtn.classList.add('all-expanded')
-    toggleExpandAllBtn.title = 'Collapse All'
-    allExpanded = true
-  }
-})
-
-// =========================================================
 // Pass List Sort Controls
 // =========================================================
 const passSortDropdown = document.getElementById('pass-sort')
@@ -10510,33 +10466,6 @@ passSortDirectionBtn?.addEventListener('click', e => {
 })
 
 // =========================================================
-// Pass List Expand/Collapse All Button
-// =========================================================
-const toggleExpandAllPassBtn = document.getElementById(
-  'toggle-expand-all-pass-btn'
-)
-let allPassExpanded = false
-
-toggleExpandAllPassBtn?.addEventListener('click', () => {
-  const dislikesList = document.querySelector('.dislikes-list')
-  if (!dislikesList) return
-
-  const cards = dislikesList.querySelectorAll('.watch-card')
-
-  if (allPassExpanded) {
-    cards.forEach(card => card.classList.remove('expanded'))
-    toggleExpandAllPassBtn.classList.remove('all-expanded')
-    toggleExpandAllPassBtn.title = 'Expand All'
-    allPassExpanded = false
-  } else {
-    cards.forEach(card => card.classList.add('expanded'))
-    toggleExpandAllPassBtn.classList.add('all-expanded')
-    toggleExpandAllPassBtn.title = 'Collapse All'
-    allPassExpanded = true
-  }
-})
-
-// =========================================================
 // Seen List Sort Controls
 // =========================================================
 const seenSortDropdown = document.getElementById('seen-sort')
@@ -10566,60 +10495,6 @@ seenSortDirectionBtn?.addEventListener('click', e => {
   const sortField = seenSortDropdown?.value || 'date'
   window.sortSeenList(`${sortField}-${newDirection}`)
   applyViewMode('tab-seen')
-})
-
-// =========================================================
-// Seen List Expand/Collapse All Button
-// =========================================================
-const toggleExpandAllSeenBtn = document.getElementById(
-  'toggle-expand-all-seen-btn'
-)
-let allSeenExpanded = false
-
-toggleExpandAllSeenBtn?.addEventListener('click', () => {
-  const seenList = document.querySelector('.seen-list')
-  if (!seenList) return
-
-  const cards = seenList.querySelectorAll('.watch-card')
-
-  if (allSeenExpanded) {
-    cards.forEach(card => card.classList.remove('expanded'))
-    toggleExpandAllSeenBtn.classList.remove('all-expanded')
-    toggleExpandAllSeenBtn.title = 'Expand All'
-    allSeenExpanded = false
-  } else {
-    cards.forEach(card => card.classList.add('expanded'))
-    toggleExpandAllSeenBtn.classList.add('all-expanded')
-    toggleExpandAllSeenBtn.title = 'Collapse All'
-    allSeenExpanded = true
-  }
-})
-
-// =========================================================
-// Recommendations List Expand/Collapse All Button
-// =========================================================
-const toggleExpandAllRecommendationsBtn = document.getElementById(
-  'toggle-expand-all-recommendations-btn'
-)
-let allRecommendationsExpanded = false
-
-toggleExpandAllRecommendationsBtn?.addEventListener('click', () => {
-  const recommendationsList = document.querySelector('.recommendations-list')
-  if (!recommendationsList) return
-
-  const cards = recommendationsList.querySelectorAll('.watch-card')
-
-  if (allRecommendationsExpanded) {
-    cards.forEach(card => card.classList.remove('expanded'))
-    toggleExpandAllRecommendationsBtn.classList.remove('all-expanded')
-    toggleExpandAllRecommendationsBtn.title = 'Expand All'
-    allRecommendationsExpanded = false
-  } else {
-    cards.forEach(card => card.classList.add('expanded'))
-    toggleExpandAllRecommendationsBtn.classList.add('all-expanded')
-    toggleExpandAllRecommendationsBtn.title = 'Collapse All'
-    allRecommendationsExpanded = true
-  }
 })
 
 watchFilterApply?.addEventListener('click', () => {
