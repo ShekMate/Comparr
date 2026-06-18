@@ -70,8 +70,8 @@ function getRatingValue(movie, type) {
   const html = String(movie.rating || '')
   if (html.includes('<img')) {
     const pattern = type === 'imdb'
-      ? /rating-imdb[\s\S]*?<span[^>]*>([\d.]+)<\/span>/i
-      : /rating-tmdb[\s\S]*?<span[^>]*>([\d.]+)<\/span>/i
+      ? /(?:rating-imdb|alt=.?IMDb)[\s\S]*?<span[^>]*>([\d.]+)<\/span>/i
+      : /(?:rating-tmdb|alt=.?TMDb)[\s\S]*?<span[^>]*>([\d.]+)<\/span>/i
     const m = html.match(pattern)
     if (m) { const v = parseFloat(m[1]); return v > 0 ? v : null }
   }
