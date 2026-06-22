@@ -924,75 +924,76 @@
         id="tab-matches"
         hidden
       >
-        <!-- Main UI: shown for all logged-in users -->
-        <div class="matches-ui js-matches-ui">
-          <!-- Your code -->
-          <div class="matches-your-code-section">
-            <h3 class="matches-section-heading">Your Code</h3>
-            <p class="matches-code-hint">
-              Share this with a friend so they can add you — or enter theirs
-              below.
-            </p>
-            <div class="matches-code-row">
-              <code class="matches-my-code js-matches-my-code">······</code>
-              <button
-                class="matches-icon-btn js-matches-copy-btn"
-                type="button"
-                title="Copy code"
-                aria-label="Copy your code"
-              >
-                <i class="fas fa-copy" aria-hidden="true"></i>
-              </button>
-              <button
-                class="matches-icon-btn matches-refresh-btn js-matches-refresh-btn"
-                type="button"
-                title="Get a new code (removes all connections)"
-                aria-label="Refresh your code"
-              >
-                <i class="fas fa-sync-alt" aria-hidden="true"></i>
-              </button>
+        <div class="matches-layout">
+
+          <!-- ── Sidebar ── -->
+          <aside class="matches-sidebar">
+
+            <!-- Invite code -->
+            <div class="matches-your-code-section">
+              <h3 class="matches-section-heading">Your Invite Code</h3>
+              <div class="matches-code-row">
+                <code class="matches-my-code js-matches-my-code">······</code>
+                <button
+                  class="matches-icon-btn js-matches-copy-btn"
+                  type="button"
+                  title="Copy code"
+                  aria-label="Copy your code"
+                ><i class="fas fa-copy" aria-hidden="true"></i></button>
+                <button
+                  class="matches-icon-btn matches-refresh-btn js-matches-refresh-btn"
+                  type="button"
+                  title="Get a new code (removes all connections)"
+                  aria-label="Refresh your code"
+                ><i class="fas fa-sync-alt" aria-hidden="true"></i></button>
+              </div>
             </div>
-          </div>
 
-          <!-- Add a friend -->
-          <div class="matches-add-section">
-            <h3 class="matches-section-heading">Add Friend</h3>
-            <form class="matches-add-form js-matches-add-form">
-              <input
-                type="text"
-                class="matches-friend-input js-matches-friend-input"
-                placeholder="Friend's code"
-                maxlength="6"
-                autocomplete="off"
-                spellcheck="false"
-              />
-              <button type="submit" class="matches-add-submit">Add</button>
-            </form>
-            <p class="matches-status js-matches-status" hidden></p>
-          </div>
+            <!-- Add a friend -->
+            <div class="matches-add-section">
+              <h3 class="matches-section-heading">Add Friend</h3>
+              <form class="matches-add-form js-matches-add-form">
+                <input
+                  type="text"
+                  class="matches-friend-input js-matches-friend-input"
+                  placeholder="Friend's code"
+                  maxlength="6"
+                  autocomplete="off"
+                  spellcheck="false"
+                />
+                <button type="submit" class="matches-add-submit">Add</button>
+              </form>
+              <p class="matches-status js-matches-status" hidden></p>
+            </div>
 
-          <!-- Pending friend requests (received) -->
-          <div
-            class="matches-pending-section js-matches-pending-section"
-            hidden
-          >
-            <h3 class="matches-section-heading">Pending Requests</h3>
-            <div class="matches-pending-list js-matches-pending-list"></div>
-          </div>
+            <!-- Pending friend requests -->
+            <div
+              class="matches-pending-section js-matches-pending-section"
+              hidden
+            >
+              <h3 class="matches-section-heading">Pending Requests</h3>
+              <div class="matches-pending-list js-matches-pending-list"></div>
+            </div>
 
-          <!-- Connected friends + their matches -->
-          <div class="matches-friends-section js-matches-friends-section">
-            <div class="matches-friends-header">
-              <h3
-                class="matches-friends-heading js-matches-friends-heading"
-                hidden
-              >
-                Friends
-              </h3>
+            <!-- Friends checklist (filter + manage) -->
+            <div class="matches-sidebar-friends js-matches-sidebar-friends" hidden>
+              <h3 class="matches-section-heading">Friends</h3>
+              <div class="matches-sidebar-friends-list js-matches-sidebar-friends-list"></div>
+            </div>
+
+          </aside>
+
+          <!-- ── Main area ── -->
+          <main class="matches-main">
+            <div class="matches-main-controls">
+              <p class="matches-main-hint">Select friends to filter matches</p>
               <div class="matches-view-mode-row"></div>
             </div>
-            <div class="matches-friends-list js-matches-friends-list"></div>
-          </div>
+            <div class="matches-combined-container">
+              <div class="js-matches-combined"></div>
+            </div>
+          </main>
+
         </div>
       </section>
 

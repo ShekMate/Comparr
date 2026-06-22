@@ -14,7 +14,7 @@ const SECTION_CONFIGS = {
   'tab-seen':            { listClass: 'seen-list',             hasRequest: true,  sortWrapperId: 'seen-sort-controls-wrapper',   simplified: true },
   'tab-dislikes':        { listClass: 'dislikes-list',         hasRequest: false, sortWrapperId: 'pass-sort-controls-wrapper',   simplified: true },
   'tab-recommendations': { listClass: 'recommendations-list',  hasRequest: false, sortWrapperId: null },
-  'tab-matches':         { listClass: null,                    hasRequest: true,  sortWrapperId: null },
+  'tab-matches':         { listClass: 'js-matches-combined',   hasRequest: true,  sortWrapperId: null },
 }
 
 // Table column definitions in display order
@@ -627,7 +627,6 @@ function buildViewModeSelector(sectionId, onModeChange) {
 
   const modes = [
     { id: 'poster',   icon: 'fas fa-th-large',      title: 'Poster View' },
-    { id: 'table',    icon: 'fas fa-list',           title: 'Table View' },
     { id: 'overview', icon: 'fas fa-align-justify',  title: 'Overview' },
   ]
 
@@ -699,13 +698,7 @@ function buildViewModeSelector(sectionId, onModeChange) {
 
 function getMoviesFromSection(sectionId) {
   const config = SECTION_CONFIGS[sectionId]
-  if (!config) return []
-
-  if (sectionId === 'tab-matches') {
-    // Collect from all match movie cards
-    const cards = document.querySelectorAll('.js-matches-friends-list .watch-card')
-    return Array.from(cards).map(c => c._movieData).filter(Boolean)
-  }
+  if (!config || !config.listClass) return []
 
   const listEl = document.querySelector(`.${config.listClass}`)
   if (!listEl) return []
@@ -724,31 +717,14 @@ function _applyViewMode(sectionId) {
   const section = document.getElementById(sectionId)
   if (!section) return
 
-  let watchList, altContainer, sortWrapper
-
-  if (sectionId === 'tab-matches') {
-    watchList = section.querySelector('.js-matches-friends-list')
-    altContainer = section.querySelector('.matches-view-alt')
-    sortWrapper = null
-  } else {
-    watchList = config.listClass ? section.querySelector(`.${config.listClass}`) : null
-    altContainer = section.querySelector('.view-alt-container')
-    sortWrapper = section.querySelector('.sort-controls-wrapper')
-  }
+  const watchList = config.listClass ? section.querySelector(`.${config.listClass}`) : null
+  const altContainer = section.querySelector('.view-alt-container')
+  const sortWrapper = config.sortWrapperId ? section.querySelector('.sort-controls-wrapper') : null
 
   const isOverview = mode === 'overview'
 
   // Show/hide original list
-  if (sectionId === 'tab-matches' && watchList) {
-    // Always show friend cards; only hide/show the per-card movie lists
-    watchList.style.display = ''
-    watchList.querySelectorAll('.matches-friend-movies').forEach(el => {
-      el.style.display = isOverview ? '' : 'none'
-    })
-    watchList.querySelectorAll('.matches-friend-header').forEach(el => {
-      el.classList.toggle('movies-hidden', !isOverview)
-    })
-  } else if (watchList) {
+  if (watchList) {
     watchList.style.display = isOverview ? '' : 'none'
   }
 
@@ -765,9 +741,7 @@ function _applyViewMode(sectionId) {
     altContainer.innerHTML = ''
     if (!isOverview) {
       const movies = getMoviesFromSection(sectionId)
-      if (mode === 'table') {
-        altContainer.appendChild(buildTableView(sectionId, movies))
-      } else if (mode === 'poster') {
+      if (mode === 'poster') {
         altContainer.appendChild(buildPosterGrid(sectionId, movies))
       }
       altContainer.style.display = ''
@@ -787,14 +761,14 @@ export function initViewMode(sectionId) {
   const section = document.getElementById(sectionId)
   if (!section) return
 
-  // Create alt container inside the watch-list-container
+  // Create alt container inside the watch-list-container (or matches-combined-container)
   if (sectionId === 'tab-matches') {
-    const friendsSection = section.querySelector('.matches-friends-section')
-    if (friendsSection && !friendsSection.querySelector('.matches-view-alt')) {
+    const combinedContainer = section.querySelector('.matches-combined-container')
+    if (combinedContainer && !combinedContainer.querySelector('.view-alt-container')) {
       const alt = document.createElement('div')
-      alt.className = 'matches-view-alt'
+      alt.className = 'view-alt-container'
       alt.style.display = 'none'
-      friendsSection.appendChild(alt)
+      combinedContainer.insertBefore(alt, combinedContainer.firstChild)
     }
   } else {
     const listContainer = section.querySelector('.watch-list-container')
@@ -806,9 +780,9 @@ export function initViewMode(sectionId) {
     }
   }
 
-  // Inject view-mode selector into sort-controls
+  // Inject view-mode selector into sort-controls (matches tab uses .matches-view-mode-row)
   const sortControls = sectionId === 'tab-matches'
-    ? section.querySelector('.matches-view-mode-row')
+    ? section.querySelector('.matches-main-controls .matches-view-mode-row')
     : section.querySelector('.sort-controls')
 
   if (sortControls && !sortControls.querySelector('.view-mode-controls')) {
@@ -829,13 +803,10 @@ export function viewModeAddItem(sectionId, movie) {
   const section = document.getElementById(sectionId)
   if (!section) return
 
-  const altContainer = section.querySelector('.view-alt-container, .matches-view-alt')
+  const altContainer = section.querySelector('.view-alt-container')
   if (!altContainer || altContainer.style.display === 'none') return
 
-  if (mode === 'table') {
-    const tbody = altContainer.querySelector('tbody')
-    if (tbody) tbody.appendChild(buildTableRow(movie, sectionId, getTableOptions(sectionId)))
-  } else if (mode === 'poster') {
+  if (mode === 'poster') {
     const grid = altContainer.querySelector('.view-poster-grid')
     if (grid) grid.appendChild(buildPosterCard(movie, sectionId))
   }
@@ -846,7 +817,7 @@ export function viewModeAddItem(sectionId, movie) {
 export function viewModeRemoveItem(sectionId, guid) {
   const section = document.getElementById(sectionId)
   if (!section) return
-  const altContainer = section.querySelector('.view-alt-container, .matches-view-alt')
+  const altContainer = section.querySelector('.view-alt-container')
   if (!altContainer) return
   altContainer.querySelector(`[data-guid="${CSS.escape(guid)}"]`)?.remove()
 }
