@@ -7553,18 +7553,20 @@ const main = async () => {
             <span class="matches-friend-name">${friendName}</span>
             ${sharingBadge}
             <span class="matches-friend-count">${matchLabel}</span>
-            <label class="matches-share-toggle" title="Share your library with ${friendName}">
-              <input type="checkbox" class="js-friend-share-toggle" data-friend-id="${friendUserId}" ${
-          sharesServer ? 'checked' : ''
-        } />
-              <span class="matches-share-toggle-label">Share my library</span>
-            </label>
             <button class="matches-remove-btn" type="button" data-friend-id="${friendUserId}"
               title="Remove ${friendName}" aria-label="Remove ${friendName}">
               Remove
             </button>
           </div>
           ${matchCount ? `<div class="matches-friend-movies">${moviesHtml}</div>` : ''}
+          <div class="matches-friend-footer">
+            <label class="matches-share-toggle" title="Share your library with ${friendName}">
+              <input type="checkbox" class="js-friend-share-toggle" data-friend-id="${friendUserId}" ${
+          sharesServer ? 'checked' : ''
+        } />
+              <span class="matches-share-toggle-label">Share my library with ${friendName}</span>
+            </label>
+          </div>
         </div>`
       })
       .join('')
@@ -7749,10 +7751,46 @@ const main = async () => {
     })
   }
 
+  // Update the pending-request badge on all Matches nav buttons
+  const updatePendingBadge = count => {
+    document.querySelectorAll('[data-tab="tab-matches"]').forEach(btn => {
+      let badge = btn.querySelector('.js-pending-badge')
+      if (count > 0) {
+        if (!badge) {
+          badge = document.createElement('span')
+          badge.className = 'js-pending-badge matches-pending-badge'
+          btn.appendChild(badge)
+        }
+        badge.textContent = count
+        badge.hidden = false
+      } else if (badge) {
+        badge.hidden = true
+      }
+    })
+  }
+
+  // Wrap loadMatchesData to also refresh the badge
+  const _origLoadMatchesData = loadMatchesData
+  const loadMatchesDataWithBadge = async () => {
+    await _origLoadMatchesData()
+    const pending = document.querySelectorAll('.js-matches-pending-list .matches-pending-card').length
+    updatePendingBadge(pending)
+  }
+
   // Load data when matches tab becomes active
   window.initCompareTab = () => {
-    loadMatchesData()
+    loadMatchesDataWithBadge()
   }
+
+  // Eagerly fetch pending connections on startup so the badge appears
+  // without requiring the user to first click the Matches tab
+  fetch(`${basePath}/api/matches/connections`)
+    .then(r => r.ok ? r.json() : { connections: [] })
+    .then(data => {
+      const pending = (data.connections || []).filter(c => c.status === 'pending' && !c.isOutgoing).length
+      updatePendingBadge(pending)
+    })
+    .catch(() => {})
 
   // ===== RECOMMENDATIONS TAB =====
   let recommendationsLoaded = false
