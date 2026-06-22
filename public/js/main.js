@@ -7749,10 +7749,46 @@ const main = async () => {
     })
   }
 
+  // Update the pending-request badge on all Matches nav buttons
+  const updatePendingBadge = count => {
+    document.querySelectorAll('[data-tab="tab-matches"]').forEach(btn => {
+      let badge = btn.querySelector('.js-pending-badge')
+      if (count > 0) {
+        if (!badge) {
+          badge = document.createElement('span')
+          badge.className = 'js-pending-badge matches-pending-badge'
+          btn.appendChild(badge)
+        }
+        badge.textContent = count
+        badge.hidden = false
+      } else if (badge) {
+        badge.hidden = true
+      }
+    })
+  }
+
+  // Wrap loadMatchesData to also refresh the badge
+  const _origLoadMatchesData = loadMatchesData
+  const loadMatchesDataWithBadge = async () => {
+    await _origLoadMatchesData()
+    const pending = document.querySelectorAll('.js-matches-pending-list .matches-pending-card').length
+    updatePendingBadge(pending)
+  }
+
   // Load data when matches tab becomes active
   window.initCompareTab = () => {
-    loadMatchesData()
+    loadMatchesDataWithBadge()
   }
+
+  // Eagerly fetch pending connections on startup so the badge appears
+  // without requiring the user to first click the Matches tab
+  fetch(`${basePath}/api/matches/connections`)
+    .then(r => r.ok ? r.json() : { connections: [] })
+    .then(data => {
+      const pending = (data.connections || []).filter(c => c.status === 'pending' && !c.isOutgoing).length
+      updatePendingBadge(pending)
+    })
+    .catch(() => {})
 
   // ===== RECOMMENDATIONS TAB =====
   let recommendationsLoaded = false
