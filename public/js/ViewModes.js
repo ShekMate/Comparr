@@ -739,7 +739,18 @@ function _applyViewMode(sectionId) {
   const isOverview = mode === 'overview'
 
   // Show/hide original list
-  if (watchList) watchList.style.display = isOverview ? '' : 'none'
+  if (sectionId === 'tab-matches' && watchList) {
+    // Always show friend cards; only hide/show the per-card movie lists
+    watchList.style.display = ''
+    watchList.querySelectorAll('.matches-friend-movies').forEach(el => {
+      el.style.display = isOverview ? '' : 'none'
+    })
+    watchList.querySelectorAll('.matches-friend-header').forEach(el => {
+      el.classList.toggle('movies-hidden', !isOverview)
+    })
+  } else if (watchList) {
+    watchList.style.display = isOverview ? '' : 'none'
+  }
 
   // Sort dropdown hidden in table mode (column-header sort takes over)
   if (sortWrapper) sortWrapper.style.display = mode === 'table' ? 'none' : ''

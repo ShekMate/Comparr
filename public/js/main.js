@@ -7553,18 +7553,20 @@ const main = async () => {
             <span class="matches-friend-name">${friendName}</span>
             ${sharingBadge}
             <span class="matches-friend-count">${matchLabel}</span>
-            <label class="matches-share-toggle" title="Share your library with ${friendName}">
-              <input type="checkbox" class="js-friend-share-toggle" data-friend-id="${friendUserId}" ${
-          sharesServer ? 'checked' : ''
-        } />
-              <span class="matches-share-toggle-label">Share my library</span>
-            </label>
             <button class="matches-remove-btn" type="button" data-friend-id="${friendUserId}"
               title="Remove ${friendName}" aria-label="Remove ${friendName}">
               Remove
             </button>
           </div>
           ${matchCount ? `<div class="matches-friend-movies">${moviesHtml}</div>` : ''}
+          <div class="matches-friend-footer">
+            <label class="matches-share-toggle" title="Share your library with ${friendName}">
+              <input type="checkbox" class="js-friend-share-toggle" data-friend-id="${friendUserId}" ${
+          sharesServer ? 'checked' : ''
+        } />
+              <span class="matches-share-toggle-label">Share my library with ${friendName}</span>
+            </label>
+          </div>
         </div>`
       })
       .join('')
