@@ -7788,7 +7788,7 @@ const main = async () => {
 
   // Eagerly fetch pending connections on startup so the badge appears
   // without requiring the user to first click the Matches tab
-  fetch(`${basePath}/api/matches/connections`)
+  fetch(`${document.body.dataset.basePath || ''}/api/matches/connections`)
     .then(r => r.ok ? r.json() : { connections: [] })
     .then(data => {
       const pending = (data.connections || []).filter(c => c.status === 'pending' && !c.isOutgoing).length
