@@ -58,7 +58,7 @@ import {
   scrobbleOnServer,
   unscrobbleOnServer,
 } from '../../api/plex-sync.ts'
-import { getUserSettings, upsertUserSettings } from '../auth/user-db.ts'
+import { getUserSettings, upsertUserSettings, getFriendConnections } from '../auth/user-db.ts'
 
 // Genre ID to name mapping (TMDb genre IDs)
 const GENRE_MAP: Record<number, string> = {
@@ -2565,12 +2565,13 @@ class Session {
           })
 
           let prioritizedBatch = filteredBatch
-          if (roomUserCount > 1 && filteredBatch.length > 1) {
+          if (filteredBatch.length > 1) {
             const likedByOtherGuids = new Set<string>()
             const likedByOtherTmdbIds = new Set<number>()
             const seenByOtherGuids = new Set<string>()
             const seenByOtherTmdbIds = new Set<number>()
 
+            // 1. Roommates sharing the same room code
             for (const otherUser of roomUsers) {
               if (otherUser === user) continue
               for (const response of otherUser.responses) {
@@ -2580,15 +2581,34 @@ class Session {
                   extractTmdbIdFromGuid(response.guid)
                 if (response.wantsToWatch === true) {
                   likedByOtherGuids.add(response.guid)
-                  if (tmdbId != null) {
-                    likedByOtherTmdbIds.add(tmdbId)
-                  }
+                  if (tmdbId != null) likedByOtherTmdbIds.add(tmdbId)
                   continue
                 }
                 if (response.wantsToWatch !== null) continue
                 seenByOtherGuids.add(response.guid)
-                if (tmdbId != null) {
-                  seenByOtherTmdbIds.add(tmdbId)
+                if (tmdbId != null) seenByOtherTmdbIds.add(tmdbId)
+              }
+            }
+
+            // 2. Accepted friends (each in their own personal room)
+            const personalRoomMatch = this.roomCode.match(/^U(\d+)$/)
+            if (personalRoomMatch) {
+              const myUserId = parseInt(personalRoomMatch[1], 10)
+              const friendConnections = getFriendConnections(myUserId)
+              for (const fc of friendConnections) {
+                if (fc.status !== 'accepted') continue
+                const friendRoomCode = `U${String(fc.friendUserId).padStart(3, '0')}`
+                const friendRoom = persistedState.rooms[friendRoomCode]
+                if (!friendRoom) continue
+                for (const friendUser of friendRoom.users) {
+                  for (const response of friendUser.responses) {
+                    if (response.wantsToWatch !== true) continue
+                    likedByOtherGuids.add(response.guid)
+                    const tmdbId =
+                      response.tmdbId ??
+                      extractTmdbIdFromGuid(response.guid)
+                    if (tmdbId != null) likedByOtherTmdbIds.add(tmdbId)
+                  }
                 }
               }
             }
@@ -2635,7 +2655,7 @@ class Session {
                 matchesSeenByOthers.length > 0
               ) {
                 log.info(
-                  `🎯 Prioritized ${matchesLikedByOthers.length} movies liked by other users and ${matchesSeenByOthers.length} seen by other users for ${user.name} (filters preserved)`
+                  `🎯 Prioritized ${matchesLikedByOthers.length} movies liked by friends/roommates and ${matchesSeenByOthers.length} seen by roommates for ${user.name} (filters preserved)`
                 )
               }
             }
