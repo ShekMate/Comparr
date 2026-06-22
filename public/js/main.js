@@ -7379,7 +7379,7 @@ const main = async () => {
     }
     const { friendUserId, friendName } = _sharingPromptQueue[0]
     if (sharingModalBody) {
-      sharingModalBody.textContent = `${friendName} wants to share their media library with you.`
+      sharingModalBody.textContent = `${friendName} would like to share their media library with you.`
     }
     sharingModal.hidden = false
     sharingModal.dataset.friendUserId = friendUserId
