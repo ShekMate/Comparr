@@ -4217,14 +4217,44 @@ export function getCompareMatches(
 
   if (!userA || !userB) return []
 
-  const likedByA = new Set(
-    userA.responses.filter(r => r.wantsToWatch === true).map(r => r.guid)
-  )
+  // Build both GUID and TMDb ID sets for A's likes so cross-source matches
+  // (e.g. A liked via Plex, B liked via TMDb discovery) are detected.
+  const likedByAGuids = new Set<string>()
+  const likedByATmdbIds = new Set<number>()
+  for (const r of userA.responses) {
+    if (r.wantsToWatch !== true) continue
+    likedByAGuids.add(r.guid)
+    const tmdbId = r.tmdbId ?? extractTmdbIdFromGuid(r.guid)
+    if (tmdbId != null) likedByATmdbIds.add(tmdbId)
+  }
 
-  return userB.responses
-    .filter(r => r.wantsToWatch === true && likedByA.has(r.guid))
-    .map(r => persistedState.movieIndex[r.guid])
-    .filter((m): m is MediaItem => Boolean(m))
+  const seen = new Set<string>() // deduplicate by guid
+  const results: MediaItem[] = []
+
+  for (const r of userB.responses) {
+    if (r.wantsToWatch !== true) continue
+
+    const guidMatch = likedByAGuids.has(r.guid)
+    const tmdbId = r.tmdbId ?? extractTmdbIdFromGuid(r.guid)
+    const tmdbMatch = tmdbId != null && likedByATmdbIds.has(tmdbId)
+
+    if (!guidMatch && !tmdbMatch) continue
+    if (seen.has(r.guid)) continue
+    seen.add(r.guid)
+
+    // Prefer movie data from the index; fall back to the other user's index entry
+    const movie =
+      persistedState.movieIndex[r.guid] ??
+      (tmdbId != null
+        ? Object.values(persistedState.movieIndex).find(
+            m => (m.tmdbId ?? extractTmdbIdFromGuid(m.guid)) === tmdbId
+          )
+        : undefined)
+
+    if (movie) results.push(movie)
+  }
+
+  return results
 }
 
 // ── Plex Watchlist / Seen Sync ────────────────────────────────────────────
