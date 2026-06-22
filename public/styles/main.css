@@ -1939,6 +1939,14 @@ body[data-user-type='guest'] .compare-ui {
   gap: 0.75rem;
 }
 
+.matches-friends-section[hidden] {
+  display: none;
+}
+
+.matches-friends-heading[hidden] {
+  display: none;
+}
+
 .matches-friends-heading {
   display: flex;
   align-items: center;

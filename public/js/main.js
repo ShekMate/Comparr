@@ -7312,6 +7312,9 @@ const main = async () => {
   const matchesFriendsHeading = document.querySelector(
     '.js-matches-friends-heading'
   )
+  const matchesFriendsSection = document.querySelector(
+    '.js-matches-friends-section'
+  )
   const matchesPendingSection = document.querySelector(
     '.js-matches-pending-section'
   )
@@ -7503,10 +7506,11 @@ const main = async () => {
     if (!matchesFriendsList || !matchesFriendsHeading) return
     const accepted = connections.filter(c => c.status === 'accepted')
     if (!accepted.length) {
-      matchesFriendsHeading.hidden = true
+      if (matchesFriendsSection) matchesFriendsSection.hidden = true
       matchesFriendsList.innerHTML = ''
       return
     }
+    if (matchesFriendsSection) matchesFriendsSection.hidden = false
     matchesFriendsHeading.hidden = false
 
     // Queue server-sharing prompts
