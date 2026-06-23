@@ -36,6 +36,12 @@ export type SettingsKey =
   | 'SETUP_WIZARD_COMPLETED'
   | 'PLEX_RESTRICT_TO_SERVER'
   | 'PLEX_CLIENT_ID'
+  | 'SMTP_HOST'
+  | 'SMTP_PORT'
+  | 'SMTP_USER'
+  | 'SMTP_PASS'
+  | 'SMTP_FROM'
+  | 'EMAIL_LOGIN_ENABLED'
 
 export type Settings = Record<SettingsKey, string>
 
@@ -71,6 +77,12 @@ const SETTINGS_KEYS: SettingsKey[] = [
   'SETUP_WIZARD_COMPLETED',
   'PLEX_RESTRICT_TO_SERVER',
   'PLEX_CLIENT_ID',
+  'SMTP_HOST',
+  'SMTP_PORT',
+  'SMTP_USER',
+  'SMTP_PASS',
+  'SMTP_FROM',
+  'EMAIL_LOGIN_ENABLED',
 ]
 
 const ENV_ONLY_KEYS = new Set<SettingsKey>(['PORT'])
@@ -94,6 +106,12 @@ const DEFAULTS: Partial<Settings> = {
   SETUP_WIZARD_COMPLETED: 'false',
   PLEX_RESTRICT_TO_SERVER: 'false',
   PLEX_CLIENT_ID: '',
+  SMTP_HOST: '',
+  SMTP_PORT: '587',
+  SMTP_USER: '',
+  SMTP_PASS: '',
+  SMTP_FROM: '',
+  EMAIL_LOGIN_ENABLED: 'false',
 }
 
 const SETTINGS_FILE = `${getDataDir()}/settings.json`

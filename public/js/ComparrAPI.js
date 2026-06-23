@@ -223,6 +223,28 @@ export class ComparrAPI extends EventTarget {
     return data
   }
 
+  async requestEmailOtp(email) {
+    const res = await fetch(`${this._basePath}/api/auth/email/request`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: String(email || '').trim() }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || 'Could not send login email.')
+    return data
+  }
+
+  async verifyEmailOtp(email, otp) {
+    const res = await fetch(`${this._basePath}/api/auth/email/verify`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: String(email || '').trim(), otp: String(otp || '').trim() }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || 'Verification failed.')
+    return data
+  }
+
   async logoutUser() {
     await fetch(`${this._basePath}/api/auth/logout`, {
       method: 'POST',

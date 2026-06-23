@@ -6,7 +6,7 @@ import { Database } from 'jsr:@db/sqlite'
 import * as log from 'jsr:@std/log'
 import { getDataDir } from '../../core/env.ts'
 
-export type AuthProvider = 'plex'
+export type AuthProvider = 'plex' | 'email'
 
 export interface User {
   id: number
@@ -389,24 +389,25 @@ export function upsertUser(params: UpsertUserParams): User {
   const now = new Date().toISOString()
   const shouldBeAdmin = !adminExists() ? 1 : 0
   const providerUserId = String(params.providerUserId || '').trim()
-  const username = String(params.username || '').trim() || 'Plex User'
+  const username = String(params.username || '').trim()
   const email = String(params.email || '')
   const avatarUrl = String(params.avatarUrl || '')
 
-  const plexAuthToken = String(params.plexAuthToken || '')
+  const plexAuthToken = params.provider === 'plex' ? String(params.plexAuthToken || '') : ''
+  const defaultUsername = params.provider === 'email' ? 'Email User' : 'Plex User'
 
   getDb().exec(
     `INSERT INTO users (provider, provider_user_id, username, email, avatar_url, is_admin, plex_auth_token, created_at, last_login)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(provider, provider_user_id) DO UPDATE SET
-       username        = excluded.username,
+       username        = CASE WHEN excluded.username != '' THEN excluded.username ELSE username END,
        email           = excluded.email,
        avatar_url      = excluded.avatar_url,
        plex_auth_token = CASE WHEN excluded.plex_auth_token != '' THEN excluded.plex_auth_token ELSE plex_auth_token END,
        last_login      = excluded.last_login`,
     params.provider,
     providerUserId,
-    username,
+    username || defaultUsername,
     email,
     avatarUrl,
     shouldBeAdmin,

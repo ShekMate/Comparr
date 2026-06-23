@@ -1,5 +1,5 @@
 // src/infra/http/routes/auth.ts
-// Plex-only identity auth. Plex account is the sole login method.
+// Identity auth: Plex OAuth and email magic-link (OTP).
 // A personal Plex server is NOT required — any free plex.tv account works.
 
 import type { CompatRequest } from '../compat-request.ts'
@@ -13,7 +13,7 @@ import {
   getPlexClientId,
   isPlexRestrictedToServer,
 } from '../../../core/config.ts'
-import { updateSettings } from '../../../core/settings.ts'
+import { updateSettings, getSetting } from '../../../core/settings.ts'
 import { getDataDir } from '../../../core/env.ts'
 import {
   upsertUser,
@@ -31,6 +31,13 @@ import {
   getPlexUserInfo,
   isUserOnPlexServer,
 } from '../../../features/auth/providers/plex.ts'
+import {
+  generateOtp,
+  storeOtp,
+  verifyAndConsumeOtp,
+  sendOtpEmail,
+  loadOtpsFromDisk,
+} from '../../../features/auth/providers/email-otp.ts'
 
 const USER_SESSION_COOKIE = 'comparr_user'
 const PIN_TTL_MS = 6 * 60 * 1000
@@ -218,13 +225,12 @@ export async function handleAuthRoutes(
   pathname: string
 ): Promise<Response | null> {
   // ── GET /api/auth/providers ──────────────────────────────────────────────
-  // Plex is always the only auth provider.
   if (pathname === '/api/auth/providers' && req.method === 'GET') {
+    const emailEnabled = getSetting('EMAIL_LOGIN_ENABLED') === 'true'
+    const providers: { id: string; name: string }[] = [{ id: 'plex', name: 'Plex' }]
+    if (emailEnabled) providers.push({ id: 'email', name: 'Email' })
     return new Response(
-      JSON.stringify({
-        providers: [{ id: 'plex', name: 'Plex' }],
-        userAuthEnabled: true,
-      }),
+      JSON.stringify({ providers, userAuthEnabled: true }),
       { status: 200, headers: makeJson(req) }
     )
   }
@@ -657,6 +663,146 @@ export async function handleAuthRoutes(
       return new Response(
         JSON.stringify({ status: 'pending' }),
         { status: 200, headers: makeJson(req) }
+      )
+    }
+  }
+
+  // ── POST /api/auth/email/request ─────────────────────────────────────────
+  // Send a 6-digit OTP to the supplied email address.
+  if (pathname === '/api/auth/email/request' && req.method === 'POST') {
+    if (getSetting('EMAIL_LOGIN_ENABLED') !== 'true') {
+      return new Response(
+        JSON.stringify({ error: 'Email login is not enabled on this server.' }),
+        { status: 403, headers: makeJson(req) }
+      )
+    }
+
+    const ip = getClientIp(req)
+    if (!loginRateLimiter.check(ip)) {
+      return new Response(
+        JSON.stringify({ error: 'Too many attempts. Please wait.' }),
+        { status: 429, headers: makeJson(req) }
+      )
+    }
+
+    try {
+      const body = await req.json<{ email?: string }>()
+      const email = String(body?.email || '').trim().toLowerCase()
+      if (!email || !email.includes('@')) {
+        return new Response(
+          JSON.stringify({ error: 'A valid email address is required.' }),
+          { status: 400, headers: makeJson(req) }
+        )
+      }
+
+      const otp = generateOtp()
+      await storeOtp(email, otp)
+      await sendOtpEmail(email, otp)
+      log.info(`[auth] Email OTP requested for ${email}`)
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: makeJson(req) }
+      )
+    } catch (err) {
+      log.warn(`[auth] Email OTP request failed: ${err}`)
+      const message = err instanceof Error ? err.message : 'Could not send login email.'
+      return new Response(
+        JSON.stringify({ error: message }),
+        { status: 500, headers: makeJson(req) }
+      )
+    }
+  }
+
+  // ── POST /api/auth/email/verify ───────────────────────────────────────────
+  // Verify the OTP, create a user session, and set the session cookie.
+  if (pathname === '/api/auth/email/verify' && req.method === 'POST') {
+    if (getSetting('EMAIL_LOGIN_ENABLED') !== 'true') {
+      return new Response(
+        JSON.stringify({ error: 'Email login is not enabled on this server.' }),
+        { status: 403, headers: makeJson(req) }
+      )
+    }
+
+    const ip = getClientIp(req)
+    if (!loginRateLimiter.check(ip)) {
+      return new Response(
+        JSON.stringify({ error: 'Too many attempts. Please wait.' }),
+        { status: 429, headers: makeJson(req) }
+      )
+    }
+
+    try {
+      const body = await req.json<{ email?: string; otp?: string }>()
+      const email = String(body?.email || '').trim().toLowerCase()
+      const otp = String(body?.otp || '').trim()
+
+      if (!email || !otp) {
+        return new Response(
+          JSON.stringify({ error: 'Email and code are required.' }),
+          { status: 400, headers: makeJson(req) }
+        )
+      }
+
+      loadOtpsFromDisk()
+      const valid = await verifyAndConsumeOtp(email, otp)
+      if (!valid) {
+        log.warn(`[auth] Email OTP verify failed for ${email}`)
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired code. Please request a new one.' }),
+          { status: 401, headers: makeJson(req) }
+        )
+      }
+
+      // Derive a display name from the email local-part
+      const localPart = email.split('@')[0]
+      const displayName = localPart.charAt(0).toUpperCase() + localPart.slice(1)
+
+      const user = upsertUser({
+        provider: 'email',
+        providerUserId: email,
+        username: displayName,
+        email,
+        avatarUrl: '',
+      })
+
+      const inviteCode = getOrCreateInviteCode(user.id)
+      const roomCode = `U${String(user.id).padStart(3, '0')}`
+
+      const sessionToken = createUserSession({
+        userId: user.id,
+        provider: user.provider,
+        providerUserId: user.providerUserId,
+        username: user.username,
+        avatarUrl: user.avatarUrl,
+        isAdmin: user.isAdmin,
+        hasServerAccess: true,
+      })
+
+      const headers = makeJson(req)
+      setUserSessionCookie(headers, sessionToken, req)
+      log.info(`[auth] Email login: ${email} (userId=${user.id})`)
+
+      return new Response(
+        JSON.stringify({
+          status: 'success',
+          user: {
+            id: user.id,
+            username: user.username,
+            avatarUrl: user.avatarUrl,
+            isAdmin: user.isAdmin,
+            hasServerAccess: true,
+            provider: 'email',
+            roomCode,
+            inviteCode,
+          },
+        }),
+        { status: 200, headers }
+      )
+    } catch (err) {
+      log.error(`[auth] Email OTP verify error: ${err}`)
+      return new Response(
+        JSON.stringify({ error: 'Login failed. Please try again.' }),
+        { status: 500, headers: makeJson(req) }
       )
     }
   }

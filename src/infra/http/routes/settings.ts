@@ -294,13 +294,19 @@ const ADMIN_ONLY_SETTINGS = new Set([
   'PLEX_RESTRICT_TO_SERVER',
   // PLEX_CLIENT_ID is managed automatically; prevent user modification
   'PLEX_CLIENT_ID',
+  'SMTP_HOST',
+  'SMTP_PORT',
+  'SMTP_USER',
+  'SMTP_PASS',
+  'SMTP_FROM',
+  'EMAIL_LOGIN_ENABLED',
 ])
 
 const sanitizeSettingsForClient = (
   settings: Record<string, unknown>,
   isAdmin: boolean
 ) => {
-  const sanitized = { ...settings, ACCESS_PASSWORD: '' }
+  const sanitized = { ...settings, ACCESS_PASSWORD: '', SMTP_PASS: '' }
 
   if (!isAdmin) {
     for (const key of ADMIN_ONLY_SETTINGS) {

@@ -5023,9 +5023,44 @@ async function login(api) {
   }
 
   if (!currentUser) {
-    // Show Plex-only login screen
+    // Determine which auth providers are available
+    let authProviders = ['plex']
+    try {
+      const providersData = await api.getAuthProviders()
+      if (Array.isArray(providersData?.providers)) {
+        authProviders = providersData.providers.map(p => p.id)
+      }
+    } catch { /* fallback to plex only */ }
+
+    const emailEnabled = authProviders.includes('email')
+
+    // Show login screen
     if (userAuthForm) userAuthForm.style.display = 'flex'
-    if (userAuthPlex) userAuthPlex.style.display = 'flex'
+
+    // Show tabs only when both providers are available
+    const userAuthTabs = document.querySelector('.js-user-auth-tabs')
+    const userAuthEmail = document.querySelector('.js-user-auth-email')
+    if (emailEnabled && userAuthTabs) {
+      userAuthTabs.hidden = false
+    }
+
+    // Activate the selected provider panel
+    let activeProvider = 'plex'
+    const showAuthProvider = provider => {
+      activeProvider = provider
+      if (userAuthPlex) userAuthPlex.style.display = provider === 'plex' ? 'flex' : 'none'
+      if (userAuthEmail) userAuthEmail.style.display = provider === 'email' ? 'flex' : 'none'
+      document.querySelectorAll('.js-user-auth-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.provider === provider)
+      })
+    }
+
+    showAuthProvider('plex')
+
+    // Wire tab buttons
+    document.querySelectorAll('.js-user-auth-tab').forEach(tab => {
+      tab.addEventListener('click', () => showAuthProvider(tab.dataset.provider))
+    })
 
     await new Promise(resolve => {
       let sessionWatcher = null
@@ -5212,6 +5247,79 @@ async function login(api) {
               plexStatus.textContent = errorMessage
             }
             showPlexContinue(errorMessage)
+          }
+        })
+      }
+
+      // ── Email OTP flow ───────────────────────────────────────────────────
+      if (emailEnabled) {
+        const emailRequestForm = document.querySelector('.js-email-request-form')
+        const emailVerifyForm = document.querySelector('.js-email-verify-form')
+        const emailInput = document.querySelector('.js-email-input')
+        const emailCodeInput = document.querySelector('.js-email-code-input')
+        const emailSentTo = document.querySelector('.js-email-sent-to')
+        const emailStatus = document.querySelector('.js-email-status')
+        const emailBackBtn = document.querySelector('.js-email-back-btn')
+
+        const setEmailStatus = (msg, isError) => {
+          if (!emailStatus) return
+          emailStatus.textContent = msg
+          emailStatus.hidden = !msg
+          emailStatus.style.color = isError ? 'var(--color-error, #f87171)' : ''
+        }
+
+        const showEmailStep = step => {
+          if (emailRequestForm) emailRequestForm.hidden = step !== 'request'
+          if (emailVerifyForm) emailVerifyForm.hidden = step !== 'verify'
+          setEmailStatus('', false)
+        }
+
+        showEmailStep('request')
+
+        emailBackBtn?.addEventListener('click', () => {
+          showEmailStep('request')
+          if (emailInput) emailInput.value = ''
+          if (emailCodeInput) emailCodeInput.value = ''
+        })
+
+        emailRequestForm?.addEventListener('submit', async e => {
+          e.preventDefault()
+          const email = emailInput?.value?.trim() || ''
+          if (!email) return
+          const sendBtn = emailRequestForm.querySelector('.js-email-send-btn')
+          if (sendBtn) sendBtn.disabled = true
+          setEmailStatus('Sending code…', false)
+          try {
+            await api.requestEmailOtp(email)
+            if (emailSentTo) emailSentTo.textContent = email
+            showEmailStep('verify')
+            emailCodeInput?.focus()
+          } catch (err) {
+            setEmailStatus(err.message || 'Could not send code. Try again.', true)
+          } finally {
+            if (sendBtn) sendBtn.disabled = false
+          }
+        })
+
+        emailVerifyForm?.addEventListener('submit', async e => {
+          e.preventDefault()
+          const email = emailInput?.value?.trim() || ''
+          const otp = emailCodeInput?.value?.trim() || ''
+          if (!email || !otp) return
+          const verifyBtn = emailVerifyForm.querySelector('.js-email-verify-btn')
+          if (verifyBtn) verifyBtn.disabled = true
+          setEmailStatus('Verifying…', false)
+          try {
+            const result = await api.verifyEmailOtp(email, otp)
+            if (result?.user) {
+              handleUserLoggedIn(result.user)
+            } else {
+              setEmailStatus('Unexpected response. Please try again.', true)
+              if (verifyBtn) verifyBtn.disabled = false
+            }
+          } catch (err) {
+            setEmailStatus(err.message || 'Invalid code. Please try again.', true)
+            if (verifyBtn) verifyBtn.disabled = false
           }
         })
       }
