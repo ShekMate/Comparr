@@ -7308,17 +7308,14 @@ const main = async () => {
   const matchesAddForm = document.querySelector('.js-matches-add-form')
   const matchesFriendInput = document.querySelector('.js-matches-friend-input')
   const matchesStatus = document.querySelector('.js-matches-status')
-  const matchesFriendsList = document.querySelector('.js-matches-friends-list')
-  const matchesFriendsHeading = document.querySelector(
-    '.js-matches-friends-heading'
-  )
-  const matchesFriendsSection = document.querySelector(
-    '.js-matches-friends-section'
-  )
   const matchesPendingSection = document.querySelector(
     '.js-matches-pending-section'
   )
   const matchesPendingList = document.querySelector('.js-matches-pending-list')
+  const matchesSidebarFriends = document.querySelector('.js-matches-sidebar-friends')
+  const matchesSidebarFriendsList = document.querySelector('.js-matches-sidebar-friends-list')
+  const matchesCombinedList = document.querySelector('.js-matches-combined')
+  let _selectedFriendIds = null // null = all friends
 
   // Server-sharing consent modal elements
   const sharingModal = document.querySelector('.js-server-sharing-modal')
@@ -7502,16 +7499,65 @@ const main = async () => {
     })
   }
 
-  const renderFriends = connections => {
-    if (!matchesFriendsList || !matchesFriendsHeading) return
+  const renderCombinedMatches = connections => {
+    if (!matchesCombinedList) return
     const accepted = connections.filter(c => c.status === 'accepted')
-    if (!accepted.length) {
-      if (matchesFriendsSection) matchesFriendsSection.hidden = true
-      matchesFriendsList.innerHTML = ''
+
+    const friendsToShow = _selectedFriendIds === null
+      ? accepted
+      : accepted.filter(c => _selectedFriendIds.has(c.friendUserId))
+
+    const movieMap = new Map()
+    for (const conn of friendsToShow) {
+      for (const movie of (conn.matches || [])) {
+        const key = movie.guid
+        if (movieMap.has(key)) {
+          movieMap.get(key).friends.push(conn.friendName)
+        } else {
+          movieMap.set(key, { movie, friends: [conn.friendName] })
+        }
+      }
+    }
+
+    if (!movieMap.size) {
+      matchesCombinedList.innerHTML = '<p class="matches-empty-note">No matches yet — keep swiping!</p>'
+      applyViewMode('tab-matches')
       return
     }
-    if (matchesFriendsSection) matchesFriendsSection.hidden = false
-    matchesFriendsHeading.hidden = false
+
+    matchesCombinedList.innerHTML = [...movieMap.values()]
+      .map(({ movie, friends }) => renderMatchMovie(movie, friends.join(' & ')))
+      .join('')
+
+    matchesCombinedList.querySelectorAll('.watch-card').forEach(card => {
+      const collapsed = card.querySelector('.watch-card-collapsed')
+      const details = card.querySelector('.watch-card-details')
+      if (!collapsed || !details) return
+      collapsed.addEventListener('click', () => {
+        const isOpen = card.classList.contains('is-expanded')
+        card.classList.toggle('is-expanded', !isOpen)
+        details.hidden = isOpen
+      })
+      details.hidden = true
+    })
+
+    window.comparrMatchMovies = new Map()
+    for (const { movie } of movieMap.values()) {
+      window.comparrMatchMovies.set(movie.guid, movie)
+    }
+    matchesCombinedList.querySelectorAll('.watch-card').forEach(card => {
+      const guid = card.dataset.guid
+      if (guid && window.comparrMatchMovies.has(guid)) {
+        card._movieData = window.comparrMatchMovies.get(guid)
+      }
+    })
+
+    applyViewMode('tab-matches')
+  }
+
+  const renderFriendsSidebar = connections => {
+    if (!matchesSidebarFriends || !matchesSidebarFriendsList) return
+    const accepted = connections.filter(c => c.status === 'accepted')
 
     // Queue server-sharing prompts
     const prompts = accepted.filter(
@@ -7519,85 +7565,85 @@ const main = async () => {
     )
     for (const c of prompts) {
       if (!_sharingPromptQueue.some(q => q.friendUserId === c.friendUserId)) {
-        _sharingPromptQueue.push({
-          friendUserId: c.friendUserId,
-          friendName: c.friendName,
-        })
+        _sharingPromptQueue.push({ friendUserId: c.friendUserId, friendName: c.friendName })
       }
     }
     if (_sharingPromptQueue.length && sharingModal?.hidden !== false) {
       processNextSharingPrompt()
     }
 
-    matchesFriendsList.innerHTML = accepted
-      .map(conn => {
-        const {
-          friendUserId,
-          friendName,
-          sharesServer,
-          friendSharesServerWithMe,
-          matches,
-        } = conn
-        const matchCount = matches ? matches.length : 0
-        const matchLabel =
-          matchCount === 0
-            ? 'No matches yet — keep swiping!'
-            : matchCount === 1
-            ? '1 match'
-            : `${matchCount} matches`
-        const moviesHtml = matchCount
-          ? matches.map(m => renderMatchMovie(m, friendName)).join('')
-          : ''
-        const sharingBadge = friendSharesServerWithMe
-          ? `<span class="matches-friend-sharing-badge" title="Sharing their library with you"><i class="fas fa-server"></i></span>`
-          : ''
-        return `
-        <div class="matches-friend-card" data-friend-id="${friendUserId}">
-          <div class="matches-friend-header${matchCount ? ' has-movies' : ''}">
-            <span class="matches-friend-name">${friendName}</span>
-            ${sharingBadge}
-            <span class="matches-friend-count">${matchLabel}</span>
-            <button class="matches-remove-btn" type="button" data-friend-id="${friendUserId}"
-              title="Remove ${friendName}" aria-label="Remove ${friendName}">
-              Remove
-            </button>
-          </div>
-          ${matchCount ? `<div class="matches-friend-movies">${moviesHtml}</div>` : ''}
-          <div class="matches-friend-footer">
-            <label class="matches-share-toggle" title="Share your library with ${friendName}">
-              <input type="checkbox" class="js-friend-share-toggle" data-friend-id="${friendUserId}" ${
-          sharesServer ? 'checked' : ''
-        } />
-              <span class="matches-share-toggle-label">Share my library with ${friendName}</span>
+    if (!accepted.length) {
+      matchesSidebarFriends.hidden = true
+      matchesSidebarFriendsList.innerHTML = ''
+      return
+    }
+    matchesSidebarFriends.hidden = false
+
+    // Prune removed friends from selection
+    if (_selectedFriendIds !== null) {
+      const presentIds = new Set(accepted.map(c => c.friendUserId))
+      for (const id of [..._selectedFriendIds]) {
+        if (!presentIds.has(id)) _selectedFriendIds.delete(id)
+      }
+      if (_selectedFriendIds.size === 0) _selectedFriendIds = null
+    }
+
+    matchesSidebarFriendsList.innerHTML = accepted.map(conn => {
+      const { friendUserId, friendName, sharesServer, friendSharesServerWithMe, matches } = conn
+      const matchCount = matches ? matches.length : 0
+      const matchLabel = matchCount === 1 ? '1 match' : `${matchCount} matches`
+      const isChecked = _selectedFriendIds === null || _selectedFriendIds.has(friendUserId)
+      const sharingIcon = friendSharesServerWithMe
+        ? ` <i class="fas fa-server" title="Sharing their library with you" style="font-size:0.75rem;opacity:0.6"></i>`
+        : ''
+      return `
+        <div class="matches-sidebar-friend-item" data-friend-id="${friendUserId}">
+          <label class="matches-sidebar-friend-label">
+            <input type="checkbox" class="js-matches-friend-select" data-friend-id="${friendUserId}" ${isChecked ? 'checked' : ''}>
+            <span class="matches-sidebar-friend-name">${friendName}${sharingIcon}</span>
+            <span class="matches-sidebar-friend-count">${matchLabel}</span>
+          </label>
+          <div class="matches-sidebar-friend-actions">
+            <label class="matches-share-toggle" title="Share your library with ${friendName}" style="flex:1">
+              <input type="checkbox" class="js-friend-share-toggle" data-friend-id="${friendUserId}" ${sharesServer ? 'checked' : ''}>
+              <span class="matches-share-toggle-label">Share library</span>
             </label>
+            <button class="matches-remove-btn" type="button" data-friend-id="${friendUserId}"
+              title="Remove ${friendName}" aria-label="Remove ${friendName}">Remove</button>
           </div>
         </div>`
+    }).join('')
+
+    // Wire friend filter checkboxes
+    matchesSidebarFriendsList.querySelectorAll('.js-matches-friend-select').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const allBoxes = [...matchesSidebarFriendsList.querySelectorAll('.js-matches-friend-select')]
+        const checked = allBoxes.filter(c => c.checked)
+        _selectedFriendIds = checked.length === allBoxes.length
+          ? null
+          : new Set(checked.map(c => Number(c.dataset.friendId)))
+        renderCombinedMatches(connections)
       })
-      .join('')
+    })
 
     // Wire sharing toggles
-    matchesFriendsList
-      .querySelectorAll('.js-friend-share-toggle')
-      .forEach(toggle => {
-        toggle.addEventListener('change', async () => {
-          const friendId = Number(toggle.dataset.friendId)
-          try {
-            await fetch(`${basePath}/api/matches/sharing`, {
-              method: 'PUT',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({
-                friendUserId: friendId,
-                sharesServer: toggle.checked,
-              }),
-            })
-          } catch {
-            toggle.checked = !toggle.checked
-          }
-        })
+    matchesSidebarFriendsList.querySelectorAll('.js-friend-share-toggle').forEach(toggle => {
+      toggle.addEventListener('change', async () => {
+        const friendId = Number(toggle.dataset.friendId)
+        try {
+          await fetch(`${basePath}/api/matches/sharing`, {
+            method: 'PUT',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ friendUserId: friendId, sharesServer: toggle.checked }),
+          })
+        } catch {
+          toggle.checked = !toggle.checked
+        }
       })
+    })
 
     // Wire remove buttons
-    matchesFriendsList.querySelectorAll('.matches-remove-btn').forEach(btn => {
+    matchesSidebarFriendsList.querySelectorAll('.matches-remove-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const friendId = Number(btn.dataset.friendId)
         if (!friendId) return
@@ -7614,37 +7660,11 @@ const main = async () => {
         }
       })
     })
+  }
 
-    // Expand/collapse match cards
-    matchesFriendsList.querySelectorAll('.watch-card').forEach(card => {
-      const collapsed = card.querySelector('.watch-card-collapsed')
-      const details = card.querySelector('.watch-card-details')
-      if (!collapsed || !details) return
-      collapsed.addEventListener('click', () => {
-        const isOpen = card.classList.contains('is-expanded')
-        card.classList.toggle('is-expanded', !isOpen)
-        details.hidden = isOpen
-      })
-      details.hidden = true
-    })
-
-    // Store match movies for view mode system
-    window.comparrMatchMovies = window.comparrMatchMovies || new Map()
-    window.comparrMatchMovies.clear()
-    for (const conn of accepted) {
-      for (const m of (conn.matches || [])) {
-        window.comparrMatchMovies.set(m.guid || m.tmdbId, m)
-      }
-    }
-    // Attach _movieData to each watch-card so ViewModes can read it
-    matchesFriendsList.querySelectorAll('.watch-card').forEach(card => {
-      const guid = card.dataset.guid
-      if (guid && window.comparrMatchMovies.has(guid)) {
-        card._movieData = window.comparrMatchMovies.get(guid)
-      }
-    })
-    // Refresh the view mode alt container
-    applyViewMode('tab-matches')
+  const renderFriends = connections => {
+    renderFriendsSidebar(connections)
+    renderCombinedMatches(connections)
   }
 
   const loadMatchesData = async () => {
