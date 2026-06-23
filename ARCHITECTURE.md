@@ -64,7 +64,9 @@ Connected at the **instance level** by the admin during setup:
 - **Plex** — Plex OAuth token + server URL (already implemented)
 - **Emby** — server URL + admin API key (already implemented)
 - **Jellyfin** — server URL + admin API key (already implemented)
-- **TMDb** — API key for metadata enrichment, ratings, streaming availability
+- **TMDb** — API key for metadata enrichment, ratings, and streaming
+  availability (JustWatch data — already implemented, shown on swipe cards
+  and detail modals)
 
 Guest users inherit whatever sources the admin has connected. They do not
 connect their own servers. This is intentional — if they want their own
@@ -129,6 +131,7 @@ prompt fires on Android.
 | Media sources | Admin-configured, instance-level | Per-user, self-configured |
 | Auth | Plex OAuth + email magic link | Email magic link + social (Apple/Google?) |
 | Emby/Jellyfin | Admin API key at setup | Per-user API key or Quick Connect |
+| Streaming availability | Already works (TMDb/JustWatch data on all cards) | Same, plus user sets their own subscriptions for filtering |
 | Monetization | Free / open source | App store, subscriptions |
 | Scope | Plex/Emby/Jellyfin owners and their friends | Anyone with any streaming service |
 
