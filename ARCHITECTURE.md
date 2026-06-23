@@ -65,12 +65,16 @@ Connected at the **instance level** by the admin during setup:
 - **Emby** — server URL + admin API key (already implemented)
 - **Jellyfin** — server URL + admin API key (already implemented)
 - **TMDb** — API key for metadata enrichment, ratings, and streaming
-  availability (JustWatch data — already implemented, shown on swipe cards
-  and detail modals)
+  availability via JustWatch data (already implemented)
 
-Guest users inherit whatever sources the admin has connected. They do not
-connect their own servers. This is intentional — if they want their own
-sources, that's the mobile app use case.
+**Per-user streaming preferences** (already implemented):
+- Users select their paid streaming subscriptions in Settings
+- Swipe deck filters to show only movies available on their services
+- "Where to Watch" shown on swipe cards, overview cards, and detail modals
+- Free streaming filter also available
+
+Guest users inherit whatever media server sources the admin has connected.
+They configure their own streaming service preferences individually.
 
 ### Library Sharing (removed)
 The old "Share my library" toggle between friends has been removed. It was a
@@ -131,7 +135,7 @@ prompt fires on Android.
 | Media sources | Admin-configured, instance-level | Per-user, self-configured |
 | Auth | Plex OAuth + email magic link | Email magic link + social (Apple/Google?) |
 | Emby/Jellyfin | Admin API key at setup | Per-user API key or Quick Connect |
-| Streaming availability | Already works (TMDb/JustWatch data on all cards) | Same, plus user sets their own subscriptions for filtering |
+| Streaming availability | Already works — TMDb/JustWatch data, per-user subscription selection, swipe deck filtering | Same |
 | Monetization | Free / open source | App store, subscriptions |
 | Scope | Plex/Emby/Jellyfin owners and their friends | Anyone with any streaming service |
 
