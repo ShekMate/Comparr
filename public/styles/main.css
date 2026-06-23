@@ -2071,27 +2071,6 @@ body[data-user-type='guest'] .compare-ui {
   border-top: 1px solid var(--color-line, rgba(255,255,255,0.06));
 }
 
-.matches-share-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  cursor: pointer;
-  user-select: none;
-  flex: 1;
-}
-
-.matches-share-toggle-label {
-  font-size: 0.82rem;
-  color: var(--color-text-muted);
-}
-
-.matches-share-toggle input[type='checkbox'] {
-  accent-color: var(--color-primary, #818cf8);
-  width: 0.95rem;
-  height: 0.95rem;
-  cursor: pointer;
-  flex-shrink: 0;
-}
 
 .matches-remove-btn {
   background: none;

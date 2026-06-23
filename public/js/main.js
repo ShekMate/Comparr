@@ -7317,15 +7317,6 @@ const main = async () => {
   const matchesCombinedList = document.querySelector('.js-matches-combined')
   let _selectedFriendIds = null // null = all friends
 
-  // Server-sharing consent modal elements
-  const sharingModal = document.querySelector('.js-server-sharing-modal')
-  const sharingModalBody = document.querySelector(
-    '.js-server-sharing-modal-body'
-  )
-  const sharingAcceptBtn = document.querySelector('.js-server-sharing-accept')
-  const sharingDeclineBtn = document.querySelector('.js-server-sharing-decline')
-  let _sharingPromptQueue = []
-
   const setMatchesStatus = (msg, isError = false) => {
     if (!matchesStatus) return
     matchesStatus.textContent = msg
@@ -7413,42 +7404,6 @@ const main = async () => {
       </div>`
   }
 
-  // Show server-sharing consent modal for one pending prompt at a time.
-  const processNextSharingPrompt = () => {
-    if (!sharingModal || !_sharingPromptQueue.length) {
-      if (sharingModal) sharingModal.hidden = true
-      return
-    }
-    const { friendUserId, friendName } = _sharingPromptQueue[0]
-    if (sharingModalBody) {
-      sharingModalBody.textContent = `${friendName} would like to share their media library with you.`
-    }
-    sharingModal.hidden = false
-    sharingModal.dataset.friendUserId = friendUserId
-
-    const resolve = async accepts => {
-      sharingModal.hidden = true
-      _sharingPromptQueue.shift()
-      try {
-        await fetch(`${basePath}/api/matches/resolve-server-prompt`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ friendUserId, acceptsServer: accepts }),
-        })
-      } catch {
-        /* ignore */
-      }
-      processNextSharingPrompt()
-    }
-
-    sharingAcceptBtn?.addEventListener('click', () => resolve(true), {
-      once: true,
-    })
-    sharingDeclineBtn?.addEventListener('click', () => resolve(false), {
-      once: true,
-    })
-  }
-
   const renderPendingRequests = connections => {
     if (!matchesPendingSection || !matchesPendingList) return
     const allPending = connections.filter(c => c.status === 'pending')
@@ -7474,10 +7429,6 @@ const main = async () => {
       <div class="matches-pending-card" data-friend-id="${conn.friendUserId}">
         <span class="matches-pending-name">${conn.friendName}</span>
         <div class="matches-pending-actions">
-          <label class="matches-pending-share-label">
-            <input type="checkbox" class="js-pending-share-check" />
-            Share my library
-          </label>
           <button type="button" class="btn-primary js-pending-accept" data-friend-id="${conn.friendUserId}">Accept</button>
           <button type="button" class="btn-ghost js-pending-decline" data-friend-id="${conn.friendUserId}">Decline</button>
         </div>
@@ -7488,15 +7439,12 @@ const main = async () => {
     matchesPendingList.querySelectorAll('.js-pending-accept').forEach(btn => {
       btn.addEventListener('click', async () => {
         const friendId = Number(btn.dataset.friendId)
-        const card = btn.closest('.matches-pending-card')
-        const sharesServer =
-          card?.querySelector('.js-pending-share-check')?.checked ?? false
         btn.disabled = true
         try {
           const res = await fetch(`${basePath}/api/matches/accept`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ requesterId: friendId, sharesServer }),
+            body: JSON.stringify({ requesterId: friendId, sharesServer: false }),
           })
           if (!res.ok) throw new Error()
           await loadMatchesData()
@@ -7601,19 +7549,6 @@ const main = async () => {
     if (!matchesSidebarFriends || !matchesSidebarFriendsList) return
     const accepted = connections.filter(c => c.status === 'accepted')
 
-    // Queue server-sharing prompts
-    const prompts = accepted.filter(
-      c => c.serverPromptPending && c.friendSharesServerWithMe
-    )
-    for (const c of prompts) {
-      if (!_sharingPromptQueue.some(q => q.friendUserId === c.friendUserId)) {
-        _sharingPromptQueue.push({ friendUserId: c.friendUserId, friendName: c.friendName })
-      }
-    }
-    if (_sharingPromptQueue.length && sharingModal?.hidden !== false) {
-      processNextSharingPrompt()
-    }
-
     if (!accepted.length) {
       matchesSidebarFriends.hidden = true
       matchesSidebarFriendsList.innerHTML = ''
@@ -7631,25 +7566,18 @@ const main = async () => {
     }
 
     matchesSidebarFriendsList.innerHTML = accepted.map(conn => {
-      const { friendUserId, friendName, sharesServer, friendSharesServerWithMe, matches } = conn
+      const { friendUserId, friendName, matches } = conn
       const matchCount = matches ? matches.length : 0
       const matchLabel = matchCount === 1 ? '1 match' : `${matchCount} matches`
       const isChecked = _selectedFriendIds === null || _selectedFriendIds.has(friendUserId)
-      const sharingIcon = friendSharesServerWithMe
-        ? ` <i class="fas fa-server" title="Sharing their library with you" style="font-size:0.75rem;opacity:0.6"></i>`
-        : ''
       return `
         <div class="matches-sidebar-friend-item" data-friend-id="${friendUserId}">
           <label class="matches-sidebar-friend-label">
             <input type="checkbox" class="js-matches-friend-select" data-friend-id="${friendUserId}" ${isChecked ? 'checked' : ''}>
-            <span class="matches-sidebar-friend-name">${friendName}${sharingIcon}</span>
+            <span class="matches-sidebar-friend-name">${friendName}</span>
             <span class="matches-sidebar-friend-count">${matchLabel}</span>
           </label>
           <div class="matches-sidebar-friend-actions">
-            <label class="matches-share-toggle" title="Share your library with ${friendName}" style="flex:1">
-              <input type="checkbox" class="js-friend-share-toggle" data-friend-id="${friendUserId}" ${sharesServer ? 'checked' : ''}>
-              <span class="matches-share-toggle-label">Share library</span>
-            </label>
             <button class="matches-remove-btn" type="button" data-friend-id="${friendUserId}"
               title="Remove ${friendName}" aria-label="Remove ${friendName}">Remove</button>
           </div>
@@ -7665,22 +7593,6 @@ const main = async () => {
           ? null
           : new Set(checked.map(c => Number(c.dataset.friendId)))
         renderCombinedMatches(connections)
-      })
-    })
-
-    // Wire sharing toggles
-    matchesSidebarFriendsList.querySelectorAll('.js-friend-share-toggle').forEach(toggle => {
-      toggle.addEventListener('change', async () => {
-        const friendId = Number(toggle.dataset.friendId)
-        try {
-          await fetch(`${basePath}/api/matches/sharing`, {
-            method: 'PUT',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ friendUserId: friendId, sharesServer: toggle.checked }),
-          })
-        } catch {
-          toggle.checked = !toggle.checked
-        }
       })
     })
 
