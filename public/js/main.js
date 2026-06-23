@@ -7336,35 +7336,77 @@ const main = async () => {
   }
 
   const renderMatchMovie = (movie, friendName) => {
-    const posterUrl = movie.art || movie.thumb || ''
-    const imgHtml = posterUrl
-      ? `<div class="watch-card-poster"><img src="${
-          posterUrl.startsWith('http') ? posterUrl : basePath + posterUrl
-        }" alt="${movie.title} poster" loading="lazy" /></div>`
+    const movieBasePath = basePath || document.body.dataset.basePath || ''
+    const rawPoster = movie.art || movie.thumb || movie.poster || ''
+    const posterSrc = rawPoster
+      ? (rawPoster.startsWith('http') ? rawPoster : movieBasePath + rawPoster)
       : ''
+    const year = movie.year || (movie.release_date ? String(movie.release_date).slice(0, 4) : '')
+
+    const imgHtml = posterSrc
+      ? `<div class="match-card-poster"><img src="${posterSrc}" alt="${movie.title} poster" loading="lazy"></div>`
+      : ''
+
+    // Genres: handle both string arrays (Plex) and numeric ID arrays (TMDb)
+    const rawGenres = Array.isArray(movie.genres) ? movie.genres : []
+    const genres = rawGenres.every(g => typeof g === 'string')
+      ? rawGenres
+      : getGenreNames(rawGenres.map(g => (typeof g === 'object' && g !== null ? g.id : g)))
+
+    const runtimeMin = Number(movie.runtime) || Number(movie.runtimeMinutes) ||
+      (movie.duration ? Math.round(movie.duration / 60000) : 0)
+    const runtimeStr = runtimeMin > 0 && runtimeMin < 1000 ? formatRuntime(runtimeMin) : ''
+
+    const badgesHtml = [
+      movie.contentRating ? `<span class="metadata-badge badge-rating"><i class="fas fa-tag"></i> ${movie.contentRating}</span>` : '',
+      genres.length ? `<span class="metadata-badge badge-genre"><i class="fas fa-film"></i> ${genres.slice(0, 3).join(', ')}</span>` : '',
+      runtimeStr ? `<span class="metadata-badge badge-runtime"><i class="fas fa-clock"></i> ${runtimeStr}</span>` : '',
+    ].filter(Boolean).join('')
+
+    const ratingHtml = buildRatingHtml(movie, movieBasePath)
+
+    const streaming = movie.streamingServices || {}
+    const allProviders = [...(streaming.subscription || []), ...(streaming.free || [])]
+    const seenNames = new Set()
+    const uniqueProviders = allProviders.filter(p => {
+      if (!p?.name || seenNames.has(p.name)) return false
+      seenNames.add(p.name)
+      return true
+    })
+    const whereToWatchHtml = uniqueProviders.length ? `
+      <div class="where-to-watch">
+        <div class="where-to-watch-title">Where to Watch</div>
+        <div class="provider-pill-list">
+          ${uniqueProviders.map(p => {
+            const logo = p.logo_path
+              ? (p.logo_path.startsWith('/assets/') ? `${movieBasePath}${p.logo_path}` : `https://image.tmdb.org/t/p/w92${p.logo_path}`)
+              : null
+            return `<span class="provider-pill">${logo ? `<img src="${logo}" alt="${p.name}" class="provider-pill-logo">` : ''}<span class="provider-pill-name">${p.name}</span></span>`
+          }).join('')}
+        </div>
+      </div>` : ''
+
     return `
       <div class="watch-card" data-guid="${movie.guid}">
         <div class="watch-card-collapsed">
           <div class="watch-card-header-compact">
             <div class="watch-card-title-compact">
-              ${movie.title}${
-      movie.year ? ` <span class="watch-card-year">(${movie.year})</span>` : ''
-    }
+              ${movie.title}${year ? ` <span class="watch-card-year">(${year})</span>` : ''}
             </div>
             <div class="expand-icon"><i class="fas fa-chevron-down"></i></div>
           </div>
         </div>
         <div class="watch-card-details">
-          ${imgHtml}
-          <div class="watch-card-content">
-            ${
-              movie.summary
-                ? `<p class="watch-card-summary">${movie.summary}</p>`
-                : ''
-            }
-            <div class="watch-card-metadata">
-              <i class="fas fa-heart"></i>
-              You and ${friendName} both want to watch this
+          <div class="match-card-body">
+            ${imgHtml}
+            <div class="match-card-info">
+              ${movie.summary ? `<p class="watch-card-summary">${movie.summary}</p>` : ''}
+              ${badgesHtml ? `<div class="view-detail-meta">${badgesHtml}</div>` : ''}
+              ${ratingHtml ? `<div class="watch-card-ratings view-detail-ratings">${ratingHtml}</div>` : ''}
+              ${whereToWatchHtml}
+              <div class="watch-card-metadata">
+                <i class="fas fa-heart"></i> You and ${friendName} both want to watch this
+              </div>
             </div>
           </div>
         </div>

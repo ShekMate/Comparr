@@ -1325,8 +1325,8 @@ body[data-card-rating='tmdb'] .rating-group + .rating-group::before {
    7) MATCHES SECTION - Enhanced
    ========================================================= */
 .matches-section:not([hidden]) {
-  text-align: center;
-  padding: 2rem;
+  text-align: left;
+  padding: 0;
 }
 
 .matches-section .watch-card-summary,
@@ -1718,14 +1718,10 @@ body[data-user-type='guest'] .compare-ui {
 }
 
 .matches-sidebar {
-  flex: 0 0 280px;
+  flex: 0 0 300px;
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  position: sticky;
-  top: 1rem;
-  max-height: calc(100vh - 4rem);
-  overflow-y: auto;
 }
 
 .matches-main {
@@ -1841,6 +1837,7 @@ body[data-user-type='guest'] .compare-ui {
 
 .matches-add-form {
   display: flex;
+  flex-direction: column;
   gap: 0.5rem;
 }
 
@@ -1874,8 +1871,8 @@ body[data-user-type='guest'] .compare-ui {
   padding: 0.5rem 1.1rem;
   font-weight: 600;
   cursor: pointer;
-  white-space: nowrap;
   transition: opacity 0.15s;
+  width: 100%;
 }
 .matches-add-submit:hover {
   opacity: 0.88;
@@ -2124,6 +2121,52 @@ body[data-user-type='guest'] .compare-ui {
 .matches-friend-movies {
   display: flex;
   flex-direction: column;
+}
+
+/* Rich match card (overview mode) */
+.match-card-body {
+  display: flex;
+  gap: 1rem;
+  padding: 0.75rem 1rem 1rem;
+}
+
+.match-card-poster {
+  flex: 0 0 100px;
+  align-self: flex-start;
+}
+
+.match-card-poster img {
+  width: 100%;
+  border-radius: 6px;
+  display: block;
+}
+
+.match-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.match-card-info .watch-card-summary {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.match-card-info .watch-card-metadata {
+  font-size: 0.82rem;
+  color: var(--color-accent-primary, #e5534b);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.25rem;
 }
 
 .matches-empty-note {
