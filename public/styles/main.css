@@ -2995,10 +2995,37 @@ body[data-user-type='guest'] .compare-ui {
   font-weight: 700;
 }
 
-.email-otp-send-btn {
-  padding: 0.7rem 1.1rem;
+.email-otp-send-btn,
+.email-otp-verify-btn {
+  padding: 0.7rem 1.25rem;
   white-space: nowrap;
   flex-shrink: 0;
+  background: var(--color-accent, #6366f1);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  letter-spacing: 0.01em;
+}
+
+.email-otp-send-btn:hover,
+.email-otp-verify-btn:hover {
+  opacity: 0.88;
+}
+
+.email-otp-send-btn:active,
+.email-otp-verify-btn:active {
+  transform: scale(0.97);
+}
+
+.email-otp-send-btn:disabled,
+.email-otp-verify-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .email-otp-sent-note {
