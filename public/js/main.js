@@ -2325,6 +2325,14 @@ function initializeUsersAdminTab() {
 
 // ─────────────────────────────────────────────────────────────
 
+function updatePlexRestrictVisibility() {
+  const plexToggle = document.getElementById('setting-user-auth-enabled')
+  const restrictField = document.getElementById('plex-restrict-field')
+  if (restrictField) {
+    restrictField.toggleAttribute('hidden', !plexToggle?.checked)
+  }
+}
+
 function updateAdminOnlySettingsVisibility() {
   const canSeeAdmin = hasAdminSettingsAccess
 
@@ -2987,6 +2995,7 @@ async function hydrateSettingsForm({ _retryCount = 0 } = {}) {
     )
     setSettingsDirty(false)
     clearSettingsStatusAfterDelay()
+    updatePlexRestrictVisibility()
     return data?.isAdmin === true
   } catch (err) {
     if (err?.message && String(err.message).includes('403')) {
@@ -4555,6 +4564,10 @@ async function hydrateSettingsUiIfAuthorized() {
       el.addEventListener('change', () => setSettingsDirty(true))
       el.dataset.boundSettingsDirty = 'true'
     })
+
+  document
+    .getElementById('setting-user-auth-enabled')
+    ?.addEventListener('change', updatePlexRestrictVisibility)
 
   document
     .querySelector('.settings-save-btn')

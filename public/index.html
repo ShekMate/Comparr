@@ -3290,16 +3290,6 @@
             data-admin-tab-panel="true"
           >
             <h4>Security & Access</h4>
-            <div class="settings-field">
-              <label for="setting-access-password">Access Password</label>
-              <input
-                id="setting-access-password"
-                type="password"
-                data-setting-key="ACCESS_PASSWORD"
-                placeholder="(optional)"
-              />
-              <p>Password required before users can log in.</p>
-            </div>
             <h4>Login Methods</h4>
             <div class="settings-field settings-field--toggle">
               <label for="setting-user-auth-enabled">Enable Plex login</label>
@@ -3315,11 +3305,12 @@
               </p>
             </div>
             <div
-              class="settings-field settings-field--toggle"
+              class="settings-field settings-field--toggle settings-field--sub"
               id="plex-restrict-field"
+              hidden
             >
               <label for="setting-plex-restrict"
-                >Restrict to Plex server members only</label
+                >Restrict to server members only</label
               >
               <input
                 id="setting-plex-restrict"
@@ -3328,8 +3319,7 @@
                 data-setting-type="boolean"
               />
               <p>
-                When enabled, only members of your configured Plex server can
-                sign in. When disabled, any Plex account can sign in.
+                Only members of your configured Plex server can sign in.
               </p>
             </div>
 
