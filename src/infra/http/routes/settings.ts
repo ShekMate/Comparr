@@ -610,19 +610,18 @@ export async function handleSettingsRoutes(
           delete incomingSettings[key]
         }
       }
-      // ACCESS_PASSWORD preservation: a blank submission means
-      // "keep existing" — the client never receives the hash, so an empty field
-      // simply means the user didn't type a new password.
-      if (
-        Object.prototype.hasOwnProperty.call(
-          incomingSettings,
-          'ACCESS_PASSWORD'
-        ) &&
-        String(incomingSettings.ACCESS_PASSWORD ?? '').trim() === ''
-      ) {
-        incomingSettings.ACCESS_PASSWORD = String(
-          currentSettings.ACCESS_PASSWORD ?? ''
-        )
+      // Password field preservation: a blank submission means "keep existing" —
+      // the client never receives these values, so an empty field simply means
+      // the user didn't type a new value.
+      for (const passwordKey of ['ACCESS_PASSWORD', 'SMTP_PASS'] as const) {
+        if (
+          Object.prototype.hasOwnProperty.call(incomingSettings, passwordKey) &&
+          String(incomingSettings[passwordKey] ?? '').trim() === ''
+        ) {
+          incomingSettings[passwordKey] = String(
+            currentSettings[passwordKey] ?? ''
+          )
+        }
       }
 
       const hasUpdates = Object.keys(incomingSettings).length > 0
