@@ -3290,22 +3290,9 @@
             data-admin-tab-panel="true"
           >
             <h4>Security & Access</h4>
-            <div class="settings-field">
-              <label for="setting-access-password">Access Password</label>
-              <input
-                id="setting-access-password"
-                type="password"
-                data-setting-key="ACCESS_PASSWORD"
-                placeholder="(optional)"
-              />
-              <p>Password required before users can log in.</p>
-            </div>
-            <hr class="settings-divider" />
-            <h4>Media Server Login</h4>
+            <h4>Login Methods</h4>
             <div class="settings-field settings-field--toggle">
-              <label for="setting-user-auth-enabled"
-                >Require media server sign-in</label
-              >
+              <label for="setting-user-auth-enabled">Enable Plex login</label>
               <input
                 id="setting-user-auth-enabled"
                 type="checkbox"
@@ -3313,17 +3300,17 @@
                 data-setting-type="boolean"
               />
               <p>
-                When enabled, users must sign in with their Plex account after
-                entering the access password. Identities are linked to room
-                sessions and personal history.
+                Users sign in with their Plex account. Identities are linked to
+                room sessions and personal history.
               </p>
             </div>
             <div
-              class="settings-field settings-field--toggle"
+              class="settings-field settings-field--toggle settings-field--sub"
               id="plex-restrict-field"
+              hidden
             >
               <label for="setting-plex-restrict"
-                >Restrict Plex login to server members only</label
+                >Restrict to server members only</label
               >
               <input
                 id="setting-plex-restrict"
@@ -3332,14 +3319,13 @@
                 data-setting-type="boolean"
               />
               <p>
-                When enabled, only users who are members of your configured Plex
-                server can sign in. When disabled, any Plex account can sign in.
+                Only members of your configured Plex server can sign in.
               </p>
             </div>
 
             <!-- Email Login (OTP) -->
             <div class="settings-field settings-field--toggle">
-              <label for="setting-email-login-enabled">Enable email magic-link login</label>
+              <label for="setting-email-login-enabled">Enable email OTP login</label>
               <input
                 id="setting-email-login-enabled"
                 type="checkbox"
@@ -3347,9 +3333,8 @@
                 data-setting-type="boolean"
               />
               <p>
-                When enabled, users can sign in by entering their email address
-                and a 6-digit code instead of a Plex account. Requires SMTP
-                configuration below.
+                Users sign in with their email address using a 6-digit code.
+                Requires SMTP configuration below.
               </p>
             </div>
 

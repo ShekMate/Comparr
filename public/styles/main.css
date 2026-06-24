@@ -6099,6 +6099,12 @@ footer {
   font-size: 0.85rem;
 }
 
+.settings-field--sub {
+  margin-left: 1.25rem;
+  padding-left: 1rem;
+  border-left: 2px solid var(--color-line);
+}
+
 .settings-checkbox-group {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));

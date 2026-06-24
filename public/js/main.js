@@ -2325,6 +2325,14 @@ function initializeUsersAdminTab() {
 
 // ─────────────────────────────────────────────────────────────
 
+function updatePlexRestrictVisibility() {
+  const plexToggle = document.getElementById('setting-user-auth-enabled')
+  const restrictField = document.getElementById('plex-restrict-field')
+  if (restrictField) {
+    restrictField.toggleAttribute('hidden', !plexToggle?.checked)
+  }
+}
+
 function updateAdminOnlySettingsVisibility() {
   const canSeeAdmin = hasAdminSettingsAccess
 
@@ -2987,6 +2995,7 @@ async function hydrateSettingsForm({ _retryCount = 0 } = {}) {
     )
     setSettingsDirty(false)
     clearSettingsStatusAfterDelay()
+    updatePlexRestrictVisibility()
     return data?.isAdmin === true
   } catch (err) {
     if (err?.message && String(err.message).includes('403')) {
@@ -4555,6 +4564,10 @@ async function hydrateSettingsUiIfAuthorized() {
       el.addEventListener('change', () => setSettingsDirty(true))
       el.dataset.boundSettingsDirty = 'true'
     })
+
+  document
+    .getElementById('setting-user-auth-enabled')
+    ?.addEventListener('change', updatePlexRestrictVisibility)
 
   document
     .querySelector('.settings-save-btn')
@@ -6317,6 +6330,7 @@ function removeFromSeenList(guid, cardEl) {
         .split(',').filter(Boolean).filter(g => g !== guid).join(',')
     }
     card.remove()
+    window._totalSeenCount = Math.max(0, (window._totalSeenCount || 0) - 1)
   }
   viewModeRemoveItem('tab-seen', guid)
 
@@ -6327,6 +6341,7 @@ function removeFromSeenList(guid, cardEl) {
     if (card && listEl) {
       if (savedOrder !== undefined) listEl.dataset.originalOrder = savedOrder
       listEl.insertBefore(card, nextSibling || null)
+      window._totalSeenCount = (window._totalSeenCount || 0) + 1
     }
     if (movieData) viewModeAddItem('tab-seen', movieData)
   })
@@ -6687,6 +6702,9 @@ window.rateRecommendation = async (movie, wantsToWatch) => {
   const seenList = document.querySelector('.seen-list')
   await api.respond({ guid: movie.guid, wantsToWatch })
   await appendRatedRow({ basePath, likesList, dislikesList, seenList }, movie, wantsToWatch)
+  if (wantsToWatch === null) {
+    window._totalSeenCount = (window._totalSeenCount || 0) + 1
+  }
   viewModeRemoveItem('tab-recommendations', movie.guid)
   // Remove the card from the recommendations grid if present
   document.querySelector(`.js-recommendations-list [data-guid="${CSS.escape(movie.guid)}"]`)?.remove()
@@ -8184,7 +8202,7 @@ const main = async () => {
 
     const watchCount = watchCards.length
     const passCount = passCards.length
-    const seenCount = seenCards.length
+    const seenCount = window._totalSeenCount ?? seenCards.length
     const totalRated = watchCount + passCount + seenCount
 
     const setValue = (sel, val) => {
@@ -9460,6 +9478,11 @@ const main = async () => {
       }
     }
 
+    // Track the authoritative seen count so refreshStatsTab() doesn't rely on
+    // DOM node counting (seen list is lazy-loaded, so DOM count is 0 until the
+    // Seen tab is opened).
+    window._totalSeenCount = deferredSeenItems.length
+
     if (deferredSeenItems.length > 0) {
       // Seen items in the loginResponse are now slim (guid+tmdbId only).
       // Fetch full movie data from /api/seen-movies when the user opens
@@ -9486,6 +9509,7 @@ const main = async () => {
           )
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
           const { movies: seenMovies } = await resp.json()
+          window._totalSeenCount = seenMovies.length
 
           let renderIdx = 0
 
@@ -10085,6 +10109,9 @@ const main = async () => {
 
     // Remove the last rated row from UI
     removeLastRatedRow(lastSwipe.wantsToWatch)
+    if (lastSwipe.wantsToWatch === null) {
+      window._totalSeenCount = Math.max(0, (window._totalSeenCount || 0) - 1)
+    }
 
     // Create a new card for the previous movie at the top of the stack
     const cardStack = document.querySelector('.js-card-stack')
@@ -10182,6 +10209,9 @@ const main = async () => {
           m,
           wantsToWatch
         )
+        if (wantsToWatch === null) {
+          window._totalSeenCount = (window._totalSeenCount || 0) + 1
+        }
       } else {
         // Best effort cleanup when we don't have the movie handy (should be rare)
         const fallbackTmdbId = getNormalizedTmdbId({ guid })

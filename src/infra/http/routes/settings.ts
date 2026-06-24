@@ -243,15 +243,25 @@ const isAdminAuthorized = (
   const token = getUserTokenFromCookie(req)
   if (token) {
     const session = getUserSession(token)
-    if (session?.isAdmin) {
+    if (session) {
+      // Authenticated user — session isAdmin is the source of truth.
+      // Do NOT fall through to the local-request check; that would grant
+      // admin to any authenticated user on the LAN.
+      if (session.isAdmin) {
+        log.debug(
+          `[admin-auth] Authorized via session (user=${session.username})`
+        )
+        return true
+      }
       log.debug(
-        `[admin-auth] Authorized via Plex session (user=${session.username})`
+        `[admin-auth] Denied — authenticated user ${session.username} is not admin`
       )
-      return true
+      return false
     }
   }
+  // No authenticated session — fall back to local request (setup / initial access).
   const local = isLocalRequest(req)
-  log.debug(`[admin-auth] No admin session — falling back to isLocal=${local}`)
+  log.debug(`[admin-auth] No session — falling back to isLocal=${local}`)
   return local
 }
 
@@ -259,7 +269,7 @@ const getAdminAuthFailureMessage = (
   _req: CompatRequest,
   _settings: Record<string, unknown>,
   _isLocalRequest: (req: CompatRequest) => boolean
-) => 'Admin access requires signing in with an admin Plex account.'
+) => 'Admin access requires signing in with an admin account.'
 
 const getSetupModeFailureMessage = () =>
   'Setup mode changes are limited to local/private-network requests. Complete setup locally, or set ALLOW_REMOTE_BOOTSTRAP=true for remote initial setup.'
