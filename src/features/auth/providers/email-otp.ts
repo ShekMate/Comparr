@@ -216,6 +216,7 @@ async function sendSmtp(opts: {
 
     // AUTH LOGIN
     if (user && pass) {
+      log.debug(`[smtp] authenticating as ${user}`)
       await smtpWrite(conn, 'AUTH LOGIN')
       const auth1 = await smtpRead(conn)
       assertSmtp(auth1, 334, 'AUTH LOGIN')
