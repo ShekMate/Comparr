@@ -88,13 +88,19 @@
           </div>
         </form>
 
-        <!-- User auth screen — Plex login only -->
+        <!-- User auth screen -->
         <div class="user-auth-form js-user-auth-form u-display-none">
-          <div class="login-intro">
-            <p>Sign in with your Plex account to continue.</p>
+          <!-- Auth provider tabs — shown only when email login is enabled -->
+          <div class="user-auth-tabs js-user-auth-tabs" hidden>
+            <button type="button" class="user-auth-tab js-user-auth-tab active" data-provider="plex">Plex</button>
+            <button type="button" class="user-auth-tab js-user-auth-tab" data-provider="email">Email</button>
           </div>
 
+          <!-- Plex panel -->
           <div class="user-auth-plex js-user-auth-plex u-display-none">
+            <div class="login-intro">
+              <p>Sign in with your Plex account to continue.</p>
+            </div>
             <button
               type="button"
               class="plex-signin-btn server-signin-btn server-signin-btn--plex js-plex-signin-btn"
@@ -114,6 +120,56 @@
             >
               Continue
             </button>
+          </div>
+
+          <!-- Email OTP panel -->
+          <div class="user-auth-email js-user-auth-email u-display-none">
+            <div class="login-intro">
+              <p>Enter your email address to receive a login code.</p>
+            </div>
+
+            <!-- Step 1: request code -->
+            <form class="email-otp-form js-email-request-form">
+              <div class="email-otp-input-row">
+                <input
+                  type="email"
+                  class="email-otp-input js-email-input"
+                  placeholder="you@example.com"
+                  autocomplete="email"
+                  required
+                />
+                <button type="submit" class="submit-button email-otp-send-btn js-email-send-btn">
+                  Send Code
+                </button>
+              </div>
+            </form>
+
+            <!-- Step 2: verify code -->
+            <form class="email-otp-form js-email-verify-form" hidden>
+              <p class="email-otp-sent-note">
+                Code sent to <strong class="js-email-sent-to"></strong>
+              </p>
+              <div class="email-otp-input-row">
+                <input
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  maxlength="6"
+                  class="email-otp-input email-otp-code-input js-email-code-input"
+                  placeholder="000000"
+                  autocomplete="one-time-code"
+                  required
+                />
+                <button type="submit" class="submit-button email-otp-send-btn js-email-verify-btn">
+                  Sign In
+                </button>
+              </div>
+              <button type="button" class="email-otp-back-btn js-email-back-btn">
+                Use a different email
+              </button>
+            </form>
+
+            <p class="user-auth-status js-email-status" hidden></p>
           </div>
         </div>
 
@@ -996,41 +1052,6 @@
 
         </div>
       </section>
-
-      <!-- Server-sharing consent modal -->
-      <div
-        class="server-sharing-modal js-server-sharing-modal"
-        hidden
-        aria-modal="true"
-        role="dialog"
-        aria-labelledby="server-sharing-modal-title"
-      >
-        <div class="server-sharing-modal-card">
-          <h2
-            id="server-sharing-modal-title"
-            class="server-sharing-modal-title"
-          >
-            Library Sharing Request
-          </h2>
-          <p class="server-sharing-modal-body js-server-sharing-modal-body"></p>
-          <p class="server-sharing-modal-note">
-            If you accept, movies from their media server that match
-            <strong>your current filters</strong> will be included in your swipe
-            pool alongside your own library.
-          </p>
-          <div class="server-sharing-modal-actions">
-            <button type="button" class="btn-primary js-server-sharing-accept">
-              Include their library
-            </button>
-            <button
-              type="button"
-              class="btn-secondary js-server-sharing-decline"
-            >
-              No thanks
-            </button>
-          </div>
-        </div>
-      </div>
 
       <!-- ===== Liked panel ===== -->
       <section class="tab-panel" id="tab-likes" hidden>
@@ -3315,6 +3336,75 @@
                 server can sign in. When disabled, any Plex account can sign in.
               </p>
             </div>
+
+            <!-- Email Login (OTP) -->
+            <div class="settings-field settings-field--toggle">
+              <label for="setting-email-login-enabled">Enable email magic-link login</label>
+              <input
+                id="setting-email-login-enabled"
+                type="checkbox"
+                data-setting-key="EMAIL_LOGIN_ENABLED"
+                data-setting-type="boolean"
+              />
+              <p>
+                When enabled, users can sign in by entering their email address
+                and a 6-digit code instead of a Plex account. Requires SMTP
+                configuration below.
+              </p>
+            </div>
+
+            <div class="settings-field">
+              <label for="setting-smtp-host">SMTP Host</label>
+              <input
+                id="setting-smtp-host"
+                type="text"
+                data-setting-key="SMTP_HOST"
+                placeholder="smtp.example.com"
+                autocomplete="off"
+              />
+            </div>
+            <div class="settings-field">
+              <label for="setting-smtp-port">SMTP Port</label>
+              <input
+                id="setting-smtp-port"
+                type="number"
+                data-setting-key="SMTP_PORT"
+                placeholder="587"
+                min="1"
+                max="65535"
+              />
+            </div>
+            <div class="settings-field">
+              <label for="setting-smtp-user">SMTP Username</label>
+              <input
+                id="setting-smtp-user"
+                type="text"
+                data-setting-key="SMTP_USER"
+                placeholder="user@example.com"
+                autocomplete="off"
+              />
+            </div>
+            <div class="settings-field">
+              <label for="setting-smtp-pass">SMTP Password</label>
+              <input
+                id="setting-smtp-pass"
+                type="password"
+                data-setting-key="SMTP_PASS"
+                placeholder=""
+                autocomplete="new-password"
+              />
+            </div>
+            <div class="settings-field">
+              <label for="setting-smtp-from">From Address</label>
+              <input
+                id="setting-smtp-from"
+                type="text"
+                data-setting-key="SMTP_FROM"
+                placeholder="Comparr &lt;noreply@example.com&gt;"
+                autocomplete="off"
+              />
+              <p>Leave blank to use the SMTP username.</p>
+            </div>
           </div>
 
           <div
@@ -3489,5 +3579,12 @@
 
     <!-- Load JS from site root -->
     <script src="/js/main.js?v=20260301a" type="module" defer></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {})
+        })
+      }
+    </script>
   </body>
 </html>

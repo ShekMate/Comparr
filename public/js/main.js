@@ -5023,9 +5023,44 @@ async function login(api) {
   }
 
   if (!currentUser) {
-    // Show Plex-only login screen
+    // Determine which auth providers are available
+    let authProviders = ['plex']
+    try {
+      const providersData = await api.getAuthProviders()
+      if (Array.isArray(providersData?.providers)) {
+        authProviders = providersData.providers.map(p => p.id)
+      }
+    } catch { /* fallback to plex only */ }
+
+    const emailEnabled = authProviders.includes('email')
+
+    // Show login screen
     if (userAuthForm) userAuthForm.style.display = 'flex'
-    if (userAuthPlex) userAuthPlex.style.display = 'flex'
+
+    // Show tabs only when both providers are available
+    const userAuthTabs = document.querySelector('.js-user-auth-tabs')
+    const userAuthEmail = document.querySelector('.js-user-auth-email')
+    if (emailEnabled && userAuthTabs) {
+      userAuthTabs.hidden = false
+    }
+
+    // Activate the selected provider panel
+    let activeProvider = 'plex'
+    const showAuthProvider = provider => {
+      activeProvider = provider
+      if (userAuthPlex) userAuthPlex.style.display = provider === 'plex' ? 'flex' : 'none'
+      if (userAuthEmail) userAuthEmail.style.display = provider === 'email' ? 'flex' : 'none'
+      document.querySelectorAll('.js-user-auth-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.provider === provider)
+      })
+    }
+
+    showAuthProvider('plex')
+
+    // Wire tab buttons
+    document.querySelectorAll('.js-user-auth-tab').forEach(tab => {
+      tab.addEventListener('click', () => showAuthProvider(tab.dataset.provider))
+    })
 
     await new Promise(resolve => {
       let sessionWatcher = null
@@ -5212,6 +5247,79 @@ async function login(api) {
               plexStatus.textContent = errorMessage
             }
             showPlexContinue(errorMessage)
+          }
+        })
+      }
+
+      // ── Email OTP flow ───────────────────────────────────────────────────
+      if (emailEnabled) {
+        const emailRequestForm = document.querySelector('.js-email-request-form')
+        const emailVerifyForm = document.querySelector('.js-email-verify-form')
+        const emailInput = document.querySelector('.js-email-input')
+        const emailCodeInput = document.querySelector('.js-email-code-input')
+        const emailSentTo = document.querySelector('.js-email-sent-to')
+        const emailStatus = document.querySelector('.js-email-status')
+        const emailBackBtn = document.querySelector('.js-email-back-btn')
+
+        const setEmailStatus = (msg, isError) => {
+          if (!emailStatus) return
+          emailStatus.textContent = msg
+          emailStatus.hidden = !msg
+          emailStatus.style.color = isError ? 'var(--color-error, #f87171)' : ''
+        }
+
+        const showEmailStep = step => {
+          if (emailRequestForm) emailRequestForm.hidden = step !== 'request'
+          if (emailVerifyForm) emailVerifyForm.hidden = step !== 'verify'
+          setEmailStatus('', false)
+        }
+
+        showEmailStep('request')
+
+        emailBackBtn?.addEventListener('click', () => {
+          showEmailStep('request')
+          if (emailInput) emailInput.value = ''
+          if (emailCodeInput) emailCodeInput.value = ''
+        })
+
+        emailRequestForm?.addEventListener('submit', async e => {
+          e.preventDefault()
+          const email = emailInput?.value?.trim() || ''
+          if (!email) return
+          const sendBtn = emailRequestForm.querySelector('.js-email-send-btn')
+          if (sendBtn) sendBtn.disabled = true
+          setEmailStatus('Sending code…', false)
+          try {
+            await api.requestEmailOtp(email)
+            if (emailSentTo) emailSentTo.textContent = email
+            showEmailStep('verify')
+            emailCodeInput?.focus()
+          } catch (err) {
+            setEmailStatus(err.message || 'Could not send code. Try again.', true)
+          } finally {
+            if (sendBtn) sendBtn.disabled = false
+          }
+        })
+
+        emailVerifyForm?.addEventListener('submit', async e => {
+          e.preventDefault()
+          const email = emailInput?.value?.trim() || ''
+          const otp = emailCodeInput?.value?.trim() || ''
+          if (!email || !otp) return
+          const verifyBtn = emailVerifyForm.querySelector('.js-email-verify-btn')
+          if (verifyBtn) verifyBtn.disabled = true
+          setEmailStatus('Verifying…', false)
+          try {
+            const result = await api.verifyEmailOtp(email, otp)
+            if (result?.user) {
+              handleUserLoggedIn(result.user)
+            } else {
+              setEmailStatus('Unexpected response. Please try again.', true)
+              if (verifyBtn) verifyBtn.disabled = false
+            }
+          } catch (err) {
+            setEmailStatus(err.message || 'Invalid code. Please try again.', true)
+            if (verifyBtn) verifyBtn.disabled = false
           }
         })
       }
@@ -7317,15 +7425,6 @@ const main = async () => {
   const matchesCombinedList = document.querySelector('.js-matches-combined')
   let _selectedFriendIds = null // null = all friends
 
-  // Server-sharing consent modal elements
-  const sharingModal = document.querySelector('.js-server-sharing-modal')
-  const sharingModalBody = document.querySelector(
-    '.js-server-sharing-modal-body'
-  )
-  const sharingAcceptBtn = document.querySelector('.js-server-sharing-accept')
-  const sharingDeclineBtn = document.querySelector('.js-server-sharing-decline')
-  let _sharingPromptQueue = []
-
   const setMatchesStatus = (msg, isError = false) => {
     if (!matchesStatus) return
     matchesStatus.textContent = msg
@@ -7336,75 +7435,81 @@ const main = async () => {
   }
 
   const renderMatchMovie = (movie, friendName) => {
-    const posterUrl = movie.art || movie.thumb || ''
-    const imgHtml = posterUrl
-      ? `<div class="watch-card-poster"><img src="${
-          posterUrl.startsWith('http') ? posterUrl : basePath + posterUrl
-        }" alt="${movie.title} poster" loading="lazy" /></div>`
+    const movieBasePath = basePath || document.body.dataset.basePath || ''
+    const rawPoster = movie.art || movie.thumb || movie.poster || ''
+    const posterSrc = rawPoster
+      ? (rawPoster.startsWith('http') ? rawPoster : movieBasePath + rawPoster)
       : ''
+    const year = movie.year || (movie.release_date ? String(movie.release_date).slice(0, 4) : '')
+
+    const imgHtml = posterSrc
+      ? `<div class="match-card-poster"><img src="${posterSrc}" alt="${movie.title} poster" loading="lazy"></div>`
+      : ''
+
+    // Genres: handle both string arrays (Plex) and numeric ID arrays (TMDb)
+    const rawGenres = Array.isArray(movie.genres) ? movie.genres : []
+    const genres = rawGenres.every(g => typeof g === 'string')
+      ? rawGenres
+      : getGenreNames(rawGenres.map(g => (typeof g === 'object' && g !== null ? g.id : g)))
+
+    const runtimeMin = Number(movie.runtime) || Number(movie.runtimeMinutes) ||
+      (movie.duration ? Math.round(movie.duration / 60000) : 0)
+    const runtimeStr = runtimeMin > 0 && runtimeMin < 1000 ? formatRuntime(runtimeMin) : ''
+
+    const badgesHtml = [
+      movie.contentRating ? `<span class="metadata-badge badge-rating"><i class="fas fa-tag"></i> ${movie.contentRating}</span>` : '',
+      genres.length ? `<span class="metadata-badge badge-genre"><i class="fas fa-film"></i> ${genres.slice(0, 3).join(', ')}</span>` : '',
+      runtimeStr ? `<span class="metadata-badge badge-runtime"><i class="fas fa-clock"></i> ${runtimeStr}</span>` : '',
+    ].filter(Boolean).join('')
+
+    const ratingHtml = buildRatingHtml(movie, movieBasePath)
+
+    const streaming = movie.streamingServices || {}
+    const allProviders = [...(streaming.subscription || []), ...(streaming.free || [])]
+    const seenNames = new Set()
+    const uniqueProviders = allProviders.filter(p => {
+      if (!p?.name || seenNames.has(p.name)) return false
+      seenNames.add(p.name)
+      return true
+    })
+    const whereToWatchHtml = uniqueProviders.length ? `
+      <div class="where-to-watch">
+        <div class="where-to-watch-title">Where to Watch</div>
+        <div class="provider-pill-list">
+          ${uniqueProviders.map(p => {
+            const logo = p.logo_path
+              ? (p.logo_path.startsWith('/assets/') ? `${movieBasePath}${p.logo_path}` : `https://image.tmdb.org/t/p/w92${p.logo_path}`)
+              : null
+            return `<span class="provider-pill">${logo ? `<img src="${logo}" alt="${p.name}" class="provider-pill-logo">` : ''}<span class="provider-pill-name">${p.name}</span></span>`
+          }).join('')}
+        </div>
+      </div>` : ''
+
     return `
       <div class="watch-card" data-guid="${movie.guid}">
         <div class="watch-card-collapsed">
           <div class="watch-card-header-compact">
             <div class="watch-card-title-compact">
-              ${movie.title}${
-      movie.year ? ` <span class="watch-card-year">(${movie.year})</span>` : ''
-    }
+              ${movie.title}${year ? ` <span class="watch-card-year">(${year})</span>` : ''}
             </div>
             <div class="expand-icon"><i class="fas fa-chevron-down"></i></div>
           </div>
         </div>
         <div class="watch-card-details">
-          ${imgHtml}
-          <div class="watch-card-content">
-            ${
-              movie.summary
-                ? `<p class="watch-card-summary">${movie.summary}</p>`
-                : ''
-            }
-            <div class="watch-card-metadata">
-              <i class="fas fa-heart"></i>
-              You and ${friendName} both want to watch this
+          <div class="match-card-body">
+            ${imgHtml}
+            <div class="match-card-info">
+              ${movie.summary ? `<p class="watch-card-summary">${movie.summary}</p>` : ''}
+              ${badgesHtml ? `<div class="view-detail-meta">${badgesHtml}</div>` : ''}
+              ${ratingHtml ? `<div class="watch-card-ratings view-detail-ratings">${ratingHtml}</div>` : ''}
+              ${whereToWatchHtml}
+              <div class="watch-card-metadata">
+                <i class="fas fa-heart"></i> You and ${friendName} both want to watch this
+              </div>
             </div>
           </div>
         </div>
       </div>`
-  }
-
-  // Show server-sharing consent modal for one pending prompt at a time.
-  const processNextSharingPrompt = () => {
-    if (!sharingModal || !_sharingPromptQueue.length) {
-      if (sharingModal) sharingModal.hidden = true
-      return
-    }
-    const { friendUserId, friendName } = _sharingPromptQueue[0]
-    if (sharingModalBody) {
-      sharingModalBody.textContent = `${friendName} would like to share their media library with you.`
-    }
-    sharingModal.hidden = false
-    sharingModal.dataset.friendUserId = friendUserId
-
-    const resolve = async accepts => {
-      sharingModal.hidden = true
-      _sharingPromptQueue.shift()
-      try {
-        await fetch(`${basePath}/api/matches/resolve-server-prompt`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ friendUserId, acceptsServer: accepts }),
-        })
-      } catch {
-        /* ignore */
-      }
-      processNextSharingPrompt()
-    }
-
-    sharingAcceptBtn?.addEventListener('click', () => resolve(true), {
-      once: true,
-    })
-    sharingDeclineBtn?.addEventListener('click', () => resolve(false), {
-      once: true,
-    })
   }
 
   const renderPendingRequests = connections => {
@@ -7432,10 +7537,6 @@ const main = async () => {
       <div class="matches-pending-card" data-friend-id="${conn.friendUserId}">
         <span class="matches-pending-name">${conn.friendName}</span>
         <div class="matches-pending-actions">
-          <label class="matches-pending-share-label">
-            <input type="checkbox" class="js-pending-share-check" />
-            Share my library
-          </label>
           <button type="button" class="btn-primary js-pending-accept" data-friend-id="${conn.friendUserId}">Accept</button>
           <button type="button" class="btn-ghost js-pending-decline" data-friend-id="${conn.friendUserId}">Decline</button>
         </div>
@@ -7446,15 +7547,12 @@ const main = async () => {
     matchesPendingList.querySelectorAll('.js-pending-accept').forEach(btn => {
       btn.addEventListener('click', async () => {
         const friendId = Number(btn.dataset.friendId)
-        const card = btn.closest('.matches-pending-card')
-        const sharesServer =
-          card?.querySelector('.js-pending-share-check')?.checked ?? false
         btn.disabled = true
         try {
           const res = await fetch(`${basePath}/api/matches/accept`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ requesterId: friendId, sharesServer }),
+            body: JSON.stringify({ requesterId: friendId, sharesServer: false }),
           })
           if (!res.ok) throw new Error()
           await loadMatchesData()
@@ -7559,19 +7657,6 @@ const main = async () => {
     if (!matchesSidebarFriends || !matchesSidebarFriendsList) return
     const accepted = connections.filter(c => c.status === 'accepted')
 
-    // Queue server-sharing prompts
-    const prompts = accepted.filter(
-      c => c.serverPromptPending && c.friendSharesServerWithMe
-    )
-    for (const c of prompts) {
-      if (!_sharingPromptQueue.some(q => q.friendUserId === c.friendUserId)) {
-        _sharingPromptQueue.push({ friendUserId: c.friendUserId, friendName: c.friendName })
-      }
-    }
-    if (_sharingPromptQueue.length && sharingModal?.hidden !== false) {
-      processNextSharingPrompt()
-    }
-
     if (!accepted.length) {
       matchesSidebarFriends.hidden = true
       matchesSidebarFriendsList.innerHTML = ''
@@ -7589,25 +7674,18 @@ const main = async () => {
     }
 
     matchesSidebarFriendsList.innerHTML = accepted.map(conn => {
-      const { friendUserId, friendName, sharesServer, friendSharesServerWithMe, matches } = conn
+      const { friendUserId, friendName, matches } = conn
       const matchCount = matches ? matches.length : 0
       const matchLabel = matchCount === 1 ? '1 match' : `${matchCount} matches`
       const isChecked = _selectedFriendIds === null || _selectedFriendIds.has(friendUserId)
-      const sharingIcon = friendSharesServerWithMe
-        ? ` <i class="fas fa-server" title="Sharing their library with you" style="font-size:0.75rem;opacity:0.6"></i>`
-        : ''
       return `
         <div class="matches-sidebar-friend-item" data-friend-id="${friendUserId}">
           <label class="matches-sidebar-friend-label">
             <input type="checkbox" class="js-matches-friend-select" data-friend-id="${friendUserId}" ${isChecked ? 'checked' : ''}>
-            <span class="matches-sidebar-friend-name">${friendName}${sharingIcon}</span>
+            <span class="matches-sidebar-friend-name">${friendName}</span>
             <span class="matches-sidebar-friend-count">${matchLabel}</span>
           </label>
           <div class="matches-sidebar-friend-actions">
-            <label class="matches-share-toggle" title="Share your library with ${friendName}" style="flex:1">
-              <input type="checkbox" class="js-friend-share-toggle" data-friend-id="${friendUserId}" ${sharesServer ? 'checked' : ''}>
-              <span class="matches-share-toggle-label">Share library</span>
-            </label>
             <button class="matches-remove-btn" type="button" data-friend-id="${friendUserId}"
               title="Remove ${friendName}" aria-label="Remove ${friendName}">Remove</button>
           </div>
@@ -7623,22 +7701,6 @@ const main = async () => {
           ? null
           : new Set(checked.map(c => Number(c.dataset.friendId)))
         renderCombinedMatches(connections)
-      })
-    })
-
-    // Wire sharing toggles
-    matchesSidebarFriendsList.querySelectorAll('.js-friend-share-toggle').forEach(toggle => {
-      toggle.addEventListener('change', async () => {
-        const friendId = Number(toggle.dataset.friendId)
-        try {
-          await fetch(`${basePath}/api/matches/sharing`, {
-            method: 'PUT',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ friendUserId: friendId, sharesServer: toggle.checked }),
-          })
-        } catch {
-          toggle.checked = !toggle.checked
-        }
       })
     })
 
