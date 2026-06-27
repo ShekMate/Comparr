@@ -590,9 +590,11 @@ body:not(.is-logged-in) .card-stack:empty::after {
   backdrop-filter: blur(20px);
 }
 
-.card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+@media (hover: hover) {
+  .card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  }
 }
 
 /* Poster */
