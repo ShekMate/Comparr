@@ -386,10 +386,12 @@ th.sorted .vt-sort-icon {
   border: 1px solid transparent;
 }
 
-.poster-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
-  border-color: var(--color-surface-light);
+@media (hover: hover) {
+  .poster-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--color-surface-light);
+  }
 }
 
 .poster-card-img-wrap {
@@ -410,8 +412,10 @@ th.sorted .vt-sort-icon {
   transition: transform 0.25s ease;
 }
 
-.poster-card:hover .poster-card-img-wrap img {
-  transform: scale(1.03);
+@media (hover: hover) {
+  .poster-card:hover .poster-card-img-wrap img {
+    transform: scale(1.03);
+  }
 }
 
 .poster-card-no-img {
@@ -666,6 +670,9 @@ th.sorted .vt-sort-icon {
   }
 
   .view-detail-summary {
+    display: -webkit-box;
     -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 }
