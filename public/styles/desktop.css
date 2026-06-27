@@ -467,26 +467,26 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: 0.6rem;
   }
 
   .watch-card-summary {
-    font-size: 1.05rem !important;
-    line-height: 1.6 !important;
+    font-size: 0.9rem !important;
+    line-height: 1.55 !important;
     margin: 0 !important;
   }
 
   .watch-card-metadata {
-    font-size: 1.05rem !important;
+    font-size: 0.8rem !important;
     margin: 0 !important;
   }
 
   .watch-card-metadata .metadata-badge {
-    font-size: 1.05rem !important;
+    font-size: 0.75rem !important;
   }
 
   .watch-card-metadata .metadata-badge i {
-    font-size: 1.05rem !important;
+    font-size: 0.65rem !important;
   }
 
   .watch-list-header {

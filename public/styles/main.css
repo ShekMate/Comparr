@@ -4295,7 +4295,7 @@ body[data-user-type='guest'] .compare-ui {
 .watch-list {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem; /* Tighter spacing */
+  gap: 0.6rem;
   width: 100%;
 }
 
@@ -4304,7 +4304,7 @@ body[data-user-type='guest'] .compare-ui {
 .seen-list {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.6rem;
   width: 100%;
 }
 
@@ -4483,10 +4483,15 @@ body[data-user-type='guest'] .compare-ui {
   align-self: stretch;
 }
 
+.watch-card.expanded {
+  background: var(--color-surface-alt);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
 .watch-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
-  border-color: transparent;
+  border-color: rgba(255, 255, 255, 0.12);
   z-index: 2;
 }
 
@@ -4600,7 +4605,7 @@ body[data-user-type='guest'] .compare-ui {
 .watch-card-details {
   display: none;
   padding: 1rem;
-  border-top: 1px solid transparent;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .watch-card.expanded .watch-card-details {
@@ -4659,20 +4664,20 @@ body[data-user-type='guest'] .compare-ui {
 }
 
 .badge-rating {
-  background: transparent;
-  border-color: transparent;
+  background: rgba(96, 165, 250, 0.1);
+  border-color: rgba(96, 165, 250, 0.25);
   color: #60a5fa;
 }
 
 .badge-genre {
-  background: transparent;
-  border-color: transparent;
+  background: rgba(167, 139, 250, 0.1);
+  border-color: rgba(167, 139, 250, 0.25);
   color: #a78bfa;
 }
 
 .badge-runtime {
-  background: transparent;
-  border-color: transparent;
+  background: rgba(74, 222, 128, 0.1);
+  border-color: rgba(74, 222, 128, 0.25);
   color: #4ade80;
 }
 
