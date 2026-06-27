@@ -447,8 +447,8 @@
   .watch-card.expanded .watch-card-details {
     display: flex !important;
     flex-direction: row;
-    gap: 2rem;
-    padding: 1.5rem !important;
+    gap: 1.25rem;
+    padding: 1rem 1.25rem 1.25rem !important;
   }
 
   .watch-card-poster {
@@ -458,8 +458,8 @@
   }
 
   .watch-card.expanded .watch-card-poster img {
-    width: 172px !important;
-    height: 258px !important;
+    width: 100px !important;
+    height: 150px !important;
     object-fit: cover;
   }
 
