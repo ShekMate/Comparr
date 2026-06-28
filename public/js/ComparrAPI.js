@@ -201,28 +201,6 @@ export class ComparrAPI extends EventTarget {
     return data
   }
 
-  async loginWithJellyfin(username, password) {
-    const res = await fetch(`${this._basePath}/api/auth/jellyfin`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-    })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.error || 'Jellyfin login failed.')
-    return data
-  }
-
-  async loginWithEmby(username, password) {
-    const res = await fetch(`${this._basePath}/api/auth/emby`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-    })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.error || 'Emby login failed.')
-    return data
-  }
-
   async requestEmailOtp(email) {
     const res = await fetch(`${this._basePath}/api/auth/email/request`, {
       method: 'POST',
@@ -251,53 +229,6 @@ export class ComparrAPI extends EventTarget {
     }).catch(() => {})
   }
 
-  async createGuestSession(guestToken) {
-    const res = await fetch(`${this._basePath}/api/auth/guest`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ guestToken: guestToken || '' }),
-    })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.error || 'Could not start guest session.')
-    return data // { guestToken, roomCode, name }
-  }
-
-  async checkRoomExists(roomCode) {
-    const normalizedCode = String(roomCode || '')
-      .trim()
-      .toUpperCase()
-
-    const res = await fetch(
-      `${this._basePath}/api/rooms/exists?code=${encodeURIComponent(
-        normalizedCode
-      )}`
-    )
-    const data = await res.json().catch(() => ({}))
-
-    if (!res.ok || !data.success) {
-      throw new Error(
-        data.message || 'Unable to check room code. Please try again.'
-      )
-    }
-
-    return data
-  }
-
-  async generateRoomCode() {
-    const res = await fetch(`${this._basePath}/api/rooms/generate`, {
-      method: 'POST',
-    })
-    const data = await res.json().catch(() => ({}))
-
-    if (!res.ok || !data.success || !data.roomCode) {
-      throw new Error(
-        data.message ||
-          'Unable to generate room code right now. Please try again.'
-      )
-    }
-
-    return data.roomCode
-  }
 
   async login(user, roomCode, accessPassword, forceTakeover = false) {
     await this._waitOpen()
@@ -430,41 +361,6 @@ export class ComparrAPI extends EventTarget {
   _getBasePath() {
     return location.pathname.replace(/\/(index\.html)?$/, '')
   }
-
-  /**
-   * Read previously rated items for this user in this room.
-   * If your server uses a different route or param names, change the URL below.
-   * Returns whatever JSON your server sends; 404 returns an empty list.
-   */
-  async getUserDecisions(roomCode, userName) {
-    const base = this._getBasePath()
-    const url = `${base}/api/session-state?code=${encodeURIComponent(
-      roomCode
-    )}&user=${encodeURIComponent(userName)}`
-
-    const res = await fetch(url)
-    if (res.status === 404) {
-      // No endpoint yet — let the caller proceed with no history.
-      return { rated: [] }
-    }
-    if (!res.ok) {
-      throw new Error(`GET ${url} failed: ${res.status}`)
-    }
-    return res.json()
-  }
-
-  /**
-   * Return a minimal movie record from the in-memory list; no network call.
-   * Used when hydrating the Watch/Pass tabs so we can show title/art.
-   */
-  async getMovieSummary(guid) {
-    const m = this.getMovie(guid)
-    if (!m) return null
-    const { title, year, art } = m
-    return { guid, title, year, art }
-  }
-
-  // ================== PASTE ENDS HERE ==================
 
   async getRecommendations(tmdbId) {
     const base = this._getBasePath()

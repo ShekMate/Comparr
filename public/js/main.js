@@ -4697,28 +4697,6 @@ function applyCurrentSeenListSort() {
 async function login(api) {
   const loginSection = document.querySelector('.login-section')
   const passwordForm = document.querySelector('.js-password-form')
-  const loginForm = document.querySelector('.js-login-form')
-  const modeForm = document.querySelector('.js-mode-form')
-  const roomCodeInput = loginForm?.elements?.roomCode
-  const generatedRoomCodeInput = loginForm?.elements?.generatedRoomCode
-  const roomCodeError = document.querySelector('.js-room-code-error')
-  const loginError = document.querySelector('.js-login-error')
-  const roomStepInstruction = document.querySelector(
-    '.js-room-step-instruction'
-  )
-  const roomModeTabs = [...document.querySelectorAll('.js-room-mode-tab')]
-  const roomModePanels = [...document.querySelectorAll('.js-room-code-panel')]
-  const loginSubmitButton = document.querySelector('.js-login-submit-button')
-  const generateBtn = document.querySelector('.js-generate-room-code')
-  const roomCodeLine = document.querySelector('.js-room-code-line')
-  const i18nRoomExistsMessage =
-    document.body.dataset.i18nRoomExistsMessage ||
-    'Room Code already Exists. Try again or click Generate.'
-  const i18nRoomNotFoundMessage =
-    document.body.dataset.i18nRoomNotFoundMessage ||
-    'Room code not found, try again or create a new one by toggling New here? to YES.'
-  const loginHelperCopy = document.querySelector('.login-helper-copy')
-
   const passwordError = document.createElement('p')
   passwordError.className = 'password-error-message'
   passwordError.hidden = true
@@ -4729,214 +4707,12 @@ async function login(api) {
     passwordError.hidden = !message
   }
 
-  const setRoomCodeError = message => {
-    if (!roomCodeError) return
-    roomCodeError.textContent = message
-    roomCodeError.hidden = !message
-  }
-
-  const setLoginError = message => {
-    if (!loginError) return
-    loginError.textContent = message
-    loginError.hidden = !message
-  }
-
-  const promptActiveSessionTakeover = () => {
-    const overlay = document.getElementById('active-session-overlay')
-    const popup = document.getElementById('active-session-popup')
-    const continueBtn = document.getElementById('active-session-continue-btn')
-    const cancelBtn = document.getElementById('active-session-cancel-btn')
-
-    if (!overlay || !popup || !continueBtn || !cancelBtn) {
-      return Promise.resolve(
-        window.confirm(
-          'You already have an active session. Continue to log out all other active sessions on all devices?'
-        )
-      )
-    }
-
-    const closePrompt = () => {
-      popup.classList.remove('active')
-      overlay.classList.remove('active')
-    }
-
-    return new Promise(resolve => {
-      const cleanup = () => {
-        continueBtn.removeEventListener('click', onContinue)
-        cancelBtn.removeEventListener('click', onCancel)
-        overlay.removeEventListener('click', onCancel)
-      }
-
-      const onContinue = () => {
-        cleanup()
-        closePrompt()
-        resolve(true)
-      }
-
-      const onCancel = () => {
-        cleanup()
-        closePrompt()
-        if (modeForm) modeForm.style.display = 'grid'
-        loginForm.style.display = 'none'
-        setLoginError('')
-        window.scrollTo({ top: 0, behavior: 'smooth' })
-        resolve(false)
-      }
-
-      continueBtn.addEventListener('click', onContinue)
-      cancelBtn.addEventListener('click', onCancel)
-      overlay.addEventListener('click', onCancel)
-
-      overlay.classList.add('active')
-      popup.classList.add('active')
-    })
-  }
-
-  const normalizeRoomCodeInput = value =>
-    String(value || '')
-      .trim()
-      .toUpperCase()
-      .replace(/[^0-9A-Z]/g, '')
-      .slice(0, 4)
-
-  let roomMode = 'join'
-  let selectedMode = 'group'
-
-  const getActiveRoomCode = () => {
-    if (roomMode === 'create') {
-      return normalizeRoomCodeInput(generatedRoomCodeInput?.value)
-    }
-
-    return normalizeRoomCodeInput(roomCodeInput?.value)
-  }
-
-  const setActiveRoomCode = code => {
-    const normalized = normalizeRoomCodeInput(code)
-    if (roomMode === 'create') {
-      if (generatedRoomCodeInput) generatedRoomCodeInput.value = normalized
-      return
-    }
-
-    if (roomCodeInput) roomCodeInput.value = normalized
-  }
-
-  const syncRoomCodeInputs = () => {
-    if (roomMode === 'create') {
-      if (generatedRoomCodeInput) {
-        generatedRoomCodeInput.value = normalizeRoomCodeInput(
-          generatedRoomCodeInput.value
-        )
-      }
-      return
-    }
-
-    if (roomCodeInput) {
-      roomCodeInput.value = normalizeRoomCodeInput(roomCodeInput.value)
-    }
-  }
-
-  const getRoomStepCopy = (mode, selectedMode) => {
-    const isCreate = mode === 'create'
-    const isPersonalMode = selectedMode === 'personal'
-
-    if (!isCreate) {
-      return 'Room Code'
-    }
-
-    return isPersonalMode
-      ? 'Create a new private room code.'
-      : 'Create a new group room code.'
-  }
-
-  const setRoomMode = (mode, selectedMode = 'group') => {
-    roomMode = mode === 'create' ? 'create' : 'join'
-    const isJoinMode = roomMode === 'join'
-    const isCreateMode = roomMode === 'create'
-
-    roomModeTabs.forEach(tab => {
-      const active = tab.dataset.roomMode === roomMode
-      tab.classList.toggle('is-active', active)
-      tab.setAttribute('aria-selected', active ? 'true' : 'false')
-    })
-
-    roomModePanels.forEach(panel => {
-      panel.hidden = panel.dataset.roomModePanel !== roomMode
-    })
-
-    if (roomStepInstruction) {
-      roomStepInstruction.textContent = getRoomStepCopy(roomMode, selectedMode)
-    }
-
-    if (loginHelperCopy) {
-      loginHelperCopy.hidden = roomMode !== 'join'
-    }
-
-    if (loginSubmitButton) {
-      loginSubmitButton.hidden = roomMode === 'join'
-    }
-
-    if (roomCodeInput) {
-      roomCodeInput.required = isJoinMode
-      roomCodeInput.disabled = !isJoinMode
-    }
-
-    if (generatedRoomCodeInput) {
-      generatedRoomCodeInput.required = isCreateMode
-      generatedRoomCodeInput.disabled = !isCreateMode
-    }
-
-    setRoomCodeError('')
-    setLoginError('')
-    syncRoomCodeInputs()
-  }
-
-  roomModeTabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      setRoomMode(tab.dataset.roomMode, selectedMode)
-    })
-  })
-
-  const handleRoomCodeInput = event => {
-    const normalized = normalizeRoomCodeInput(event.target.value)
-    event.target.value = normalized
-    syncRoomCodeInputs()
-    setRoomCodeError('')
-    setLoginError('')
-  }
-
-  roomCodeInput?.addEventListener('input', handleRoomCodeInput)
-  generatedRoomCodeInput?.addEventListener('input', handleRoomCodeInput)
-
   let verifiedPassword = null
-
-  const showModeForm = () => {
-    if (userAuthForm) userAuthForm.style.display = 'none'
-    if (modeForm) modeForm.style.display = 'grid'
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-
-    // Restore cached group credentials (skip if we have identity from auth)
-    const savedUser = currentUser?.username || localStorage.getItem('user')
-    const savedCode = localStorage.getItem('roomCode')
-    const normalizedSavedCode = normalizeRoomCodeInput(savedCode)
-    const hasMeaningfulSavedGroupCredentials =
-      Boolean(savedUser && normalizedSavedCode) &&
-      !(savedUser.trim() === 'Solo' && normalizedSavedCode === 'SOLO')
-
-    if (hasMeaningfulSavedGroupCredentials) {
-      loginForm.elements.name.value = savedUser
-      if (roomCodeInput) roomCodeInput.value = normalizedSavedCode
-    }
-
-    setRoomMode('join', selectedMode)
-  }
 
   const handleVerifiedPassword = accessPassword => {
     setPasswordError('')
-    setLoginError('')
     verifiedPassword = accessPassword
     passwordForm.style.display = 'none'
-    // User auth step will show mode form when done; if auth not needed,
-    // showModeForm() is called directly after this.
   }
 
   const userAuthForm = document.querySelector('.js-user-auth-form')
@@ -4967,13 +4743,11 @@ async function login(api) {
   let currentUser = window.COMPARR_USER || null
   let isGuest = false
 
-  if (passwordForm && loginForm && modeForm) {
+  if (passwordForm) {
     // Keep the access password form hidden until we know one is required.
     // This prevents a brief flash before the Plex auth screen when no
     // access password is configured.
     passwordForm.style.display = 'none'
-    modeForm.style.display = 'none'
-    loginForm.style.display = 'none'
     if (userAuthForm) userAuthForm.style.display = 'none'
   }
 
@@ -5392,8 +5166,6 @@ async function login(api) {
   // mode picker and login form entirely.
   const revealApp = async (name, code, loginApiData) => {
     if (userAuthForm) userAuthForm.style.display = 'none'
-    if (modeForm) modeForm.style.display = 'none'
-    if (loginForm) loginForm.style.display = 'none'
 
     await loginSection.animate(
       { opacity: ['1', '0'] },
