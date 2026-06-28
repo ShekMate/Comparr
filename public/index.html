@@ -43,11 +43,7 @@
     data-i18n-exhausted-cards="${RATE_SECTION_EXHAUSTED_CARDS}"
     data-i18n-list-conjunction="${LIST_CONJUNCTION}"
     data-i18n-match-likers-template="${MATCHES_SECTION_CARD_LIKERS}"
-    data-i18n-room-exists-message="${LOGIN_ROOM_EXISTS_ERROR}"
-    data-i18n-room-not-found-message="${LOGIN_ROOM_NOT_FOUND}"
-    data-i18n-room-step-join="${LOGIN_STEP_ROOM}"
-    data-i18n-room-step-create="${LOGIN_STEP_ROOM_CREATE}"
-    data-base-path="${ROOT_PATH}"
+data-base-path="${ROOT_PATH}"
   >
     <main class="app">
       <!-- ===== Login ===== -->
@@ -173,20 +169,6 @@
           </div>
         </div>
 
-        <!-- Login form stub (kept for JS compatibility; room code entry no longer shown) -->
-        <form
-          class="login-form js-login-form u-display-none"
-          name="login"
-          hidden
-        >
-          <input type="hidden" name="name" />
-          <input type="hidden" name="roomCode" id="room-code" />
-          <input
-            type="hidden"
-            name="generatedRoomCode"
-            id="generated-room-code"
-          />
-        </form>
       </section>
 
       <!-- ===== Mobile Tabbar (visible on mobile only) ===== -->
@@ -454,10 +436,6 @@
           >
             <i class="fas fa-filter"></i>
           </button>
-          <div class="room-members-widget js-room-members-widget" hidden>
-            <i class="fas fa-users"></i>
-            <span class="room-members-list js-room-members-list"></span>
-          </div>
         </div>
         <div class="card-stack js-card-stack"></div>
         <div

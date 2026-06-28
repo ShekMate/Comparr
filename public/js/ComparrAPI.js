@@ -369,12 +369,6 @@ export class ComparrAPI extends EventTarget {
         )
         break
       }
-      case 'roomMembers': {
-        this.dispatchEvent(
-          new MessageEvent('roomMembers', { data: data.payload })
-        )
-        break
-      }
       case 'error': {
         console.error('Server error:', data.payload)
 

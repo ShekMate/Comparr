@@ -7,14 +7,10 @@
   "LIST_CONJUNCTION": "et",
   "ACCESS_PASSWORD_LABEL": "Quel... est votre mot de passe ?",
   "ACCESS_PASSWORD_SUBMIT": "Continuer",
-  "LOGIN_STEP_ROOM": "Enter your shared/private room code",
-  "LOGIN_STEP_ROOM_CREATE": "Create a new room code.",
   "NAV_SWIPE": "Swiper",
   "NAV_MATCHES": "Correspondances",
   "NAV_WATCH": "À regarder",
   "NAV_PASS": "Passer",
   "NAV_SEEN": "Déjà vus",
-  "NAV_SETTINGS": "Paramètres",
-  "LOGIN_ROOM_EXISTS_ERROR": "Room Code already Exists. Try again or click Generate.",
-  "LOGIN_ROOM_NOT_FOUND": "Room code not found, try again or create a new one by toggling New here? to YES."
+  "NAV_SETTINGS": "Paramètres"
 }
