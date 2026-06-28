@@ -207,11 +207,15 @@ export default class CardView {
                   )}</p>`
                 : ''
             }
+            <div class="overlay-expand-hint"><i class="fas fa-chevron-down"></i> Details</div>
           </div>
         </div>
       </div>
 
       <div class="card-meta">
+        <button type="button" class="card-collapse-btn" aria-label="Collapse to poster">
+          <i class="fas fa-chevron-up"></i> Back to poster
+        </button>
         ${this.renderCrewInfo()}
       </div>
     `
@@ -247,6 +251,15 @@ export default class CardView {
 
     plotEl?.addEventListener('touchend', handlePlotToggle, { passive: false })
     plotEl?.addEventListener('click', handlePlotToggle)
+
+    const collapseBtn = node.querySelector('.card-collapse-btn')
+    const handleCollapse = e => {
+      e.preventDefault()
+      e.stopPropagation()
+      node.classList.remove('details-expanded')
+    }
+    collapseBtn?.addEventListener('touchend', handleCollapse, { passive: false })
+    collapseBtn?.addEventListener('click', handleCollapse)
 
     const trailerBtn = node.querySelector('.card-trailer-btn[data-trailer-key]')
     trailerBtn?.addEventListener('click', e => {
