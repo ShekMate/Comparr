@@ -7227,7 +7227,7 @@ const main = async () => {
     rated,
     user: userName,
     roomCode,
-    appMode = 'group',
+    appMode,
   } = loginData
   const currentUser = window.COMPARR_USER || null
 
@@ -7383,40 +7383,6 @@ const main = async () => {
     const swipePanel = document.getElementById('tab-swipe')
     swipePanel?.prepend(banner)
   }
-
-  if (appMode === 'group' && 'Notification' in window) {
-    if (Notification.permission === 'granted') {
-      window._comparrNotificationsGranted = true
-    } else if (Notification.permission === 'denied') {
-      showNotificationsBlockedWarning()
-    } else {
-      Notification.requestPermission().then(permission => {
-        window._comparrNotificationsGranted = permission === 'granted'
-        if (permission === 'denied') {
-          showNotificationsBlockedWarning()
-        }
-      })
-    }
-  }
-
-  // ===== ROOM MEMBER LIST =====
-  const roomMembersWidget = document.querySelector('.js-room-members-widget')
-  const roomMembersList = document.querySelector('.js-room-members-list')
-
-  const updateRoomMembers = members => {
-    if (!roomMembersWidget || !roomMembersList || appMode !== 'group') return
-    roomMembersList.textContent = members.join(', ')
-    roomMembersWidget.hidden = members.length === 0
-  }
-
-  // Populate from loginResponse members field
-  if (loginData.members && appMode === 'group') {
-    updateRoomMembers(loginData.members)
-  }
-
-  api.addEventListener('roomMembers', e => {
-    updateRoomMembers(e.data?.members ?? [])
-  })
 
   // ===== MATCHES TAB =====
   // Each user has a stable invite code. Enter a friend's code to send a

@@ -1389,7 +1389,6 @@ class Session {
       log.warn(`Failed to save state on add(): ${err}`)
     )
 
-    this.broadcastRoomMembers()
   }
 
   remove = (user: User, ws: WebSocket) => {
@@ -1403,20 +1402,6 @@ class Session {
     const activeUsers = [...this.users.values()].filter(s => !s?.isClosed)
     if (activeUsers.length === 0) {
       this.destroy()
-    } else {
-      this.broadcastRoomMembers()
-    }
-  }
-
-  broadcastRoomMembers = () => {
-    const members = [...this.users.keys()].map(u => u.name)
-    const msg = JSON.stringify({ type: 'roomMembers', payload: { members } })
-    for (const ws of this.users.values()) {
-      try {
-        if (ws && !ws.isClosed) ws.send(msg)
-      } catch {
-        // ignore send errors during broadcast
-      }
     }
   }
 
@@ -3026,7 +3011,6 @@ class Session {
 // -------------------------
 export const activeSessions: Map<string, Session> = new Map()
 
-const ROOM_CODE_MAP = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789'
 const ROOM_CODE_LENGTH = 4
 
 export function normalizeRoomCode(roomCode: string): string {
@@ -3041,29 +3025,6 @@ export function isValidRoomCode(roomCode: string): boolean {
   )
 }
 
-export function doesRoomCodeExist(roomCode: string): boolean {
-  const normalizedCode = normalizeRoomCode(roomCode)
-  if (!normalizedCode) return false
-  if (activeSessions.has(normalizedCode)) return true
-  return Boolean(persistedState.rooms[normalizedCode])
-}
-
-export async function generateUniqueRoomCode(
-  maxAttempts = 200
-): Promise<string> {
-  for (let i = 0; i < maxAttempts; i++) {
-    const code = Array.from({ length: ROOM_CODE_LENGTH }, () => {
-      const value = crypto.getRandomValues(new Uint32Array(1))[0]
-      return ROOM_CODE_MAP[value % ROOM_CODE_MAP.length]
-    }).join('')
-
-    if (!doesRoomCodeExist(code)) {
-      return code
-    }
-  }
-
-  throw new Error('Unable to generate unique room code')
-}
 
 export function getMatchesForUser(roomCode: string, userName: string) {
   const session = activeSessions.get(roomCode)

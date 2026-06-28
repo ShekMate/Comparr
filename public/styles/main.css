@@ -7360,35 +7360,6 @@ footer {
 }
 
 /* =========================================================
-   ROOM MEMBERS WIDGET
-   ========================================================= */
-
-.room-members-widget {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.78rem;
-  color: var(--color-text-secondary);
-  background: var(--color-surface);
-  border: 1px solid var(--color-surface-light);
-  border-radius: 999px;
-  padding: 0.25rem 0.7rem;
-  max-width: 220px;
-  overflow: hidden;
-}
-
-.room-members-widget i {
-  color: var(--color-primary-light);
-  flex-shrink: 0;
-}
-
-.room-members-list {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* =========================================================
    RECOMMENDATIONS TAB
    ========================================================= */
 

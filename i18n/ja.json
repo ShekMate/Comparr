@@ -7,14 +7,10 @@
   "LIST_CONJUNCTION": "と",
   "ACCESS_PASSWORD_LABEL": "あなたのパスワードは…？",
   "ACCESS_PASSWORD_SUBMIT": "続行",
-  "LOGIN_STEP_ROOM": "Enter your shared/private room code",
-  "LOGIN_STEP_ROOM_CREATE": "Create a new room code.",
   "NAV_SWIPE": "スワイプ",
   "NAV_MATCHES": "マッチ",
   "NAV_WATCH": "観たい",
   "NAV_PASS": "パス",
   "NAV_SEEN": "視聴済み",
-  "NAV_SETTINGS": "設定",
-  "LOGIN_ROOM_EXISTS_ERROR": "Room Code already Exists. Try again or click Generate.",
-  "LOGIN_ROOM_NOT_FOUND": "Room code not found, try again or create a new one by toggling New here? to YES."
+  "NAV_SETTINGS": "設定"
 }
