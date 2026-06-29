@@ -79,32 +79,6 @@ export function getRoom(roomCode: string): PersistedRoom {
   return state.rooms[roomCode]
 }
 
-export function setUserResponses(
-  roomCode: string,
-  userName: string,
-  responses: PersistedResponse[]
-) {
-  const room = getRoom(roomCode)
-  if (!room.users[userName]) {
-    room.users[userName] = { responses: [] }
-  }
-  room.users[userName].responses = responses
-  saveStateSoon()
-}
-
-export function getUserResponses(
-  roomCode: string,
-  userName: string
-): PersistedResponse[] {
-  const room = getRoom(roomCode)
-  return room.users[userName]?.responses ?? []
-}
-
-export function getAllUsers(
-  roomCode: string
-): Record<string, { responses: PersistedResponse[] }> {
-  return getRoom(roomCode).users
-}
 
 export function getAllRooms(): Record<string, PersistedRoom> {
   return { ...state.rooms }

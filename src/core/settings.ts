@@ -238,7 +238,6 @@ export const updateSettings = async (
   return getSettings()
 }
 
-export const getSettingsKeys = (): SettingsKey[] => [...SETTINGS_KEYS]
 
 export const resetSettings = async (): Promise<Settings> => {
   for (const key of SETTINGS_KEYS) {

@@ -3,18 +3,6 @@ import { getDataDir } from './env.ts'
 
 export const getStateFile = () => `${getDataDir()}/session-state.json`
 
-export async function loadPersistedState(): Promise<any> {
-  const stateFile = getStateFile()
-  try {
-    const text = await Deno.readTextFile(stateFile)
-    return JSON.parse(text)
-  } catch (err) {
-    if (err?.name === 'NotFound' || err?.code === 'ENOENT') {
-      return { movieIndex: {} }
-    }
-    return { movieIndex: {} }
-  }
-}
 
 export async function savePersistedState(state: any): Promise<void> {
   const dataDir = getDataDir()

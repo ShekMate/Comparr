@@ -363,63 +363,6 @@ export const getServerId = (() => {
   }
 })()
 
-export const proxyPoster = async (
-  req: Request,
-  key: string
-): Promise<Response> => {
-  const { searchParams } = new URL(req.url)
-
-  const width = searchParams.has('w') ? Number(searchParams.get('w')) : 500
-
-  if (Number.isNaN(width)) {
-    return new Response(null, { status: 404 })
-  }
-
-  const height = width * 1.5
-
-  const posterUrl = encodeURIComponent(`/library/metadata/${key}`)
-  const { plexUrl, plexToken } = getPlexConfig()
-  const url = `${plexUrl}/photo/:/transcode?width=${width}&height=${height}&minSize=1&upscale=1&url=${posterUrl}`
-
-  try {
-    const posterReq = await fetchWithTimeout(url, {
-      headers: {
-        'X-Plex-Token': plexToken,
-      },
-    })
-
-    if (!posterReq.ok) {
-      if (posterReq.status === 401) {
-        throw new PlexTokenError(`Authentication error: ${posterReq.url}`)
-      }
-
-      throw new Error(
-        `${posterReq.url} returned ${
-          posterReq.status
-        }: ${await posterReq.text()}`
-      )
-    }
-
-    const imageData = new Uint8Array(await posterReq.arrayBuffer())
-
-    const { cachePoster } = await import('../services/cache/poster-cache.ts')
-    cachePoster(key, 'plex', url).catch(err =>
-      log.error(`Failed to cache Plex poster: ${err}`)
-    )
-
-    return new Response(imageData, {
-      status: 200,
-      headers: new Headers({
-        'content-type': 'image/jpeg',
-        'cache-control': 'public, max-age=604800, immutable',
-      }),
-    })
-  } catch (err) {
-    log.error(`Failed to load ${url}. ${err}`)
-    return new Response(null, { status: 500 })
-  }
-}
-
 /**
  * Check if a movie exists in the Plex library by title and year
  * This now uses the fast cache instead of scanning the entire library

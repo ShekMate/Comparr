@@ -2834,13 +2834,6 @@ function initializeIntegrationTestButtons() {
   })
 }
 
-function getAdminSelectedRequestServiceType() {
-  const selected = document.querySelector(
-    'input[name="admin-request-service-type"]:checked'
-  )
-  return selected?.value || 'seerr'
-}
-
 function setAdminSelectedRequestServiceType(type) {
   const normalizedType = type === 'seerr' ? 'seerr' : 'seerr'
   const radio = document.querySelector(
@@ -10456,7 +10449,6 @@ watchFilterReset?.addEventListener('click', () => {
 // Swipe Filter Modal
 // =========================================================
 const swipeFilterBtn = document.getElementById('swipe-filter-btn')
-const swipeHomeBtn = document.getElementById('swipe-home-btn')
 const swipeFilterModal = document.getElementById('swipe-filter-modal')
 const swipeFilterOverlay = document.getElementById('swipe-filter-overlay')
 const swipeFilterClose = document.getElementById('swipe-filter-close')
@@ -10957,53 +10949,6 @@ function updateSwipeFilterButtonState() {
   if (swipeFilterBtn) {
     swipeFilterBtn.classList.toggle('has-filters', hasActiveSwipeFilters())
   }
-}
-
-function describeSwipeDefaults(defaults) {
-  if (!defaults) return 'No saved defaults yet.'
-
-  const activeBits = []
-  if (defaults.genres?.length)
-    activeBits.push(`${defaults.genres.length} genres`)
-  if (defaults.languages?.length)
-    activeBits.push(`${defaults.languages.length} languages`)
-  if (defaults.countries?.length)
-    activeBits.push(`${defaults.countries.length} countries`)
-  if (defaults.contentRatings?.length)
-    activeBits.push(`${defaults.contentRatings.length} ratings`)
-  if (!defaults.availability?.anywhere)
-    activeBits.push('availability constrained')
-  if (defaults.imdbRating > 0)
-    activeBits.push(`IMDb ≥ ${defaults.imdbRating.toFixed(1)}`)
-  if (defaults.tmdbRating > 0)
-    activeBits.push(`TMDb ≥ ${defaults.tmdbRating.toFixed(1)}`)
-  if (defaults.voteCount > 0)
-    activeBits.push(`Votes ≥ ${defaults.voteCount.toLocaleString()}`)
-
-  if (activeBits.length === 0) {
-    return 'Saved defaults match broad discovery (minimal filtering).'
-  }
-
-  return `Saved defaults: ${activeBits.join(' • ')}`
-}
-
-function refreshDefaultsSummary() {
-  // Defaults are now edited inline, so no summary text is shown.
-}
-
-function applyFilterStatePatch(nextState) {
-  if (!window.filterState || !nextState) return
-  Object.assign(window.filterState, cloneFilterStateValue(nextState))
-  window.filterState.availability = normalizeAvailabilityState(
-    window.filterState.availability
-  )
-  window.filterState.showPlexOnly = deriveShowPlexOnlyFromAvailability(
-    window.filterState.availability,
-    window.filterState.showPlexOnly
-  )
-
-  syncSwipeFilterModalWithState()
-  updateSwipeFilterButtonState()
 }
 
 function updateSwipeFilterModalModeUI() {
@@ -11778,7 +11723,6 @@ swipeFilterApply?.addEventListener('click', e => {
     if (normalized) {
       const snapshot = JSON.stringify(normalized)
       localStorage.setItem(SWIPE_DEFAULTS_STORAGE_KEY, snapshot)
-      refreshDefaultsSummary()
       if (swipeFilterModal?.classList.contains('inline-defaults-mode')) {
         document.dispatchEvent(
           new CustomEvent('comparr:wizard-defaults-saved', {
@@ -11878,13 +11822,11 @@ swipeFilterReset?.addEventListener('click', () => {
     updateSwipeFilterButtonState()
   } else {
     localStorage.removeItem(SWIPE_DEFAULTS_STORAGE_KEY)
-    refreshDefaultsSummary()
   }
 })
 
 // Initialize swipe filter dropdowns
 setupSwipeFilterDropdowns()
-refreshDefaultsSummary()
 
 // Update filter button state on page load
 setTimeout(updateSwipeFilterButtonState, 100)
