@@ -1389,21 +1389,6 @@ body[data-card-rating='tmdb'] .rating-group + .rating-group::before {
   height: 2px;
 }
 
-.matches-section hr::before {
-  content: attr(data-room-code);
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  display: block;
-  font-size: 0.8rem;
-  background: var(--gradient-primary);
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
-  box-shadow: var(--shadow-md);
-  font-weight: 600;
-  transform: translate(-60%, 50%);
-}
 
 .matches-title {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -1477,18 +1462,6 @@ body[data-card-rating='tmdb'] .rating-group + .rating-group::before {
    7b) COMPARE / INVITE UI (within Matches tab)
    ========================================================= */
 
-/* Guest placeholder: hidden by default, shown for guest user type */
-.compare-guest {
-  display: none;
-}
-body[data-user-type='guest'] .compare-guest {
-  display: block;
-}
-
-/* Compare UI: hidden for guests */
-body[data-user-type='guest'] .compare-ui {
-  display: none;
-}
 
 .compare-hero {
   display: flex;
@@ -3019,22 +2992,6 @@ body[data-user-type='guest'] .compare-ui {
   text-align: center;
 }
 
-.user-auth-guest-btn {
-  background: none;
-  border: none;
-  color: var(--color-text-muted, #8892a4);
-  font-size: 0.85rem;
-  cursor: pointer;
-  padding: 0.25rem 0;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  transition: color 0.15s;
-  align-self: center;
-}
-
-.user-auth-guest-btn:hover {
-  color: var(--color-text);
-}
 
 /* =========================================================
    9) FILTERS SECTION - Enhanced

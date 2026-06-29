@@ -584,16 +584,6 @@ function initTabs() {
 
   applyDisplayPreferencesToNavigation(loadDisplayPreferences())
 
-  // Hide Compare tab for guests (no cross-user comparison available).
-  // Auth users always see it, even in personal mode.
-  if (document.body.dataset.userType === 'guest') {
-    document.querySelectorAll('[data-tab="tab-matches"]').forEach(node => {
-      node.style.display = 'none'
-    })
-    const comparePanel = document.getElementById('tab-matches')
-    if (comparePanel) comparePanel.hidden = true
-  }
-
   // Mobile menu dropdown support
   const mobileMenuDropdown = document.querySelector('.mobile-menu-dropdown')
   const mobileMenuToggle = document.querySelector('.mobile-menu-toggle')
@@ -4720,22 +4710,9 @@ async function login(api) {
   const plexSigninBtn = document.querySelector('.js-plex-signin-btn')
   const plexStatus = document.querySelector('.js-plex-status')
   const plexContinueBtn = document.querySelector('.js-plex-continue-btn')
-  const credentialModal = document.querySelector('.js-user-auth-modal')
-  const credentialModalClose = document.querySelector(
-    '.js-user-auth-modal-close'
-  )
-  const credentialModalProvider = document.querySelector(
-    '.js-user-auth-modal-provider'
-  )
-  const credentialModalForm = document.querySelector('.js-user-auth-modal-form')
-  const credentialModalStatus = document.querySelector(
-    '.js-user-auth-modal-status'
-  )
-
   // Track currently logged-in user identity (populated after user auth).
   // During first-run setup, wizard admin sign-in can already establish this.
   let currentUser = window.COMPARR_USER || null
-  let isGuest = false
 
   if (passwordForm) {
     // Keep the access password form hidden until we know one is required.
@@ -5170,7 +5147,7 @@ async function login(api) {
     localStorage.setItem('personalUser', name)
     localStorage.setItem('personalRoomCode', code)
     document.body.dataset.appMode = 'personal'
-    document.body.dataset.userType = isGuest ? 'guest' : 'auth'
+    document.body.dataset.userType = 'auth'
 
     document.body.scrollIntoView()
 
