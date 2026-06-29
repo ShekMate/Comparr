@@ -4,7 +4,7 @@ services:
     container_name: comparr
     restart: unless-stopped
     ports:
-      - '8000:8000'
+      - '127.0.0.1:8000:8000'  # Binds to localhost only — put behind a reverse proxy for external access
     environment:
       - PUID=1000
       - PGID=1000
@@ -13,8 +13,12 @@ services:
 
       # Reverse proxy / network (uncomment if running behind Nginx, Caddy, etc.)
       # - TRUST_PROXY=false      # Set true ONLY when behind a trusted reverse proxy (spoofable otherwise)
-      # - ALLOWED_ORIGINS=       # Comma-separated allowed origins; unset = same-origin only (recommended for production)
+      # - ALLOWED_ORIGINS=https://comparr.example.com  # Strongly recommended; restricts Host/Origin checks to your domain
       # - MAX_BODY_SIZE=1048576  # Max HTTP request body in bytes (default 1 MB)
       # - FRAME_ANCESTORS='none' # CSP frame-ancestors; set to your domain if embedding
     volumes:
       - ./data:/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL

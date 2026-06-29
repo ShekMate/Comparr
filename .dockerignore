@@ -42,6 +42,18 @@ build/
 Thumbs.db
 desktop.ini
 
+# --- Tests & Dev Tooling ---
+tests/
+test-setup.js
+vitest.config.js
+TESTING.md
+ARCHITECTURE.md
+scripts/
+package.json
+package-lock.json
+comparr.xml
+docker-compose.dev.yml
+
 # --- Docker Context Self-Exclusion ---
 context.tar
 Dockerfile~
