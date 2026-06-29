@@ -100,15 +100,3 @@ export function isMovieInRadarr(tmdbId: number): boolean {
   return movie ? movie.hasFile : false
 }
 
-export function getRadarrCacheStats(): {
-  size: number
-  lastUpdate: Date
-  isStale: boolean
-} {
-  const now = Date.now()
-  return {
-    size: movieCache.size,
-    lastUpdate: new Date(lastCacheUpdate),
-    isStale: now - lastCacheUpdate > CACHE_DURATION,
-  }
-}
