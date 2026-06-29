@@ -4717,15 +4717,9 @@ async function login(api) {
 
   const userAuthForm = document.querySelector('.js-user-auth-form')
   const userAuthPlex = document.querySelector('.js-user-auth-plex')
-  const userAuthJellyfin = document.querySelector('.js-user-auth-jellyfin')
-  const userAuthEmby = document.querySelector('.js-user-auth-emby')
   const plexSigninBtn = document.querySelector('.js-plex-signin-btn')
   const plexStatus = document.querySelector('.js-plex-status')
   const plexContinueBtn = document.querySelector('.js-plex-continue-btn')
-  const jellyfinSigninBtn = document.querySelector('.js-jellyfin-signin-btn')
-  const jellyfinStatus = document.querySelector('.js-jellyfin-status')
-  const embySigninBtn = document.querySelector('.js-emby-signin-btn')
-  const embyStatus = document.querySelector('.js-emby-status')
   const credentialModal = document.querySelector('.js-user-auth-modal')
   const credentialModalClose = document.querySelector(
     '.js-user-auth-modal-close'
