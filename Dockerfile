@@ -12,12 +12,11 @@ WORKDIR /app
 # binary at runtime, which requires network access and writable env vars.
 RUN apt-get update && apt-get install -y --no-install-recommends gosu libsqlite3-0 && rm -rf /var/lib/apt/lists/*
 
-# Copy entrypoint first (changes rarely, keep in its own layer)
-COPY docker-entrypoint.sh /app/docker-entrypoint.sh
-RUN chmod +x /app/docker-entrypoint.sh
-
 # Copy application files
 COPY . .
+
+# Ensure entrypoint is executable (git tracks it as 644; override here)
+RUN chmod +x /app/docker-entrypoint.sh
 
 # Pre-cache Deno deps to make container startup faster; own the cache as root
 # (entrypoint will re-own to PUID:PGID at runtime only if needed)
