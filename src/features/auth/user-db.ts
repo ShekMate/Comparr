@@ -802,67 +802,6 @@ export function removeFriendConnection(
 }
 
 /**
- * Toggle server sharing for a specific friendship.
- * If turning ON, sets server_prompt_pending on the friend's side so they get re-prompted.
- */
-export function updateFriendSharing(
-  userId: number,
-  friendUserId: number,
-  sharesServer: boolean
-): void {
-  const now = new Date().toISOString()
-  getDb().exec(
-    `UPDATE friend_connections SET shares_server = ?, updated_at = ?
-     WHERE user_id = ? AND friend_user_id = ? AND status = 'accepted'`,
-    sharesServer ? 1 : 0,
-    now,
-    userId,
-    friendUserId
-  )
-
-  if (sharesServer) {
-    // Notify friend they need to be re-prompted about accepting the server
-    getDb().exec(
-      `UPDATE friend_connections SET server_prompt_pending = 1, updated_at = ?
-       WHERE user_id = ? AND friend_user_id = ? AND status = 'accepted'`,
-      now,
-      friendUserId,
-      userId
-    )
-  }
-}
-
-/**
- * Mark server prompt as seen for a user/friend pair.
- * acceptsServer: whether the user accepts the friend's shared server.
- */
-export function resolveServerPrompt(
-  userId: number,
-  friendUserId: number,
-  acceptsServer: boolean
-): void {
-  const now = new Date().toISOString()
-  // Clear the prompt flag
-  getDb().exec(
-    `UPDATE friend_connections SET server_prompt_pending = 0, updated_at = ?
-     WHERE user_id = ? AND friend_user_id = ?`,
-    now,
-    userId,
-    friendUserId
-  )
-  // If they declined, turn off sharing on the friend's side for this user
-  if (!acceptsServer) {
-    getDb().exec(
-      `UPDATE friend_connections SET shares_server = 0, updated_at = ?
-       WHERE user_id = ? AND friend_user_id = ?`,
-      now,
-      friendUserId,
-      userId
-    )
-  }
-}
-
-/**
  * Get all friend connections for a user (both pending and accepted).
  */
 export function getFriendConnections(userId: number): FriendConnection[] {

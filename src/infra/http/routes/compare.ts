@@ -9,8 +9,6 @@ import {
   acceptFriendRequest,
   declineFriendRequest,
   removeFriendConnection,
-  updateFriendSharing,
-  resolveServerPrompt,
   getFriendConnections,
   getUserSettings,
   upsertUserSettings,
@@ -185,60 +183,6 @@ export async function handleCompareRoutes(
     }
 
     removeFriendConnection(session.userId, friendUserId)
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200, headers: makeJson(req),
-    })
-  }
-
-  // ── PUT /api/matches/sharing ────────────────────────────────────────────
-  // Toggle server sharing for a specific friend.
-  // Body: { friendUserId, sharesServer }
-  if (path === '/api/matches/sharing' && req.method === 'PUT') {
-    const session = getCallerSession(req)
-    if (!session) {
-      return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
-        status: 401, headers: makeJson(req),
-      })
-    }
-
-    let body: { friendUserId?: number; sharesServer?: boolean } = {}
-    try { body = await req.json() } catch { /* empty body ok */ }
-
-    const friendUserId = Number(body.friendUserId)
-    if (!friendUserId) {
-      return new Response(JSON.stringify({ error: 'friendUserId is required' }), {
-        status: 400, headers: makeJson(req),
-      })
-    }
-
-    updateFriendSharing(session.userId, friendUserId, Boolean(body.sharesServer))
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200, headers: makeJson(req),
-    })
-  }
-
-  // ── POST /api/matches/resolve-server-prompt ─────────────────────────────
-  // Dismiss the server-sharing consent prompt (accept or decline).
-  // Body: { friendUserId, acceptsServer }
-  if (path === '/api/matches/resolve-server-prompt' && req.method === 'POST') {
-    const session = getCallerSession(req)
-    if (!session) {
-      return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
-        status: 401, headers: makeJson(req),
-      })
-    }
-
-    let body: { friendUserId?: number; acceptsServer?: boolean } = {}
-    try { body = await req.json() } catch { /* empty body ok */ }
-
-    const friendUserId = Number(body.friendUserId)
-    if (!friendUserId) {
-      return new Response(JSON.stringify({ error: 'friendUserId is required' }), {
-        status: 400, headers: makeJson(req),
-      })
-    }
-
-    resolveServerPrompt(session.userId, friendUserId, Boolean(body.acceptsServer))
     return new Response(JSON.stringify({ success: true }), {
       status: 200, headers: makeJson(req),
     })
