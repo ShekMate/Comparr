@@ -2,12 +2,17 @@
 // Caches the app shell so the browser install prompt fires on Android/Chrome.
 // Strategy: network-first for API calls, cache-first for static assets.
 
-const CACHE_NAME = 'comparr-shell-v1'
+const CACHE_NAME = 'comparr-shell-v2'
 
 const SHELL_ASSETS = [
   './',
   './index.html',
+  './styles/style.css',
+  './styles/view-modes.css',
   './styles/main.css',
+  './styles/mobile.css',
+  './styles/desktop.css',
+  './styles/tablet.css',
   './js/main.js',
   './js/ComparrAPI.js',
   './assets/logos/comparrlogo.png',
