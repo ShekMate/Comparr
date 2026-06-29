@@ -1,6 +1,8 @@
 import * as log from 'jsr:@std/log'
 import type { CompatRequest } from '../compat-request.ts'
 import { makeHeaders } from '../security-headers.ts'
+import { apiRateLimiter } from '../ip-rate-limiter.ts'
+import { resolveClientIp } from '../network-access.ts'
 
 type MatchSession = {
   removeMatch: (
@@ -44,6 +46,12 @@ export const handleSystemRoutes = async (
   }
 
   if (pathname === '/api/match-action' && req.method === 'POST') {
+    if (!apiRateLimiter.check(resolveClientIp(req))) {
+      return new Response(JSON.stringify({ error: 'Too many requests' }), {
+        status: 429,
+        headers: makeHeaders(req, 'application/json'),
+      })
+    }
     try {
       const body = await req.json()
       const { guid, action, roomCode, userName } = body as {

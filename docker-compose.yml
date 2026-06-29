@@ -12,8 +12,8 @@ services:
       # - DATA_DIR=/data         # Path inside the container where data is stored
 
       # Reverse proxy / network (uncomment if running behind Nginx, Caddy, etc.)
-      # - TRUST_PROXY=false      # Set true if behind a trusted reverse proxy
-      # - ALLOWED_ORIGINS=*      # Comma-separated allowed origins; restrict in production
+      # - TRUST_PROXY=false      # Set true ONLY when behind a trusted reverse proxy (spoofable otherwise)
+      # - ALLOWED_ORIGINS=       # Comma-separated allowed origins; unset = same-origin only (recommended for production)
       # - MAX_BODY_SIZE=1048576  # Max HTTP request body in bytes (default 1 MB)
       # - FRAME_ANCESTORS='none' # CSP frame-ancestors; set to your domain if embedding
     volumes:

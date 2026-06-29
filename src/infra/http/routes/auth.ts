@@ -366,8 +366,7 @@ export async function handleAuthRoutes(
       )
     } catch (err) {
       log.warn(`[auth] Plex token login failed: ${err}`)
-      const message = err instanceof Error ? err.message : 'Plex login failed.'
-      return new Response(JSON.stringify({ error: message }), {
+      return new Response(JSON.stringify({ error: 'Plex login failed.' }), {
         status: 401,
         headers: makeJson(req),
       })

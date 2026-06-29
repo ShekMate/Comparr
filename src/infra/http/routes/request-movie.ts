@@ -104,8 +104,6 @@ export async function handleRequestMovieRoute(
     } else if (err.message?.includes('401') || err.message?.includes('403')) {
       errorMessage =
         'Authentication failed. Please check your API key configuration.'
-    } else if (err.message) {
-      errorMessage = err.message
     }
     return new Response(
       JSON.stringify({ success: false, message: errorMessage }),
