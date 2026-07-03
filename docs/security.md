@@ -1,6 +1,6 @@
 # Security
 
-## Current Status (March 20, 2026)
+## Current Status (June 29, 2026)
 
 ### Addressed
 
@@ -23,6 +23,10 @@
 - Frontend admin-settings password is now in-memory only (no session/local storage persistence).
 - State-changing origin checks now require an explicit `Origin` header.
 - `/api/access-password/status` disabled to avoid password-state disclosure.
+- Default compose port binding changed from `0.0.0.0:8000` to `127.0.0.1:8000` to prevent unintentional LAN/public exposure.
+- Docker compose hardened with `no-new-privileges` and `cap_drop: ALL`.
+- `.dockerignore` updated to exclude tests, dev tooling, and build config from the image build context.
+- README updated with explicit security warnings: plaintext secret storage, first-run exposure window, reverse proxy requirements, and `ALLOWED_ORIGINS` guidance.
 
 ### Still recommended / not fully complete
 
@@ -41,16 +45,21 @@ The following were identified in a codebase review. Items marked ✅ are resolve
 |---|---------|--------|
 | 1 | Secrets in URL query strings (Plex/TMDb keys) | ✅ Plex resolved; TMDb partially |
 | 2 | `Math.random()` used for non-cryptographic IDs | ✅ Resolved |
-| 3 | Settings persisted as plaintext JSON (includes secrets) | ⚠️ Open |
+| 3 | Settings persisted as plaintext JSON (includes secrets) | ⚠️ Open — documented in README |
 | 4 | CSP includes `unsafe-inline` for script/style | ⚠️ Partially hardened |
 | 5 | Sensitive write endpoints unauthenticated | ✅ Resolved |
 | 6 | Frontend admin password in `sessionStorage` | ✅ Resolved (in-memory only) |
 | 7 | No external fetch timeouts | ✅ Resolved |
-| 8 | Broad Deno runtime permissions in container | ⚠️ Open |
+| 8 | Broad Deno runtime permissions in container (`--allow-net`, `--allow-ffi`) | ⚠️ Open — architectural constraint |
 | 9 | `/api/access-password/status` disclosed password state | ✅ Disabled |
 | 10 | CSRF protection inconsistent | ✅ Resolved (double-submit) |
 | 11 | Rate limiter unbounded memory | ✅ Resolved (cardinality cap) |
 | 12 | WebSocket max message size not enforced | ✅ Already enforced (1009 close) |
+| 13 | Default compose bound to `0.0.0.0` (LAN exposure) | ✅ Resolved — bound to `127.0.0.1` |
+| 14 | No Docker-level hardening in sample compose | ✅ Resolved — `no-new-privileges`, `cap_drop: ALL` added |
+| 15 | `ALLOWED_ORIGINS` defaulting to all with no README guidance | ✅ Resolved — README warns and examples include it |
+| 16 | Test/dev files included in image build context | ✅ Resolved — `.dockerignore` updated |
+| 17 | First-run setup mode reachable before access password set | ⚠️ Open — documented in README |
 
 ---
 

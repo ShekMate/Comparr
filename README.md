@@ -73,11 +73,15 @@ Help you and your friends decide what to watch from your Plex library with an in
 
 ## Quick Start
 
+> **Security note:** Comparr stores API keys and credentials (Plex token, Radarr/Jellyfin keys, SMTP password) in `/data/settings.json` on your mounted volume. Do not expose Comparr directly to the public internet — run it behind a reverse proxy with HTTPS and set `ALLOWED_ORIGINS` to your domain. The default compose binds to `127.0.0.1` only.
+
 ```bash
 docker compose up -d
 ```
 
 Then open http://localhost:8000 and the setup wizard will walk you through connecting your Plex server.
+
+> **First-run note:** The setup wizard runs before the access password is configured. Complete setup promptly if your host has public network access.
 
 ---
 
@@ -106,9 +110,11 @@ volumes:
 docker run -d \
   --name comparr \
   --restart unless-stopped \
-  -p 8000:8000 \
+  -p 127.0.0.1:8000:8000 \
   -e PUID=1000 \
   -e PGID=1000 \
+  --security-opt no-new-privileges:true \
+  --cap-drop ALL \
   -v /path/to/comparr/data:/data \
   ghcr.io/shekmate/comparr:latest
 ```
@@ -135,6 +141,8 @@ docker run -d \
 
 All application settings (Plex connection, API keys, passwords, etc.) are configured through the **web UI** and persisted in `/data/settings.json` on your mounted volume. No environment variables needed for app settings.
 
+> **Secret storage:** Settings including API keys and credentials are stored as plaintext JSON in `/data/settings.json`. Secure your `/data` mount with appropriate filesystem permissions and do not expose it publicly.
+
 The setup wizard runs automatically on first boot.
 
 ### Container Variables
@@ -153,7 +161,7 @@ These are the only environment variables Comparr uses — they control how the c
 | Variable          | Description                                            | Default   |
 | ----------------- | ------------------------------------------------------ | --------- |
 | `TRUST_PROXY`     | Set `true` if behind a trusted reverse proxy           | `false`   |
-| `ALLOWED_ORIGINS` | Comma-separated allowed origins for Host/Origin checks | _(all)_   |
+| `ALLOWED_ORIGINS` | Comma-separated allowed origins for Host/Origin checks | _(unset — strongly recommended for production)_ |
 | `MAX_BODY_SIZE`   | Max HTTP request body in bytes                         | `1048576` |
 | `FRAME_ANCESTORS` | CSP `frame-ancestors` value                            | `'none'`  |
 
@@ -175,6 +183,7 @@ comparr.example.com {
 # docker-compose.yml addition
 environment:
   - TRUST_PROXY=true
+  - ALLOWED_ORIGINS=https://comparr.example.com
   - FRAME_ANCESTORS=https://comparr.example.com
 ```
 
@@ -204,6 +213,7 @@ server {
 # docker-compose.yml addition
 environment:
   - TRUST_PROXY=true
+  - ALLOWED_ORIGINS=https://comparr.example.com
   - FRAME_ANCESTORS=https://comparr.example.com
 ```
 
