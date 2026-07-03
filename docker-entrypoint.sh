@@ -18,6 +18,11 @@ fi
 mkdir -p /data
 chown -R "${PUID}:${PGID}" /data || true
 
+# Ensure the Deno cache dir is writable by the runtime user
+# (it is populated as root during docker build, so we must re-own it here;
+# DENO_DIR access bypasses --allow-write and depends on real file ownership)
+chown -R "${PUID}:${PGID}" /deno-dir || true
+
 # Resolve the system SQLite3 shared library so @db/sqlite uses it directly
 # instead of having @denosaurs/plug attempt a runtime download.
 if [ -z "${DENO_SQLITE_PATH:-}" ]; then
