@@ -12,6 +12,11 @@ import {
   getFriendConnections,
   getUserSettings,
   upsertUserSettings,
+  setSharesServer,
+  acknowledgeServerPrompt,
+  getSharedServersForUser,
+  dismissMatchForUser,
+  getDismissedMatchGuids,
 } from '../../../features/auth/user-db.ts'
 import { getCompareMatches } from '../../../features/session/session.ts'
 
@@ -188,6 +193,92 @@ export async function handleCompareRoutes(
     })
   }
 
+  // ── POST /api/matches/share-server ──────────────────────────────────────
+  // Turn personal-media-server sharing with an already-accepted friend on or off, any time
+  // (not just at accept time). Body: { friendUserId, share }
+  if (path === '/api/matches/share-server' && req.method === 'POST') {
+    const session = getCallerSession(req)
+    if (!session) {
+      return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
+        status: 401, headers: makeJson(req),
+      })
+    }
+
+    let body: { friendUserId?: number; share?: boolean } = {}
+    try { body = await req.json() } catch { /* empty body ok */ }
+
+    const friendUserId = Number(body.friendUserId)
+    if (!friendUserId) {
+      return new Response(JSON.stringify({ error: 'friendUserId is required' }), {
+        status: 400, headers: makeJson(req),
+      })
+    }
+
+    const result = setSharesServer(session.userId, friendUserId, Boolean(body.share))
+    if (!result.success) {
+      return new Response(JSON.stringify({ error: result.error }), {
+        status: 400, headers: makeJson(req),
+      })
+    }
+
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200, headers: makeJson(req),
+    })
+  }
+
+  // ── POST /api/matches/acknowledge-server-prompt ─────────────────────────
+  // Dismiss the "this friend just shared their library with you" prompt.
+  // Body: { friendUserId }
+  if (path === '/api/matches/acknowledge-server-prompt' && req.method === 'POST') {
+    const session = getCallerSession(req)
+    if (!session) {
+      return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
+        status: 401, headers: makeJson(req),
+      })
+    }
+
+    let body: { friendUserId?: number } = {}
+    try { body = await req.json() } catch { /* empty body ok */ }
+
+    const friendUserId = Number(body.friendUserId)
+    if (!friendUserId) {
+      return new Response(JSON.stringify({ error: 'friendUserId is required' }), {
+        status: 400, headers: makeJson(req),
+      })
+    }
+
+    acknowledgeServerPrompt(session.userId, friendUserId)
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200, headers: makeJson(req),
+    })
+  }
+
+  // ── POST /api/matches/dismiss ────────────────────────────────────────────
+  // Hide a match from the caller's Matches list without changing their wantsToWatch response —
+  // the movie stays wherever it already was (e.g. the Watchlist). Body: { guid }
+  if (path === '/api/matches/dismiss' && req.method === 'POST') {
+    const session = getCallerSession(req)
+    if (!session) {
+      return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
+        status: 401, headers: makeJson(req),
+      })
+    }
+
+    let body: { guid?: string } = {}
+    try { body = await req.json() } catch { /* empty body ok */ }
+
+    if (!body.guid) {
+      return new Response(JSON.stringify({ error: 'guid is required' }), {
+        status: 400, headers: makeJson(req),
+      })
+    }
+
+    dismissMatchForUser(session.userId, body.guid)
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200, headers: makeJson(req),
+    })
+  }
+
   // ── GET /api/matches/connections ────────────────────────────────────────
   // Returns all friend connections (pending + accepted) with matches for accepted ones.
   if (path === '/api/matches/connections' && req.method === 'GET') {
@@ -200,17 +291,19 @@ export async function handleCompareRoutes(
 
     const myRoomCode = roomCodeForUser(session.userId)
     const connections = getFriendConnections(session.userId)
+    const sharedWithMeIds = new Set(
+      getSharedServersForUser(session.userId).map(s => s.friendUserId)
+    )
+    const dismissedGuids = getDismissedMatchGuids(session.userId)
 
     const result = connections.map(conn => {
       const friendRoomCode = roomCodeForUser(conn.friendUserId)
       const matches = conn.status === 'accepted'
         ? getCompareMatches(myRoomCode, session.username, friendRoomCode, conn.friendUsername)
+            .filter(movie => !dismissedGuids.has(movie.guid))
         : []
 
-      // Whether friend is sharing their server with me (look at FRIEND's row)
-      const friendConnections = getFriendConnections(conn.friendUserId)
-      const friendRow = friendConnections.find(fc => fc.friendUserId === session.userId)
-      const friendSharesServerWithMe = friendRow?.sharesServer ?? false
+      const friendSharesServerWithMe = sharedWithMeIds.has(conn.friendUserId)
 
       return {
         friendUserId: conn.friendUserId,

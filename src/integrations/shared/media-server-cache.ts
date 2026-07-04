@@ -26,6 +26,63 @@ type LookupParams = {
 
 const CACHE_REFRESH_INTERVAL = 60 * 60 * 1000 // 1 hour
 
+// ---------------------------------------------------------------------------
+// On-demand, per-user fetch — for a user's own personal Emby/Jellyfin server or a
+// friend's server shared with them (see src/features/session/personal-media-sources.ts).
+// Both Emby and Jellyfin expose the same Items API shape (Jellyfin is an Emby fork), so one
+// function serves both. Deliberately independent of the getUrl()/getApiKey() closures above,
+// which read the single instance-wide admin config used by the legacy web/Docker flow — this
+// takes url/apiKey explicitly and does no persistent caching (caller wraps with a short-lived
+// TTL cache) — always a live fetch when called.
+// ---------------------------------------------------------------------------
+
+export interface OnDemandMediaServerMovie {
+  title: string
+  year: number | null
+  tmdbId?: number
+  imdbId?: string
+}
+
+export async function fetchMediaServerLibraryOnDemand(
+  name: string,
+  url: string,
+  apiKey: string
+): Promise<OnDemandMediaServerMovie[]> {
+  const response = await fetchWithTimeout(
+    `${url}/Items?IncludeItemTypes=Movie&Recursive=true&Fields=ProviderIds,Name,ProductionYear`,
+    {
+      headers: {
+        'X-Emby-Token': apiKey,
+        Accept: 'application/json',
+      },
+    }
+  )
+
+  if (!response.ok) {
+    throw new Error(`${name} API error: ${response.status}`)
+  }
+
+  const data: {
+    Items?: Array<{
+      Name?: string
+      ProductionYear?: number
+      ProviderIds?: { Tmdb?: string; Imdb?: string }
+    }>
+  } = await response.json()
+
+  return (data.Items || []).map(item => {
+    const tmdbId = item.ProviderIds?.Tmdb
+      ? parseInt(item.ProviderIds.Tmdb)
+      : undefined
+    return {
+      title: item.Name || '',
+      year: item.ProductionYear ?? null,
+      tmdbId: tmdbId != null && !Number.isNaN(tmdbId) ? tmdbId : undefined,
+      imdbId: item.ProviderIds?.Imdb || undefined,
+    }
+  })
+}
+
 function normalizeTitle(title: string): string {
   return title
     .toLowerCase()

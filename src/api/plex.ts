@@ -171,6 +171,118 @@ export const clearAllMoviesCache = () => {
 
 export class NoMoreMoviesError extends Error {}
 
+// ---------------------------------------------------------------------------
+// On-demand, per-user Plex library fetch — for a user's own personal server or
+// a friend's server shared with them (see src/features/session/personal-media-sources.ts).
+// Deliberately independent of getPlexConfig()/getPlexUrl()/getPlexToken(): those read the
+// single instance-wide admin config used by the legacy web/Docker flow, which this must not
+// touch. Takes url/token explicitly and does no persistent caching (caller wraps with a
+// short-lived TTL cache) — this always does a live fetch when called.
+// ---------------------------------------------------------------------------
+
+export interface PlexOnDemandOptions {
+  libraryFilter?: string
+  collectionFilter?: string
+}
+
+async function fetchSectionsOnDemand(
+  plexUrl: string,
+  plexToken: string
+): Promise<PlexMediaContainer<PlexDirectory>> {
+  const req = await fetchWithTimeout(`${plexUrl}/library/sections`, {
+    headers: {
+      accept: 'application/json',
+      'X-Plex-Token': plexToken,
+    },
+  })
+
+  if (req.ok) {
+    return await req.json()
+  } else if (req.status === 401) {
+    throw new PlexTokenError(`Authentication error: ${req.url}`)
+  } else {
+    throw new Error(await req.text())
+  }
+}
+
+function selectLibraryTitlesOnDemand(
+  sections: PlexMediaContainer<PlexDirectory>,
+  libraryFilter?: string
+): string[] {
+  const availableLibraryNames = sections.MediaContainer.Directory.map(
+    _ => _.title
+  )
+  const defaultLibraryName = sections.MediaContainer.Directory.find(
+    ({ hidden, type }) => hidden !== 1 && type === DEFAULT_SECTION_TYPE_FILTER
+  )?.title
+
+  const libraryTitles =
+    (libraryFilter ? libraryFilter : defaultLibraryName)
+      ?.split(',')
+      .filter(title => availableLibraryNames.includes(title)) ?? []
+
+  assert(
+    libraryTitles.length !== 0,
+    `No matching movie library found (available: ${availableLibraryNames.join(', ')})`
+  )
+
+  return libraryTitles
+}
+
+export async function fetchPlexLibraryOnDemand(
+  plexUrl: string,
+  plexToken: string,
+  options: PlexOnDemandOptions = {}
+): Promise<PlexVideo['Metadata']> {
+  const sections = await fetchSectionsOnDemand(plexUrl, plexToken)
+  const selectedLibraryTitles = selectLibraryTitlesOnDemand(
+    sections,
+    options.libraryFilter
+  )
+
+  const movieSections = sections.MediaContainer.Directory.filter(
+    ({ title, hidden }) => hidden !== 1 && selectedLibraryTitles.includes(title)
+  )
+
+  assert(movieSections.length !== 0, `Couldn't find a movies section in Plex!`)
+
+  const movies: PlexVideo['Metadata'] = []
+
+  for (const movieSection of movieSections) {
+    const req = await fetchWithTimeout(
+      `${plexUrl}/library/sections/${movieSection.key}/all?includeGuids=1`,
+      {
+        headers: {
+          accept: 'application/json',
+          'X-Plex-Token': plexToken,
+        },
+      }
+    )
+
+    assert(req.ok, `Error loading ${movieSection.title} library`)
+
+    const libraryData: PlexMediaContainer<PlexVideo> = await req.json()
+    let metadata = libraryData.MediaContainer.Metadata
+
+    if (options.collectionFilter) {
+      const collectionFilter = options.collectionFilter.split(',')
+      metadata = metadata?.filter(metadataItem => {
+        return metadataItem.Collection?.find(collection =>
+          collectionFilter.find(
+            filter => filter.toLowerCase() === collection.tag.toLowerCase()
+          )
+        )
+      })
+    }
+
+    if (!metadata) continue
+
+    movies.push(...metadata)
+  }
+
+  return movies
+}
+
 // Genre ID to name mapping (TMDb genre IDs) - same as in session.ts
 const GENRE_MAP: Record<number, string> = {
   28: 'Action',

@@ -410,12 +410,18 @@ export async function enrich({
     voteCount = det?.vote_count || null
     contentRating = extractUsContentRating(det?.release_dates)
 
-    const trailerVideo = (det?.videos?.results ?? []).find(
-      (v: any) =>
-        v?.site === 'YouTube' &&
-        (v?.type === 'Trailer' || v?.type === 'Teaser') &&
-        v?.key
+    // TMDb doesn't guarantee the official trailer is first in `videos.results` — fan-uploaded
+    // clips and teasers can sort ahead of it. Rank by official flag, then Trailer > Teaser, then
+    // most recently published, so the actual official trailer wins.
+    const trailerCandidates = (det?.videos?.results ?? []).filter(
+      (v: any) => v?.site === 'YouTube' && v?.key && (v?.type === 'Trailer' || v?.type === 'Teaser')
     )
+    const trailerVideo = trailerCandidates.sort((a: any, b: any) => {
+      const scoreOf = (v: any) => (v?.official ? 2 : 0) + (v?.type === 'Trailer' ? 1 : 0)
+      const scoreDiff = scoreOf(b) - scoreOf(a)
+      if (scoreDiff !== 0) return scoreDiff
+      return new Date(b?.published_at ?? 0).getTime() - new Date(a?.published_at ?? 0).getTime()
+    })[0]
     trailerKey = trailerVideo?.key ?? null
 
     const providers = det?.['watch/providers']?.results?.US

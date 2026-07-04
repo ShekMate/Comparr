@@ -59,6 +59,12 @@ import {
   unscrobbleOnServer,
 } from '../../api/plex-sync.ts'
 import { getUserSettings, upsertUserSettings, getFriendConnections } from '../auth/user-db.ts'
+import {
+  resolvePersonalSourcesForUser,
+  getPersonalPlexLibrary,
+  getPersonalMediaServerLibrary,
+  PersonalSourceDescriptor,
+} from './personal-media-sources.ts'
 
 // Genre ID to name mapping (TMDb genre IDs)
 const GENRE_MAP: Record<number, string> = {
@@ -189,6 +195,15 @@ interface MediaItem {
   streamingLink?: string | null
   tmdbId?: number | null
   trailerKey?: string | null
+  // Present when this candidate came from a user's own or a friend's personal Plex/Emby/
+  // Jellyfin server (see personal-media-sources.ts), rather than the instance-wide admin
+  // library or TMDb discovery. Ephemeral — not persisted beyond this response, used only to
+  // drive the mobile client's "in your library" / "in <friend>'s library" swipe-card badge.
+  personalSource?: {
+    type: 'own' | 'friend'
+    provider: 'plex' | 'emby' | 'jellyfin'
+    friendName?: string
+  }
 }
 
 interface DiscoverQueue {
@@ -213,7 +228,7 @@ type DiscoverFilters = {
   streamingServices?: string[]
 }
 
-function extractTmdbIdFromGuid(guid?: string | null): number | null {
+export function extractTmdbIdFromGuid(guid?: string | null): number | null {
   if (!guid) return null
 
   const tmdbMatch = guid.match(/tmdb:\/\/(?:[^/]+\/)?(\d+)/i)
@@ -1666,6 +1681,20 @@ class Session {
     },
     requester?: User
   ) {
+    // Per-user personal media sources (own connected server + friends' shared servers) — see
+    // personal-media-sources.ts. Deliberately independent of the instance-wide admin
+    // Plex/Emby/Jellyfin config below, which stays untouched for the legacy web/Docker flow.
+    // Every personal room is `U<userId>` by construction (see roomCodeForUser in
+    // routes/compare.ts), so the numeric id is always recoverable from the room code.
+    const personalRoomMatch = this.roomCode.match(/^U(\d+)$/)
+    const personalRoomUserId = personalRoomMatch
+      ? parseInt(personalRoomMatch[1], 10)
+      : null
+    const myPersonalSources: PersonalSourceDescriptor[] =
+      personalRoomUserId != null
+        ? resolvePersonalSourcesForUser(personalRoomUserId)
+        : []
+
     const configuredPaidServices = getPaidStreamingServices()
     const configuredPersonalSources =
       requester?.hasServerAccess === false ? [] : getPersonalMediaSources()
@@ -1922,6 +1951,75 @@ class Session {
             title: entry.title,
             release_date: entry.year ? `${entry.year}-01-01` : null,
           })
+        }
+
+        const fetchPersonalSourceCandidate = async (
+          source: PersonalSourceDescriptor
+        ): Promise<any> => {
+          const tag = {
+            type: source.owner.type,
+            provider: source.provider,
+            ...(source.owner.type === 'friend'
+              ? { friendName: source.owner.friendName }
+              : {}),
+          }
+
+          if (source.provider === 'plex') {
+            const movies = await getPersonalPlexLibrary(
+              source.url,
+              source.token,
+              source.libraryName || undefined
+            )
+            if (movies.length === 0) {
+              throw new NoMoreMoviesError('Personal Plex library is empty')
+            }
+            const entry = movies[Math.floor(Math.random() * movies.length)]
+            ;(entry as any).personalSource = tag
+            return entry
+          }
+
+          const providerLabel = source.provider === 'emby' ? 'Emby' : 'Jellyfin'
+          const movies = await getPersonalMediaServerLibrary(
+            providerLabel,
+            source.url,
+            source.token
+          )
+          if (movies.length === 0) {
+            throw new NoMoreMoviesError(`Personal ${providerLabel} library is empty`)
+          }
+          const entry = movies[Math.floor(Math.random() * movies.length)]
+          const formatted = await this.formatTMDbMovie({
+            id: entry.tmdbId,
+            title: entry.title,
+            release_date: entry.year ? `${entry.year}-01-01` : null,
+          })
+          ;(formatted as any).personalSource = tag
+          return formatted
+        }
+
+        // Give personal sources (own + friends' shared servers) a rotating slot in the
+        // attempt cycle, generalizing the existing single-Plex "blend" pattern below to N
+        // sources. With zero personal sources configured this is a no-op and every attempt
+        // falls through to the existing instance-wide/TMDb logic unchanged.
+        if (myPersonalSources.length > 0) {
+          const slot = attemptNumber % (myPersonalSources.length + 1)
+          if (slot !== 0) {
+            const source = myPersonalSources[slot - 1]
+            try {
+              return await fetchPersonalSourceCandidate(source)
+            } catch (err) {
+              if (err instanceof NoMoreMoviesError) {
+                log.debug(
+                  `Personal source (${source.provider}, ${source.owner.type}) exhausted for this attempt; falling through.`
+                )
+              } else {
+                log.warn(
+                  `Personal source fetch failed (${source.provider}, ${source.owner.type}): ${err}`
+                )
+              }
+              // fall through to the existing logic below for this attempt
+            }
+          }
         }
 
         // Check Emby/Jellyfin-only modes before the TMDb-not-configured fallback
@@ -2455,6 +2553,7 @@ class Session {
               null,
             production_countries: plexMovie.production_countries || [],
             trailerKey: extra?.trailerKey || null,
+            personalSource: (plexMovie as any).personalSource,
           }
 
           validMovies.push(movie)

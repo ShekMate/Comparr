@@ -51,6 +51,7 @@ import { handleSettingsRoutes } from './infra/http/routes/settings.ts'
 import { handleRoutes } from './infra/http/router.ts'
 import { handleMatchesRoute } from './infra/http/routes/matches.ts'
 import { handleCompareRoutes } from './infra/http/routes/compare.ts'
+import { handleMediaServerRoutes } from './infra/http/routes/media-server.ts'
 import { handleRequestServiceRoutes } from './infra/http/routes/request-service.ts'
 import { handleRequestMovieRoute } from './infra/http/routes/request-movie.ts'
 import { handleMovieRefreshRoute } from './infra/http/routes/movie-refresh.ts'
@@ -535,6 +536,7 @@ for await (const req of server) {
     const routeResponse = await handleRoutes(req, p, [
       handleRequestServiceRoutes,
       handleCompareRoutes,
+      handleMediaServerRoutes,
       handleMatchesRoute,
       handleRecommendationsRoute,
     ])

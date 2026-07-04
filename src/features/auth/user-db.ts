@@ -190,6 +190,18 @@ export function initUserDatabase(): Database {
       // Column already exists — ignore
     }
 
+    // A dismissed match hides that guid from the caller's Matches list without touching their
+    // (or the friend's) underlying like — getCompareMatches derives matches purely from live
+    // wantsToWatch=true responses, so hiding one requires a separate, explicit per-user record.
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS dismissed_matches (
+        user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        guid         TEXT    NOT NULL,
+        dismissed_at TEXT    NOT NULL,
+        PRIMARY KEY (user_id, guid)
+      )
+    `)
+
     log.info(`[auth] User database ready at ${DB_PATH}`)
     return db
   } catch (err) {
@@ -767,6 +779,141 @@ export function acceptFriendRequest(
     `[auth] Friend request accepted: user ${recipientId} ← user ${requesterId}`
   )
   return { success: true }
+}
+
+/**
+ * Turn personal-server sharing with an already-accepted friend on or off, any time after
+ * acceptance (acceptFriendRequest above only sets this once, at accept time). Turning sharing
+ * on sets server_prompt_pending on the friend's row, same as the accept-time behavior, so they
+ * see a "so-and-so shared their library with you" prompt.
+ */
+export function setSharesServer(
+  userId: number,
+  friendUserId: number,
+  share: boolean
+): { success: boolean; error?: string } {
+  const stmt = getDb().prepare(
+    `SELECT status FROM friend_connections WHERE user_id = ? AND friend_user_id = ? LIMIT 1`
+  )
+  const row = stmt.value<[string]>(userId, friendUserId)
+  stmt.finalize()
+
+  if (!row || row[0] !== 'accepted') {
+    return { success: false, error: 'You are not friends with this user.' }
+  }
+
+  const now = new Date().toISOString()
+  getDb().exec(
+    `UPDATE friend_connections SET shares_server = ?, updated_at = ?
+     WHERE user_id = ? AND friend_user_id = ?`,
+    share ? 1 : 0,
+    now,
+    userId,
+    friendUserId
+  )
+
+  if (share) {
+    getDb().exec(
+      `UPDATE friend_connections SET server_prompt_pending = 1, updated_at = ?
+       WHERE user_id = ? AND friend_user_id = ?`,
+      now,
+      friendUserId,
+      userId
+    )
+  }
+
+  log.info(
+    `[auth] User ${userId} ${share ? 'enabled' : 'disabled'} server sharing with ${friendUserId}`
+  )
+  return { success: true }
+}
+
+/**
+ * Clear the "friend just turned on sharing" prompt flag on the caller's own row.
+ */
+export function acknowledgeServerPrompt(
+  userId: number,
+  friendUserId: number
+): void {
+  getDb().exec(
+    `UPDATE friend_connections SET server_prompt_pending = 0, updated_at = ?
+     WHERE user_id = ? AND friend_user_id = ?`,
+    new Date().toISOString(),
+    userId,
+    friendUserId
+  )
+}
+
+export interface SharedServerInfo {
+  friendUserId: number
+  friendUsername: string
+  plexUrl: string
+  plexToken: string
+  plexLibraryName: string
+  embyUrl: string
+  embyApiKey: string
+  embyLibraryName: string
+  jellyfinUrl: string
+  jellyfinApiKey: string
+  jellyfinLibraryName: string
+}
+
+/**
+ * Servers shared *with* this user by accepted friends (i.e. friends who have sharesServer=1
+ * on the row pointing at this user). Used by the discovery pipeline to pull friends' libraries
+ * into a user's swipe deck.
+ */
+export function getSharedServersForUser(userId: number): SharedServerInfo[] {
+  try {
+    const stmt = getDb().prepare(`
+      SELECT fc.user_id, u.username,
+        us.plex_url, us.plex_token, us.plex_library_name,
+        us.emby_url, us.emby_api_key, us.emby_library_name,
+        us.jellyfin_url, us.jellyfin_api_key, us.jellyfin_library_name
+      FROM friend_connections fc
+      JOIN users u ON u.id = fc.user_id
+      LEFT JOIN user_settings us ON us.user_id = fc.user_id
+      WHERE fc.friend_user_id = ? AND fc.status = 'accepted' AND fc.shares_server = 1
+    `)
+    const rows = stmt.values<unknown[][]>(userId)
+    stmt.finalize()
+    return rows.map(row => ({
+      friendUserId: Number(row[0]),
+      friendUsername: String(row[1] ?? ''),
+      plexUrl: String(row[2] ?? ''),
+      plexToken: String(row[3] ?? ''),
+      plexLibraryName: String(row[4] ?? ''),
+      embyUrl: String(row[5] ?? ''),
+      embyApiKey: String(row[6] ?? ''),
+      embyLibraryName: String(row[7] ?? ''),
+      jellyfinUrl: String(row[8] ?? ''),
+      jellyfinApiKey: String(row[9] ?? ''),
+      jellyfinLibraryName: String(row[10] ?? ''),
+    }))
+  } catch (err) {
+    log.error(`[auth] getSharedServersForUser error: ${err}`)
+    return []
+  }
+}
+
+/**
+ * Hide a match from this user's Matches list without changing their (or their friend's)
+ * underlying wantsToWatch response — the movie stays in the Watchlist.
+ */
+export function dismissMatchForUser(userId: number, guid: string): void {
+  getDb().exec(
+    `INSERT OR REPLACE INTO dismissed_matches (user_id, guid, dismissed_at) VALUES (?, ?, ?)`,
+    userId,
+    guid,
+    new Date().toISOString()
+  )
+}
+
+export function getDismissedMatchGuids(userId: number): Set<string> {
+  const stmt = getDb().prepare(`SELECT guid FROM dismissed_matches WHERE user_id = ?`)
+  const rows = stmt.values<unknown[][]>(userId)
+  stmt.finalize()
+  return new Set(rows.map(row => String(row[0])))
 }
 
 /**
