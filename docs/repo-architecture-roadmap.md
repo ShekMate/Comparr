@@ -71,7 +71,6 @@ src/
   integrations/
     plex/
     tmdb/
-    omdb/
     request-services/
 
   services/
@@ -99,7 +98,7 @@ public/js/
 1. **Routes should orchestrate, not implement business logic.**
 2. **Feature services own workflows** (session flow, enrichment flow, matching flow).
 3. **Presenters map internal models to API/WS payloads.**
-4. **Integrations wrap third-party APIs** (Plex/TMDb/OMDb/Radarr/Jellyseerr/Overseerr).
+4. **Integrations wrap third-party APIs** (Plex/TMDb/Radarr/Jellyseerr/Overseerr).
 5. **Domain modules stay framework-agnostic** (no direct HTTP/WebSocket references).
 
 ## High-Impact Refactors (Suggested Order)

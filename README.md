@@ -51,7 +51,7 @@ Help you and your friends decide what to watch from your Plex library with an in
 
 🎯 **Smart Matching** - Automatically shows you what everyone agrees on
 
-📊 **Rich Metadata** - Displays ratings from IMDb, Rotten Tomatoes, TMDb, and OMDb
+📊 **Rich Metadata** - Displays ratings and metadata from TMDb
 
 📝 **Personal Lists** - Track your Watch, Pass, and Seen lists with the ability to move movies between them
 
@@ -297,14 +297,13 @@ Comparr stores session data and ratings in `/data` inside the container. To pres
 
 ## Integrations
 
-### TMDb & OMDb
+### TMDb
 
 Enhance your movie cards with additional metadata and ratings:
 
 - **TMDb**: Provides comprehensive movie information, posters, and ratings
-- **OMDb**: Adds IMDb and Rotten Tomatoes ratings
 
-Both are optional but highly recommended for the best experience.
+Recommended for the best experience. This product uses the TMDB API but is not endorsed or certified by TMDB.
 
 ### Radarr
 
@@ -438,7 +437,7 @@ npm run format
 - Verify your Plex library contains movies
 - Check the Library Filter setting in the web UI isn't excluding your library
 - Review logs for API errors: `docker logs comparr`
-- Ensure TMDb/OMDb API keys are valid if configured in Settings
+- Ensure your TMDb API key is valid if configured in Settings
 
 ### Permission Errors on `/data`
 
@@ -498,7 +497,6 @@ Heavily rewritten and rebranded as **Comparr** by [ShekMate](https://github.com/
 - **Luke Channings** - Original MovieMatch creator
 - **Plex** - For the amazing media server platform
 - **TMDb** - For comprehensive movie metadata
-- **OMDb** - For additional rating data
 - All contributors and users of Comparr
 
 ---

@@ -27,7 +27,7 @@ The project has comprehensive test coverage for critical business logic:
 
 - ✅ Session matching algorithm
 - ✅ Plex API integration
-- ✅ Movie enrichment pipeline (TMDb, OMDb)
+- ❌ Movie enrichment pipeline (no automated tests currently)
 - ✅ WebSocket communication (ComparrAPI)
 - ⚠️ Frontend components (partial)
 - ⚠️ Cache management (partial)
@@ -122,7 +122,7 @@ Coverage reports are generated in the `coverage/` directory.
 | Module | Target | Status | What's Tested |
 |--------|--------|--------|---------------|
 | `src/features/session/` | 90% | ✅ High | 2-user & N-user matching, pass/dislike/seen handling, user changing mind, `getExistingMatches` |
-| `src/features/catalog/` | 80% | ✅ High | OMDb+TMDb merging, fallback logic, rating aggregation (IMDb/RT/TMDb), genre extraction, streaming detection |
+| `src/features/catalog/` | 80% | ❌ None | No automated tests currently — TMDb enrichment, genre extraction, streaming detection |
 | `src/api/` | 70% | ✅ High | Library fetching, auth errors (401), server errors (500/timeout), filtering, random selection |
 | `public/js/ComparrAPI.js` | 70% | ✅ High | WS connection, login flow, message handling (batch/match/error), like/dislike/seen, reconnection |
 | `public/js/CardView.js` | 60% | ⚠️ Partial | Swipe gestures, card animations, rating submission not yet covered |
@@ -232,7 +232,6 @@ Pre-built mock data available in `src/__tests__/mocks/`:
 
 - `plex-mocks.ts` - Plex API responses
 - `tmdb-mocks.ts` - TMDb API responses
-- `omdb-mocks.ts` - OMDb API responses
 
 ---
 
@@ -307,7 +306,7 @@ Before merging PRs:
 
 #### When to Mock
 
-- ✅ External API calls (Plex, TMDb, OMDb)
+- ✅ External API calls (Plex, TMDb)
 - ✅ Network requests (fetch, WebSocket)
 - ✅ File I/O operations
 - ✅ Date/time for consistent tests
