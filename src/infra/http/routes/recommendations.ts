@@ -2,7 +2,6 @@ import type { CompatRequest } from '../compat-request.ts'
 import { addSecurityHeaders } from '../security-headers.ts'
 import { tmdbFetch } from '../../../api/tmdb.ts'
 import { getTmdbApiKey } from '../../../core/config.ts'
-import { getIMDbRating } from '../../../features/catalog/imdb-datasets.ts'
 
 const makeJsonHeaders = (req?: CompatRequest) => {
   const headers = new Headers({ 'content-type': 'application/json' })
@@ -107,18 +106,14 @@ export async function handleRecommendationsRoute(
       baseMovies.map(async (m: any) => {
         try {
           const details = await tmdbFetch(`/movie/${m.tmdbId}`, apiKey, {
-            append_to_response: 'external_ids,release_dates,watch/providers',
+            append_to_response: 'release_dates,watch/providers',
           }).then(r => r.json())
-
-          const imdbId: string | null = details?.external_ids?.imdb_id ?? null
-          const rating_imdb = imdbId ? getIMDbRating(imdbId) : null
 
           return {
             ...m,
             runtime: details?.runtime ?? null,
             contentRating: extractUsContentRating(details?.release_dates),
             watchProviders: extractWatchProviders(details?.['watch/providers']),
-            ...(rating_imdb !== null ? { rating_imdb } : {}),
           }
         } catch {
           return m

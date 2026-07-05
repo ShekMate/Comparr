@@ -41,7 +41,6 @@ export type SettingsRouteDeps = {
   clearRooms: (roomCodes: string[]) => void
   clearUsersFromRoom: (roomCode: string, userNames: string[]) => void
   clearUsersFromAllRooms: (userNames: string[]) => void
-  onWizardComplete: () => Promise<void> | void
 }
 
 const getClientIp = (req: CompatRequest) => resolveClientIp(req)
@@ -202,7 +201,6 @@ export async function handleSettingsRoutes(
     clearRooms,
     clearUsersFromRoom,
     clearUsersFromAllRooms,
-    onWizardComplete,
   } = deps
 
   if (pathname === '/api/settings-access') {
@@ -489,14 +487,9 @@ export async function handleSettingsRoutes(
       }
 
       const hasUpdates = Object.keys(incomingSettings).length > 0
-      const setupWasCompleted =
-        String(currentSettings.SETUP_WIZARD_COMPLETED ?? '').toLowerCase() ===
-        'true'
       const updated = hasUpdates
         ? await updateSettings(incomingSettings)
         : currentSettings
-      const setupIsCompleted =
-        String(updated.SETUP_WIZARD_COMPLETED ?? '').toLowerCase() === 'true'
 
       if (hasUpdates) {
         clearAllMoviesCache()
@@ -514,18 +507,6 @@ export async function handleSettingsRoutes(
             `Failed to refresh Plex cache after settings update: ${err}`
           )
         )
-      }
-
-      if (!setupWasCompleted && setupIsCompleted) {
-        try {
-          await Promise.resolve(onWizardComplete())
-        } catch (err) {
-          log.error(
-            `Failed to run setup completion follow-up job: ${
-              err?.message || err
-            }`
-          )
-        }
       }
 
       return new Response(

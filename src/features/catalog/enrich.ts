@@ -1,8 +1,6 @@
 // src/features/catalog/enrich.ts
-// Enriches Plex/TMDb movies with ratings, plot, and metadata.
-// Priority: 1) Local IMDb database, 2) TMDb API
+// Enriches Plex/TMDb movies with ratings, plot, and metadata from TMDb.
 
-import { getIMDbRating } from './imdb-datasets.ts'
 import {
   getPlexLibraryName,
   getEmbyLibraryName,
@@ -20,7 +18,6 @@ const tmdbSearchCache = new Map<string, any>()
 type EnrichmentPayload = {
   plot: string | null
   imdbId: string | null
-  rating_imdb: number | null
   rating_tmdb: number | null
   rating_comparr: number | null
   genres: string[]
@@ -108,7 +105,6 @@ function sanitizeEnrichmentPayload(value: any): EnrichmentPayload {
   return {
     plot: value?.plot ?? null,
     imdbId: value?.imdbId ?? null,
-    rating_imdb: value?.rating_imdb ?? null,
     rating_tmdb: value?.rating_tmdb ?? null,
     rating_comparr: value?.rating_comparr ?? null,
     genres: Array.isArray(value?.genres) ? value.genres : [],
@@ -329,7 +325,6 @@ export async function enrich({
   let imdbId: string | null = providedImdbId || imdbFromGuid(plexGuid)
   const tmdbIdFromGuid = extractTmdbIdFromGuid(plexGuid)
   const requestedTmdbId = providedTmdbId ?? tmdbIdFromGuid
-  let rating_imdb: number | null = null
   let rating_tmdb: number | null = null
   const rating_comparr: number | null = null
   let genres: string[] = []
@@ -372,13 +367,6 @@ export async function enrich({
     return cached
   }
 
-  if (imdbId) {
-    const localRating = getIMDbRating(imdbId)
-    if (localRating !== null) {
-      rating_imdb = localRating
-    }
-  }
-
   const initialDetails =
     requestedTmdbId != null ? await tmdbMovieDetails(requestedTmdbId) : null
   const hit =
@@ -398,10 +386,6 @@ export async function enrich({
         : null
 
     imdbId = det?.external_ids?.imdb_id || imdbId || null
-    if (rating_imdb == null && imdbId) {
-      const localRating = getIMDbRating(imdbId)
-      if (localRating !== null) rating_imdb = localRating
-    }
 
     genres = (det?.genres || []).map((g: any) => g.name)
     runtime = det?.runtime || null
@@ -566,7 +550,6 @@ export async function enrich({
   const result: EnrichmentPayload = {
     plot,
     imdbId,
-    rating_imdb,
     rating_tmdb,
     rating_comparr,
     genres,

@@ -164,10 +164,6 @@ export async function handleMovieRefreshRoute(
       ratingParts.push(
         `<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> ${enriched.rating_comparr}`
       )
-    if (enriched.rating_imdb)
-      ratingParts.push(
-        `<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> ${enriched.rating_imdb}`
-      )
     if (enriched.rating_tmdb)
       ratingParts.push(
         `<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> ${enriched.rating_tmdb}`
@@ -197,7 +193,6 @@ export async function handleMovieRefreshRoute(
       persistedState.movieIndex[movieGuid] = {
         ...persistedState.movieIndex[movieGuid],
         ...movieData,
-        rating_imdb: enriched.rating_imdb,
         rating_tmdb: enriched.rating_tmdb,
         rating_comparr: enriched.rating_comparr,
         rating,
@@ -235,7 +230,6 @@ export async function handleMovieRefreshRoute(
 
     return new Response(
       JSON.stringify({
-        rating_imdb: enriched.rating_imdb,
         rating_tmdb: enriched.rating_tmdb,
         rating_comparr: enriched.rating_comparr,
         rating,

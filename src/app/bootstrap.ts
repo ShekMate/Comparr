@@ -1,11 +1,6 @@
 import * as log from 'jsr:@std/log'
 import { getPlexToken, getPlexUrl, getTmdbApiKey } from '../core/config.ts'
-import { getSettings } from '../core/settings.ts'
 import { initializeRadarrCache } from '../api/radarr.ts'
-import {
-  initIMDbDatabase,
-  startBackgroundUpdateJob,
-} from '../features/catalog/imdb-datasets.ts'
 import { initUserDatabase } from '../features/auth/user-db.ts'
 import { ensurePlexHydrationReady } from '../features/session/session.ts'
 import { initPlexCache } from '../integrations/plex/cache.ts'
@@ -26,25 +21,6 @@ export const bootstrapApplication = () => {
   initializeRadarrCache().catch(err =>
     log.error(`Failed to initialize Radarr cache: ${err}`)
   )
-
-  // Initialize IMDb ratings database and start background update job
-  log.info(`[startup] Initializing IMDb database (requires --allow-ffi)`)
-  try {
-    initIMDbDatabase()
-    log.info(`[startup] IMDb database init complete`)
-  } catch (err) {
-    log.error(`[startup] IMDb database init FAILED: ${err}`)
-  }
-
-  const setupWizardCompleted =
-    String(getSettings().SETUP_WIZARD_COMPLETED ?? '').toLowerCase() === 'true'
-  if (setupWizardCompleted) {
-    startBackgroundUpdateJob()
-  } else {
-    log.info(
-      '[startup] Setup wizard incomplete; deferring IMDb background download job'
-    )
-  }
 
   // Initialize Plex availability cache
   const plexCacheReady = initPlexCache()

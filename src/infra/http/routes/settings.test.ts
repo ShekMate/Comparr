@@ -32,7 +32,7 @@ const makeReq = ({
 
 const makeDeps = (
   settings: Record<string, unknown>,
-  calls: { updates: number; reset: number; wizardComplete: number }
+  calls: { updates: number; reset: number }
 ): SettingsRouteDeps => ({
   buildPlexCache: async () => {},
   clearAllMoviesCache: () => {},
@@ -55,16 +55,13 @@ const makeDeps = (
   clearRooms: () => {},
   clearUsersFromRoom: () => {},
   clearUsersFromAllRooms: () => {},
-  onWizardComplete: () => {
-    calls.wizardComplete += 1
-  },
 })
 
 Deno.test(
   'setup mode allows remote admin settings writes during wizard',
   async () => {
     Deno.env.delete('ALLOW_REMOTE_BOOTSTRAP')
-    const calls = { updates: 0, reset: 0, wizardComplete: 0 }
+    const calls = { updates: 0, reset: 0 }
     const settings = { SETUP_WIZARD_COMPLETED: 'false', ACCESS_PASSWORD: '' }
 
     const response = await handleSettingsRoutes(
@@ -77,7 +74,6 @@ Deno.test(
 
     assertEquals(response?.status, 200)
     assertEquals(calls.updates, 1)
-    assertEquals(calls.wizardComplete, 0)
   }
 )
 
@@ -85,7 +81,7 @@ Deno.test(
   'setup mode allows access password write without ALLOW_REMOTE_BOOTSTRAP',
   async () => {
     Deno.env.delete('ALLOW_REMOTE_BOOTSTRAP')
-    const calls = { updates: 0, reset: 0, wizardComplete: 0 }
+    const calls = { updates: 0, reset: 0 }
     const settings = { SETUP_WIZARD_COMPLETED: 'false', ACCESS_PASSWORD: '' }
 
     const response = await handleSettingsRoutes(
@@ -98,14 +94,13 @@ Deno.test(
 
     assertEquals(response?.status, 200)
     assertEquals(calls.updates, 1)
-    assertEquals(calls.wizardComplete, 0)
   }
 )
 
 Deno.test(
   'completed wizard blocks unauthorized remote admin settings writes',
   async () => {
-    const calls = { updates: 0, reset: 0, wizardComplete: 0 }
+    const calls = { updates: 0, reset: 0 }
     const settings = {
       SETUP_WIZARD_COMPLETED: 'true',
       ACCESS_PASSWORD: 'pbkdf2:sha256:100000:aabbcc:ddeeff',
@@ -121,37 +116,13 @@ Deno.test(
 
     assertEquals(response?.status, 403)
     assertEquals(calls.updates, 0)
-    assertEquals(calls.wizardComplete, 0)
-  }
-)
-
-Deno.test(
-  'wizard completion hook runs once when setup flips to complete',
-  async () => {
-    Deno.env.delete('ALLOW_REMOTE_BOOTSTRAP')
-    const calls = { updates: 0, reset: 0, wizardComplete: 0 }
-    const settings = { SETUP_WIZARD_COMPLETED: 'false', ACCESS_PASSWORD: '' }
-
-    const response = await handleSettingsRoutes(
-      makeReq({
-        body: JSON.stringify({
-          settings: { SETUP_WIZARD_COMPLETED: 'true' },
-        }),
-      }),
-      '/api/settings',
-      makeDeps(settings, calls)
-    )
-
-    assertEquals(response?.status, 200)
-    assertEquals(calls.updates, 1)
-    assertEquals(calls.wizardComplete, 1)
   }
 )
 
 Deno.test(
   'access-password verify accepts an existing access-session cookie token',
   async () => {
-    const calls = { updates: 0, reset: 0, wizardComplete: 0 }
+    const calls = { updates: 0, reset: 0 }
     const settings = {
       SETUP_WIZARD_COMPLETED: 'true',
       ACCESS_PASSWORD: 'pbkdf2:sha256:100000:aabbcc:ddeeff',

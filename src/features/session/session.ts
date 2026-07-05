@@ -106,10 +106,9 @@ function ensureComparrScore(movie: any): void {
     }
 
     // Skip if movie doesn't have any ratings (null/undefined)
-    const hasImdb = typeof movie.rating_imdb === 'number'
     const hasTmdb = typeof movie.rating_tmdb === 'number'
 
-    if (!hasImdb && !hasTmdb) {
+    if (!hasTmdb) {
       return
     }
 
@@ -133,11 +132,6 @@ function ensureComparrScore(movie: any): void {
       parts.push(
         `<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> <span class="rating-value">${movie.rating_comparr}</span>`
       )
-      if (movie.rating_imdb != null) {
-        parts.push(
-          `<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> <span class="rating-value">${movie.rating_imdb}</span>`
-        )
-      }
       if (movie.rating_tmdb != null) {
         parts.push(
           `<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> <span class="rating-value">${movie.rating_tmdb}</span>`
@@ -186,7 +180,6 @@ interface MediaItem {
   contentRating?: string
   runtime?: number
   rating: string
-  rating_imdb?: number | null
   rating_tmdb?: number | null
   key: string
   type: 'movie' | 'artist' | 'photo' | 'show'
@@ -224,7 +217,6 @@ type DiscoverFilters = {
   runtimeMax?: number
   voteCount?: number
   sortBy?: string
-  imdbRating?: number
   streamingServices?: string[]
 }
 
@@ -546,7 +538,6 @@ interface WebSocketNextBatchMessage {
       subscriptionServices?: string[]
     }
     contentRatings?: string[]
-    imdbRating?: number
     tmdbRating?: number
     languages?: string[]
     countries?: string[]
@@ -556,7 +547,6 @@ interface WebSocketNextBatchMessage {
     runtimeMax?: number
     voteCount?: number
     sortBy?: string
-    imdbRating?: number
   }
 }
 
@@ -1661,7 +1651,6 @@ class Session {
         subscriptionServices?: string[]
       }
       contentRatings?: string[]
-      imdbRating?: number
       tmdbRating?: number
       languages?: string[]
       countries?: string[]
@@ -1671,7 +1660,6 @@ class Session {
       runtimeMax?: number
       voteCount?: number
       sortBy?: string
-      imdbRating?: number
     },
     options?: {
       suppressBroadcast?: boolean
@@ -2192,7 +2180,6 @@ class Session {
             | {
                 plot: string | null
                 imdbId: string | null
-                rating_imdb: number | null
                 rating_tmdb: number | null
                 tmdbPosterPath?: string | null
                 genres?: string[]
@@ -2289,11 +2276,6 @@ class Session {
               `<img src="${basePath}/assets/logos/comparr.svg" alt="Comparr" class="rating-logo"> <span class="rating-value">${extra.rating_comparr}</span>`
             )
           }
-          if (extra?.rating_imdb != null) {
-            parts.push(
-              `<img src="${basePath}/assets/logos/imdb.svg" alt="IMDb" class="rating-logo"> <span class="rating-value">${extra.rating_imdb}</span>`
-            )
-          }
           if (extra?.rating_tmdb != null) {
             parts.push(
               `<img src="${basePath}/assets/logos/tmdb.svg" alt="TMDb" class="rating-logo"> <span class="rating-value">${extra.rating_tmdb}</span>`
@@ -2307,16 +2289,6 @@ class Session {
             (plexMovie.summary && String(plexMovie.summary)) ||
             ''
 
-          if (filters?.imdbRating && filters.imdbRating > 0) {
-            if (!extra?.rating_imdb || extra.rating_imdb < filters.imdbRating) {
-              log.debug(
-                `⛔️ Skipping ${plexMovie.title} - IMDb rating ${
-                  extra?.rating_imdb || 'N/A'
-                } below minimum ${filters.imdbRating}`
-              )
-              continue
-            }
-          }
           if (filters?.yearMin || filters?.yearMax) {
             const movieYear =
               typeof plexMovie.year === 'number'
@@ -2538,7 +2510,6 @@ class Session {
             contentRating: extra?.contentRating || undefined,
             runtime: extra?.runtime || plexMovie.runtime || undefined,
             rating: String(ratingStr),
-            rating_imdb: extra?.rating_imdb ?? null,
             rating_tmdb: extra?.rating_tmdb ?? null,
             type: plexMovie.type,
             streamingServices: streamingServices,
@@ -2849,7 +2820,6 @@ class Session {
       runtimeMax?: number
       voteCount?: number
       sortBy?: string
-      imdbRating?: number
       streamingServices?: string[]
     }
   ): Promise<any> {
@@ -3652,7 +3622,6 @@ export async function bulkImportSeen(
       year: movie.year,
       art: movie.art,
       rating: movie.rating,
-      rating_imdb: (movie as any).rating_imdb ?? null,
       rating_tmdb: (movie as any).rating_tmdb ?? null,
       key: movie.key,
       type: 'movie',
@@ -4024,7 +3993,6 @@ export async function processImdbImportBackground(
         cast: [],
         castMembers: [],
         writers: [],
-        rating_imdb: null,
         rating_tmdb: tmdbRating,
         rating_comparr: null,
       }
@@ -4053,7 +4021,6 @@ export async function processImdbImportBackground(
         year: movie.year,
         art: movie.art,
         rating: movie.rating,
-        rating_imdb: null,
         rating_tmdb: tmdbMovie.vote_average ?? null,
         key: movie.key,
         type: 'movie',
