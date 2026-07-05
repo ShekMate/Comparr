@@ -20,6 +20,8 @@ import {
   getPort,
   getMaxBodySize,
   getAccessPassword,
+  getTlsCertFile,
+  getTlsKeyFile,
 } from './core/config.ts'
 import { getDataDir } from './core/env.ts'
 import { getSettings, updateSettings, resetSettings } from './core/settings.ts'
@@ -69,11 +71,6 @@ import {
   getCachedPosterPath,
   serveCachedPoster,
 } from './services/cache/poster-cache.ts'
-import {
-  closeIMDbDatabase,
-  startBackgroundUpdateJob,
-  stopBackgroundUpdateJob,
-} from './features/catalog/imdb-datasets.ts'
 import { closeUserDatabase } from './features/auth/user-db.ts'
 import { buildPlexCache } from './integrations/plex/cache.ts'
 import { bootstrapApplication } from './app/bootstrap.ts'
@@ -227,7 +224,12 @@ const isValidCsrfRequest = (req: CompatRequest) => {
   return timingSafeEqual(cookieToken, headerToken)
 }
 
-const serveCompat = (options: { port: number; hostname?: string }) => {
+const serveCompat = (options: {
+  port: number
+  hostname?: string
+  cert?: string
+  key?: string
+}) => {
   const queue: CompatRequest[] = []
   const waiters: Array<(value: IteratorResult<CompatRequest>) => void> = []
   const abortController = new AbortController()
@@ -250,7 +252,12 @@ const serveCompat = (options: { port: number; hostname?: string }) => {
   }
 
   Deno.serve(
-    { port: options.port, hostname, signal: abortController.signal },
+    {
+      port: options.port,
+      hostname,
+      signal: abortController.signal,
+      ...(options.cert && options.key ? { cert: options.cert, key: options.key } : {}),
+    },
     (request, info) => {
       if (closed) return new Response('Server shutting down', { status: 503 })
 
@@ -258,10 +265,20 @@ const serveCompat = (options: { port: number; hostname?: string }) => {
         const parsedUrl = new URL(request.url)
         let responder: ((response: Response) => void) | null = resolve
 
+        // HTTP/2 (negotiated automatically over TLS via ALPN) has no literal Host header —
+        // it's carried in the `:authority` pseudo-header instead, which Deno's Request.headers
+        // doesn't surface. Origin/host validation downstream (network-access.ts) depends on a
+        // `host` header being present regardless of HTTP version, so synthesize one here from
+        // the URL Deno already parsed correctly for both versions.
+        const headers = request.headers.has('host')
+          ? request.headers
+          : new Headers(request.headers)
+        if (!headers.has('host')) headers.set('host', parsedUrl.host)
+
         const req: CompatRequest = {
           method: request.method,
           url: `${parsedUrl.pathname}${parsedUrl.search}`,
-          headers: request.headers,
+          headers,
           conn: { remoteAddr: info.remoteAddr },
           rawRequest: request,
           respond: (init): Promise<void> => {
@@ -319,15 +336,24 @@ const serveCompat = (options: { port: number; hostname?: string }) => {
 const host = getHost()
 const port = Number(getPort())
 
+const tlsCertFile = getTlsCertFile()
+const tlsKeyFile = getTlsKeyFile()
+let tlsCert: string | undefined
+let tlsKey: string | undefined
+if (tlsCertFile && tlsKeyFile) {
+  tlsCert = Deno.readTextFileSync(tlsCertFile)
+  tlsKey = Deno.readTextFileSync(tlsKeyFile)
+}
+
 log.info(
   `[startup] Deno ${Deno.version.deno} | OS: ${Deno.build.os} ${Deno.build.arch}`
 )
-log.info(`[startup] Binding server to ${host}:${port}`)
+log.info(`[startup] Binding server to ${host}:${port} (${tlsCert ? 'https' : 'http'})`)
 log.info(`[startup] DATA_DIR=${getDataDir()}`)
 
 let server: ReturnType<typeof serveCompat>
 try {
-  server = serveCompat({ port, hostname: host })
+  server = serveCompat({ port, hostname: host, cert: tlsCert, key: tlsKey })
   log.info(`[startup] Server created successfully`)
 } catch (err) {
   log.error(`[startup] FAILED to create server: ${err}`)
@@ -358,8 +384,6 @@ if (Deno.build.os !== 'windows') {
       log.info('Shutting down')
       isShuttingDown = true
       server.close()
-      stopBackgroundUpdateJob()
-      closeIMDbDatabase()
       closeUserDatabase()
       await wss.close().catch(() => {})
       const startedAt = Date.now()
@@ -379,7 +403,10 @@ log.info(`Listening on http://${host}:${port}`)
 
 bootstrapApplication()
 
-for await (const req of server) {
+// Each request runs independently rather than being awaited inline by the
+// dispatch loop below — otherwise one slow/stuck handler (e.g. a stalled
+// upstream fetch) would block every other client from getting a response.
+const handleRequest = async (req: CompatRequest): Promise<void> => {
   activeRequests += 1
   const requestStartedAt = Date.now()
   const requestId = crypto.randomUUID()
@@ -393,7 +420,7 @@ for await (const req of server) {
         body: JSON.stringify({ error: 'Server is shutting down.' }),
         headers: makeHeaders(req, 'application/json'),
       })
-      continue
+      return
     }
 
     if (!isValidHost(req)) {
@@ -403,7 +430,7 @@ for await (const req of server) {
         headers: makeHeaders(req, 'application/json'),
         body: JSON.stringify({ error: 'Misdirected Request' }),
       })
-      continue
+      return
     }
 
     const url = new URL(req.url, 'http://local')
@@ -417,7 +444,7 @@ for await (const req of server) {
     })
     if (systemRouteResponse) {
       await req.respondWith(systemRouteResponse)
-      continue
+      return
     }
 
     if (
@@ -431,7 +458,7 @@ for await (const req of server) {
         body: JSON.stringify({ error: 'Invalid request origin.' }),
         headers: makeHeaders(req, 'application/json'),
       })
-      continue
+      return
     }
 
     if (
@@ -445,7 +472,7 @@ for await (const req of server) {
         body: JSON.stringify({ error: 'Invalid CSRF token.' }),
         headers: makeHeaders(req, 'application/json'),
       })
-      continue
+      return
     }
 
     if (
@@ -460,7 +487,7 @@ for await (const req of server) {
         body: JSON.stringify({ error: 'Access password required.' }),
         headers: makeHeaders(req, 'application/json'),
       })
-      continue
+      return
     }
 
     // User auth gate: always required after first-run setup is done.
@@ -483,7 +510,7 @@ for await (const req of server) {
           }),
           headers: makeHeaders(req, 'application/json'),
         })
-        continue
+        return
       }
     }
 
@@ -492,7 +519,7 @@ for await (const req of server) {
       const authResponse = await handleAuthRoutes(req, p)
       if (authResponse) {
         await req.respondWith(authResponse)
-        continue
+        return
       }
     }
 
@@ -524,13 +551,10 @@ for await (const req of server) {
       clearRooms,
       clearUsersFromRoom,
       clearUsersFromAllRooms,
-      onWizardComplete: () => {
-        startBackgroundUpdateJob()
-      },
     })
     if (settingsRouteResponse) {
       await req.respondWith(settingsRouteResponse)
-      continue
+      return
     }
 
     const routeResponse = await handleRoutes(req, p, [
@@ -542,7 +566,7 @@ for await (const req of server) {
     ])
     if (routeResponse) {
       await req.respondWith(routeResponse)
-      continue
+      return
     }
 
     // --- API: Request movie via Jellyseerr/Overseerr
@@ -553,7 +577,7 @@ for await (const req of server) {
     )
     if (requestMovieResponse) {
       await req.respondWith(requestMovieResponse)
-      continue
+      return
     }
 
     // --- API: Manually refresh Radarr cache
@@ -577,41 +601,41 @@ for await (const req of server) {
           headers: makeHeaders(req, 'application/json'),
         })
       }
-      continue
+      return
     }
 
     // --- API: Streaming data and persisted movie updates
     const streamingResponse = await handleStreamingRoutes(req, p)
     if (streamingResponse) {
       await req.respondWith(streamingResponse)
-      continue
+      return
     }
 
     // --- API: Refresh movie data (ratings + library status)
     const movieRefreshResponse = await handleMovieRefreshRoute(req, p)
     if (movieRefreshResponse) {
       await req.respondWith(movieRefreshResponse)
-      continue
+      return
     }
 
     // --- API: IMDb import routes
     const imdbResponse = await handleImdbImportRoutes(req, p, getMaxBodySize())
     if (imdbResponse) {
       await req.respondWith(imdbResponse)
-      continue
+      return
     }
 
     // --- API: Plex Watchlist / Seen sync
     const plexSyncResponse = await handlePlexSyncRoutes(req, p, getMaxBodySize())
     if (plexSyncResponse) {
       await req.respondWith(plexSyncResponse)
-      continue
+      return
     }
 
     // --- WebSocket for app events/login
     if (p === '/ws') {
       await req.respondWith(await wss.connect(req))
-      continue
+      return
     }
 
     // --- Deep link to Plex for a movie
@@ -642,7 +666,7 @@ for await (const req of server) {
           return h
         })(),
       })
-      continue
+      return
     }
 
     // --- Proxy TMDb posters
@@ -659,7 +683,7 @@ for await (const req of server) {
         const served = await serveCachedPoster(filename, req)
         if (served) {
           await req.respondWith(served)
-          continue
+          return
         }
       }
 
@@ -693,7 +717,7 @@ for await (const req of server) {
       } catch {
         await req.respond({ status: 404 })
       }
-      continue
+      return
     }
 
     // --- Serve favicon quickly if present
@@ -708,14 +732,14 @@ for await (const req of server) {
       } else {
         await req.respond({ status: 404 })
       }
-      continue
+      return
     }
 
     // --- Serve SPA + static files from ./public (explicit fast-paths)
     // Serve index.html through the templated static server so ${...} variables resolve
     if (p === '/' || p === '/index.html') {
       await req.respondWith(await serveFile(req, '/public'))
-      continue
+      return
     }
 
     if (p.startsWith('/js/')) {
@@ -729,7 +753,7 @@ for await (const req of server) {
       } else {
         await req.respond({ status: 404, body: 'Not Found' })
       }
-      continue
+      return
     }
     // Serve cached posters from DATA_DIR/poster-cache
     if (p.startsWith('/cached-poster/')) {
@@ -743,7 +767,7 @@ for await (const req of server) {
         filename.includes('\0')
       ) {
         await req.respond({ status: 400, body: 'Bad Request' })
-        continue
+        return
       }
       const served = await serveCachedPoster(filename, req)
       if (served) {
@@ -751,7 +775,7 @@ for await (const req of server) {
       } else {
         await req.respond({ status: 404, body: 'Not Found' })
       }
-      continue // handled
+      return // handled
     }
 
     // --- Fallback: generic static server rooted at /public
@@ -783,4 +807,28 @@ for await (const req of server) {
     }
     activeRequests = Math.max(0, activeRequests - 1)
   }
+}
+
+// Defense-in-depth: if a handler still hangs despite fetchWithTimeout (e.g. a
+// stuck lock or some other unbounded await), don't let it dangle forever —
+// log it and free the client instead of leaving the connection open.
+const REQUEST_TIMEOUT_MS = 30_000
+
+for await (const req of server) {
+  const timeoutId = setTimeout(() => {
+    log.error(`[timeout] Request exceeded ${REQUEST_TIMEOUT_MS}ms: ${req.method} ${req.url}`)
+    req
+      .respond({
+        status: 504,
+        body: JSON.stringify({ error: 'Request timed out.' }),
+        headers: makeHeaders(req, 'application/json'),
+      })
+      .catch(() => {
+        /* handler already responded, or the connection is gone */
+      })
+  }, REQUEST_TIMEOUT_MS)
+
+  handleRequest(req)
+    .catch(err => log.error(`Unhandled error dispatching request: ${err?.message ?? err}`))
+    .finally(() => clearTimeout(timeoutId))
 }

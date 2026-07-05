@@ -7,12 +7,36 @@ export async function fetchWithTimeout(
 ): Promise<Response> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
+
+  let response: Response
   try {
-    return await fetch(input, {
+    response = await fetch(input, {
       ...init,
       signal: controller.signal,
     })
-  } finally {
+  } catch (err) {
     clearTimeout(timeout)
+    throw err
   }
+
+  // fetch() resolving only means headers arrived — the body can still stall.
+  // Keep the abort timer alive until whichever body-read method the caller
+  // uses actually finishes, so a stalled body is bounded by timeoutMs too.
+  const wrapBodyRead = <T>(read: () => Promise<T>) => {
+    return async (): Promise<T> => {
+      try {
+        return await read()
+      } finally {
+        clearTimeout(timeout)
+      }
+    }
+  }
+
+  response.json = wrapBodyRead(response.json.bind(response))
+  response.text = wrapBodyRead(response.text.bind(response))
+  response.arrayBuffer = wrapBodyRead(response.arrayBuffer.bind(response))
+  response.blob = wrapBodyRead(response.blob.bind(response))
+  response.formData = wrapBodyRead(response.formData.bind(response))
+
+  return response
 }

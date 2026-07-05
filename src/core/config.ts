@@ -58,6 +58,9 @@ export const getPlexToken = () => getSettingTrimmed('PLEX_TOKEN')
 export const getPort = () => getSettingTrimmed('PORT') ?? '8000'
 export const getHost = () =>
   (Deno.env.get('HOST') ?? '0.0.0.0').trim() || '0.0.0.0'
+// Optional TLS (e.g. a `tailscale cert` PEM pair) — plain HTTP if either is unset, same as today.
+export const getTlsCertFile = () => (Deno.env.get('TLS_CERT_FILE') ?? '').trim()
+export const getTlsKeyFile = () => (Deno.env.get('TLS_KEY_FILE') ?? '').trim()
 export const LOG_LEVEL = getSettingTrimmed('LOG_LEVEL') ?? 'INFO'
 export const getMovieBatchSize = () =>
   getSettingTrimmed('MOVIE_BATCH_SIZE') ?? '20'

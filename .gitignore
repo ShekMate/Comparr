@@ -18,6 +18,9 @@ coverage/
 .env
 .env.local
 .env.*.local
+certs/
+*.pem
+*.key
 
 # --- IDE / Editor Config ---
 .vscode/
