@@ -38,6 +38,7 @@ context.tar
 
 # --- Data Directory ---
 data/
+dev-data/
 *.db
 *.db-shm
 *.db-wal
