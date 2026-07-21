@@ -1,22 +1,10 @@
-import * as log from 'jsr:@std/log'
 import type { CompatRequest } from '../compat-request.ts'
 import { makeHeaders } from '../security-headers.ts'
-import { apiRateLimiter } from '../ip-rate-limiter.ts'
-import { resolveClientIp } from '../network-access.ts'
-
-type MatchSession = {
-  removeMatch: (
-    guid: string,
-    userName: string,
-    action: 'seen' | 'pass'
-  ) => number
-}
 
 type SystemRouteDeps = {
   csrfCookieName: string
   createCsrfToken: () => string
   shouldUseSecureCookies: (req: CompatRequest) => boolean
-  activeSessions: Map<string, MatchSession>
 }
 
 export const handleSystemRoutes = async (
@@ -43,60 +31,6 @@ export const handleSystemRoutes = async (
       status: 200,
       headers,
     })
-  }
-
-  if (pathname === '/api/match-action' && req.method === 'POST') {
-    if (!apiRateLimiter.check(resolveClientIp(req))) {
-      return new Response(JSON.stringify({ error: 'Too many requests' }), {
-        status: 429,
-        headers: makeHeaders(req, 'application/json'),
-      })
-    }
-    try {
-      const body = await req.json()
-      const { guid, action, roomCode, userName } = body as {
-        guid: string
-        action: 'seen' | 'pass'
-        roomCode: string
-        userName: string
-      }
-      if (action !== 'seen' && action !== 'pass') {
-        return new Response(JSON.stringify({ error: 'Invalid action' }), {
-          status: 400,
-          headers: makeHeaders(req, 'application/json'),
-        })
-      }
-
-      log.info(
-        `Match action: ${userName} in ${roomCode} marked ${guid} as ${action}`
-      )
-
-      const session = deps.activeSessions.get(roomCode)
-      if (!session) {
-        return new Response(JSON.stringify({ error: 'Room not found' }), {
-          status: 404,
-          headers: makeHeaders(req, 'application/json'),
-        })
-      }
-
-      const removedCount = session.removeMatch(guid, userName, action)
-
-      log.info(`Removed ${removedCount} match(es) for movie ${guid}`)
-
-      return new Response(JSON.stringify({ success: true, removedCount }), {
-        status: 200,
-        headers: makeHeaders(req, 'application/json'),
-      })
-    } catch (err) {
-      log.error(`Failed to process match action: ${err}`)
-      return new Response(
-        JSON.stringify({ error: 'Failed to process match action' }),
-        {
-          status: 500,
-          headers: makeHeaders(req, 'application/json'),
-        }
-      )
-    }
   }
 
   return null

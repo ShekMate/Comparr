@@ -2,6 +2,7 @@ import type { CompatRequest } from '../compat-request.ts'
 import { addSecurityHeaders } from '../security-headers.ts'
 import { tmdbFetch } from '../../../api/tmdb.ts'
 import { getTmdbApiKey } from '../../../core/config.ts'
+import { enrich } from '../../../features/catalog/enrich.ts'
 
 const makeJsonHeaders = (req?: CompatRequest) => {
   const headers = new Headers({ 'content-type': 'application/json' })
@@ -16,37 +17,6 @@ const TMDB_GENRE_MAP: Record<number, string> = {
   14: 'Fantasy', 36: 'History', 27: 'Horror', 10402: 'Music',
   9648: 'Mystery', 10749: 'Romance', 878: 'Science Fiction',
   10770: 'TV Movie', 53: 'Thriller', 10752: 'War', 37: 'Western',
-}
-
-function extractUsContentRating(releaseDates: any): string | null {
-  const us = releaseDates?.results?.find((r: any) => r?.iso_3166_1 === 'US')
-  if (!us?.release_dates) return null
-  const preferredTypes = new Set([3, 2, 1])
-  for (const rd of us.release_dates) {
-    const cert = String(rd?.certification || '').trim()
-    if (cert && preferredTypes.has(Number(rd?.type))) return cert
-  }
-  const anyWithCert = us.release_dates.find((rd: any) => String(rd?.certification || '').trim())
-  return anyWithCert ? String(anyWithCert.certification).trim() : null
-}
-
-function extractWatchProviders(providers: any): any[] {
-  const us = providers?.results?.US
-  if (!us) return []
-  const seen = new Set<number>()
-  const result: any[] = []
-  for (const p of [...(us.flatrate || []), ...(us.free || [])]) {
-    if (!seen.has(p.provider_id)) {
-      seen.add(p.provider_id)
-      result.push({
-        id: p.provider_id,
-        name: p.provider_name,
-        logo_path: p.logo_path || null,
-        type: us.flatrate?.some((f: any) => f.provider_id === p.provider_id) ? 'subscription' : 'free',
-      })
-    }
-  }
-  return result
 }
 
 export async function handleRecommendationsRoute(
@@ -101,19 +71,32 @@ export async function handleRecommendationsRoute(
       type: 'movie',
     }))
 
-    // Enrich each movie with details (runtime, contentRating, watchProviders)
+    // Full enrichment (runtime, contentRating, watchProviders, cast, director, writers,
+    // trailerKey, plot, ...) — reuses the same enrich() the main discover/swipe flow uses,
+    // rather than a second partial reimplementation that was missing cast/crew/trailer data.
     const movies = await Promise.all(
       baseMovies.map(async (m: any) => {
         try {
-          const details = await tmdbFetch(`/movie/${m.tmdbId}`, apiKey, {
-            append_to_response: 'release_dates,watch/providers',
-          }).then(r => r.json())
+          const enrichment = await enrich({
+            title: m.title,
+            year: m.year ? Number(m.year) : null,
+            tmdbId: m.tmdbId,
+          })
 
           return {
             ...m,
-            runtime: details?.runtime ?? null,
-            contentRating: extractUsContentRating(details?.release_dates),
-            watchProviders: extractWatchProviders(details?.['watch/providers']),
+            plot: enrichment.plot,
+            runtime: enrichment.runtime,
+            contentRating: enrichment.contentRating,
+            watchProviders: enrichment.watchProviders,
+            streamingServices: enrichment.streamingServices,
+            streamingLink: enrichment.streamingLink,
+            cast: enrichment.cast,
+            castMembers: enrichment.castMembers,
+            writers: enrichment.writers,
+            director: enrichment.director,
+            trailerKey: enrichment.trailerKey,
+            genres: enrichment.genres.length > 0 ? enrichment.genres : m.genres,
           }
         } catch {
           return m

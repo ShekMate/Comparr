@@ -5,12 +5,12 @@ import { makeHeaders } from '../security-headers.ts'
 import { isValidStateChangingOrigin } from '../network-access.ts'
 import { getUserTokenFromCookie } from './auth.ts'
 import { getUserSession } from '../../../core/user-session-store.ts'
-import { getUserPlexAuthToken } from '../../../features/auth/user-db.ts'
-import { getPlexUrl } from '../../../core/config.ts'
+import { getUserPlexAuthToken, getUserSettings } from '../../../features/auth/user-db.ts'
 import {
   processPlexWatchlistSyncBackground,
   processPlexSeenSyncBackground,
 } from '../../../features/session/session.ts'
+import { errorMessage } from '../../../core/errors.ts'
 
 export async function handlePlexSyncRoutes(
   req: CompatRequest,
@@ -60,30 +60,46 @@ export async function handlePlexSyncRoutes(
       })
     }
 
-    const userPlexToken = getUserPlexAuthToken(userSession.userId)
-    if (!userPlexToken) {
-      return new Response(
-        JSON.stringify({ error: 'No Plex auth token on file. Please log out and back in.' }),
-        { status: 400, headers: makeHeaders(req, 'application/json') }
-      )
-    }
-
-    const serverUrl = getPlexUrl()
-    const job = {
-      roomCode: String(roomCode),
-      userName: String(userName),
-      userId: userSession.userId,
-      userPlexToken,
-      serverUrl,
-    }
-
+    // Watchlist sync needs a Plex ACCOUNT authorized (cloud-only Discover action) — either via
+    // Plex login or a separate account connection. Seen sync needs the user's own personal Plex
+    // SERVER connection instead — scrobbling only makes sense for a movie that's actually in
+    // that library, and that's independent of how they logged in.
     if (syncType === 'watchlist') {
+      const userPlexToken =
+        getUserPlexAuthToken(userSession.userId) || getUserSettings(userSession.userId)?.plexAccountToken
+      if (!userPlexToken) {
+        return new Response(
+          JSON.stringify({ error: 'No Plex account connected. Connect one in Advanced Settings first.' }),
+          { status: 400, headers: makeHeaders(req, 'application/json') }
+        )
+      }
+      const job = {
+        roomCode: String(roomCode),
+        userName: String(userName),
+        userId: userSession.userId,
+        userPlexToken,
+        serverUrl: '',
+      }
       processPlexWatchlistSyncBackground(job).catch(err =>
-        log.error(`[plex-sync] Watchlist sync failed: ${err?.message || err}`)
+        log.error(`[plex-sync] Watchlist sync failed for ${userName}: ${err?.message || err}`)
       )
     } else {
+      const settings = getUserSettings(userSession.userId)
+      if (!settings?.plexUrl || !settings?.plexToken) {
+        return new Response(
+          JSON.stringify({ error: 'No personal Plex server connected. Connect one in Advanced Settings first.' }),
+          { status: 400, headers: makeHeaders(req, 'application/json') }
+        )
+      }
+      const job = {
+        roomCode: String(roomCode),
+        userName: String(userName),
+        userId: userSession.userId,
+        userPlexToken: settings.plexToken,
+        serverUrl: settings.plexUrl,
+      }
       processPlexSeenSyncBackground(job).catch(err =>
-        log.error(`[plex-sync] Seen sync failed: ${err?.message || err}`)
+        log.error(`[plex-sync] Seen sync failed for ${userName}: ${err?.message || err}`)
       )
     }
 
@@ -94,7 +110,7 @@ export async function handlePlexSyncRoutes(
       headers: makeHeaders(req, 'application/json'),
     })
   } catch (err) {
-    log.error(`[plex-sync] Route error: ${err?.message || err}`)
+    log.error(`[plex-sync] Route error: ${errorMessage(err)}`)
     return new Response(JSON.stringify({ error: 'Internal error' }), {
       status: 500,
       headers: makeHeaders(req, 'application/json'),

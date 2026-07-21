@@ -12,6 +12,7 @@ import {
   OnDemandMediaServerMovie,
 } from '../../integrations/shared/media-server-cache.ts'
 import { PlexVideo } from '../../api/plex.types.ts'
+import { normalizeTitle } from '../../integrations/plex/cache.ts'
 
 const CACHE_TTL_MS = 5 * 60 * 1000
 
@@ -47,6 +48,33 @@ export async function getPersonalPlexLibrary(
   const data = await fetchPlexLibraryOnDemand(url, token, { libraryFilter })
   plexCache.set(key, { data, fetchedAt: Date.now() })
   return data
+}
+
+/**
+ * Find one specific movie in an already-fetched personal Plex library — by tmdbId (via the
+ * Guid list, exact) when available, else title+year. Used to resolve the local ratingKey a
+ * scrobble call needs — marking something "watched" only makes sense for a movie that actually
+ * exists in *this* library, unlike Watchlist sync which works against Plex's cloud catalog.
+ */
+export function findInPersonalPlexLibrary(
+  movies: PlexVideo['Metadata'],
+  tmdbId: number | null,
+  title: string,
+  year: number | null
+): { ratingKey: string } | undefined {
+  if (tmdbId != null) {
+    const target = `tmdb://${tmdbId}`
+    const byId = movies.find(m => m.Guid?.some(g => g.id === target))
+    if (byId) return { ratingKey: byId.ratingKey }
+  }
+  const normalizedTitle = normalizeTitle(title)
+  const byTitleYear = movies.find(m => {
+    if (normalizeTitle(m.title) !== normalizedTitle) return false
+    if (year == null) return true
+    const mYear = parseInt(m.year, 10)
+    return Number.isFinite(mYear) ? Math.abs(mYear - year) <= 1 : true
+  })
+  return byTitleYear ? { ratingKey: byTitleYear.ratingKey } : undefined
 }
 
 export async function getPersonalMediaServerLibrary(

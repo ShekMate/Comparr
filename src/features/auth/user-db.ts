@@ -1,12 +1,13 @@
 // src/features/auth/user-db.ts
-// SQLite-backed user store. Provider is always 'plex'.
+// SQLite-backed user store. Supports Plex OAuth, passwordless email, and silent
+// device-based (no-signup) accounts — see routes/auth.ts's POST /api/auth/device.
 // Also manages per-user settings and friend connections.
 
 import { Database } from 'jsr:@db/sqlite'
 import * as log from 'jsr:@std/log'
 import { getDataDir } from '../../core/env.ts'
 
-export type AuthProvider = 'plex' | 'email'
+export type AuthProvider = 'plex' | 'email' | 'device' | 'trakt'
 
 export interface User {
   id: number
@@ -46,6 +47,15 @@ export interface UserSettings {
   subscriptions: string
   plexWatchlistSynced: string
   plexSeenSynced: string
+  displayPreferences: string
+  // Manual connections — independent of login. See AuthProvider/users.plex_auth_token for the
+  // login-derived equivalent.
+  plexAccountToken: string
+  traktAccessToken: string
+  traktRefreshToken: string
+  traktTokenExpiresAt: string
+  traktWatchlistSynced: string
+  traktSeenSynced: string
   updatedAt: string
 }
 
@@ -142,6 +152,69 @@ export function initUserDatabase(): Database {
       // Column already exists — ignore
     }
 
+    // Add display_preferences column (list visibility toggles + Plex sync button visibility)
+    try {
+      db.exec(`ALTER TABLE user_settings ADD COLUMN display_preferences TEXT NOT NULL DEFAULT '{}'`)
+    } catch {
+      // Column already exists — ignore
+    }
+
+    // Add Trakt login-derived tokens to users (parallel to plex_auth_token) — populated when
+    // provider = 'trakt'. Trakt tokens expire and need refreshing, unlike Plex's long-lived
+    // account token, hence the extra refresh/expiry columns.
+    try {
+      db.exec(`ALTER TABLE users ADD COLUMN trakt_access_token TEXT NOT NULL DEFAULT ''`)
+    } catch {
+      // Column already exists — ignore
+    }
+    try {
+      db.exec(`ALTER TABLE users ADD COLUMN trakt_refresh_token TEXT NOT NULL DEFAULT ''`)
+    } catch {
+      // Column already exists — ignore
+    }
+    try {
+      db.exec(`ALTER TABLE users ADD COLUMN trakt_token_expires_at TEXT NOT NULL DEFAULT ''`)
+    } catch {
+      // Column already exists — ignore
+    }
+
+    // Connections independent of login: a Plex account can be authorized for Watchlist sync
+    // without that being how the user logs into Comparr (plex_auth_token above is login-only).
+    // Trakt is never a login-derived requirement for these — it's always either this manual
+    // connection or (once supported) the login-derived users.trakt_* columns above.
+    try {
+      db.exec(`ALTER TABLE user_settings ADD COLUMN plex_account_token TEXT NOT NULL DEFAULT ''`)
+    } catch {
+      // Column already exists — ignore
+    }
+    try {
+      db.exec(`ALTER TABLE user_settings ADD COLUMN trakt_access_token TEXT NOT NULL DEFAULT ''`)
+    } catch {
+      // Column already exists — ignore
+    }
+    try {
+      db.exec(`ALTER TABLE user_settings ADD COLUMN trakt_refresh_token TEXT NOT NULL DEFAULT ''`)
+    } catch {
+      // Column already exists — ignore
+    }
+    try {
+      db.exec(`ALTER TABLE user_settings ADD COLUMN trakt_token_expires_at TEXT NOT NULL DEFAULT ''`)
+    } catch {
+      // Column already exists — ignore
+    }
+
+    // Trakt sync bookkeeping — parallel to plex_watchlist_synced/plex_seen_synced.
+    try {
+      db.exec(`ALTER TABLE user_settings ADD COLUMN trakt_watchlist_synced TEXT NOT NULL DEFAULT '{}'`)
+    } catch {
+      // Column already exists — ignore
+    }
+    try {
+      db.exec(`ALTER TABLE user_settings ADD COLUMN trakt_seen_synced TEXT NOT NULL DEFAULT '{}'`)
+    } catch {
+      // Column already exists — ignore
+    }
+
     db.exec(`
       CREATE TABLE IF NOT EXISTS user_settings (
         user_id             INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
@@ -160,6 +233,7 @@ export function initUserDatabase(): Database {
         seerr_api_key       TEXT NOT NULL DEFAULT '',
         default_filters     TEXT NOT NULL DEFAULT '{}',
         subscriptions       TEXT NOT NULL DEFAULT '[]',
+        display_preferences TEXT NOT NULL DEFAULT '{}',
         updated_at          TEXT NOT NULL
       )
     `)
@@ -328,7 +402,7 @@ export function listUsers(): AdminUserSummary[] {
     const stmt = getDb().prepare(
       'SELECT id, username, is_admin FROM users ORDER BY created_at ASC'
     )
-    const rows = stmt.values<[number, string, number][]>()
+    const rows = stmt.values<[number, string, number]>()
     stmt.finalize()
     return rows.map(([id, username, isAdmin]) => ({
       id,
@@ -406,7 +480,12 @@ export function upsertUser(params: UpsertUserParams): User {
   const avatarUrl = String(params.avatarUrl || '')
 
   const plexAuthToken = params.provider === 'plex' ? String(params.plexAuthToken || '') : ''
-  const defaultUsername = params.provider === 'email' ? 'Email User' : 'Plex User'
+  const defaultUsername =
+    params.provider === 'email'
+      ? 'Email User'
+      : params.provider === 'device'
+      ? 'Guest'
+      : 'Plex User'
 
   getDb().exec(
     `INSERT INTO users (provider, provider_user_id, username, email, avatar_url, is_admin, plex_auth_token, created_at, last_login)
@@ -445,6 +524,14 @@ export function upsertUser(params: UpsertUserParams): User {
   }
 
   throw new Error('[auth] upsertUser: failed to retrieve saved user')
+}
+
+/**
+ * Update a user's display name (e.g. guest picking their name, or editing it later
+ * in settings). Caller is responsible for validating/sanitizing the new name first.
+ */
+export function updateUsername(userId: number, username: string): void {
+  getDb().exec(`UPDATE users SET username = ? WHERE id = ?`, username, userId)
 }
 
 /**
@@ -518,6 +605,13 @@ const USER_SETTINGS_SELECT = `
     default_filters, subscriptions,
     COALESCE(plex_watchlist_synced, '{}') as plex_watchlist_synced,
     COALESCE(plex_seen_synced, '{}') as plex_seen_synced,
+    COALESCE(display_preferences, '{}') as display_preferences,
+    COALESCE(plex_account_token, '') as plex_account_token,
+    COALESCE(trakt_access_token, '') as trakt_access_token,
+    COALESCE(trakt_refresh_token, '') as trakt_refresh_token,
+    COALESCE(trakt_token_expires_at, '') as trakt_token_expires_at,
+    COALESCE(trakt_watchlist_synced, '{}') as trakt_watchlist_synced,
+    COALESCE(trakt_seen_synced, '{}') as trakt_seen_synced,
     updated_at
   FROM user_settings`
 
@@ -541,6 +635,13 @@ function rowToUserSettings(row: unknown[]): UserSettings {
     subscriptions,
     plexWatchlistSynced,
     plexSeenSynced,
+    displayPreferences,
+    plexAccountToken,
+    traktAccessToken,
+    traktRefreshToken,
+    traktTokenExpiresAt,
+    traktWatchlistSynced,
+    traktSeenSynced,
     updatedAt,
   ] = row as string[]
   return {
@@ -562,6 +663,13 @@ function rowToUserSettings(row: unknown[]): UserSettings {
     subscriptions: subscriptions ?? '[]',
     plexWatchlistSynced: plexWatchlistSynced ?? '{}',
     plexSeenSynced: plexSeenSynced ?? '{}',
+    displayPreferences: displayPreferences ?? '{}',
+    plexAccountToken: plexAccountToken ?? '',
+    traktAccessToken: traktAccessToken ?? '',
+    traktRefreshToken: traktRefreshToken ?? '',
+    traktTokenExpiresAt: traktTokenExpiresAt ?? '',
+    traktWatchlistSynced: traktWatchlistSynced ?? '{}',
+    traktSeenSynced: traktSeenSynced ?? '{}',
     updatedAt,
   }
 }
@@ -592,8 +700,10 @@ export function upsertUserSettings(
       `INSERT INTO user_settings (user_id, plex_url, plex_token, plex_library_name,
         emby_url, emby_api_key, emby_library_name, jellyfin_url, jellyfin_api_key,
         jellyfin_library_name, radarr_url, radarr_api_key, seerr_url, seerr_api_key,
-        default_filters, subscriptions, plex_watchlist_synced, plex_seen_synced, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        default_filters, subscriptions, plex_watchlist_synced, plex_seen_synced,
+        display_preferences, plex_account_token, trakt_access_token, trakt_refresh_token,
+        trakt_token_expires_at, trakt_watchlist_synced, trakt_seen_synced, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       userId,
       updates.plexUrl ?? '',
       updates.plexToken ?? '',
@@ -612,10 +722,25 @@ export function upsertUserSettings(
       updates.subscriptions ?? '[]',
       updates.plexWatchlistSynced ?? '{}',
       updates.plexSeenSynced ?? '{}',
+      updates.displayPreferences ?? '{}',
+      updates.plexAccountToken ?? '',
+      updates.traktAccessToken ?? '',
+      updates.traktRefreshToken ?? '',
+      updates.traktTokenExpiresAt ?? '',
+      updates.traktWatchlistSynced ?? '{}',
+      updates.traktSeenSynced ?? '{}',
       now
     )
   } else {
-    const merged = { ...existing, ...updates }
+    // Callers (e.g. the PUT /api/profile/settings route) build `updates` with every field
+    // always present — explicitly `undefined` for whichever ones the client didn't send this
+    // time — so a plain `{...existing, ...updates}` spread would overwrite those fields with
+    // `undefined` (a key present with value `undefined` still wins over the earlier spread).
+    // Drop undefined-valued keys first so a partial update can't clobber the rest.
+    const definedUpdates = Object.fromEntries(
+      Object.entries(updates).filter(([, value]) => value !== undefined)
+    )
+    const merged = { ...existing, ...definedUpdates }
     getDb().exec(
       `UPDATE user_settings SET
         plex_url = ?, plex_token = ?, plex_library_name = ?,
@@ -624,6 +749,9 @@ export function upsertUserSettings(
         radarr_url = ?, radarr_api_key = ?, seerr_url = ?, seerr_api_key = ?,
         default_filters = ?, subscriptions = ?,
         plex_watchlist_synced = ?, plex_seen_synced = ?,
+        display_preferences = ?,
+        plex_account_token = ?, trakt_access_token = ?, trakt_refresh_token = ?,
+        trakt_token_expires_at = ?, trakt_watchlist_synced = ?, trakt_seen_synced = ?,
         updated_at = ?
        WHERE user_id = ?`,
       merged.plexUrl,
@@ -643,9 +771,100 @@ export function upsertUserSettings(
       merged.subscriptions ?? '[]',
       merged.plexWatchlistSynced ?? '{}',
       merged.plexSeenSynced ?? '{}',
+      merged.displayPreferences ?? '{}',
+      merged.plexAccountToken ?? '',
+      merged.traktAccessToken ?? '',
+      merged.traktRefreshToken ?? '',
+      merged.traktTokenExpiresAt ?? '',
+      merged.traktWatchlistSynced ?? '{}',
+      merged.traktSeenSynced ?? '{}',
       now,
       userId
     )
+  }
+}
+
+/**
+ * Get or set the Trakt tokens tied to a user's LOGIN (provider = 'trakt') — parallel to
+ * getUserPlexAuthToken, but returns the refresh token/expiry too since Trakt tokens expire.
+ */
+export function getUserTraktLoginTokens(
+  userId: number
+): { accessToken: string; refreshToken: string; expiresAt: string } {
+  try {
+    const stmt = getDb().prepare(
+      `SELECT COALESCE(trakt_access_token, ''), COALESCE(trakt_refresh_token, ''),
+        COALESCE(trakt_token_expires_at, '') FROM users WHERE id = ? LIMIT 1`
+    )
+    const row = stmt.value<[string, string, string]>(userId)
+    stmt.finalize()
+    return row
+      ? { accessToken: row[0] || '', refreshToken: row[1] || '', expiresAt: row[2] || '' }
+      : { accessToken: '', refreshToken: '', expiresAt: '' }
+  } catch (err) {
+    log.error(`[auth] getUserTraktLoginTokens error: ${err}`)
+    return { accessToken: '', refreshToken: '', expiresAt: '' }
+  }
+}
+
+export function setUserTraktLoginTokens(
+  userId: number,
+  tokens: { accessToken: string; refreshToken: string; expiresAt: string }
+): void {
+  try {
+    getDb().exec(
+      `UPDATE users SET trakt_access_token = ?, trakt_refresh_token = ?, trakt_token_expires_at = ?
+       WHERE id = ?`,
+      tokens.accessToken,
+      tokens.refreshToken,
+      tokens.expiresAt,
+      userId
+    )
+  } catch (err) {
+    log.error(`[auth] setUserTraktLoginTokens error: ${err}`)
+  }
+}
+
+export interface ConnectionStatus {
+  connected: boolean
+  source: 'login' | 'manual' | null
+}
+
+export interface ConnectionsStatus {
+  plexAccount: ConnectionStatus
+  plexServer: { connected: boolean }
+  embyServer: { connected: boolean }
+  jellyfinServer: { connected: boolean }
+  trakt: ConnectionStatus
+}
+
+/**
+ * Unified connection status across everything a user might have authorized — independent of
+ * how they log into Comparr. "source: 'login'" means the credential came from signing into
+ * Comparr with that provider; "manual" means they connected it separately without using it to
+ * log in. Either counts as connected; the UI only needs to know which so it can skip asking the
+ * user to connect something they've effectively already granted via login.
+ */
+export function getConnectionsStatus(userId: number): ConnectionsStatus {
+  const settings = getUserSettings(userId)
+
+  const plexLoginToken = getUserPlexAuthToken(userId)
+  const plexAccountToken = settings?.plexAccountToken ?? ''
+  const traktLogin = getUserTraktLoginTokens(userId)
+  const traktAccountToken = settings?.traktAccessToken ?? ''
+
+  return {
+    plexAccount: {
+      connected: Boolean(plexLoginToken) || Boolean(plexAccountToken),
+      source: plexLoginToken ? 'login' : plexAccountToken ? 'manual' : null,
+    },
+    plexServer: { connected: Boolean(settings?.plexUrl && settings?.plexToken) },
+    embyServer: { connected: Boolean(settings?.embyUrl && settings?.embyApiKey) },
+    jellyfinServer: { connected: Boolean(settings?.jellyfinUrl && settings?.jellyfinApiKey) },
+    trakt: {
+      connected: Boolean(traktLogin.accessToken) || Boolean(traktAccountToken),
+      source: traktLogin.accessToken ? 'login' : traktAccountToken ? 'manual' : null,
+    },
   }
 }
 
@@ -962,7 +1181,7 @@ export function getFriendConnections(userId: number): FriendConnection[] {
       WHERE fc.user_id = ?
       ORDER BY fc.created_at DESC
     `)
-    const rows = stmt.values<unknown[][]>(userId)
+    const rows = stmt.values<unknown[]>(userId)
     stmt.finalize()
     return rows.map(row => {
       const [
@@ -1010,21 +1229,3 @@ export function getFriendConnections(userId: number): FriendConnection[] {
   }
 }
 
-/**
- * Get friend IDs for a user who have accepted connections.
- * Used by the swiping queue to prioritize friend-liked movies.
- */
-export function getAcceptedFriendIds(userId: number): number[] {
-  try {
-    const stmt = getDb().prepare(
-      `SELECT friend_user_id FROM friend_connections
-       WHERE user_id = ? AND status = 'accepted'`
-    )
-    const rows = stmt.values<[number][]>(userId)
-    stmt.finalize()
-    return rows.map(r => r[0])
-  } catch (err) {
-    log.error(`[auth] getAcceptedFriendIds error: ${err}`)
-    return []
-  }
-}

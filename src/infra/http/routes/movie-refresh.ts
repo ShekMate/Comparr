@@ -9,6 +9,8 @@ import {
   getEmbyLibraryName,
   getJellyfinLibraryName,
 } from '../../../core/config.ts'
+import { errorMessage, errorDetail } from '../../../core/errors.ts'
+import { assert } from '../../../core/assert.ts'
 
 export async function handleMovieRefreshRoute(
   req: CompatRequest,
@@ -62,7 +64,7 @@ export async function handleMovieRefreshRoute(
       persistedState = JSON.parse(stateText)
       log.debug(`[refresh ${rid}] state loaded ok`)
     } catch (e) {
-      log.error(`[refresh ${rid}] read state failed: ${e?.message || e}`)
+      log.error(`[refresh ${rid}] read state failed: ${errorMessage(e)}`)
     }
 
     const { enrich } = await import('../../features/catalog/enrich.ts')
@@ -146,11 +148,11 @@ export async function handleMovieRefreshRoute(
         tmdbId: movieData.tmdbId || tmdbId,
       })
     } catch (e) {
-      log.error(`[refresh ${rid}] enrich() failed: ${e?.message || e}`)
+      log.error(`[refresh ${rid}] enrich() failed: ${errorMessage(e)}`)
       return new Response(
         JSON.stringify({
           error: 'enrich failed',
-          detail: e?.message || String(e),
+          detail: errorMessage(e),
           rid,
         }),
         { status: 500, headers: makeHeaders(req, 'application/json') }
@@ -185,7 +187,10 @@ export async function handleMovieRefreshRoute(
         personalLibraryNames.has(s.name)
       ) || false
 
-    // Persist updates if we have state
+    // Persist updates if we have state. movieGuid is always set by this point: either found
+    // via searchMatches() above, or fabricated from tmdbId/imdbId — the only path that leaves
+    // it null (neither id present) returns 404 earlier.
+    assert(movieGuid, `[refresh ${rid}] movieGuid unexpectedly null`)
     if (persistedState?.movieIndex) {
       if (!(movieGuid in persistedState.movieIndex)) {
         persistedState.movieIndex[movieGuid] = movieData
@@ -220,7 +225,7 @@ export async function handleMovieRefreshRoute(
         await savePersistedState(persistedState)
         log.debug(`[refresh ${rid}] state persisted`)
       } catch (e) {
-        log.error(`[refresh ${rid}] persist failed: ${e?.message || e}`)
+        log.error(`[refresh ${rid}] persist failed: ${errorMessage(e)}`)
       }
     } else {
       log.warn(
@@ -248,9 +253,7 @@ export async function handleMovieRefreshRoute(
       { status: 200, headers: makeHeaders(req, 'application/json') }
     )
   } catch (err) {
-    log.error(
-      `[refresh ${rid}] unhandled: ${err?.stack || err?.message || err}`
-    )
+    log.error(`[refresh ${rid}] unhandled: ${errorDetail(err)}`)
     return new Response(
       JSON.stringify({
         error: 'Failed to refresh movie data',

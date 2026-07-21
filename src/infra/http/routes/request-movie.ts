@@ -13,6 +13,7 @@ import { isMovieInEmby } from '../../../integrations/emby/cache.ts'
 import { isMovieInJellyfin } from '../../../integrations/jellyfin/cache.ts'
 import { getUserTokenFromCookie } from './auth.ts'
 import { getUserSession } from '../../../core/user-session-store.ts'
+import { errorMessage as getErrorMessage } from '../../../core/errors.ts'
 
 export async function handleRequestMovieRoute(
   req: CompatRequest,
@@ -64,9 +65,7 @@ export async function handleRequestMovieRoute(
       await waitForPlexCacheReady()
     } catch (err) {
       log.warn(
-        `Plex cache not ready when handling request-movie: ${
-          err?.message || err
-        }`
+        `Plex cache not ready when handling request-movie: ${getErrorMessage(err)}`
       )
     }
 
@@ -97,11 +96,12 @@ export async function handleRequestMovieRoute(
     })
   } catch (err) {
     log.error(`Error handling movie request: ${err}`)
+    const detail = getErrorMessage(err)
     let errorMessage = 'Internal server error'
-    if (err.message?.includes('ECONNREFUSED')) {
+    if (detail.includes('ECONNREFUSED')) {
       errorMessage =
         'Unable to connect to Seerr. Please check if the service is running.'
-    } else if (err.message?.includes('401') || err.message?.includes('403')) {
+    } else if (detail.includes('401') || detail.includes('403')) {
       errorMessage =
         'Authentication failed. Please check your API key configuration.'
     }

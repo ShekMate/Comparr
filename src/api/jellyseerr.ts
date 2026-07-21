@@ -1,6 +1,7 @@
 import { getSeerrApiKey, getSeerrUrl } from '../core/config.ts'
 import * as log from 'jsr:@std/log'
 import { fetchWithTimeout } from '../infra/http/fetch-with-timeout.ts'
+import { errorMessage } from '../core/errors.ts'
 
 interface RequestResponse {
   success: boolean
@@ -83,7 +84,7 @@ export async function requestMovie(tmdbId: number): Promise<RequestResponse> {
     }
   } catch (error) {
     log.error(`Failed to request movie: ${error}`)
-    return { success: false, message: `Error: ${error.message}` }
+    return { success: false, message: `Error: ${errorMessage(error)}` }
   }
 }
 

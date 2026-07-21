@@ -444,3 +444,66 @@ export async function isUserOnPlexServer(
     return false
   }
 }
+
+export interface DiscoveredPlexServer {
+  name: string
+  url: string
+  token: string
+}
+
+/**
+ * List the Plex Media Servers reachable from a user's plex.tv account — both servers they
+ * own and servers a friend has shared with them via Plex's own account-level sharing (that's
+ * inherent to how this API works, not something we can filter server-side; distinguishing
+ * "yours" vs "shared" for display is a client concern).
+ */
+export async function discoverPlexServers(
+  authToken: string,
+  clientId: string
+): Promise<DiscoveredPlexServer[]> {
+  const res = await fetchWithTimeout(
+    `${PLEX_API_BASE}/resources?includeHttps=1&includeRelay=1`,
+    {
+      headers: {
+        ...plexHeaders(clientId),
+        'X-Plex-Token': authToken,
+      },
+    }
+  )
+
+  if (!res.ok) {
+    throw new Error(`[plex-auth] Failed to list Plex resources: ${res.status}`)
+  }
+
+  const resources = await res.json()
+  if (!Array.isArray(resources)) return []
+
+  const servers: DiscoveredPlexServer[] = []
+  for (const resource of resources) {
+    if (typeof resource?.provides !== 'string' || !resource.provides.includes('server')) {
+      continue
+    }
+    const connections = Array.isArray(resource.connections) ? resource.connections : []
+    if (connections.length === 0 || !resource.accessToken || !resource.name) continue
+
+    // This backend is a single centrally-hosted instance shared by every app install (see
+    // lib/backend-url.ts on the client) — it is almost never on the same LAN as a given
+    // user's Plex server, so a same-LAN connection is normally unreachable from here. Prefer
+    // a direct public connection first, then Plex's own relay (proxied through plex.tv, works
+    // through NAT with zero user setup as long as Remote Access is on), and only fall back to
+    // local as a last resort for the rare case this backend does share a network with the server.
+    const connection =
+      connections.find((c: { local?: boolean; relay?: boolean }) => !c.local && !c.relay) ??
+      connections.find((c: { local?: boolean }) => !c.local) ??
+      connections[0]
+    if (!connection?.uri) continue
+
+    servers.push({
+      name: String(resource.name),
+      url: String(connection.uri),
+      token: String(resource.accessToken),
+    })
+  }
+
+  return servers
+}

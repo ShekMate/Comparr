@@ -11,6 +11,5 @@ const {
 
 export const buildEmbyCache = buildCache
 export const initEmbyCache = initCache
-export const refreshEmbyCache = buildCache
 export const isMovieInEmby = isMovieIn
 export const getAllEmbyMovies = getAllMovies

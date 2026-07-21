@@ -5,6 +5,7 @@ import { makeHeaders } from '../security-headers.ts'
 import { apiRateLimiter } from '../ip-rate-limiter.ts'
 import { resolveClientIp } from '../network-access.ts'
 import { getTmdbApiKey } from '../../../core/config.ts'
+import { errorMessage } from '../../../core/errors.ts'
 import {
   processImdbImportBackground,
   recordImdbImportHistoryStart,
@@ -64,7 +65,7 @@ export async function handleImdbImportRoutes(
         headers: makeHeaders(req, 'application/json'),
       })
     } catch (err) {
-      log.error(`seen-movies fetch failed: ${err?.message || err}`)
+      log.error(`seen-movies fetch failed: ${errorMessage(err)}`)
       return new Response(
         JSON.stringify({ error: 'Failed to fetch seen movies' }),
         { status: 500, headers: makeHeaders(req, 'application/json') }
@@ -89,7 +90,7 @@ export async function handleImdbImportRoutes(
         headers: makeHeaders(req, 'application/json'),
       })
     } catch (err) {
-      log.error(`IMDb history fetch failed: ${err?.message || err}`)
+      log.error(`IMDb history fetch failed: ${errorMessage(err)}`)
       return new Response(
         JSON.stringify({ error: 'Failed to fetch IMDb import history' }),
         { status: 500, headers: makeHeaders(req, 'application/json') }
@@ -198,7 +199,7 @@ export async function handleImdbImportRoutes(
         { status: 202, headers: makeHeaders(req, 'application/json') }
       )
     } catch (err) {
-      log.error(`IMDb import failed: ${err?.message || err}`)
+      log.error(`IMDb import failed: ${errorMessage(err)}`)
       return new Response(
         JSON.stringify({
           error: 'IMDb import failed',
@@ -240,7 +241,7 @@ export async function handleImdbImportRoutes(
         headers: makeHeaders(req, 'application/json'),
       })
     } catch (err) {
-      log.error(`IMDb import rollback failed: ${err?.message || err}`)
+      log.error(`IMDb import rollback failed: ${errorMessage(err)}`)
       return new Response(
         JSON.stringify({ error: 'Failed to rollback import' }),
         {
@@ -268,7 +269,7 @@ export async function handleImdbImportRoutes(
         headers: makeHeaders(req, 'application/json'),
       })
     } catch (err) {
-      log.error(`IMDb import cancel failed: ${err?.message || err}`)
+      log.error(`IMDb import cancel failed: ${errorMessage(err)}`)
       return new Response(
         JSON.stringify({ error: 'Failed to cancel import' }),
         {

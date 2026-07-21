@@ -77,9 +77,14 @@ const matchAllowedOrigin = (
   }
 }
 
-const getSocketIp = (req: { conn?: { remoteAddr?: Deno.NetAddr } }) => {
-  const remote = req?.conn?.remoteAddr as Deno.NetAddr | undefined
-  return remote?.hostname ?? ''
+const getSocketIp = (req: { conn?: { remoteAddr?: Deno.NetAddr | Deno.UnixAddr } }) => {
+  const remote = req?.conn?.remoteAddr
+  // Unix domain sockets have no hostname/port (they use a filesystem path instead) — this
+  // server only listens on TCP, but CompatRequest's type allows for both. Narrowing on the
+  // `hostname` property itself (rather than `transport`) keeps this working for callers/tests
+  // that pass a partial NetAddr-shaped object without a `transport` field.
+  if (!remote || !('hostname' in remote)) return ''
+  return remote.hostname ?? ''
 }
 
 export const isValidHost = (req: {
@@ -134,7 +139,7 @@ export const isValidStateChangingOrigin = (req: {
 }
 
 export const isLocalRequest = (req: {
-  conn?: { remoteAddr?: Deno.NetAddr }
+  conn?: { remoteAddr?: Deno.NetAddr | Deno.UnixAddr }
   headers?: { get?: (name: string) => string | null }
 }) => {
   if (getTrustProxy()) {
@@ -148,7 +153,7 @@ export const isLocalRequest = (req: {
 }
 
 export const resolveClientIp = (req: {
-  conn?: { remoteAddr?: Deno.NetAddr }
+  conn?: { remoteAddr?: Deno.NetAddr | Deno.UnixAddr }
   headers?: { get?: (name: string) => string | null }
 }): string => {
   if (getTrustProxy()) {

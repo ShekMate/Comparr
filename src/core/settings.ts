@@ -29,8 +29,6 @@ export type SettingsKey =
   | 'COLLECTION_FILTER'
   | 'ROOT_PATH'
   | 'LINK_TYPE'
-  | 'IMDB_SYNC_URL'
-  | 'IMDB_SYNC_INTERVAL_MINUTES'
   | 'PAID_STREAMING_SERVICES'
   | 'PERSONAL_MEDIA_SOURCES'
   | 'SETUP_WIZARD_COMPLETED'
@@ -42,6 +40,8 @@ export type SettingsKey =
   | 'SMTP_PASS'
   | 'SMTP_FROM'
   | 'EMAIL_LOGIN_ENABLED'
+  | 'TRAKT_CLIENT_ID'
+  | 'TRAKT_CLIENT_SECRET'
 
 export type Settings = Record<SettingsKey, string>
 
@@ -70,8 +70,6 @@ const SETTINGS_KEYS: SettingsKey[] = [
   'COLLECTION_FILTER',
   'ROOT_PATH',
   'LINK_TYPE',
-  'IMDB_SYNC_URL',
-  'IMDB_SYNC_INTERVAL_MINUTES',
   'PAID_STREAMING_SERVICES',
   'PERSONAL_MEDIA_SOURCES',
   'SETUP_WIZARD_COMPLETED',
@@ -83,9 +81,15 @@ const SETTINGS_KEYS: SettingsKey[] = [
   'SMTP_PASS',
   'SMTP_FROM',
   'EMAIL_LOGIN_ENABLED',
+  'TRAKT_CLIENT_ID',
+  'TRAKT_CLIENT_SECRET',
 ]
 
-const ENV_ONLY_KEYS = new Set<SettingsKey>(['PORT'])
+const ENV_ONLY_KEYS = new Set<SettingsKey>([
+  'PORT',
+  'TRAKT_CLIENT_ID',
+  'TRAKT_CLIENT_SECRET',
+])
 
 const DEFAULTS: Partial<Settings> = {
   PORT: '8000',
@@ -99,8 +103,6 @@ const DEFAULTS: Partial<Settings> = {
   PLEX_LIBRARY_NAME: 'My Plex Library',
   EMBY_LIBRARY_NAME: 'My Emby Library',
   JELLYFIN_LIBRARY_NAME: 'My Jellyfin Library',
-  IMDB_SYNC_URL: '',
-  IMDB_SYNC_INTERVAL_MINUTES: '0',
   PAID_STREAMING_SERVICES: '[]',
   PERSONAL_MEDIA_SOURCES: '[]',
   SETUP_WIZARD_COMPLETED: 'false',
@@ -117,10 +119,9 @@ const DEFAULTS: Partial<Settings> = {
 const SETTINGS_FILE = `${getDataDir()}/settings.json`
 
 let settingsCache: Settings = SETTINGS_KEYS.reduce((acc, key) => {
-  acc[key] =
-    key === 'PORT'
-      ? (Deno.env.get('PORT') ?? DEFAULTS['PORT'] ?? '8000').trim()
-      : (DEFAULTS[key] ?? '').trim()
+  acc[key] = ENV_ONLY_KEYS.has(key)
+    ? (Deno.env.get(key) ?? DEFAULTS[key] ?? '').trim()
+    : (DEFAULTS[key] ?? '').trim()
   return acc
 }, {} as Settings)
 
@@ -167,10 +168,7 @@ const loadSettingsFile = async (): Promise<Partial<Settings>> => {
       }
     }
     return sanitized
-  } catch (err) {
-    if (err?.name === 'NotFound' || err?.code === 'ENOENT') {
-      return {}
-    }
+  } catch {
     return {}
   }
 }

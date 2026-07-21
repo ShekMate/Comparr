@@ -1,6 +1,7 @@
 // deno-lint-ignore-file
 import * as log from 'jsr:@std/log'
 import { assert } from '../../core/assert.ts'
+import { errorMessage } from '../../core/errors.ts'
 import {
   getAllMovies,
   getRandomMovie,
@@ -11,7 +12,7 @@ import { WebSocket } from '../../infra/ws/websocketServer.ts'
 import { loginRateLimiter } from '../../infra/http/ip-rate-limiter.ts'
 import { verifyPassword } from '../../core/security.ts'
 import { validateAccessSession } from '../../core/access-session-store.ts'
-import { enrich } from '../catalog/enrich.ts'
+import { enrich, EnrichmentPayload } from '../catalog/enrich.ts'
 import { discoverMovies } from '../catalog/discover.ts'
 import { isMovieInRadarr } from '../../api/radarr.ts'
 import {
@@ -55,14 +56,31 @@ import {
   addToPlexWatchlist,
   removeFromPlexWatchlist,
   extractPlexMetadataKey,
+  resolvePlexDiscoverRatingKey,
   scrobbleOnServer,
   unscrobbleOnServer,
 } from '../../api/plex-sync.ts'
-import { getUserSettings, upsertUserSettings, getFriendConnections } from '../auth/user-db.ts'
+import {
+  refreshTraktToken,
+  addToTraktWatchlist,
+  removeFromTraktWatchlist,
+  addToTraktHistory,
+  removeFromTraktHistory,
+} from '../../api/trakt.ts'
+import {
+  getUserSettings,
+  upsertUserSettings,
+  getFriendConnections,
+  getUserPlexAuthToken,
+  getUserTraktLoginTokens,
+  setUserTraktLoginTokens,
+  UserSettings,
+} from '../auth/user-db.ts'
 import {
   resolvePersonalSourcesForUser,
   getPersonalPlexLibrary,
   getPersonalMediaServerLibrary,
+  findInPersonalPlexLibrary,
   PersonalSourceDescriptor,
 } from './personal-media-sources.ts'
 
@@ -143,7 +161,7 @@ function ensureComparrScore(movie: any): void {
       }
     }
   } catch (err) {
-    log.error(`ensureComparrScore failed for movie: ${err?.message || err}`)
+    log.error(`ensureComparrScore failed for movie: ${errorMessage(err)}`)
   }
 }
 
@@ -188,6 +206,12 @@ interface MediaItem {
   streamingLink?: string | null
   tmdbId?: number | null
   trailerKey?: string | null
+  // Raw TMDb genre IDs, kept alongside the resolved `genres` names — the mobile client
+  // (lib/media.ts) uses these as a fallback to resolve genre names via its own TMDb genre map.
+  genre_ids?: number[]
+  vote_count?: number
+  original_language?: string | null
+  countries?: string[]
   // Present when this candidate came from a user's own or a friend's personal Plex/Emby/
   // Jellyfin server (see personal-media-sources.ts), rather than the instance-wide admin
   // library or TMDb discovery. Ephemeral — not persisted beyond this response, used only to
@@ -211,6 +235,7 @@ type DiscoverFilters = {
   yearMax?: number
   genres?: string[]
   tmdbRating?: number
+  tmdbRatingMax?: number
   languages?: string[]
   countries?: string[]
   runtimeMin?: number
@@ -218,6 +243,9 @@ type DiscoverFilters = {
   voteCount?: number
   sortBy?: string
   streamingServices?: string[]
+  includeFreeStreaming?: boolean
+  contentRatings?: string[]
+  certificationCountry?: string
 }
 
 export function extractTmdbIdFromGuid(guid?: string | null): number | null {
@@ -286,6 +314,30 @@ function stableFiltersKey(filters?: DiscoverFilters): string {
   return JSON.stringify(sortFilterValue(filters))
 }
 
+interface UserStreamingPrefs {
+  paid: string[]
+  includeFree: boolean
+}
+
+// Mirrors the mobile app's parseStoredSubscriptions (app/(tabs)/profile/index.tsx) — older
+// stored values were a plain string[] of selected service names (no paid/free split); treat
+// those as all-paid with free off, same as the client does.
+function parseUserStreamingPrefs(raw: string | undefined): UserStreamingPrefs {
+  if (!raw) return { paid: [], includeFree: false }
+  try {
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) {
+      return { paid: parsed.filter((s): s is string => typeof s === 'string'), includeFree: false }
+    }
+    const paid = Array.isArray(parsed?.paid)
+      ? parsed.paid.filter((s: unknown): s is string => typeof s === 'string')
+      : []
+    return { paid, includeFree: Boolean(parsed?.includeFree) }
+  } catch {
+    return { paid: [], includeFree: false }
+  }
+}
+
 const DISCOVER_CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
 const DEFAULT_FILTERS_KEY = stableFiltersKey(undefined)
 const DEFAULT_DISCOVER_PREFETCH_PAGES = Number(
@@ -305,6 +357,16 @@ const INITIAL_BATCH_HARD_TIMEOUT_MS = Number(
 )
 const LOGIN_PREFETCH_SOFT_TIMEOUT_MS = Number(
   Deno.env.get('LOGIN_PREFETCH_SOFT_TIMEOUT_MS') ?? '2500'
+)
+// The soft timeout above only applies once at least one movie has already been found: with
+// zero movies found so far, sendNextBatch falls through to its hard timeout instead, which
+// otherwise defaults to INITIAL_BATCH_HARD_TIMEOUT_MS (12s) for a brand new room — and this
+// whole prefetch blocks the loginResponse, so the client's "Connecting…" screen would inherit
+// that same 12s worst case. The mobile client already requests a follow-up batch right after
+// login if it comes back short (see discover-store.ts's loginResponse handler), so it's safe
+// to cap this well below that.
+const LOGIN_PREFETCH_HARD_TIMEOUT_MS = Number(
+  Deno.env.get('LOGIN_PREFETCH_HARD_TIMEOUT_MS') ?? '4000'
 )
 const ENRICHMENT_TIMEOUT_MS = Number(
   Deno.env.get('ENRICHMENT_TIMEOUT_MS') ?? '5000'
@@ -357,12 +419,17 @@ async function fetchDiscoverPage(
     yearMax: filters?.yearMax,
     genres: filters?.genres,
     tmdbRating: filters?.tmdbRating,
+    tmdbRatingMax: filters?.tmdbRatingMax,
     languages: filters?.languages,
     countries: filters?.countries,
     runtimeMin: filters?.runtimeMin,
     runtimeMax: filters?.runtimeMax,
     voteCount: filters?.voteCount,
     sortBy: filters?.sortBy,
+    streamingServices: filters?.streamingServices,
+    includeFreeStreaming: filters?.includeFreeStreaming,
+    contentRatings: filters?.contentRatings,
+    certificationCountry: filters?.certificationCountry,
   })
 
   const results = discovered.results ?? []
@@ -498,6 +565,9 @@ interface WebSocketLoginMessage {
   }
 }
 
+// Sent to just the swiping user's own socket the moment their Like completes a match with an
+// accepted friend (see checkForNewFriendMatch) — not broadcast to a room, since no client ever
+// puts two real users in the same room anymore (every login connects to its own personal room).
 interface WebSocketMatchMessage {
   type: 'match'
   payload: { movie: MediaItem; users: string[]; createdAt: number }
@@ -510,15 +580,22 @@ interface WebSocketLoginResponseMessage {
     | {
         success: true
         hasServerAccess: boolean
-        matches: Array<WebSocketMatchMessage['payload']>
         movies: MediaItem[]
         rated: RatedPayloadItem[]
+        members: string[]
       }
 }
 
 interface WebSocketResponseMessage {
   type: 'response'
   payload: Response
+}
+
+// Retracts a previously-sent response (see lib/ws-client.ts's unrespond() on the client) —
+// e.g. undoing a Like/Pass/Seen.
+interface WebSocketUnrespondMessage {
+  type: 'unrespond'
+  payload: { guid: string }
 }
 
 interface WebSocketNextBatchMessage {
@@ -538,7 +615,9 @@ interface WebSocketNextBatchMessage {
       subscriptionServices?: string[]
     }
     contentRatings?: string[]
+    certificationCountry?: string
     tmdbRating?: number
+    tmdbRatingMax?: number
     languages?: string[]
     countries?: string[]
     directors?: Array<{ id: number; name: string }>
@@ -562,6 +641,7 @@ type WebSocketMessage =
   | WebSocketLoginMessage
   | WebSocketResponseMessage
   | WebSocketNextBatchMessage
+  | WebSocketUnrespondMessage
 
 export interface ImdbImportHistoryEntry {
   id: string
@@ -1109,10 +1189,6 @@ class Session {
   // After a restart, movieList may be empty, so we fall back to the global movieIndex.
   movieList: MediaItem[] = []
 
-  // Matches keyed by movie (object identity). We'll keep guid->movie lookup to unify objects.
-  likedMovies: Map<MediaItem, User[]> = new Map()
-  matches: { movie: MediaItem; users: string[]; createdAt: number }[] = []
-
   private discoverQueues: Map<string, DiscoverQueue> = new Map()
   private tmdbFormatCache: Map<number, any> = new Map()
   private tmdbFormatInFlight: Map<number, Promise<any>> = new Map()
@@ -1139,80 +1215,7 @@ class Session {
         dedupeUserResponses(hydratedUser, this)
         this.users.set(hydratedUser, null)
       }
-      // Rebuild likedMovies for this room from persisted responses
-      this.rebuildLikedFromPersisted()
     }
-  }
-  removeMatch(guid: string, userName: string, action: 'seen' | 'pass'): number {
-    // Find the acting user and update their response
-    const actingUser = [...this.users.keys()].find(u => u.name === userName)
-    if (actingUser) {
-      const wantsToWatch = action === 'seen' ? null : false
-      const existingIdx = actingUser.responses.findIndex(r => r.guid === guid)
-      if (existingIdx >= 0) {
-        actingUser.responses[existingIdx].wantsToWatch = wantsToWatch
-      } else {
-        actingUser.responses.push({ guid, wantsToWatch, tmdbId: null })
-      }
-
-      // Remove the acting user from likedMovies for this movie
-      for (const [movie, users] of this.likedMovies.entries()) {
-        if (movie.guid === guid) {
-          const nextUsers = users.filter(u => u !== actingUser)
-          if (nextUsers.length > 0) {
-            this.likedMovies.set(movie, nextUsers)
-          } else {
-            this.likedMovies.delete(movie)
-          }
-          break
-        }
-      }
-
-      // Persist the response change
-      upsertRoomUser(this.roomCode, actingUser)
-      saveState(persistedState).catch(err =>
-        log.warn(`Failed to save state on match removal: ${err}`)
-      )
-    }
-
-    let removedCount = 0
-
-    // Check if the match still has 2+ users in likedMovies
-    let stillMatched = false
-    for (const [movie, users] of this.likedMovies.entries()) {
-      if (movie.guid === guid && users.length > 1) {
-        stillMatched = true
-        // Update the match record with remaining users
-        const existingMatch = this.matches.find(m => m.movie.guid === guid)
-        if (existingMatch) {
-          existingMatch.users = users.map(u => u.name)
-        }
-        break
-      }
-    }
-
-    if (!stillMatched) {
-      // Remove the match record entirely
-      const matchIdx = this.matches.findIndex(m => m.movie.guid === guid)
-      if (matchIdx > -1) {
-        this.matches.splice(matchIdx, 1)
-        removedCount++
-      }
-    }
-
-    // Notify all connected users about the change
-    for (const [user, ws] of this.users.entries()) {
-      if (ws && !ws.isClosed) {
-        ws.send(
-          JSON.stringify({
-            type: 'matchRemoved',
-            payload: { guid },
-          })
-        )
-      }
-    }
-
-    return removedCount
   }
 
   private resolveDiscoverQueue(filters?: DiscoverFilters) {
@@ -1238,19 +1241,29 @@ class Session {
     const page = queue.currentPage
     queue.currentPage += 1
 
-    const { results, exhausted } = await ensureCachedDiscoverPage(filters, page)
+    let fetched = await ensureCachedDiscoverPage(filters, page)
 
-    if (!results.length) {
+    // resolveDiscoverQueue starts non-default queues on a random page (1-5) for variety on
+    // broad searches — but a narrow result set (e.g. 17 total matches, all on page 1) can have
+    // that random start overshoot past the end before we've ever found anything. Retry from
+    // page 1 (guaranteed to exist if there's anything at all) once before concluding the queue
+    // is really exhausted, rather than reporting "no movies" when there actually are some.
+    if (!fetched.results.length && queue.buffer.length === 0 && page !== 1) {
+      fetched = await ensureCachedDiscoverPage(filters, 1)
+      queue.currentPage = 2
+    }
+
+    if (!fetched.results.length) {
       queue.exhausted = true
       return
     }
 
-    const shuffled = results.slice().sort(() => Math.random() - 0.5)
+    const shuffled = fetched.results.slice().sort(() => Math.random() - 0.5)
     queue.buffer.push(...shuffled)
 
     this.prewarmDiscoverEnrichment(shuffled)
 
-    if (exhausted) {
+    if (fetched.exhausted) {
       queue.exhausted = true
     }
   }
@@ -1357,31 +1370,6 @@ class Session {
     return movie?.tmdbId ?? null
   }
 
-  private rebuildLikedFromPersisted() {
-    this.likedMovies.clear()
-
-    // Build a guid -> usersWhoLiked[] list first
-    const likedByGuid = new Map<string, User[]>()
-
-    for (const [user] of this.users.entries()) {
-      for (const r of user.responses) {
-        if (r.wantsToWatch) {
-          const arr = likedByGuid.get(r.guid) ?? []
-          arr.push(user)
-          likedByGuid.set(r.guid, arr)
-        }
-      }
-    }
-
-    // Now turn those into likedMovies keyed by MediaItem
-    for (const [guid, users] of likedByGuid.entries()) {
-      const movie = this.movieForGuid(guid)
-      if (movie) {
-        this.likedMovies.set(movie, users)
-      }
-    }
-  }
-
   add = (user: User, ws: WebSocket) => {
     this.users.set(user, ws)
 
@@ -1416,9 +1404,7 @@ class Session {
       decodedMessage = JSON.parse(msg)
     } catch (err) {
       log.warn(
-        `Received invalid WebSocket JSON from ${user.name}: ${
-          err?.message || err
-        }`
+        `Received invalid WebSocket JSON from ${user.name}: ${errorMessage(err)}`
       )
       try {
         this.users.get(user)?.send(
@@ -1441,9 +1427,8 @@ class Session {
       switch (decodedMessage.type) {
         case 'nextBatch': {
           const filters = decodedMessage.payload || {}
-          log.debug(
-            `${user.name} asked for the next batch of movies with filters:`,
-            filters
+          log.info(
+            `${user.name} asked for the next batch of movies with filters: ${JSON.stringify(filters)}`
           )
           await this.sendNextBatch(filters, undefined, user)
           break
@@ -1552,52 +1537,18 @@ class Session {
             persistedState.movieIndex[movie.guid] ||
             movie
 
-          // Look up likedMovies by guid (not object identity) to avoid
-          // stale Map keys after movieIndex objects are replaced
-          let existingUsers: User[] = []
-          let existingMovieKey: MediaItem | undefined
-          for (const [m, users] of this.likedMovies.entries()) {
-            if (m.guid === movieObj.guid) {
-              existingUsers = users
-              existingMovieKey = m
-              break
-            }
-          }
-
-          if (wantsToWatch) {
-            // User likes this movie - add them if not already in the list
-            if (!existingUsers.includes(user)) {
-              const nextUsers = [...existingUsers, user]
-              // Remove stale key if the object reference changed
-              if (existingMovieKey && existingMovieKey !== movieObj) {
-                this.likedMovies.delete(existingMovieKey)
-              }
-              this.likedMovies.set(movieObj, nextUsers)
-
-              // If multiple users like it, broadcast a match
-              if (nextUsers.length > 1) {
-                this.handleMatch(movieObj, nextUsers)
-              }
-            }
-          } else {
-            // User doesn't like this movie (pass or seen) - remove them
-            if (existingUsers.includes(user)) {
-              const nextUsers = existingUsers.filter(u => u !== user)
-              // Always remove old key first
-              if (existingMovieKey) {
-                this.likedMovies.delete(existingMovieKey)
-              }
-              if (nextUsers.length > 0) {
-                this.likedMovies.set(movieObj, nextUsers)
-              }
-            }
-          }
-
-          // Persist: user responses + (optionally) liked state can be derived, so we just save users + movieIndex
+          // Persist: user responses is the source of truth, everything else derives from it
           upsertRoomUser(this.roomCode, user)
           await saveState(persistedState).catch(err =>
             log.warn(`Failed to save state on response: ${err}`)
           )
+          if (wantsToWatch) {
+            checkForNewFriendMatch(user, this.roomCode, movieObj, this.users.get(user))
+          }
+          maybeAutoSyncPlex(this.roomCode, user.name, 'watchlist')
+          maybeAutoSyncPlex(this.roomCode, user.name, 'seen')
+          maybeAutoSyncTrakt(this.roomCode, user.name, 'watchlist')
+          maybeAutoSyncTrakt(this.roomCode, user.name, 'seen')
           break
         }
         case 'unrespond': {
@@ -1608,24 +1559,15 @@ class Session {
           const before = user.responses.length
           user.responses = user.responses.filter(r => r.guid !== guid)
 
-          // Also remove from likedMovies if present
-          for (const [movie, users] of this.likedMovies.entries()) {
-            if (movie.guid === guid) {
-              const next = users.filter(u => u !== user)
-              if (next.length > 0) {
-                this.likedMovies.set(movie, next)
-              } else {
-                this.likedMovies.delete(movie)
-              }
-              break
-            }
-          }
-
           if (user.responses.length !== before) {
             upsertRoomUser(this.roomCode, user)
             await saveState(persistedState).catch(err =>
               log.warn(`Failed to save state on unrespond: ${err}`)
             )
+            maybeAutoSyncPlex(this.roomCode, user.name, 'watchlist')
+            maybeAutoSyncPlex(this.roomCode, user.name, 'seen')
+            maybeAutoSyncTrakt(this.roomCode, user.name, 'watchlist')
+            maybeAutoSyncTrakt(this.roomCode, user.name, 'seen')
           }
           break
         }
@@ -1651,7 +1593,9 @@ class Session {
         subscriptionServices?: string[]
       }
       contentRatings?: string[]
+      certificationCountry?: string
       tmdbRating?: number
+      tmdbRatingMax?: number
       languages?: string[]
       countries?: string[]
       directors?: Array<{ id: number; name: string }>
@@ -1683,6 +1627,14 @@ class Session {
         ? resolvePersonalSourcesForUser(personalRoomUserId)
         : []
 
+    // Per-user paid/free streaming subscriptions (Profile screen) — independent of the
+    // instance-wide admin PAID_STREAMING_SERVICES setting below, which stays as a fallback for
+    // the legacy web/Docker flow when a user hasn't configured their own.
+    const userStreamingPrefs: UserStreamingPrefs =
+      personalRoomUserId != null
+        ? parseUserStreamingPrefs(getUserSettings(personalRoomUserId)?.subscriptions)
+        : { paid: [], includeFree: false }
+
     const configuredPaidServices = getPaidStreamingServices()
     const configuredPersonalSources =
       requester?.hasServerAccess === false ? [] : getPersonalMediaSources()
@@ -1691,6 +1643,12 @@ class Session {
       .filter(Boolean)
 
     const requestedAvailability = filters?.availability
+    // True once the client has ever sent an explicit availability choice (including "anywhere"
+    // — FilterSheet always sends a fully-formed availability object once applied, even if the
+    // user didn't change anything). Only undefined on the very first batch a client asks for
+    // (e.g. right after login, before FilterSheet has ever been touched) — that's the one case
+    // where it's safe to auto-apply the user's own saved subscriptions as the baseline, below.
+    const explicitAvailabilityProvided = requestedAvailability !== undefined
     const normalizedAvailability = {
       anywhere: Boolean(requestedAvailability?.anywhere),
       roomPersonalMedia: Boolean(requestedAvailability?.roomPersonalMedia),
@@ -1725,12 +1683,20 @@ class Session {
       normalizedAvailability.freeStreamingServices = []
     }
 
+    // Auto-apply the user's saved subscriptions as the baseline only when the client hasn't
+    // expressed any availability preference yet (see explicitAvailabilityProvided above) — once
+    // they've touched FilterSheet, its explicit choice always wins, including "Anywhere".
+    const autoApplyUserSubscriptions =
+      !explicitAvailabilityProvided &&
+      (userStreamingPrefs.paid.length > 0 || userStreamingPrefs.includeFree)
+
     const wantsRoomPersonalMedia =
       normalizedAvailability.roomPersonalMedia &&
       configuredPersonalSources.length > 0
     const wantsPaidSubscriptions =
-      normalizedAvailability.paidSubscriptions &&
-      configuredPaidServices.length > 0
+      (normalizedAvailability.paidSubscriptions &&
+        (configuredPaidServices.length > 0 || userStreamingPrefs.paid.length > 0)) ||
+      (autoApplyUserSubscriptions && userStreamingPrefs.paid.length > 0)
     const wantsFreeStreaming = normalizedAvailability.freeStreaming
 
     // Determine which specific personal media sources are requested
@@ -1769,8 +1735,15 @@ class Session {
 
     let effectiveStreamingServices = [...requestedServices]
     if (effectiveStreamingServices.length === 0 && wantsPaidSubscriptions) {
-      effectiveStreamingServices = [...configuredPaidServices]
+      effectiveStreamingServices =
+        userStreamingPrefs.paid.length > 0
+          ? [...userStreamingPrefs.paid]
+          : [...configuredPaidServices]
     }
+
+    const effectiveIncludeFreeStreaming =
+      (wantsPaidSubscriptions || autoApplyUserSubscriptions) &&
+      userStreamingPrefs.includeFree
 
     const shouldBlendPlexInAvailability =
       wantsRoomPersonalMedia &&
@@ -2054,6 +2027,7 @@ class Session {
             yearMax: filters?.yearMax,
             genres: filters?.genres,
             tmdbRating: filters?.tmdbRating,
+            tmdbRatingMax: filters?.tmdbRatingMax,
             languages: filters?.languages,
             countries: filters?.countries,
             runtimeMin: filters?.runtimeMin,
@@ -2061,12 +2035,26 @@ class Session {
             voteCount: filters?.voteCount,
             sortBy: filters?.sortBy,
             streamingServices: effectiveStreamingServices,
+            includeFreeStreaming: effectiveIncludeFreeStreaming,
+            contentRatings: filters?.contentRatings,
+            certificationCountry: filters?.certificationCountry,
           })
         } catch (err) {
           log.warn(
             `TMDb candidate fetch failed at attempt ${attemptNumber}; trying room library fallback: ${err}`
           )
-          return await fetchPlexCandidate()
+          try {
+            return await fetchPlexCandidate()
+          } catch (fallbackErr) {
+            // TMDb genuinely has no more movies matching these filters (not a transient
+            // failure) and the room's own library has nothing either — there's nothing left
+            // to find. Surface this as NoMoreMoviesError so the batch loop below stops
+            // immediately instead of retrying the same dead end up to maxAttempts times.
+            if (err instanceof Error && err.message === 'No TMDb movie found') {
+              throw new NoMoreMoviesError('No more movies match the current filters')
+            }
+            throw fallbackErr
+          }
         }
       }
 
@@ -2077,8 +2065,16 @@ class Session {
         }
 
         const attemptNumber = attempts + 1
+        const candidatePromise = fetchCandidate(attemptNumber)
+        // This candidate is fetched eagerly (queueNextCandidate() is called for attempt N+1
+        // before attempt N has been processed) — if the batch loop below exits for any reason
+        // (batch full, soft/hard timeout, or a NoMoreMoviesError from a *different* attempt)
+        // before ever awaiting this promise, an unhandled rejection here would crash the whole
+        // process. The real error handling still happens wherever this promise IS awaited —
+        // this is just a safety net against it being abandoned unawaited.
+        candidatePromise.catch(() => {})
         pendingCandidate = {
-          promise: fetchCandidate(attemptNumber),
+          promise: candidatePromise,
           attemptNumber,
         }
         attempts = attemptNumber
@@ -2176,29 +2172,7 @@ class Session {
             continue
           }
 
-          let extra:
-            | {
-                plot: string | null
-                imdbId: string | null
-                rating_tmdb: number | null
-                tmdbPosterPath?: string | null
-                genres?: string[]
-                streamingServices?: { subscription: any[]; free: any[] }
-                streamingLink?: string | null
-                cast?: string[]
-                castMembers?: Array<{
-                  name: string
-                  character?: string
-                  profilePath?: string | null
-                }>
-                writers?: string[]
-                director?: string | null
-                runtime?: number | null
-                contentRating?: string | null
-                voteCount?: number | null
-                tmdbId?: number | null
-              }
-            | undefined
+          let extra: EnrichmentPayload | undefined
 
           try {
             extra = await Promise.race([
@@ -2322,12 +2296,29 @@ class Session {
             }
           }
 
+          // Prefer the enriched rating, but fall back to the rating TMDb's own discover
+          // response already carried on plexMovie — for TMDb-sourced candidates, TMDb already
+          // enforced vote_average.gte/.lte server-side to produce this candidate in the first
+          // place, so that value is always known even when the separate enrichment call times
+          // out (see ENRICHMENT_TIMEOUT_MS above). Treating an enrichment timeout as "fails the
+          // rating filter" was wrongly rejecting movies that TMDb had already confirmed match.
+          const knownRating = extra?.rating_tmdb ?? plexMovie.vote_average ?? null
+
           if (filters?.tmdbRating && filters.tmdbRating > 0) {
-            if (!extra?.rating_tmdb || extra.rating_tmdb < filters.tmdbRating) {
+            if (knownRating == null || knownRating < filters.tmdbRating) {
               log.debug(
                 `⛔️ Skipping ${plexMovie.title} - TMDb rating ${
-                  extra?.rating_tmdb || 'N/A'
+                  knownRating ?? 'N/A'
                 } below minimum ${filters.tmdbRating}`
+              )
+              continue
+            }
+          }
+
+          if (filters?.tmdbRatingMax && filters.tmdbRatingMax > 0) {
+            if (knownRating != null && knownRating > filters.tmdbRatingMax) {
+              log.debug(
+                `⛔️ Skipping ${plexMovie.title} - TMDb rating ${knownRating} above maximum ${filters.tmdbRatingMax}`
               )
               continue
             }
@@ -2386,7 +2377,10 @@ class Session {
           }
 
           if (filters?.countries && filters.countries.length > 0) {
-            const movieCountries = plexMovie.production_countries || []
+            // formatTMDbMovie() sets `countries` (ISO codes), not `production_countries` — that
+            // raw TMDb field only exists on the /movie/{id} details response, never on the
+            // formatted candidate object flowing through this loop.
+            const movieCountries = plexMovie.countries || []
             const hasMatchingCountry = filters.countries.some(filterCountry =>
               movieCountries.includes(filterCountry)
             )
@@ -2522,7 +2516,18 @@ class Session {
               extra?.originalLanguage ||
               plexMovie.original_language ||
               null,
-            production_countries: plexMovie.production_countries || [],
+            // formatTMDbMovie() already sets `countries` as plain ISO codes; `production_countries`
+            // (TMDb's raw {iso_3166_1, name} shape) is kept as a fallback in case a candidate ever
+            // carries that field directly instead.
+            countries: Array.isArray(plexMovie.countries)
+              ? plexMovie.countries.filter(
+                  (code: unknown): code is string => typeof code === 'string' && Boolean(code)
+                )
+              : Array.isArray(plexMovie.production_countries)
+              ? plexMovie.production_countries
+                  .map((c: any) => (typeof c === 'string' ? c : c?.iso_3166_1))
+                  .filter((code: unknown): code is string => Boolean(code))
+              : [],
             trailerKey: extra?.trailerKey || null,
             personalSource: (plexMovie as any).personalSource,
           }
@@ -2550,7 +2555,7 @@ class Session {
             break
           }
           log.error(`Error processing movie attempt ${attemptNumber}:`, err)
-          log.error(`Error details:`, err.message)
+          log.error(`Error details:`, errorMessage(err))
 
           if (hasPersonFilters && personMovies.length > 0) {
             log.warn(
@@ -2812,6 +2817,7 @@ class Session {
       yearMax?: number
       genres?: string[]
       tmdbRating?: number
+      tmdbRatingMax?: number
       languages?: string[]
       countries?: string[]
       directors?: Array<{ id: number; name: string }>
@@ -2821,6 +2827,9 @@ class Session {
       voteCount?: number
       sortBy?: string
       streamingServices?: string[]
+      includeFreeStreaming?: boolean
+      contentRatings?: string[]
+      certificationCountry?: string
     }
   ): Promise<any> {
     // If person filters are applied, use a more targeted approach
@@ -2836,6 +2845,7 @@ class Session {
       yearMax: filters?.yearMax,
       genres: filters?.genres,
       tmdbRating: filters?.tmdbRating,
+      tmdbRatingMax: filters?.tmdbRatingMax,
       languages: filters?.languages,
       countries: filters?.countries,
       runtimeMin: filters?.runtimeMin,
@@ -2843,6 +2853,9 @@ class Session {
       voteCount: filters?.voteCount,
       sortBy: filters?.sortBy,
       streamingServices: filters?.streamingServices,
+      includeFreeStreaming: filters?.includeFreeStreaming,
+      contentRatings: filters?.contentRatings,
+      certificationCountry: filters?.certificationCountry,
     }
 
     const { queue } = this.resolveDiscoverQueue(discoverFilters)
@@ -2901,8 +2914,15 @@ class Session {
     }
 
     const task = (async () => {
-      // Get IMDb ID from TMDb for more reliable enrichment
+      // Get IMDb ID from TMDb for more reliable enrichment. This same /movie/{id} call also
+      // carries origin_country — TMDb's /discover/movie results (tmdbMovie here) never include
+      // that field, only the full details endpoint does — so grab it here too instead of firing
+      // a second request for it. We use origin_country (TMDb's curated "this movie is from"
+      // tag) rather than production_countries (every country tied to any production company,
+      // which over-broadens co-productions) — same field the with_origin_country discover
+      // filter uses, so Discover and Lists country filtering stay consistent.
       let imdbId = null
+      let countries: string[] = []
       try {
         const detailsResponse = await tmdbFetch(
           `/movie/${tmdbId}`,
@@ -2912,6 +2932,11 @@ class Session {
         if (detailsResponse.ok) {
           const details = await detailsResponse.json()
           imdbId = details.external_ids?.imdb_id
+          countries = Array.isArray(details.origin_country)
+            ? details.origin_country.filter(
+                (code: unknown): code is string => typeof code === 'string' && Boolean(code)
+              )
+            : []
           log.debug(`Got IMDb ID ${imdbId} for TMDb movie ${tmdbMovie.title}`)
         }
       } catch (e) {
@@ -2942,7 +2967,7 @@ class Session {
         genre_ids: tmdbMovie.genre_ids || [],
         vote_count: tmdbMovie.vote_count || 0,
         original_language: tmdbMovie.original_language || null,
-        production_countries: tmdbMovie.production_countries || [],
+        countries,
         tmdbId: tmdbMovie.id,
       }
 
@@ -3011,63 +3036,6 @@ class Session {
     return task
   }
 
-  handleMatch(movie: MediaItem, users: User[]) {
-    // Ensure movie has Comparr score calculated (backfill for existing movies)
-    ensureComparrScore(movie)
-
-    const { matchUsers, createdAt } = this.upsertMatchRecord(movie, users)
-
-    for (const ws of this.users.values()) {
-      const match: WebSocketMatchMessage = {
-        type: 'match',
-        payload: {
-          movie,
-          users: matchUsers,
-          createdAt,
-        },
-      }
-      if (ws && !ws.isClosed) {
-        ws.send(JSON.stringify(match))
-      }
-    }
-  }
-
-  private upsertMatchRecord(movie: MediaItem, users: User[]) {
-    const existingMatch = this.matches.find(
-      match => match.movie.guid === movie.guid
-    )
-    const createdAt = existingMatch?.createdAt ?? Date.now()
-    const matchUsers = users.map(_ => _.name)
-
-    if (existingMatch) {
-      existingMatch.users = matchUsers
-    } else {
-      this.matches.push({ movie, users: matchUsers, createdAt })
-    }
-
-    return { matchUsers, createdAt }
-  }
-
-  getExistingMatches(user: User) {
-    // Derives matches from likedMovies; returns any movie liked by user + at least one other
-    const matches = [...this.likedMovies.entries()]
-      .filter(([, users]) => users.includes(user) && users.length > 1)
-      .map(([movie, users]) => {
-        // Ensure movie has Comparr score calculated (backfill for existing movies)
-        ensureComparrScore(movie)
-        // Ensure a match record exists (backfills for restored sessions)
-        const { matchUsers, createdAt } = this.upsertMatchRecord(movie, users)
-        return {
-          movie,
-          users: matchUsers,
-          createdAt,
-        }
-      })
-      .sort((a, b) => b.createdAt - a.createdAt)
-
-    return matches
-  }
-
   destroy() {
     log.info(`Session ${this.roomCode} has no users and has been removed.`)
     activeSessions.delete(this.roomCode)
@@ -3094,16 +3062,6 @@ export function isValidRoomCode(roomCode: string): boolean {
   )
 }
 
-
-export function getMatchesForUser(roomCode: string, userName: string) {
-  const session = activeSessions.get(roomCode)
-  if (!session) return null
-
-  const user = [...session.users.keys()].find(u => u.name === userName)
-  if (!user) return []
-
-  return session.getExistingMatches(user)
-}
 
 let plexHydrationPromise: Promise<void> | null = null
 
@@ -3232,7 +3190,7 @@ export const handleLogin = (
       try {
         data = JSON.parse(msg)
       } catch (err) {
-        log.warn(`Failed to parse login message JSON: ${err?.message || err}`)
+        log.warn(`Failed to parse login message JSON: ${errorMessage(err)}`)
         const response: WebSocketLoginResponseMessage = {
           type: 'loginResponse',
           payload: {
@@ -3401,6 +3359,7 @@ export const handleLogin = (
               {
                 suppressBroadcast: true,
                 softTimeoutMs: LOGIN_PREFETCH_SOFT_TIMEOUT_MS,
+                hardTimeoutMs: LOGIN_PREFETCH_HARD_TIMEOUT_MS,
               },
               user
             )
@@ -3492,32 +3451,34 @@ export const handleLogin = (
             )
           }
 
-          // Re-send any unseen movies (from this session) and existing matches
+          // Re-send any unseen movies from this session — matches themselves are fetched
+          // separately via /api/matches/connections (friend comparison), not pushed at login.
+          const unseenMovies = session.movieList.filter(movie => {
+            if (ratedGuidSet.has(movie.guid)) {
+              return false
+            }
+
+            const movieTmdbId =
+              movie.tmdbId ?? extractTmdbIdFromGuid(movie.guid)
+            if (movieTmdbId && ratedTmdbIdSet.has(movieTmdbId)) {
+              return false
+            }
+
+            return true
+          })
+          const memberNames = [...session.users.keys()].map(u => u.name)
           const response: WebSocketLoginResponseMessage = {
             type: 'loginResponse',
             payload: {
               success: true,
               hasServerAccess: user.hasServerAccess !== false,
-              matches: session.getExistingMatches(user),
-              movies: session.movieList.filter(movie => {
-                if (ratedGuidSet.has(movie.guid)) {
-                  return false
-                }
-
-                const movieTmdbId =
-                  movie.tmdbId ?? extractTmdbIdFromGuid(movie.guid)
-                if (movieTmdbId && ratedTmdbIdSet.has(movieTmdbId)) {
-                  return false
-                }
-
-                return true
-              }),
+              movies: unseenMovies,
               rated: ratedItems,
-              members: [...session.users.keys()].map(u => u.name),
+              members: memberNames,
             },
           }
           log.debug(
-            `Login response sending ${response.payload.movies.length} movies to ${user.name} (${ratedItems.length} rated)`
+            `Login response sending ${unseenMovies.length} movies to ${user.name} (${ratedItems.length} rated)`
           )
 
           ws.send(JSON.stringify(response))
@@ -3525,7 +3486,7 @@ export const handleLogin = (
           return resolve(user)
         }
       } catch (err) {
-        log.error(`Failed to process login message: ${err?.message || err}`)
+        log.error(`Failed to process login message: ${errorMessage(err)}`)
       }
     }
     ws.addListener('message', handler)
@@ -3976,8 +3937,8 @@ export async function processImdbImportBackground(
         tmdbId,
         imdbId: row.imdbId,
         genres: [],
-        runtime: null,
-        contentRating: null,
+        runtime: undefined,
+        contentRating: undefined,
         streamingServices: { subscription: [], free: [] },
         watchProviders: [],
         streamingLink: null,
@@ -4064,7 +4025,7 @@ export async function processImdbImportBackground(
       }
     } catch (err) {
       log.warn(
-        `[IMDb Import] Failed to process ${row.imdbId}: ${err?.message || err}`
+        `[IMDb Import] Failed to process ${row.imdbId}: ${errorMessage(err)}`
       )
       apiErrors++
       skipped++
@@ -4195,19 +4156,6 @@ export function clearUsersFromRoom(
         session.users.delete(user)
       }
     }
-    // Remove the cleared users from likedMovies.
-    for (const [movie, likers] of [...session.likedMovies.entries()]) {
-      const remaining = likers.filter(u => !userNames.includes(u.name))
-      if (remaining.length > 0) {
-        session.likedMovies.set(movie, remaining)
-      } else {
-        session.likedMovies.delete(movie)
-      }
-    }
-    // Drop matches that no longer have at least 2 users after removal.
-    session.matches = session.matches
-      .map(m => ({ ...m, users: m.users.filter(n => !userNames.includes(n)) }))
-      .filter(m => m.users.length >= 2)
   }
   saveState(persistedState).catch(err =>
     log.warn(`Failed to save state after clearUsersFromRoom: ${err}`)
@@ -4354,6 +4302,212 @@ interface PlexSyncState {
   [guid: string]: { metadataKey?: string; ratingKey?: string; syncedAt: string; title?: string }
 }
 
+/**
+ * After a Like, check whether it just completed a match with any accepted friend, using the same
+ * friend-comparison logic the Friends tab uses (getCompareMatches) — not the old session-scoped
+ * same-room match detection, which is dead: no client (mobile or web) ever puts two real users in
+ * the same room anymore, every login connects to its own personal room.
+ *
+ * Fires a 'match' WS event to the swiping user's own socket only, the moment their own Like
+ * completes the match — the friend isn't notified in real time, they'll see it next time their
+ * own Friends/Matches list refreshes (same as any other friend-match). Stops at the first
+ * matching friend even if there are several — one celebration per Like is enough.
+ */
+function checkForNewFriendMatch(
+  user: User,
+  roomCode: string,
+  movie: MediaItem,
+  ws: WebSocket | null | undefined
+): void {
+  if (!ws || ws.isClosed) return
+  const personalRoomMatch = roomCode.match(/^U(\d+)$/)
+  const userId = personalRoomMatch ? parseInt(personalRoomMatch[1], 10) : null
+  if (userId == null) return
+
+  const friends = getFriendConnections(userId).filter(f => f.status === 'accepted')
+  for (const friend of friends) {
+    const friendRoomCode = `U${String(friend.friendUserId).padStart(3, '0')}`
+    const matches = getCompareMatches(roomCode, user.name, friendRoomCode, friend.friendUsername)
+    if (matches.some(m => m.guid === movie.guid)) {
+      const message: WebSocketMatchMessage = {
+        type: 'match',
+        payload: { movie, users: [user.name, friend.friendUsername], createdAt: Date.now() },
+      }
+      ws.send(JSON.stringify(message))
+      return
+    }
+  }
+}
+
+/**
+ * Fires the same reconciliation job the manual /api/plex-sync route uses (still needed by the
+ * legacy web app's Sync buttons), but automatically after every swipe/rate — gated by the
+ * mobile-only autoSyncPlexWatchlist/autoSyncPlexSeen display preferences. Every personal room is
+ * `U<userId>` by construction (see roomCodeForUser in routes/compare.ts), so userId is always
+ * recoverable from the room code without a session->account lookup table.
+ *
+ * The two sync types depend on genuinely different things, and must not be conflated:
+ *  - Watchlist sync needs a Plex ACCOUNT authorized (plex.tv account token) — either from
+ *    signing into Comparr via Plex, or from connecting a Plex account separately without that
+ *    being the login method (see routes/plex-account-connect.ts). It's a cloud-only action
+ *    against Plex's Discover catalog, no server involved.
+ *  - Seen sync needs a Plex SERVER CONNECTION (Profile → Advanced Settings → Plex, independent
+ *    of how the user logged into Comparr) — scrobbling only makes sense for a movie that exists
+ *    in that specific library. A user could have either, both, or neither.
+ */
+function maybeAutoSyncPlex(roomCode: string, userName: string, kind: 'watchlist' | 'seen'): void {
+  const personalRoomMatch = roomCode.match(/^U(\d+)$/)
+  const userId = personalRoomMatch ? parseInt(personalRoomMatch[1], 10) : null
+  if (userId == null) return
+
+  const settings = getUserSettings(userId)
+  if (!settings) return
+
+  let preferences: Record<string, unknown> = {}
+  try {
+    preferences = JSON.parse(settings.displayPreferences || '{}')
+  } catch {
+    return
+  }
+
+  if (kind === 'watchlist') {
+    if (preferences.autoSyncPlexWatchlist !== true) return
+    // Either source works: signed in with Plex (login-derived token) or connected a Plex
+    // account separately without that being the login method (settings.plexAccountToken).
+    const userPlexToken = getUserPlexAuthToken(userId) || settings.plexAccountToken
+    if (!userPlexToken) return // no Plex account authorized either way — nothing to sync against
+    const job: PlexSyncJob = { roomCode, userName, userId, userPlexToken, serverUrl: '' }
+    processPlexWatchlistSyncBackground(job).catch(err =>
+      log.error(`[plex-sync] auto watchlist sync failed for ${userName}: ${err?.message || err}`)
+    )
+    return
+  }
+
+  if (preferences.autoSyncPlexSeen !== true) return
+  if (!settings.plexUrl || !settings.plexToken) return // no personal Plex server connected
+  const job: PlexSyncJob = {
+    roomCode,
+    userName,
+    userId,
+    userPlexToken: settings.plexToken,
+    serverUrl: settings.plexUrl,
+  }
+  processPlexSeenSyncBackground(job).catch(err =>
+    log.error(`[plex-sync] auto seen sync failed for ${userName}: ${err?.message || err}`)
+  )
+}
+
+/**
+ * Trakt auto-sync — unlike Plex, one-way push of both Watchlist and Seen (Trakt calls it
+ * "history") only ever needs an authorized Trakt account (login or manual connection), no
+ * server. Trakt's /sync endpoints accept a batch per call and already key by TMDb id, so this
+ * is a plain tmdbId set diff — no per-movie search/matching needed like Plex's Watchlist sync.
+ */
+function maybeAutoSyncTrakt(roomCode: string, userName: string, kind: 'watchlist' | 'seen'): void {
+  const personalRoomMatch = roomCode.match(/^U(\d+)$/)
+  const userId = personalRoomMatch ? parseInt(personalRoomMatch[1], 10) : null
+  if (userId == null) return
+
+  const settings = getUserSettings(userId)
+  if (!settings) return
+
+  let preferences: Record<string, unknown> = {}
+  try {
+    preferences = JSON.parse(settings.displayPreferences || '{}')
+  } catch {
+    return
+  }
+
+  const enabled =
+    kind === 'watchlist' ? preferences.autoSyncTraktWatchlist === true : preferences.autoSyncTraktSeen === true
+  if (!enabled) return
+
+  processTraktSync(userId, roomCode, userName, kind).catch(err =>
+    log.error(`[trakt-sync] auto ${kind} sync failed for ${userName}: ${err?.message || err}`)
+  )
+}
+
+async function getValidTraktAccessToken(
+  userId: number,
+  settings: UserSettings
+): Promise<string | null> {
+  const login = getUserTraktLoginTokens(userId)
+  const isLoginToken = Boolean(login.accessToken)
+  const accessToken = login.accessToken || settings.traktAccessToken
+  const refreshToken = login.refreshToken || settings.traktRefreshToken
+  const expiresAt = isLoginToken ? login.expiresAt : settings.traktTokenExpiresAt
+  if (!accessToken) return null
+
+  // Refresh a bit before actual expiry to avoid a request racing the exact expiry instant.
+  const expiresSoon = expiresAt ? Date.parse(expiresAt) < Date.now() + 5 * 60 * 1000 : false
+  if (!expiresSoon) return accessToken
+
+  if (!refreshToken) return accessToken // no way to refresh — try the possibly-stale token anyway
+  const refreshed = await refreshTraktToken(refreshToken)
+  if (!refreshed) return accessToken // refresh failed — try the possibly-stale token anyway
+
+  if (isLoginToken) {
+    setUserTraktLoginTokens(userId, refreshed)
+  } else {
+    upsertUserSettings(userId, {
+      traktAccessToken: refreshed.accessToken,
+      traktRefreshToken: refreshed.refreshToken,
+      traktTokenExpiresAt: refreshed.expiresAt,
+    })
+  }
+  return refreshed.accessToken
+}
+
+async function processTraktSync(
+  userId: number,
+  roomCode: string,
+  userName: string,
+  kind: 'watchlist' | 'seen'
+): Promise<void> {
+  const settings = getUserSettings(userId)
+  if (!settings) return
+
+  const accessToken = await getValidTraktAccessToken(userId, settings)
+  if (!accessToken) return
+
+  const currentMovies =
+    kind === 'watchlist' ? getUserWatchlistMovies(roomCode, userName) : getUserSeenMovies(roomCode, userName)
+  const currentTmdbIds = new Set(
+    currentMovies.map(m => m.tmdbId).filter((id): id is number => id != null)
+  )
+
+  const syncStateRaw = kind === 'watchlist' ? settings.traktWatchlistSynced : settings.traktSeenSynced
+  const syncState: Record<string, true> = (() => {
+    try {
+      return JSON.parse(syncStateRaw || '{}')
+    } catch {
+      return {}
+    }
+  })()
+  const syncedTmdbIds = new Set(Object.keys(syncState).map(Number))
+
+  const toAdd = [...currentTmdbIds].filter(id => !syncedTmdbIds.has(id))
+  const toRemove = [...syncedTmdbIds].filter(id => !currentTmdbIds.has(id))
+  if (toAdd.length === 0 && toRemove.length === 0) return
+
+  const addFn = kind === 'watchlist' ? addToTraktWatchlist : addToTraktHistory
+  const removeFn = kind === 'watchlist' ? removeFromTraktWatchlist : removeFromTraktHistory
+
+  const addOk = toAdd.length === 0 || (await addFn(accessToken, toAdd))
+  const removeOk = toRemove.length === 0 || (await removeFn(accessToken, toRemove))
+
+  if (addOk) for (const id of toAdd) syncState[String(id)] = true
+  if (removeOk) for (const id of toRemove) delete syncState[String(id)]
+
+  upsertUserSettings(userId, {
+    [kind === 'watchlist' ? 'traktWatchlistSynced' : 'traktSeenSynced']: JSON.stringify(syncState),
+  })
+
+  log.info(
+    `[trakt-sync] ${kind} sync for ${userName}: added=${addOk ? toAdd.length : 0} removed=${removeOk ? toRemove.length : 0}`
+  )
+}
+
 export async function processPlexWatchlistSyncBackground(
   job: PlexSyncJob
 ): Promise<void> {
@@ -4401,8 +4555,21 @@ export async function processPlexWatchlistSyncBackground(
   // Add movies newly on watchlist
   for (const movie of currentMovies) {
     processed++
+    // Check already-synced state first — this reconciliation now runs on every swipe (not just
+    // a manual button press), so skipping resolution entirely for movies already synced avoids
+    // redoing an expensive Discover search + verification round-trip for the whole watchlist on
+    // every single swipe.
+    if (syncState[movie.guid]) {
+      alreadySynced++
+      alreadySyncedItems.push(movieTitle(movie))
+      emit('processing', { processed, synced, removed, alreadySynced, skipped, errors })
+      continue
+    }
     // Try direct extraction first; if the stored guid isn't plex://movie/ format
-    // (e.g. imdb:// from an IMDb import), fall back to the Plex cache.
+    // (e.g. imdb:// from an IMDb import), fall back to the Plex cache (movies the user already
+    // owns in their own library), then to a live Plex Discover catalog lookup by TMDb id — a
+    // Watchlist is meant to hold movies the user *doesn't* have yet, so most entries only
+    // resolve via this last step.
     let metadataKey = extractPlexMetadataKey(movie.guid)
     if (!metadataKey) {
       const plexEntry = getPlexEntryForSync({
@@ -4413,15 +4580,18 @@ export async function processPlexWatchlistSyncBackground(
       })
       if (plexEntry) metadataKey = extractPlexMetadataKey(plexEntry.guid)
     }
+    if (!metadataKey && movie.tmdbId != null) {
+      const parsedYear = parseInt(movie.year, 10)
+      metadataKey = await resolvePlexDiscoverRatingKey(
+        userPlexToken,
+        movie.tmdbId,
+        movie.title,
+        Number.isFinite(parsedYear) ? parsedYear : null
+      )
+    }
     if (!metadataKey) {
       skipped++
       skippedItems.push(movieTitle(movie))
-      emit('processing', { processed, synced, removed, alreadySynced, skipped, errors })
-      continue
-    }
-    if (syncState[movie.guid]) {
-      alreadySynced++
-      alreadySyncedItems.push(movieTitle(movie))
       emit('processing', { processed, synced, removed, alreadySynced, skipped, errors })
       continue
     }
@@ -4467,7 +4637,16 @@ export async function processPlexWatchlistSyncBackground(
 export async function processPlexSeenSyncBackground(
   job: PlexSyncJob
 ): Promise<void> {
+  // Unlike Watchlist sync (Plex-login/Discover, cloud-only), Seen sync scrobbles against an
+  // actual server, so userPlexToken/serverUrl here are the user's own personal Plex server
+  // connection (user_settings.plexToken/plexUrl) — a movie has to exist in that specific library
+  // to be markable as watched at all.
   const { roomCode, userName, userId, userPlexToken, serverUrl } = job
+
+  const personalLibrary = await getPersonalPlexLibrary(serverUrl, userPlexToken).catch(err => {
+    log.warn(`[plex-sync] Failed to fetch personal Plex library for ${userName}: ${err}`)
+    return [] as Awaited<ReturnType<typeof getPersonalPlexLibrary>>
+  })
 
   const currentMovies = getUserSeenMovies(roomCode, userName)
   const total = currentMovies.length
@@ -4515,12 +4694,12 @@ export async function processPlexSeenSyncBackground(
       emit('processing', { processed, synced, removed, alreadySynced, skipped, errors })
       continue
     }
-    const plexEntry = getPlexEntryForSync({
-      plexGuid: movie.guid,
-      tmdbId: movie.tmdbId ?? undefined,
-      title: movie.title,
-      year: movie.year ? Number(movie.year) : undefined,
-    })
+    const plexEntry = findInPersonalPlexLibrary(
+      personalLibrary,
+      movie.tmdbId ?? null,
+      movie.title,
+      movie.year ? Number(movie.year) : null
+    )
     if (!plexEntry) {
       skipped++
       skippedItems.push(movieTitle(movie))

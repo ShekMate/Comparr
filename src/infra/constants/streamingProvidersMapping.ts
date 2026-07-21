@@ -13,9 +13,8 @@ const PROVIDER_MAPPINGS: Record<string, string> = {
   'Amazon Prime Video with Ads': 'Amazon Prime',
   'Amazon Prime Video Free with Ads': 'Amazon Prime',
 
-  // Apple TV / Apple TV+ variants
-  'Apple TV+': 'Apple TV / Apple TV+',
-  'Apple TV Plus Amazon Channel': 'Apple TV / Apple TV+',
+  // Apple TV+ variants
+  'Apple TV Plus Amazon Channel': 'Apple TV+',
 
   // HBO Max / Max variants
   'HBO Max': 'Max',
@@ -132,8 +131,10 @@ const PROVIDER_MAPPINGS: Record<string, string> = {
   'Carnegie Hall+ Amazon Channel': 'Carnegie Hall+',
   'Carnegie Hall+ Apple TV Channel': 'Carnegie Hall+',
 
-  // A&E variants
-  'A&E Crime Central Apple TV Channel': 'A&E',
+  // A&E Crime Central variants — this is the specific paid Crime Central add-on channel, not
+  // the general (free, cable-authenticated) A&E network, so it gets its own brand name rather
+  // than normalizing to bare "A&E".
+  'A&E Crime Central Apple TV Channel': 'A&E Crime Central',
 
   // Crunchyroll variants
   'Crunchyroll Amazon Channel': 'Crunchyroll',

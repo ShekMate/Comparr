@@ -1,6 +1,7 @@
 // Add this utility to a new file: src/features/media/poster-validation.ts
 
 import * as log from 'jsr:@std/log'
+import { errorMessage } from '../../core/errors.ts'
 
 // Cache for poster validation results to avoid repeated checks
 const posterValidationCache = new Map<string, boolean>()
@@ -54,7 +55,7 @@ export async function validateTMDbPoster(posterPath: string): Promise<boolean> {
     return false
   } catch (error) {
     log.debug(
-      `Poster validation failed for ${posterPath}: ${error?.message || error}`
+      `Poster validation failed for ${posterPath}: ${errorMessage(error)}`
     )
     addToPosterCache(posterPath, false)
     return false

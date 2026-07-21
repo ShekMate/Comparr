@@ -140,6 +140,18 @@ export const getUserSession = (token: string): UserSession | null => {
   return session
 }
 
+/** Update the username on a live session (e.g. after a profile edit), so it's reflected
+ *  immediately without waiting for the session to be re-issued. */
+export const updateSessionUsername = (token: string, username: string): void => {
+  withSessionStoreLock(() => {
+    loadSessionsFromDisk()
+    const session = _sessions.get(token)
+    if (!session) return
+    session.username = username
+    persistSessionsToDisk()
+  })
+}
+
 /** Invalidate a single session token (e.g. on logout). */
 export const invalidateUserSession = (token: string): void => {
   withSessionStoreLock(() => {

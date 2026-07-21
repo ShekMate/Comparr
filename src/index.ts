@@ -8,6 +8,7 @@ globalThis.addEventListener('unhandledrejection', event => {
 })
 
 import * as log from 'jsr:@std/log'
+import { errorMessage } from './core/errors.ts'
 import { clearAllMoviesCache, getServerId } from './api/plex.ts'
 import type { CompatRequest } from './infra/http/compat-request.ts'
 import {
@@ -35,7 +36,6 @@ import {
 import { getLinkTypeForRequest } from './core/i18n.ts'
 import {
   handleLogin,
-  activeSessions,
   getAllRooms,
   clearAllRooms,
   clearRooms,
@@ -51,7 +51,6 @@ import {
 } from './infra/http/network-access.ts'
 import { handleSettingsRoutes } from './infra/http/routes/settings.ts'
 import { handleRoutes } from './infra/http/router.ts'
-import { handleMatchesRoute } from './infra/http/routes/matches.ts'
 import { handleCompareRoutes } from './infra/http/routes/compare.ts'
 import { handleMediaServerRoutes } from './infra/http/routes/media-server.ts'
 import { handleRequestServiceRoutes } from './infra/http/routes/request-service.ts'
@@ -61,6 +60,8 @@ import { handleRecommendationsRoute } from './infra/http/routes/recommendations.
 import { handleStreamingRoutes } from './infra/http/routes/streaming.ts'
 import { handleImdbImportRoutes } from './infra/http/routes/imdb-import.ts'
 import { handlePlexSyncRoutes } from './infra/http/routes/plex-sync.ts'
+import { handlePlexAccountConnectRoutes } from './infra/http/routes/plex-account-connect.ts'
+import { handleTraktAccountConnectRoutes } from './infra/http/routes/trakt-account-connect.ts'
 import { handleSystemRoutes } from './infra/http/routes/system.ts'
 import { WebSocketServer } from './infra/ws/websocketServer.ts'
 import { makeHeaders } from './infra/http/security-headers.ts'
@@ -326,7 +327,7 @@ const serveCompat = (options: {
           if (closed) {
             return Promise.resolve({ value: undefined as never, done: true })
           }
-          return new Promise(resolve => waiters.push(resolve))
+          return new Promise<IteratorResult<CompatRequest>>(resolve => waiters.push(resolve))
         },
       }
     },
@@ -440,7 +441,6 @@ const handleRequest = async (req: CompatRequest): Promise<void> => {
       csrfCookieName: CSRF_COOKIE_NAME,
       createCsrfToken,
       shouldUseSecureCookies,
-      activeSessions,
     })
     if (systemRouteResponse) {
       await req.respondWith(systemRouteResponse)
@@ -561,7 +561,6 @@ const handleRequest = async (req: CompatRequest): Promise<void> => {
       handleRequestServiceRoutes,
       handleCompareRoutes,
       handleMediaServerRoutes,
-      handleMatchesRoute,
       handleRecommendationsRoute,
     ])
     if (routeResponse) {
@@ -591,7 +590,7 @@ const handleRequest = async (req: CompatRequest): Promise<void> => {
           headers: makeHeaders(req, 'application/json'),
         })
       } catch (err) {
-        log.error(`Radarr cache refresh failed: ${err?.message || err}`)
+        log.error(`Radarr cache refresh failed: ${errorMessage(err)}`)
         await req.respond({
           status: 500,
           body: JSON.stringify({
@@ -629,6 +628,20 @@ const handleRequest = async (req: CompatRequest): Promise<void> => {
     const plexSyncResponse = await handlePlexSyncRoutes(req, p, getMaxBodySize())
     if (plexSyncResponse) {
       await req.respondWith(plexSyncResponse)
+      return
+    }
+
+    // --- API: Connect a Plex account for Watchlist sync, independent of login
+    const plexAccountConnectResponse = await handlePlexAccountConnectRoutes(req, p)
+    if (plexAccountConnectResponse) {
+      await req.respondWith(plexAccountConnectResponse)
+      return
+    }
+
+    // --- API: Connect a Trakt account for sync, independent of login
+    const traktAccountConnectResponse = await handleTraktAccountConnectRoutes(req, p)
+    if (traktAccountConnectResponse) {
+      await req.respondWith(traktAccountConnectResponse)
       return
     }
 
@@ -781,7 +794,7 @@ const handleRequest = async (req: CompatRequest): Promise<void> => {
     // --- Fallback: generic static server rooted at /public
     await req.respondWith(await serveFile(req, '/public'))
   } catch (err) {
-    log.error(`Error handling request: ${err?.message ?? err}`)
+    log.error(`Error handling request: ${errorMessage(err)}`)
     responseStatus = 500
     try {
       await req.respond({ status: 500, body: new TextEncoder().encode('500') })

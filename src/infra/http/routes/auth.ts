@@ -19,11 +19,13 @@ import {
   upsertUser,
   findUserById,
   getOrCreateInviteCode,
+  updateUsername,
 } from '../../../features/auth/user-db.ts'
 import {
   createUserSession,
   getUserSession,
   invalidateUserSession,
+  updateSessionUsername,
 } from '../../../core/user-session-store.ts'
 import {
   requestPlexPin,
@@ -38,9 +40,19 @@ import {
   sendOtpEmail,
   loadOtpsFromDisk,
 } from '../../../features/auth/providers/email-otp.ts'
+import {
+  requestTraktDeviceCode,
+  pollTraktDeviceToken,
+  getTraktUserSettings,
+} from '../../../api/trakt.ts'
+import { setUserTraktLoginTokens } from '../../../features/auth/user-db.ts'
 
 const USER_SESSION_COOKIE = 'comparr_user'
 const PIN_TTL_MS = 6 * 60 * 1000
+// Trakt device codes are short-lived (Trakt sets expires_in, typically ~10 min) and this is a
+// lower-stakes flow than Plex login's disk-persisted pins — in-memory only is fine, a server
+// restart mid-flow just means the user retries.
+const _pendingTraktDeviceLogins = new Map<string, { expiresAt: number }>()
 
 // Active Plex PIN requests (memory cache mirrored to DATA_DIR).
 const _pendingPins = new Map<
@@ -132,6 +144,16 @@ const makeJson = (req: CompatRequest) => makeHeaders(req, 'application/json')
 
 const getClientIp = (req: CompatRequest) => resolveClientIp(req)
 
+const MAX_DISPLAY_NAME_LENGTH = 30
+
+// Guest/profile display names are user-typed, unlike Guest-xxxxxx (formerly auto-generated)
+// or provider-derived names — strip line breaks so they can't break the room member list.
+const sanitizeDisplayName = (raw: unknown): string =>
+  String(raw || '')
+    .replace(/[\r\n\t]+/g, ' ')
+    .trim()
+    .slice(0, MAX_DISPLAY_NAME_LENGTH)
+
 const parseCookies = (req: CompatRequest): Map<string, string> => {
   const cookies = new Map<string, string>()
   const raw = String(req.headers?.get?.('cookie') || '')
@@ -204,7 +226,7 @@ const setUserSessionCookie = (
 }
 
 /** Ensure a persistent PLEX_CLIENT_ID exists, generating one on first use. */
-async function ensurePlexClientId(): Promise<string> {
+export async function ensurePlexClientId(): Promise<string> {
   let clientId = getPlexClientId()
   if (!clientId) {
     clientId = crypto.randomUUID()
@@ -227,7 +249,10 @@ export async function handleAuthRoutes(
   // ── GET /api/auth/providers ──────────────────────────────────────────────
   if (pathname === '/api/auth/providers' && req.method === 'GET') {
     const emailEnabled = getSetting('EMAIL_LOGIN_ENABLED') === 'true'
-    const providers: { id: string; name: string }[] = [{ id: 'plex', name: 'Plex' }]
+    const providers: { id: string; name: string }[] = [
+      { id: 'plex', name: 'Plex' },
+      { id: 'trakt', name: 'Trakt' },
+    ]
     if (emailEnabled) providers.push({ id: 'email', name: 'Email' })
     return new Response(
       JSON.stringify({ providers, userAuthEnabled: true }),
@@ -556,22 +581,21 @@ export async function handleAuthRoutes(
       }
       log.info(`[auth][${traceId}] [step 9] pinId=${pinId} received auth token`)
 
-      const plexUser = await getPlexUserInfo(status.authToken, pollClientId)
+      // Independent reads off the same auth token — run concurrently rather than
+      // sequentially so the mobile app's login browser can dismiss sooner (each is a
+      // real network round trip to plex.tv, and the mobile client polls this route
+      // synchronously waiting on this response).
+      const serverAccessCheckNeeded = Boolean(getPlexUrl() && getPlexToken())
+      const [plexUser, hasServerAccess] = await Promise.all([
+        getPlexUserInfo(status.authToken, pollClientId),
+        serverAccessCheckNeeded
+          ? isUserOnPlexServer(status.authToken, getPlexUrl(), getPlexToken())
+          : Promise.resolve(true),
+      ])
       log.info(
         `[auth] Plex user info fetched from auth token (pinId=${pinId}, plexUserId=${plexUser.id}, username=${plexUser.username})`
       )
-
-      // Determine whether this Plex user has access to the configured Plex server.
-      // Users without server access may still sign in, but server-backed features
-      // (library filtering/requests) are restricted.
-      let hasServerAccess = true
-      if (getPlexUrl() && getPlexToken()) {
-        log.info(`[auth] Checking Plex server access for user (pinId=${pinId})`)
-        hasServerAccess = await isUserOnPlexServer(
-          status.authToken,
-          getPlexUrl(),
-          getPlexToken()
-        )
+      if (serverAccessCheckNeeded) {
         log.info(
           `[auth] Plex server access check complete (pinId=${pinId}, hasServerAccess=${hasServerAccess})`
         )
@@ -663,6 +687,125 @@ export async function handleAuthRoutes(
         JSON.stringify({ status: 'pending' }),
         { status: 200, headers: makeJson(req) }
       )
+    }
+  }
+
+  // ── POST /api/auth/trakt/device ──────────────────────────────────────────
+  // Login via Trakt, mirroring the Plex PIN flow's shape (mobile opens a browser to the
+  // verification URL, then polls us) but using Trakt's own OAuth device code flow.
+  if (pathname === '/api/auth/trakt/device' && req.method === 'POST') {
+    const ip = getClientIp(req)
+    if (!loginRateLimiter.check(ip)) {
+      return new Response(
+        JSON.stringify({ error: 'Too many attempts. Please wait.' }),
+        { status: 429, headers: makeJson(req) }
+      )
+    }
+    try {
+      const device = await requestTraktDeviceCode()
+      const expiresAt = Date.now() + device.expiresIn * 1000
+      for (const [code, entry] of _pendingTraktDeviceLogins) {
+        if (Date.now() > entry.expiresAt) _pendingTraktDeviceLogins.delete(code)
+      }
+      _pendingTraktDeviceLogins.set(device.deviceCode, { expiresAt })
+      log.info(`[auth] Trakt device code created: userCode=${device.userCode}`)
+      return new Response(
+        JSON.stringify({
+          deviceCode: device.deviceCode,
+          userCode: device.userCode,
+          verificationUrl: device.verificationUrl,
+          interval: device.interval,
+        }),
+        { status: 200, headers: makeJson(req) }
+      )
+    } catch (err) {
+      log.error(`[auth] Trakt device code request failed: ${err}`)
+      return new Response(
+        JSON.stringify({ error: 'Could not contact Trakt. Please try again.' }),
+        { status: 502, headers: makeJson(req) }
+      )
+    }
+  }
+
+  // ── GET /api/auth/trakt/device/:deviceCode ───────────────────────────────
+  const traktDeviceMatch = pathname.match(/^\/api\/auth\/trakt\/device\/([^/]+)$/)
+  if (traktDeviceMatch && req.method === 'GET') {
+    const deviceCode = traktDeviceMatch[1]
+    const pending = _pendingTraktDeviceLogins.get(deviceCode)
+    if (!pending || Date.now() > pending.expiresAt) {
+      _pendingTraktDeviceLogins.delete(deviceCode)
+      return new Response(JSON.stringify({ status: 'expired' }), {
+        status: 200,
+        headers: makeJson(req),
+      })
+    }
+
+    try {
+      const result = await pollTraktDeviceToken(deviceCode)
+      if (result.status === 'pending' || result.status === 'slow_down') {
+        return new Response(JSON.stringify({ status: 'pending' }), {
+          status: 200,
+          headers: makeJson(req),
+        })
+      }
+      if (result.status !== 'success') {
+        _pendingTraktDeviceLogins.delete(deviceCode)
+        return new Response(JSON.stringify({ status: result.status }), {
+          status: 200,
+          headers: makeJson(req),
+        })
+      }
+
+      const traktUser = await getTraktUserSettings(result.tokens.accessToken)
+      const user = upsertUser({
+        provider: 'trakt',
+        providerUserId: traktUser.id,
+        username: traktUser.username,
+        email: '',
+        avatarUrl: traktUser.avatarUrl,
+      })
+      setUserTraktLoginTokens(user.id, result.tokens)
+
+      const inviteCode = getOrCreateInviteCode(user.id)
+      const roomCode = `U${String(user.id).padStart(3, '0')}`
+
+      const sessionToken = createUserSession({
+        userId: user.id,
+        provider: user.provider,
+        providerUserId: user.providerUserId,
+        username: user.username,
+        avatarUrl: user.avatarUrl,
+        isAdmin: user.isAdmin,
+        hasServerAccess: true,
+      })
+
+      const headers = makeJson(req)
+      setUserSessionCookie(headers, sessionToken, req)
+      _pendingTraktDeviceLogins.delete(deviceCode)
+      log.info(`[auth] Trakt login: ${user.username} (id=${user.id})`)
+
+      return new Response(
+        JSON.stringify({
+          status: 'success',
+          user: {
+            id: user.id,
+            username: user.username,
+            avatarUrl: user.avatarUrl,
+            isAdmin: user.isAdmin,
+            hasServerAccess: true,
+            provider: 'trakt',
+            roomCode,
+            inviteCode,
+          },
+        }),
+        { status: 200, headers }
+      )
+    } catch (err) {
+      log.error(`[auth] Trakt device poll error: ${err}`)
+      return new Response(JSON.stringify({ status: 'pending' }), {
+        status: 200,
+        headers: makeJson(req),
+      })
     }
   }
 
@@ -801,6 +944,147 @@ export async function handleAuthRoutes(
       log.error(`[auth] Email OTP verify error: ${err}`)
       return new Response(
         JSON.stringify({ error: 'Login failed. Please try again.' }),
+        { status: 500, headers: makeJson(req) }
+      )
+    }
+  }
+
+  // ── POST /api/auth/device ────────────────────────────────────────────────
+  // Silent, no-signup account: the client generates a random device ID once
+  // (stored in Keychain/SecureStore) and re-sends it here on every app launch.
+  // First call creates the account; every later call from the same device just
+  // re-establishes a session for it — same upsertUser(provider, providerUserId)
+  // pattern Plex/email use, just with the device ID standing in for a real
+  // third-party identity. This is what lets someone use the app with zero
+  // account-creation friction (see AGENTS notes on Comparr's auth model).
+  // The client collects a first name up front (see GuestWarningModal) rather than
+  // us auto-generating a "Guest-xxxxxx" name — that read as impersonal in a room
+  // member list.
+  if (pathname === '/api/auth/device' && req.method === 'POST') {
+    const ip = getClientIp(req)
+    if (!loginRateLimiter.check(ip)) {
+      return new Response(
+        JSON.stringify({ error: 'Too many attempts. Please wait.' }),
+        { status: 429, headers: makeJson(req) }
+      )
+    }
+
+    try {
+      const body = await req.json<{ deviceId?: string; displayName?: string }>()
+      const deviceId = String(body?.deviceId || '').trim()
+
+      if (!deviceId || deviceId.length < 16 || deviceId.length > 128) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid device ID.' }),
+          { status: 400, headers: makeJson(req) }
+        )
+      }
+
+      const displayName = sanitizeDisplayName(body?.displayName)
+      if (!displayName) {
+        return new Response(
+          JSON.stringify({ error: 'A name is required.' }),
+          { status: 400, headers: makeJson(req) }
+        )
+      }
+
+      const user = upsertUser({
+        provider: 'device',
+        providerUserId: deviceId,
+        username: displayName,
+        email: '',
+        avatarUrl: '',
+      })
+
+      const inviteCode = getOrCreateInviteCode(user.id)
+      const roomCode = `U${String(user.id).padStart(3, '0')}`
+
+      const sessionToken = createUserSession({
+        userId: user.id,
+        provider: user.provider,
+        providerUserId: user.providerUserId,
+        username: user.username,
+        avatarUrl: user.avatarUrl,
+        isAdmin: user.isAdmin,
+        hasServerAccess: true,
+      })
+
+      const headers = makeJson(req)
+      setUserSessionCookie(headers, sessionToken, req)
+      log.info(`[auth] Device login: ${displayName} (userId=${user.id})`)
+
+      return new Response(
+        JSON.stringify({
+          status: 'success',
+          user: {
+            id: user.id,
+            username: user.username,
+            avatarUrl: user.avatarUrl,
+            isAdmin: user.isAdmin,
+            hasServerAccess: true,
+            provider: 'device',
+            roomCode,
+            inviteCode,
+          },
+        }),
+        { status: 200, headers }
+      )
+    } catch (err) {
+      log.error(`[auth] Device login error: ${err}`)
+      return new Response(
+        JSON.stringify({ error: 'Login failed. Please try again.' }),
+        { status: 500, headers: makeJson(req) }
+      )
+    }
+  }
+
+  // ── PATCH /api/auth/profile ──────────────────────────────────────────────
+  // Lets the current user (any provider) change their display name later, e.g.
+  // from Settings — same name field guests fill in at sign-up time.
+  if (pathname === '/api/auth/profile' && req.method === 'PATCH') {
+    const token = parseCookies(req).get(USER_SESSION_COOKIE) || ''
+    const session = token ? getUserSession(token) : null
+    if (!session) {
+      return new Response(
+        JSON.stringify({ error: 'Not signed in.' }),
+        { status: 401, headers: makeJson(req) }
+      )
+    }
+
+    try {
+      const body = await req.json<{ displayName?: string }>()
+      const displayName = sanitizeDisplayName(body?.displayName)
+      if (!displayName) {
+        return new Response(
+          JSON.stringify({ error: 'A name is required.' }),
+          { status: 400, headers: makeJson(req) }
+        )
+      }
+
+      updateUsername(session.userId, displayName)
+      updateSessionUsername(token, displayName)
+      log.info(`[auth] Profile updated: userId=${session.userId} -> ${displayName}`)
+
+      const roomCode = `U${String(session.userId).padStart(3, '0')}`
+      return new Response(
+        JSON.stringify({
+          status: 'success',
+          user: {
+            id: session.userId,
+            username: displayName,
+            avatarUrl: session.avatarUrl,
+            isAdmin: session.isAdmin,
+            hasServerAccess: session.hasServerAccess,
+            provider: session.provider,
+            roomCode,
+          },
+        }),
+        { status: 200, headers: makeJson(req) }
+      )
+    } catch (err) {
+      log.error(`[auth] Profile update error: ${err}`)
+      return new Response(
+        JSON.stringify({ error: 'Could not update profile. Please try again.' }),
         { status: 500, headers: makeJson(req) }
       )
     }

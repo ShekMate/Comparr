@@ -50,16 +50,36 @@ export async function initPosterCache(): Promise<void> {
 }
 
 /**
- * Save cache metadata to disk
+ * Save cache metadata to disk. Debounced and single-flight (mirrors
+ * schedulePersistEnrichmentCache in features/catalog/enrich.ts): cachePoster() can call this
+ * many times within the same millisecond during a poster-prefetch burst, and concurrent writes
+ * to the same on-disk tmp filename would race each other's rename. Coalescing into one write
+ * per burst also avoids redundant disk I/O.
  */
-async function saveMetadata(): Promise<void> {
-  try {
-    const tmp = `${CACHE_METADATA_FILE}.tmp.${Date.now()}`
-    await Deno.writeTextFile(tmp, JSON.stringify(cacheMetadata, null, 2))
-    await Deno.rename(tmp, CACHE_METADATA_FILE)
-  } catch (err) {
-    log.error(`Failed to save cache metadata: ${err}`)
-  }
+let saveMetadataPromise: Promise<void> | null = null
+let saveMetadataRequested = false
+
+function saveMetadata(): Promise<void> {
+  saveMetadataRequested = true
+  if (saveMetadataPromise) return saveMetadataPromise
+  saveMetadataPromise = (async () => {
+    await new Promise(resolve => setTimeout(resolve, 250))
+    if (!saveMetadataRequested) return
+    saveMetadataRequested = false
+    try {
+      const tmp = `${CACHE_METADATA_FILE}.tmp`
+      await Deno.writeTextFile(tmp, JSON.stringify(cacheMetadata, null, 2))
+      await Deno.rename(tmp, CACHE_METADATA_FILE)
+    } catch (err) {
+      log.error(`Failed to save cache metadata: ${err}`)
+    }
+  })().finally(() => {
+    saveMetadataPromise = null
+    if (saveMetadataRequested) {
+      saveMetadata()
+    }
+  })
+  return saveMetadataPromise
 }
 
 /**

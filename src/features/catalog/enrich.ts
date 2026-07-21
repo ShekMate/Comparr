@@ -10,12 +10,13 @@ import {
 } from '../../core/config.ts'
 import { tmdbFetch } from '../../api/tmdb.ts'
 import * as log from 'jsr:@std/log'
+import { errorMessage } from '../../core/errors.ts'
 
 const getTmdbKey = () => getTmdbApiKey()
 const tmdbCache = new Map<string, any>()
 const tmdbSearchCache = new Map<string, any>()
 
-type EnrichmentPayload = {
+export type EnrichmentPayload = {
   plot: string | null
   imdbId: string | null
   rating_tmdb: number | null
@@ -204,7 +205,7 @@ function schedulePersistEnrichmentCache() {
       await Deno.rename(tmp, ENRICH_CACHE_FILE)
     } catch (err) {
       log.error(
-        `[enrich] failed to persist enrichment cache: ${err?.message || err}`
+        `[enrich] failed to persist enrichment cache: ${errorMessage(err)}`
       )
     }
   })().finally(() => {
@@ -543,7 +544,7 @@ export async function enrich({
     }
   } catch (err) {
     log.error(
-      `[enrich] Failed to check personal library status: ${err?.message || err}`
+      `[enrich] Failed to check personal library status: ${errorMessage(err)}`
     )
   }
 

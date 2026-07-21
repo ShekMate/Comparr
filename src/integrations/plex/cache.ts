@@ -35,7 +35,7 @@ let initialBuildPromise: Promise<void> | null = null
 /**
  * Normalize title for comparison — strips accents then punctuation
  */
-function normalizeTitle(title: string): string {
+export function normalizeTitle(title: string): string {
   return title
     .normalize('NFKD')               // decompose accented chars (é → e + combining)
     .replace(/[̀-ͯ]/g, '') // strip combining accent marks
@@ -259,26 +259,6 @@ export function isMovieInPlex(params: {
   }
 
   return false
-}
-
-/**
- * Get cache statistics
- */
-export function getCacheStats() {
-  return {
-    totalMovies: cache.byTitleYear.size,
-    moviesWithTmdbId: cache.byTmdbId.size,
-    moviesWithImdbId: cache.byImdbId.size,
-    lastUpdated: cache.lastUpdated,
-    isStale: Date.now() - cache.lastUpdated > CACHE_REFRESH_INTERVAL,
-  }
-}
-
-/**
- * Force a cache refresh
- */
-export async function refreshPlexCache(): Promise<void> {
-  await buildPlexCache()
 }
 
 /**

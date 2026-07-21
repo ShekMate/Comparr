@@ -88,6 +88,8 @@ export const getAccessPassword = () =>
 export const getSeerrUrl = () => normalizeUrl(getSettingTrimmed('SEERR_URL'))
 export const getSeerrApiKey = () => getSettingTrimmed('SEERR_API_KEY')
 export const getTmdbApiKey = () => getSettingTrimmed('TMDB_API_KEY')
+export const getTraktClientId = () => getSettingTrimmed('TRAKT_CLIENT_ID') ?? ''
+export const getTraktClientSecret = () => getSettingTrimmed('TRAKT_CLIENT_SECRET') ?? ''
 export const getPaidStreamingServices = () =>
   splitCsvSetting(getSettingTrimmed('PAID_STREAMING_SERVICES') ?? '')
 export const getPersonalMediaSources = () =>

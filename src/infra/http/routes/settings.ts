@@ -169,7 +169,7 @@ const sanitizeSettingsForClient = (
   settings: Record<string, unknown>,
   isAdmin: boolean
 ) => {
-  const sanitized = { ...settings, ACCESS_PASSWORD: '', SMTP_PASS: '' }
+  const sanitized: Record<string, unknown> = { ...settings, ACCESS_PASSWORD: '', SMTP_PASS: '' }
 
   if (!isAdmin) {
     for (const key of ADMIN_ONLY_SETTINGS) {

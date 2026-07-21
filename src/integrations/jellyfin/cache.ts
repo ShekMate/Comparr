@@ -11,6 +11,5 @@ const {
 
 export const buildJellyfinCache = buildCache
 export const initJellyfinCache = initCache
-export const refreshJellyfinCache = buildCache
 export const isMovieInJellyfin = isMovieIn
 export const getAllJellyfinMovies = getAllMovies

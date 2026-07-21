@@ -17,6 +17,7 @@ import {
   getSharedServersForUser,
   dismissMatchForUser,
   getDismissedMatchGuids,
+  getConnectionsStatus,
 } from '../../../features/auth/user-db.ts'
 import { getCompareMatches } from '../../../features/session/session.ts'
 
@@ -339,6 +340,7 @@ export async function handleCompareRoutes(
       JSON.stringify({
         settings: {
           defaultFilters: settings?.defaultFilters ?? '{}',
+          displayPreferences: settings?.displayPreferences ?? '{}',
         },
         inviteCode,
       }),
@@ -367,9 +369,27 @@ export async function handleCompareRoutes(
         typeof body.defaultFilters === 'string' ? body.defaultFilters : undefined,
       subscriptions:
         typeof body.subscriptions === 'string' ? body.subscriptions : undefined,
+      displayPreferences:
+        typeof body.displayPreferences === 'string' ? body.displayPreferences : undefined,
     })
 
     return new Response(JSON.stringify({ success: true }), {
+      status: 200, headers: makeJson(req),
+    })
+  }
+
+  // ── GET /api/profile/connections ────────────────────────────────────────
+  // Unified status for every connection (Plex account, Plex/Emby/Jellyfin server, Trakt),
+  // independent of login — see getConnectionsStatus for what "source" means.
+  if (path === '/api/profile/connections' && req.method === 'GET') {
+    const session = getCallerSession(req)
+    if (!session) {
+      return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
+        status: 401, headers: makeJson(req),
+      })
+    }
+
+    return new Response(JSON.stringify(getConnectionsStatus(session.userId)), {
       status: 200, headers: makeJson(req),
     })
   }

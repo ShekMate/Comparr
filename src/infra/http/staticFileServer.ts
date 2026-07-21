@@ -46,7 +46,7 @@ export const serveFile = async (
       throw new Error(`Only file serving is enabled.`)
     }
 
-    let body: Uint8Array | string = await Deno.readFile(normalizedPath)
+    let body: Uint8Array<ArrayBuffer> | string = await Deno.readFile(normalizedPath)
 
     if (extname(normalizedPath) === '.html') {
       body = await translateHTML(body, req.headers)

@@ -26,8 +26,15 @@ const toHex = (buf: ArrayBuffer) =>
     .map(b => b.toString(16).padStart(2, '0'))
     .join('')
 
-const fromHex = (hex: string): Uint8Array =>
-  new Uint8Array(hex.match(/.{2}/g)!.map(b => parseInt(b, 16)))
+const fromHex = (hex: string): Uint8Array<ArrayBuffer> => {
+  const bytes = hex.match(/.{2}/g)!.map(b => parseInt(b, 16))
+  // Built via the length overload (not the array overload) so the result is a concrete
+  // Uint8Array<ArrayBuffer> — the array overload types as Uint8Array<ArrayBufferLike>, which
+  // WebCrypto's BufferSource param rejects since it also allows SharedArrayBuffer.
+  const out = new Uint8Array(bytes.length)
+  out.set(bytes)
+  return out
+}
 
 export const isHashedPassword = (value: string): boolean =>
   value.startsWith(HASH_PREFIX)

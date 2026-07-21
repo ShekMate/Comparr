@@ -3,12 +3,20 @@
 // own server here; nothing here is admin-gated. See ARCHITECTURE note in
 // src/features/session/personal-media-sources.ts for how these feed the discovery pipeline.
 
+import * as log from 'jsr:@std/log'
 import type { CompatRequest } from '../compat-request.ts'
 import { addSecurityHeaders } from '../security-headers.ts'
-import { getUserTokenFromCookie } from './auth.ts'
+import { getUserTokenFromCookie, ensurePlexClientId } from './auth.ts'
 import { getUserSession } from '../../../core/user-session-store.ts'
-import { getUserSettings, upsertUserSettings, UserSettings } from '../../../features/auth/user-db.ts'
+import {
+  getUserSettings,
+  upsertUserSettings,
+  getUserPlexAuthToken,
+  UserSettings,
+} from '../../../features/auth/user-db.ts'
 import { runConnectionCheck } from '../connection-check.ts'
+import { discoverPlexServers } from '../../../features/auth/providers/plex.ts'
+import { errorMessage } from '../../../core/errors.ts'
 
 type Provider = 'plex' | 'emby' | 'jellyfin'
 
@@ -76,6 +84,43 @@ export async function handleMediaServerRoutes(
     return new Response(JSON.stringify(status), {
       status: 200, headers: makeJson(req),
     })
+  }
+
+  // ── GET /api/profile/media-server/plex/discover ───────────────────────────
+  // Lists Plex servers reachable from the caller's own plex.tv account. Works whether they got
+  // their Plex token by logging into Comparr via Plex, or by connecting their Plex account
+  // separately for Watchlist sync (routes/plex-account-connect.ts) — same token space either
+  // way, so either connection is enough to discover servers.
+  if (path === '/api/profile/media-server/plex/discover' && req.method === 'GET') {
+    const session = getCallerSession(req)
+    if (!session) {
+      return new Response(JSON.stringify({ error: 'Not authenticated.' }), {
+        status: 401, headers: makeJson(req),
+      })
+    }
+
+    const settings = getUserSettings(session.userId)
+    const plexAuthToken = getUserPlexAuthToken(session.userId) || settings?.plexAccountToken || ''
+    if (!plexAuthToken) {
+      return new Response(
+        JSON.stringify({ error: 'Connect your Plex account to discover your servers.' }),
+        { status: 400, headers: makeJson(req) }
+      )
+    }
+
+    try {
+      const clientId = await ensurePlexClientId()
+      const servers = await discoverPlexServers(plexAuthToken, clientId)
+      return new Response(JSON.stringify({ servers }), {
+        status: 200, headers: makeJson(req),
+      })
+    } catch (err) {
+      log.error(`[media-server] Plex server discovery failed: ${errorMessage(err)}`)
+      return new Response(
+        JSON.stringify({ error: 'Could not reach Plex to list your servers.' }),
+        { status: 502, headers: makeJson(req) }
+      )
+    }
   }
 
   // ── POST /api/profile/media-server/test ───────────────────────────────────

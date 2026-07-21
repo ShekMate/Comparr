@@ -3,7 +3,6 @@
 
 import { ComparrAPI } from './ComparrAPI.js'
 import CardView from './CardView.js?v=4'
-import { MatchesView } from './MatchesView.js'
 import { buildRatingHtml, formatRuntime, getGenreNames } from './features/movie-metadata.js'
 import { initViewMode, viewModeAddItem, viewModeRemoveItem, applyViewMode } from './ViewModes.js'
 
@@ -672,9 +671,6 @@ function initTabs() {
         applyCurrentSeenListSort()
       }
     } else if (tabId === 'tab-matches') {
-      if (typeof window.refreshMatchesList === 'function') {
-        window.refreshMatchesList()
-      }
       if (typeof window.initCompareTab === 'function') {
         window.initCompareTab()
       }
@@ -6115,22 +6111,6 @@ async function moveMovieBetweenLists(guid, fromList, toList) {
     await api.respond({ guid, wantsToWatch: newValue })
     console.log('✅ API response sent')
 
-    if (toList === 'watch' && typeof window.refreshMatchesList === 'function') {
-      const refreshedMatches = await window.refreshMatchesList()
-      const matchedEntry = refreshedMatches?.find(
-        match => match.movie?.guid === guid
-      )
-      const shownGuids = window.shownMatchGuids
-      if (
-        matchedEntry &&
-        matchedEntry.users?.length > 1 &&
-        (!shownGuids || !shownGuids.has(guid))
-      ) {
-        showMatchPopup(matchedEntry)
-        shownGuids?.add?.(guid)
-      }
-    }
-
     // Get the card to extract movie data from it
     const oldCard = document.querySelector(`.watch-card[data-guid="${guid}"]`)
     if (!oldCard) {
@@ -6959,7 +6939,6 @@ const main = async () => {
   const loginData = await login(api)
   console.log('✅ Login successful:', loginData)
   const {
-    matches,
     rated,
     user: userName,
     roomCode,
@@ -7052,27 +7031,12 @@ const main = async () => {
     `🎬 Tracking ${ratedTmdbIds.size} unique TMDb IDs from rated movies`
   )
 
-  const matchesView = new MatchesView(matches)
   const shownMatchGuids = new Set()
   window.shownMatchGuids = shownMatchGuids
 
-  const refreshMatchesList = async () => {
-    try {
-      const result = await api.getMatches(roomCode, userName)
-      matchesView.matches = result.matches || []
-      return matchesView.matches
-    } catch (error) {
-      console.error('Failed to refresh matches:', error)
-      return matchesView.matches
-    }
-  }
-
-  window.refreshMatchesList = refreshMatchesList
-
-  // Match event listener - show popup and add to matches view
+  // Match event listener - show popup
   api.addEventListener('match', e => {
     const matchData = e.data
-    matchesView.add(matchData)
     if (matchData?.movie?.guid && !shownMatchGuids.has(matchData.movie.guid)) {
       showMatchPopup(matchData)
       shownMatchGuids.add(matchData.movie.guid)
@@ -7995,19 +7959,6 @@ const main = async () => {
   }
 
   window.refreshStatsTab = refreshStatsTab
-
-  api.addEventListener('message', e => {
-    const data = e.data
-    if (data.type === 'matchRemoved') {
-      const { guid } = data.payload
-      const matchIndex = matchesView.matches.findIndex(
-        m => m.movie.guid === guid
-      )
-      if (matchIndex !== -1) {
-        matchesView.matches.splice(matchIndex, 1)
-      }
-    }
-  })
 
   // --- IMDb Import WebSocket handlers ---
   const imdbImportProgress = document.getElementById('imdb-import-progress')
